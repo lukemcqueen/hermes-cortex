@@ -1288,6 +1288,83 @@ is healthy and the ENVIRONMENT is at fault. Do not rebuild the venv on that evid
 broken — or make a bare interpreter look capable. A venv's correctness must not depend on the
 environment of whoever called it.
 
+## The nightly dream writes no file — the knowledge brain is not a repo
+
+**Symptom:** a dream cron reports success (`last_status: ok`) but
+`~/brain/<profile>/dreams/` gains no file for days. A host reports "nightly dream write-back
+blocked → brain dreams silent since <date>" and blames the job's `enabled_toolsets`.
+
+**Root cause:** the dream's Phase 4 write-back targets `~/brain/<profile>/dreams/<date>.md` plus
+its INDEX row. `~/brain` is deliberately **not a git repo** — it is shared data, not code — so
+`_target_repo_root()` resolves no repo for that call and the lock gate refused it outright:
+
+```
+🛑 No governed repo could be resolved for this call — and governance is
+   scoped to a git repo, so no lock could authorise it.
+```
+
+The gate's own words name the flaw: governance is scoped to a repo, and there is no repo here to
+bind to — so the refusal was an impossible demand, not a control. It also explains why an
+unattended session could never seed or prune the brain at all.
+
+**Second, independent cause on the same path:** a cron whose `enabled_toolsets` allowlist omits
+the `skills` toolset relies on `_bootstrap_cron_skills()` to satisfy gate 1 — and that bootstrap
+parses `~/.hermes-cortex/skills.yaml` with a YAML library. See the next section: on a runtime with
+neither PyYAML nor ruamel it returned False, so gate 1 blocked the write before the lock gate was
+ever reached. Both causes had to be fixed; either one alone still leaves the dream silent.
+
+**Fix:** `_is_sanctioned_brain_write()` in the enforcer exempts **file-tool writes inside
+`<home>/brain`** from the lock gate, checked immediately before the no-repo refusal. Narrow by
+construction: file-tool path arguments only (`path`/`file_path`), the brain tree only — a
+`terminal` call is never exempted (its write target is not path-analysable), no other path is
+exempted, and PII / adversarial / bypass-debt gates still apply to a brain write. Pinned by
+`tests/test_enforcer_brain_write_exempt.py`, including an assertion that the exemption is wired
+*before* the refusal it prevents.
+
+**Repairing jobs that carry an over-restrictive allowlist:**
+`python3 ops/scripts/manage/fix-cron-skills-toolset.py` reports every LLM cron whose explicit
+`enabled_toolsets` omits `skills` (`--apply` adds it, under the gateway's own `.jobs.lock`,
+verified by read-back). Note what adding `skills` does **not** fix: an explicit allowlist also
+excludes every MCP server unless named, so such a job still cannot mint the lock a write *inside*
+a governed repo requires (gate 2). The measured working configuration for an unattended
+write-back job is **no allowlist at all** — that is a widening, so the script names it and leaves
+the decision to the operator.
+
+**Verified:** on the host where the nightly dream had been silent, the function-level path
+(`_is_sanctioned_brain_write` → `return None` before the refusal) plus a live restricted-toolset
+cron writing to `~/brain/` — see the evidence note in the delivery that landed this.
+
+## The cron skills bootstrap dies on a runtime with no YAML library
+
+**Symptom:** every cron/bg session whose `enabled_toolsets` has no skill tool is refused on its
+first write, with `🛑 Write tool blocked — session skills not fully loaded` — while an
+interactive session on the same host is fine. Gate 1 is *supposed* to be satisfiable for
+unattended sessions: `on_session_start` runs `_bootstrap_cron_skills()`, which verifies the
+always-section skills exist on disk and writes the session's marker without any skill tool.
+
+**Root cause:** that bootstrap parsed the manifest with `_safe_load_yaml()`, which resolved
+PyYAML → ruamel.yaml and raised `ModuleNotFoundError` when neither was importable. The
+interpreter that loads the plugin is the **agent runtime**
+(`~/.hermes/tools/python-<ver>/bin/python3` — the same one the gateway is launched with), and its
+site-packages differ per host: measured 2026-10-28, one host's runtime had **neither** library
+while a peer host on the *same tool version* had PyYAML. The bootstrap logged
+`Cron bootstrap: cannot parse skills.yaml: No module named 'ruamel'`, returned False, and no
+marker was written — so gate 1 blocked every write in that session class.
+
+**Fix:** `_safe_load_yaml()` now has a third, dependency-free path — `_always_entries_from_text()`
+reads the `always:` list's `name:` entries with the stdlib and returns `{}` when there is no
+`always:` section (the caller still fails closed). A parse failure from a library that *is*
+present still propagates to the caller, which logs and returns False. Pinned by
+`tests/test_enforcer_yaml_compat.py`, including an end-to-end test that the bootstrap creates the
+marker with every YAML library blocked, and one that a missing `SKILL.md` on disk still blocks.
+
+**Diagnose it in one command** (use the agent runtime, not a fleet venv):
+
+```bash
+/home/esther/.hermes/tools/python-*/bin/python3 -c "import yaml" 2>&1 | tail -1
+grep -c "Cron bootstrap: cannot parse" ~/.hermes/logs/*.log
+```
+
 ## Changelog
 
 | Version | Date | Changes |
@@ -1295,6 +1372,7 @@ environment of whoever called it.
 | 1.8.0 | 2026-10-03 | Added #24 (governance-auditor immutable-flag false positive inside a deploy's unlock window; deploy-in-progress marker) |
 | 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
 | 1.10.0 | 2026-10-13 | Added "An MCP server's tools are missing from the catalog" (kustos: `No loop-governance MCP tools`) — configured is not wired; `mcp_wiring.py` verifies the registered paths and the interpreter, the doctor reports `MCP wiring (<name>)`, and its server map no longer calls `agent-bus` by the wrong name |
+| 1.12.0 | 2026-10-28 | Added "The nightly dream writes no file — the knowledge brain is not a repo" (the brain is not a git repo, so the lock gate refused the dream's Phase 4 write-back as an impossible demand; `_is_sanctioned_brain_write()` now exempts file-tool writes inside `<home>/brain`, plus the `fix-cron-skills-toolset.py` repair for over-restrictive allowlists) and "The cron skills bootstrap dies on a runtime with no YAML library" (per-host runtime site-packages differ: the standalone agent runtime can ship neither PyYAML nor ruamel, so `_safe_load_yaml()` gained a dependency-free `always:` reader) |
 | 1.11.0 | 2026-10-13 | Added "A healthy fleet venv that 'cannot import the declared set'" — an inherited `PYTHONPATH` (a Hermes-managed 3.14 site-packages ahead of the venv's own) made a working venv read as broken, and made the resolver claim no interpreter on the host could import `mcp`; `python-with-module.sh` and `fix-cortex-venv.py` now probe and run with `PYTHONPATH`/`PYTHONHOME` stripped and say what they ignored |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |

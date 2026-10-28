@@ -1000,6 +1000,10 @@ register "ops/scripts/manage/lesson-compound-stats.py"   "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/lesson-hit.sh"              "${CORTEX_DEPLOY_HOME}/scripts/lesson-hit.sh"
 register "ops/scripts/manage/fix-cron-duplicates.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-duplicates.py"
 register "ops/scripts/manage/remove-cron-jobs.py"      "${CORTEX_DEPLOY_HOME}/scripts/manage/remove-cron-jobs.py"
+# Reports (and with --apply repairs) an LLM cron whose explicit enabled_toolsets
+# allowlist omits `skills`, so gate 1 blocks its writes forever. Deployed to
+# scripts/manage/ so any host can run it locally — and dispatch it over the bus.
+register "ops/scripts/manage/fix-cron-skills-toolset.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-skills-toolset.py"
 register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
 register "ops/scripts/manage/cron-cost-metrics.py"      "${CORTEX_DEPLOY_HOME}/scripts/cron-cost-metrics.py"
 register "ops/scripts/manage/orch-weekly-cost-report.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-cost-report.py"

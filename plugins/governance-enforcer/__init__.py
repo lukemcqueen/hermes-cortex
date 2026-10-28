@@ -1331,6 +1331,45 @@ def _target_repo_root(args: Dict[str, Any]) -> str:
     return ""
 
 
+# ── Knowledge-brain writes are sanctioned and lock-free (2026-10-28) ─────────
+# The dream layer's entire output is a file written into the knowledge brain
+# (~/brain/<profile>/dreams/<date>.md plus its INDEX row). The brain is
+# deliberately NOT a git repo — it is shared data, not code — so
+# `_target_repo_root()` can never resolve a repo for such a call and the lock
+# gate refused it outright: "No governed repo could be resolved for this call".
+#
+# MEASURED 2026-10-27/28: that refusal cost the nightly dream its Phase 4
+# write-back on a host whose dream cron carries an enabled_toolsets allowlist,
+# and it is why an unattended session cannot seed or prune the brain at all.
+# The gate's own message names the flaw — governance is scoped to a git repo,
+# and there is no repo here to bind to, so a lock could never authorise this
+# path. The refusal was an impossible demand, not a control.
+#
+# Deliberately NARROW: file-tool path arguments only, inside <home>/brain. A
+# terminal call is never exempted (its write target is not path-analysable), no
+# other path is exempted, and every other security gate (PII, adversarial,
+# bypass-debt) still applies to a brain write.
+def _is_sanctioned_brain_write(args: Dict[str, Any]) -> bool:
+    """True when this call writes a FILE inside the knowledge brain tree."""
+    if not isinstance(args, dict):
+        return False
+    try:
+        brain_root = (Path.home() / "brain").resolve()
+    except (OSError, RuntimeError):  # pragma: no cover — unresolvable HOME
+        return False
+    for key in ("path", "file_path"):
+        raw = args.get(key)
+        if not (isinstance(raw, str) and raw.strip()):
+            continue
+        try:
+            target = Path(raw).expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        if target == brain_root or brain_root in target.parents:
+            return True
+    return False
+
+
 # ── Review-receipt lock carve-out (2026-10-10) ─────────────────────────────
 # The lock gate makes a push accountable to a governed cycle. Closing a cycle
 # RELEASES the lock, so every close then needed a second, no-content
@@ -2661,26 +2700,81 @@ def _on_session_start(session_id: str, **kwargs):
         log.error("on_session_start hook crashed:\n%s", traceback.format_exc())
 
 
+def _always_entries_from_text(text: str) -> dict:
+    """Dependency-free reader for the manifest's top-level `always:` list.
+
+    MEASURED 2026-10-28: the agent runtime that LOADS this plugin can ship NEITHER
+    PyYAML NOR ruamel.yaml (the standalone `~/.hermes/tools/python-*` runtime the
+    gateway itself is launched with), while a peer host on the same tool version
+    ships PyYAML. With no library available the cron skills bootstrap raised
+    ModuleNotFoundError('ruamel'), returned False, no skills marker was written
+    for a cron session, and gate 1 then blocked EVERY write in every cron/bg
+    session that had no skill tool — the dream write-back never landed while the
+    job reported success.
+
+    This reads only what `_bootstrap_cron_skills()` needs: the `name:` entries of
+    the `always:` list. It reports nothing else, so a caller that needs another
+    section must not use this path. Returns {} when there is no `always:` section
+    — never a guessed list — so the caller still fails closed.
+    """
+    seen_section = False   # never reset: a LATER top-level key ends the section,
+    in_always = False      # it does not un-see it
+    entries: list = []
+    for raw in text.splitlines():
+        if raw.lstrip().startswith("#"):
+            continue
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not line[:1].isspace():  # a top-level key ends the previous section
+            in_always = stripped.startswith("always:")
+            seen_section = seen_section or in_always
+            continue
+        if not in_always or not stripped.startswith("-"):
+            continue
+        item = stripped[1:].strip()
+        if not item.startswith("name:"):
+            continue
+        name = item[len("name:"):].split(" #", 1)[0].strip().strip("'\"")
+        if name:
+            entries.append({"name": name})
+    return {"always": entries} if seen_section else {}
+
+
 def _safe_load_yaml(stream):
     """Parse YAML with whichever library the running agent environment ships.
 
-    Environments differ: the git-install venv has PyYAML (`import yaml`), while the
-    pm-managed runtime environments ship only `ruamel.yaml`. A bare `import yaml`
-    here raised ModuleNotFoundError and crashed the WHOLE on_session_start hook on
-    those hosts — the cron skills bootstrap died silently. Resolve the loader at
-    call time and let a parse failure propagate to the caller, which already logs
-    and returns False.
+    Environments differ: the git-install venv has PyYAML (`import yaml`), the
+    pm-managed runtimes ship only `ruamel.yaml`, and the standalone agent runtime
+    this plugin is loaded by can ship NEITHER (measured 2026-10-28 — see
+    tests/test_enforcer_yaml_compat.py). A bare `import yaml` here raised
+    ModuleNotFoundError and crashed the WHOLE on_session_start hook on those
+    hosts — the cron skills bootstrap died silently.
+
+    Loader order: PyYAML → ruamel.yaml → the dependency-free `always:` reader.
+    A parse failure from a library that IS present still propagates to the
+    caller, which logs it and returns False (fail closed); the third path only
+    ever reads the `always:` list, which is all the bootstrap needs.
     """
+    text = stream.read() if hasattr(stream, "read") else str(stream)
     try:
         import yaml
     except ImportError:  # PyYAML absent (or blocked by a None sys.modules entry)
         yaml = None
     if yaml is not None:
-        return yaml.safe_load(stream)
+        return yaml.safe_load(text)
 
-    from ruamel.yaml import YAML as _RuamelYAML
+    try:
+        from ruamel.yaml import YAML as _RuamelYAML
+    except ImportError:
+        log.warning(
+            "No YAML library (PyYAML, ruamel.yaml) in this runtime — reading the "
+            "manifest's always-section with the dependency-free reader"
+        )
+        return _always_entries_from_text(text)
 
-    return _RuamelYAML(typ="safe").load(stream)
+    return _RuamelYAML(typ="safe").load(text)
 
 
 def _bootstrap_cron_skills(session_id: str) -> bool:
@@ -3136,6 +3230,15 @@ def register(ctx):
             # what removes the no-content 'push-<what>' cycle. Only a LONE
             # `git push` qualifies, never --no-verify or a compound.
             if tool_name == "terminal" and _push_authorised_by_receipt(args, hermes_session_id):
+                return None
+
+            # Knowledge-brain writes: sanctioned and lock-free (2026-10-28 — see
+            # the block above `_is_sanctioned_brain_write`). The brain is not a
+            # repo, so no lock could ever authorise it; refusing the dream's
+            # Phase 4 write-back was an impossible demand. Scoped to file-tool
+            # writes inside <home>/brain, and checked BEFORE the no-repo refusal
+            # below — which is the refusal it exists to prevent.
+            if _is_sanctioned_brain_write(args):
                 return None
 
             # A session that resolves NO repo is not "in the wrong repo" — it has no repo for
