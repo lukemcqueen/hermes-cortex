@@ -1,0 +1,5 @@
+router pricing list : /home/esther/hermes-cortex/config/jev-router-models.json (captured 2026-10-28)
+baseline            : openrouter:deepseek/deepseek-v4.1-flash = $0.560/M
+live pools          : /home/esther/.hermes/jev/routing.json
+
+no findings — every pool matches the list

@@ -167,3 +167,18 @@ def test_json_mode_lists_findings_machine_readably(tmp_path):
     payload = json.loads(result.stdout)
     kinds = {f["kind"] for f in payload["findings"]}
     assert {"order", "ceiling"} <= kinds, payload
+
+
+def test_every_priced_model_is_routed_or_named_as_a_candidate():
+    """ADV-13902-2: a price with no tier and no explanation makes the artifact
+    ambiguous about what actually governs routing."""
+    import json as _json
+    doc = _json.loads((Path(__file__).resolve().parents[1] / "config"
+                       / "jev-router-models.json").read_text())
+    routed = {m for specs in doc["tiers"].values() for models in specs.values() for m in models}
+    priced = set(doc["prices"])
+    orphans = priced - routed
+    assert orphans <= set(doc.get("candidates") or {}), \
+        f"priced but neither routed nor named as candidates: {sorted(orphans)}"
+    # and the derivation the policy notes lean on must be in the file
+    assert doc["derivation"]["heads"]["simple/*"].count("x baseline") == 1

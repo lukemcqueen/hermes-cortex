@@ -394,5 +394,23 @@
       "out": 3.1,
       "cache_read": 0.15
     }
+  },
+  "baseline_price_usd_per_m": 0.56,
+  "derivation": {
+    "basis": "blended $/M = catalog cost.input + cost.output, the SAME basis the doctor's cost guard uses; cache_read is carried but not counted here",
+    "baseline": "openrouter:deepseek/deepseek-v4.1-flash = 0.14 in + 0.42 out = $0.560/M",
+    "heads": {
+      "simple/*": "openrouter:qwen/qwen3.7-flash = 0.03 + 0.13 = $0.160/M = 0.29x baseline",
+      "medium/coding": "openrouter:qwen/qwen3-coder-30b-a3b-instruct = $0.350/M = 0.62x baseline"
+    },
+    "source": "~/.cache/jev/models_dev.json (models.dev), captured 2026-10-28"
+  },
+  "candidates": {
+    "openrouter:inclusionai/ling-3.0-flash": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
+    "openrouter:meta-llama/llama-3.1-8b-instruct": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
+    "openrouter:mistralai/mistral-nemo": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
+    "openrouter:moonshotai/kimi-k2.7-code": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
+    "openrouter:openai/gpt-oss-20b": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
+    "openrouter:z-ai/glm-5.3-flash": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit"
   }
 }

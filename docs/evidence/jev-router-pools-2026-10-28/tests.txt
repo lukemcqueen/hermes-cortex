@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 10 items
+
+tests/test_jev_router_pools.py ..........                                [100%]
+
+============================== 10 passed in 0.59s ==============================
