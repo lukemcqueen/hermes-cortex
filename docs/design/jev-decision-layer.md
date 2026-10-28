@@ -15,7 +15,7 @@ Our turns burn frontier tokens on things that are not thinking: which model a tu
 decisions, not prose.
 
 **Honest reading for this fleet:** our default model is already the cheap tier
-(`openrouter:deepseek/deepseek-v4.1-flash`, $0.0525/M blended). So routing mostly *keeps* what we
+(`openrouter:deepseek/deepseek-v4.1-flash`, $0.196/M blended). So routing mostly *keeps* what we
 have; the saving is **escalation discipline** (pay for hard work, not for everything) plus the
 non-model decisions — skill selection, memory filtering, search screening. Do not quote the
 marketing multiple on this host; measure it.
@@ -52,19 +52,30 @@ Verified by driving the plugin's own `llm_request` middleware (not by reading it
 
 | mode | decision | outgoing model |
 |---|---|---|
-| `shadow` | `routed: true · medium · coding · kimi-k2.7-code · 178 ms` | **unchanged** (middleware returned `None`) |
-| `on` | same decision | **swapped** — `{"request": {"model": "moonshotai/kimi-k2.7-code", …}}` |
+| `shadow` | `medium · coding → openrouter:deepseek/deepseek-v4.1-flash · 179 ms` | **unchanged** (middleware returned `None`) |
+| `on` | same decision | **swapped** — `{"request": {"model": "<the pool's pick>", …}}` |
 | `off` | none | unchanged |
 
 Decisions are logged, without prompt text, to `$HERMES_HOME/logs/jev-decisions.jsonl` — that log is
 what you tune the pools from.
 
-**⚠️ Pool order is the money.** `jev models suggest --write` bands by price, and on this host a
-*medium coding* turn resolved to `moonshotai/kimi-k2.7-code` — a more expensive model than the
-default we already run. Turning `routing on` with the suggested pools would **raise** spend on
-medium turns. Edit `$HERMES_HOME/jev/routing.json` so the cheap model we already trust sits FIRST
-in the simple/medium pools (first fit wins), and leave escalation to the `hard` tier. Re-check
-after a day of shadow data, never from a hunch.
+**⚠️ Pool order IS the money — the suggested order cost more, so it was replaced.** Measured
+catalog prices ($/M blended, `jev models list`):
+
+| model | price | role |
+|---|---|---|
+| `openrouter:qwen/qwen3.7-flash` | **$0.05** | first in `simple` — 1M ctx, vision, 3.9x under our default |
+| `openrouter:deepseek/deepseek-v4.1-flash` | **$0.196** | first in `medium` — the model we already run and trust |
+| ~~`openrouter:moonshotai/kimi-k2.7-code`~~ | ~~$1.068~~ | **REJECTED, in no pool** — what the suggested order picked for medium coding: 5.4x our default |
+
+`jev models suggest --write` bands by price, but on this host it put `kimi-k2.7-code` first in
+`medium/coding`, so turning `routing on` with the suggested pools would have **raised** spend on
+medium turns by ~5x. `routing.json` was therefore reordered so the cheap trusted model is first in
+every `simple`/`medium` pool (first fit wins); `hard` is left as frontier escalation, which is
+deliberate spend. **No `moonshotai/kimi` reference remains in any pool.** Verified after the
+reorder: a real medium coding turn resolves to `openrouter:deepseek/deepseek-v4.1-flash`
+(`tier: medium · reason: medium coding · 179 ms`) — the same model, so no cost change, instead of a
+5.4x one. Re-check after a day of shadow data, never from a hunch.
 
 ## Swapping the decision model (steadfaste / self-hosted von)
 
