@@ -1,0 +1,1625 @@
+# [cost/4] Fleet cost coverage — per-host aggregates (2026-10-28)
+#
+# Every block below is the EXEC_RESULT read back off the AUTHORITATIVE
+# bus by the orch-bus-worker cron (esther), not transcribed by hand.
+# Source of the JSON: cron-cost-metrics.py --json-summary --since 2026-10-06,
+# the [cost/4] windowed adapter, run on each host under its own deployed copy
+# (~/.hermes-cortex/scripts/cron-cost-metrics.py).
+#
+# composed-at: 2026-10-28T13:43:16+00:00
+# repo HEAD at capture (resolved): 2d7704fb
+# governance cycle: 13942, session cron_1954deb5ad76_20261028_222110
+# provenance: capture — this is a measured run, NOT a review; it authorises
+# nothing (docs/evidence/README.md rule 4).
+# Host home directories are normalized to $HOME/ at the generator
+# (docs/evidence/README.md rule 2, precedent 93029175). Numbers, timestamps
+# and row counts are unmodified.
+
+## 0. Read-back map (envelope fields as the bus stored them)
+
+esther (self-test)   corr=cost4-selftest-a1b2c3  queue=inbox_moses  from=esther -> to=moses  state=archived  exit_code=0
+                     msg_id=1d58b79c-a663-46ba-8fca-d5b17ad16868  enqueued=2026-10-28 13:23:42.754378+00
+joseph               corr=cost4-joseph-20261028a  queue=inbox_moses  from=joseph -> to=moses  state=archived  exit_code=0
+                     msg_id=bbd51633-6572-4fd5-a401-74b41c8b9ebd  enqueued=2026-10-28 13:25:27.062289+00
+kustos               corr=cost4-kustos-20261028a  queue=inbox_moses  from=kustos -> to=moses  state=archived  exit_code=0
+                     msg_id=5544f594-16c3-4632-b562-9a14ffb15f95  enqueued=2026-10-28 13:25:25.115475+00
+gisu                 corr=cost4-gisu-20261028a  queue=inbox_moses  from=gisu -> to=moses  state=archived  exit_code=0
+                     msg_id=b80038f7-0087-4717-9030-aec3bf2925e3  enqueued=2026-10-28 13:25:26.185915+00
+titus                corr=cost4-titus-20261028a  queue=inbox_orchestrator  from=titus -> to=esther  state=archived  exit_code=0
+                     msg_id=4b7baf20-29d5-4cc2-b68e-03e09aa114fb  enqueued=2026-10-28 13:27:53.199471+00
+
+## 1. Raw aggregates (stdout of the adapter, per host)
+
+===== esther (self-test) (corr=cost4-selftest-a1b2c3) =====
+{
+  "agent": "esther",
+  "audit": {
+    "first_ts": "2026-08-09T14:27:52.349Z",
+    "last_ts": "2026-10-28T12:35:48.561Z",
+    "path": "$HOME/.hermes/cron/usage_audit.jsonl",
+    "rows": 1865,
+    "skipped_rows": 0
+  },
+  "generated_at": "2026-10-28T13:23:42+00:00",
+  "langfuse": {
+    "checked": true,
+    "days": [
+      {
+        "cost_usd": 2.8548713662,
+        "date": "2026-10-28",
+        "traces": 42
+      },
+      {
+        "cost_usd": 2.1707547984,
+        "date": "2026-10-27",
+        "traces": 41
+      },
+      {
+        "cost_usd": 1.426226328604,
+        "date": "2026-10-26",
+        "traces": 25
+      },
+      {
+        "cost_usd": 1.72893644,
+        "date": "2026-10-25",
+        "traces": 16
+      },
+      {
+        "cost_usd": 1.558640957792,
+        "date": "2026-10-24",
+        "traces": 11
+      },
+      {
+        "cost_usd": 5.34638291382,
+        "date": "2026-10-23",
+        "traces": 63
+      },
+      {
+        "cost_usd": 8.083960353,
+        "date": "2026-10-22",
+        "traces": 62
+      }
+    ],
+    "present": true,
+    "status": 200
+  },
+  "per_day": [
+    {
+      "date": "2026-10-06",
+      "fires": 21,
+      "tokens": 62619045.0
+    },
+    {
+      "date": "2026-10-07",
+      "fires": 20,
+      "tokens": 49284719.0
+    },
+    {
+      "date": "2026-10-08",
+      "fires": 21,
+      "tokens": 85811838.0
+    },
+    {
+      "date": "2026-10-09",
+      "fires": 29,
+      "tokens": 77580291.0
+    },
+    {
+      "date": "2026-10-10",
+      "fires": 23,
+      "tokens": 36018655.0
+    },
+    {
+      "date": "2026-10-11",
+      "fires": 23,
+      "tokens": 97446382.0
+    },
+    {
+      "date": "2026-10-12",
+      "fires": 45,
+      "tokens": 56208314.0
+    },
+    {
+      "date": "2026-10-13",
+      "fires": 22,
+      "tokens": 56218658.0
+    },
+    {
+      "date": "2026-10-14",
+      "fires": 24,
+      "tokens": 60335229.0
+    },
+    {
+      "date": "2026-10-15",
+      "fires": 25,
+      "tokens": 106175060.0
+    },
+    {
+      "date": "2026-10-16",
+      "fires": 22,
+      "tokens": 55969542.0
+    },
+    {
+      "date": "2026-10-17",
+      "fires": 11,
+      "tokens": 68217692.0
+    },
+    {
+      "date": "2026-10-18",
+      "fires": 16,
+      "tokens": 37172569.0
+    },
+    {
+      "date": "2026-10-19",
+      "fires": 25,
+      "tokens": 71334971.0
+    },
+    {
+      "date": "2026-10-20",
+      "fires": 26,
+      "tokens": 111090480.0
+    },
+    {
+      "date": "2026-10-21",
+      "fires": 24,
+      "tokens": 40651112.0
+    },
+    {
+      "date": "2026-10-22",
+      "fires": 23,
+      "tokens": 91914508.0
+    },
+    {
+      "date": "2026-10-23",
+      "fires": 23,
+      "tokens": 76369716.0
+    },
+    {
+      "date": "2026-10-24",
+      "fires": 11,
+      "tokens": 78153660.0
+    },
+    {
+      "date": "2026-10-25",
+      "fires": 16,
+      "tokens": 85117321.0
+    },
+    {
+      "date": "2026-10-26",
+      "fires": 25,
+      "tokens": 93293720.0
+    },
+    {
+      "date": "2026-10-27",
+      "fires": 26,
+      "tokens": 83249560.0
+    },
+    {
+      "date": "2026-10-28",
+      "fires": 9,
+      "tokens": 14514513.0
+    }
+  ],
+  "per_job": [
+    {
+      "fires": 57,
+      "job_id": "1954deb5ad76",
+      "tokens": 383228647.0
+    },
+    {
+      "fires": 22,
+      "job_id": "8449be867645",
+      "tokens": 244813381.0
+    },
+    {
+      "fires": 22,
+      "job_id": "50cdb07eda5c",
+      "tokens": 161278808.0
+    },
+    {
+      "fires": 10,
+      "job_id": "8a46f1b96b7d",
+      "tokens": 101490903.0
+    },
+    {
+      "fires": 23,
+      "job_id": "6cb3c26a2ac9",
+      "tokens": 84086260.0
+    },
+    {
+      "fires": 49,
+      "job_id": "f41b7171b9e1",
+      "tokens": 82390925.0
+    },
+    {
+      "fires": 16,
+      "job_id": "78b32a966223",
+      "tokens": 74671527.0
+    },
+    {
+      "fires": 31,
+      "job_id": "e4b77fb053f8",
+      "tokens": 68673092.0
+    },
+    {
+      "fires": 22,
+      "job_id": "f6694d02d29c",
+      "tokens": 58827032.0
+    },
+    {
+      "fires": 49,
+      "job_id": "418bbf45277d",
+      "tokens": 54483230.0
+    },
+    {
+      "fires": 32,
+      "job_id": "0677224663a3",
+      "tokens": 52354315.0
+    },
+    {
+      "fires": 5,
+      "job_id": "2da7ae15e810",
+      "tokens": 48636388.0
+    },
+    {
+      "fires": 3,
+      "job_id": "1b7aa103681d",
+      "tokens": 46398837.0
+    },
+    {
+      "fires": 19,
+      "job_id": "550d7c044315",
+      "tokens": 31332421.0
+    },
+    {
+      "fires": 15,
+      "job_id": "e798f3363b33",
+      "tokens": 30630313.0
+    }
+  ],
+  "per_job_omitted": 7,
+  "spend": {
+    "available": true,
+    "lifetime_usd": 59.591833,
+    "per_job": {
+      "0677224663a3": 3.49307,
+      "169ac3b60e36": 0.342241,
+      "16f70dac6f0c": 0.013651,
+      "176a4f5d90ce": 0.508714,
+      "191625853bdd": 0.0,
+      "1954deb5ad76": 5.035987,
+      "1b7aa103681d": 0.73027,
+      "1f31ee6587e3": 0.912994,
+      "203f81385438": 0.156859,
+      "2da7ae15e810": 1.3577,
+      "415704bda084": 0.008187,
+      "418bbf45277d": 4.950269,
+      "50cdb07eda5c": 3.14688,
+      "50dc28940606": 0.064601,
+      "550d7c044315": 1.13293,
+      "55695b2c8429": 0.118072,
+      "55760c633369": 0.009653,
+      "55c69fb45f8b": 0.058861,
+      "60c84e39873b": 0.016808,
+      "66be9dcc2997": 0.022533,
+      "6cb3c26a2ac9": 2.577104,
+      "6d405d93d4c4": 0.004077,
+      "78b32a966223": 2.235138,
+      "80858f2b1edb": 0.409465,
+      "8449be867645": 5.2193,
+      "86b696899e63": 0.003361,
+      "8a46f1b96b7d": 5.827707,
+      "8f9bf39b813a": 0.187475,
+      "aa0ee355b9a4": 0.026612,
+      "c28568cc4f05": 0.039088,
+      "c975d8f8aa25": 1.14891,
+      "d58cf11fb93b": 0.029353,
+      "d88f1a284512": 0.5176,
+      "dbcdec6bb40d": 7.092907,
+      "e3f66faa3cc7": 0.000893,
+      "e4b77fb053f8": 3.091263,
+      "e6c4d63a0d60": 0.010698,
+      "e798f3363b33": 2.079685,
+      "ebb2ad4e13ec": 0.069994,
+      "f3d40789a336": 0.666802,
+      "f41b7171b9e1": 3.389402,
+      "f6694d02d29c": 2.88472
+    }
+  },
+  "window": {
+    "since": "2026-10-06"
+  }
+}
+
+===== joseph (corr=cost4-joseph-20261028a) =====
+{
+  "agent": "joseph",
+  "audit": {
+    "first_ts": "2026-08-09T14:16:19.260Z",
+    "last_ts": "2026-10-28T12:19:21.019Z",
+    "path": "$HOME/.hermes/cron/usage_audit.jsonl",
+    "rows": 1020,
+    "skipped_rows": 0
+  },
+  "generated_at": "2026-10-28T13:25:26+00:00",
+  "langfuse": {
+    "checked": true,
+    "error": "HTTP 401 from http://localhost:3000",
+    "present": true
+  },
+  "per_day": [
+    {
+      "date": "2026-10-06",
+      "fires": 14,
+      "tokens": 16362919.0
+    },
+    {
+      "date": "2026-10-07",
+      "fires": 14,
+      "tokens": 15722230.0
+    },
+    {
+      "date": "2026-10-08",
+      "fires": 14,
+      "tokens": 12977746.0
+    },
+    {
+      "date": "2026-10-09",
+      "fires": 13,
+      "tokens": 13041794.0
+    },
+    {
+      "date": "2026-10-10",
+      "fires": 1,
+      "tokens": 817766.0
+    },
+    {
+      "date": "2026-10-11",
+      "fires": 5,
+      "tokens": 6254771.0
+    },
+    {
+      "date": "2026-10-12",
+      "fires": 14,
+      "tokens": 15494928.0
+    },
+    {
+      "date": "2026-10-13",
+      "fires": 14,
+      "tokens": 7967882.0
+    },
+    {
+      "date": "2026-10-14",
+      "fires": 14,
+      "tokens": 10851950.0
+    },
+    {
+      "date": "2026-10-15",
+      "fires": 14,
+      "tokens": 10749048.0
+    },
+    {
+      "date": "2026-10-16",
+      "fires": 6,
+      "tokens": 4840923.0
+    },
+    {
+      "date": "2026-10-17",
+      "fires": 8,
+      "tokens": 437584.0
+    },
+    {
+      "date": "2026-10-18",
+      "fires": 5,
+      "tokens": 3747395.0
+    },
+    {
+      "date": "2026-10-19",
+      "fires": 14,
+      "tokens": 8196025.0
+    },
+    {
+      "date": "2026-10-20",
+      "fires": 15,
+      "tokens": 12548959.0
+    },
+    {
+      "date": "2026-10-21",
+      "fires": 14,
+      "tokens": 17048474.0
+    },
+    {
+      "date": "2026-10-22",
+      "fires": 14,
+      "tokens": 19827172.0
+    },
+    {
+      "date": "2026-10-23",
+      "fires": 13,
+      "tokens": 38782082.0
+    },
+    {
+      "date": "2026-10-24",
+      "fires": 1,
+      "tokens": 1373371.0
+    },
+    {
+      "date": "2026-10-25",
+      "fires": 5,
+      "tokens": 7172812.0
+    },
+    {
+      "date": "2026-10-26",
+      "fires": 6,
+      "tokens": 8140693.0
+    },
+    {
+      "date": "2026-10-27",
+      "fires": 16,
+      "tokens": 26345311.0
+    },
+    {
+      "date": "2026-10-28",
+      "fires": 6,
+      "tokens": 33632383.0
+    }
+  ],
+  "per_job": [
+    {
+      "fires": 32,
+      "job_id": "743c39a4e13e",
+      "tokens": 73025698.0
+    },
+    {
+      "fires": 48,
+      "job_id": "bd986e25da0e",
+      "tokens": 61719762.0
+    },
+    {
+      "fires": 48,
+      "job_id": "e9fa4d3dc6ea",
+      "tokens": 52948008.0
+    },
+    {
+      "fires": 32,
+      "job_id": "09ab4895e811",
+      "tokens": 36179514.0
+    },
+    {
+      "fires": 22,
+      "job_id": "b0c2d2147503",
+      "tokens": 26450857.0
+    },
+    {
+      "fires": 16,
+      "job_id": "6b9036a64589",
+      "tokens": 19517970.0
+    },
+    {
+      "fires": 16,
+      "job_id": "bb6b032aca7b",
+      "tokens": 13270176.0
+    },
+    {
+      "fires": 19,
+      "job_id": "6c4e403ea755",
+      "tokens": 3805361.0
+    },
+    {
+      "fires": 4,
+      "job_id": "e6db047f81ba",
+      "tokens": 3356545.0
+    },
+    {
+      "fires": 3,
+      "job_id": "872acaad6b46",
+      "tokens": 2060327.0
+    }
+  ],
+  "per_job_omitted": 0,
+  "spend": {
+    "available": true,
+    "lifetime_usd": 33.931425,
+    "per_job": {
+      "00f915a1287e": 0.033675,
+      "057d94f7d69a": 0.0,
+      "09ab4895e811": 3.08599,
+      "16a3f749824d": 0.0,
+      "1acbeac1a4a5": 0.0,
+      "1c6357a2bfd6": 0.031345,
+      "1e3460c8fd27": 0.346468,
+      "2186fee5be92": 0.04008,
+      "236e5bfb0b9d": 0.154193,
+      "25bb6dac4d49": 0.089426,
+      "2ccb5ef1fe1b": 0.030275,
+      "3030fb570afb": 0.012769,
+      "3096f8c3d6a6": 1.716649,
+      "30b1435f4bcc": 1.312268,
+      "3cfa7fed09d6": 0.0,
+      "40c4af8c898a": 0.0,
+      "4a1939da348e": 0.196122,
+      "4ad10357b895": 0.059759,
+      "4ee4ffb6fe53": 0.601468,
+      "4f9cf1f3f51a": 0.122359,
+      "5d05c55e90e5": 0.0,
+      "67e2bc80608a": 0.024093,
+      "6b9036a64589": 1.460413,
+      "6bfcd27ede99": 0.0,
+      "6c4e403ea755": 0.732557,
+      "711832acb841": 0.0,
+      "743c39a4e13e": 3.843539,
+      "76d1e8037309": 0.104578,
+      "787ce3d7bbf8": 0.0,
+      "8293cc3b6386": 0.241752,
+      "82c25cfa44db": 0.021994,
+      "85ff06b9b34c": 0.12279,
+      "872acaad6b46": 0.189412,
+      "8ed7fec91b03": 0.004925,
+      "90c393bd3497": 0.183741,
+      "90d75f429705": 0.0,
+      "97808e19cc5f": 0.080156,
+      "9e7b59798218": 0.072098,
+      "a20a08095f1b": 0.467354,
+      "a8241445954b": 0.105898,
+      "a86643463569": 0.004347,
+      "a93eab05e218": 0.020001,
+      "ad3892755186": 0.070772,
+      "b0c2d2147503": 1.484766,
+      "b16e0d4ba731": 0.665868,
+      "ba562805fe66": 0.01029,
+      "bb6b032aca7b": 1.61731,
+      "bbc3cdd17419": 0.003975,
+      "bd986e25da0e": 5.851079,
+      "c13b637f9857": 0.034006,
+      "c590df74c5fa": 0.0,
+      "d196392614f2": 0.004749,
+      "d7c9374b70fd": 0.0,
+      "e6db047f81ba": 0.231165,
+      "e9fa4d3dc6ea": 4.265463,
+      "f4d7ea4cd557": 0.004914,
+      "f6fe7dc602cf": 0.007985,
+      "ffb2473f48a3": 0.187234,
+      "local-019808147172016067624ab7c9ae74319539052dd7cede15bed2ce9887aa835d": 0.052747,
+      "local-0364c12fa5da1890a5cc8f531b5a7a70e2caeb56973220c89bd6ebfd159465dc": 0.008947,
+      "local-0bb97cdc6192a8a8331747d090e44842e23b54e0c1abd10df152b56507c30264": 0.004308,
+      "local-0da1e0355546e551661a03a7f3b07b6fd3a31c3b920d6843ddb7d2a7fa590222": 0.02395,
+      "local-0daad449fc9f337a5c5bec60d45cde22bd718eb56862fcaca5bdcd232dea5b52": 0.004458,
+      "local-0f96faf5e3a6f9a843d9c53bf30c26611093859bd352c0451ca9961737de16eb": 0.017136,
+      "local-153e169b184801565405d4e77e42cfad042609c771a9609f71b63fc07d570ab5": 0.045207,
+      "local-1738e30f02dc2f39635085b464224c184d25f7844a34f644d0eb24f0980bcfb4": 0.033752,
+      "local-1d12e1cbab07bb5973f7a258f4ac7d14f14679ff4e6b921ddb9e05ab9d02d53e": 0.004338,
+      "local-1f7fb6bec961763a8abc7fdd6c895bd1ff40b16e56a396871dcfab59d5c6bbd3": 0.058329,
+      "local-22403cb58c29d968de5ea2b59e476a0e9e2161cc409259cdc09ee28fc317d9fe": 0.017492,
+      "local-278dbb87580bb440c64ad767e7aaf31a834a65913b32bc8078135839c4b5cfc6": 0.00681,
+      "local-2852dc81c0820b096ae2305f34deebba63137382620d6cb2471b75f7aeade792": 0.073935,
+      "local-2a3bfd7cb96788ad352341fcb845def1ecc4d197411aaa8bb098ca70cb72f93f": 0.00863,
+      "local-31b39e44b7d1d6e0910dc3e5c4c030f5916f0962f79dce553a54087319144f69": 0.105269,
+      "local-321dec55d67ba3787c4feb23ad4dfd2b581846b9b5ac159c9fe290d0403532c4": 0.037078,
+      "local-4437317bb13489d2bd35668b8646644ce67b038adde57626ee3ae4824acf38de": 0.023922,
+      "local-4b9105b26810713083dbcc67ced7be8aa548f99cc5df0b08c567b3326b81c8ae": 0.131577,
+      "local-578e4d3bb58e6247898bd527f20ab30c69ab68576e5aaac13f0908be34bf41c9": 0.51137,
+      "local-65cac6f5835196db7a593c5839632ea35382d8f4c4340c60107ee34e9d7b8ccf": 0.009188,
+      "local-68702c755ae6c7f593002cadc2487301c3e350475dcd8068d5cdd350a48b5ea9": 0.001604,
+      "local-6b41c5df12e71815ca82a6b6e5cc8b314e2df67d957ac5f8809a5eb84a0dcdb1": 0.009842,
+      "local-6f0b27eb57bc36af157c4650b326f9e7eef5568e83e3322ae63682260a5374fc": 0.040847,
+      "local-720f02799b1739b0dde8f188df5eb7c36f1d1932031ae33983348fd44a56e419": 0.030023,
+      "local-724b1d1dfd1b7f4a8fb9387742129801674d1f0f277f6ad7cb83c990052513f0": 0.005314,
+      "local-81758a3e5984f1c4dc2fcfe075f399d4af84734982baf1f82c77ee9b53e8b2fd": 0.05906,
+      "local-85619cf1aaaf3e19964f2fd087d279d8417fb17b63e8b54e68d4e3ef5132d784": 0.010699,
+      "local-8f7d79591867c55204e6ca079c2593873fcd7f738b5c2e8e6635e0d83eea801f": 0.005944,
+      "local-94b5f10215a091f239ade25dda36228f406bf037bdb01f788a1f7e5e03044e5a": 0.053573,
+      "local-94d8dfc3287f4fe6e70ab2b03d7c8a3e27509a90edbbd0c53f446d2508e8d2ee": 0.009034,
+      "local-95d9c290b9504af5433d5266fa9e2701f16b7625a1270b2504bb27713814fe0a": 0.083216,
+      "local-a7377a6d6a517b63bac17e282b1b5ca3d352bd503262008261cb1ad9ee32b14b": 0.004687,
+      "local-ab0f5c9a02a452e0c1ee0a6e4367241f436578fd04d7545ffbb8e12e9fbcc1ca": 0.108892,
+      "local-aea391d249f4d4e29d9a5d130ae0231257d5c5e44a6fdc8d4b2e42492a4c67b1": 0.097584,
+      "local-ba208dc9d2309b0f0f6a37e61117d7971772e09fa36cfac447f49162afd4cf7c": 0.045573,
+      "local-bcc9b265db3d02e1b44976e362172f35b91fa6f5c5e9c839d6a64c7053d12ffa": 0.015923,
+      "local-bcedb744c0025af7acdad2a68e99f6f95e11428858a3277df7bc0342d0de3460": 0.063204,
+      "local-bf5c98028cb8cc2dcffe2e8a145c1c2607149d9082a35d9bc7eedf5408ccc7fa": 0.095257,
+      "local-c1ca36e8be448452408d1011816d18cdce7a37ed016c9faeabd2880e49692320": 0.083562,
+      "local-ca01113d22fb8a47a674608eab9738d8a89a699f54b5073e35f2d32bd66e0920": 0.151791,
+      "local-cb21ebdf6a30255c668eeabe6721c9b8c1099a647f2ad6eecb9816100a0e7437": 0.162761,
+      "local-cbe4b5a004744464b1aeb0e22ecdbac2b22729528a9df65aeb9b050326b2e2bb": 0.08995,
+      "local-cf3fd61ebf41d2cd25c2099fe2a39669030dacab1cda88dd8d13dc339f1c21e2": 0.09044,
+      "local-d2f17fb26817c81885efae2b567907d3e77667da74d6e4feaf06203305959ca0": 0.034571,
+      "local-d5db9d3865ca1dbcc9ced09f19357028dc7b865824410f56359f51ecd05071bb": 0.074032,
+      "local-d8f00a731434d3cb67853f5ac422168629a520de90042d038528dff5f2791075": 0.029268,
+      "local-d9165e8c7fcf486e9433961f270d4a772b6000dd82e687127104885fcb8724c5": 0.2066,
+      "local-db37c92471580f92dc61e86059fbb750b4e995736237f1d38310f8bfb04cdefb": 0.047906,
+      "local-dcbf6a428b6501cda0f4712127717a6f49a37c742f48fee459d7f7606034644e": 0.083928,
+      "local-dcf19e8fa8825d77e9dafdd3fe93c136fe936c93c70c17accc710e2d0ada60ba": 0.071028,
+      "local-de951f025b6496f77eb73d34ef98df3e1648fc9e386dfde2a19add32cd18b642": 0.010483,
+      "local-dfaa095169252e71a9133bf2b8615790ef05616a372c5c34c2a244134fb476ef": 0.008099,
+      "local-e48cf6e8df00571c84f4d6460ce11905a3fbb8d971babab5269e9e3b5f137b01": 0.083251,
+      "local-e6af2c902398b87ee28fb9ae7e01346ef64a8e520ad242b7904d6e880102b9e1": 0.157331,
+      "local-e9892fdb362ed5123b1f59e0ec700a4f50c7e5bb52f2ef25fb5e422283cdf52c": 0.00982,
+      "local-e9959c8b46a6fd7f64708fb6e5c77aa7d2aaf72ade7163c00e1100418963b5dc": 0.565023,
+      "local-ed2feb1f0c7aa6e776286258f86e2042a6592b5512461c6ad2719d68f66c11aa": 0.020244,
+      "local-f81bc5c5418643a5b2bdc510dd09f03882e866ec03e4704f78979b75ef343326": 0.070511,
+      "local-fae8d95e83f648230df1b6e50c2245019990dd53dad9edb0e9410b875ddf99a3": 0.010035
+    }
+  },
+  "window": {
+    "since": "2026-10-06"
+  }
+}
+
+===== kustos (corr=cost4-kustos-20261028a) =====
+{
+  "agent": "kustos",
+  "audit": {
+    "first_ts": "2026-08-09T14:12:25.055Z",
+    "last_ts": "2026-10-28T13:18:25.828Z",
+    "path": "$HOME/.hermes/cron/usage_audit.jsonl",
+    "rows": 1094,
+    "skipped_rows": 0
+  },
+  "generated_at": "2026-10-28T13:25:24+00:00",
+  "langfuse": {
+    "checked": true,
+    "days": [
+      {
+        "cost_usd": 1.5230747406,
+        "date": "2026-10-28",
+        "traces": 12
+      },
+      {
+        "cost_usd": 0.8652815784,
+        "date": "2026-10-27",
+        "traces": 15
+      },
+      {
+        "cost_usd": 0.75992674644,
+        "date": "2026-10-26",
+        "traces": 15
+      },
+      {
+        "cost_usd": 0.0850982384,
+        "date": "2026-10-25",
+        "traces": 6
+      },
+      {
+        "cost_usd": 0.040828269064,
+        "date": "2026-10-24",
+        "traces": 2
+      },
+      {
+        "cost_usd": 2.112191800504,
+        "date": "2026-10-23",
+        "traces": 17
+      },
+      {
+        "cost_usd": 1.2475620958,
+        "date": "2026-10-22",
+        "traces": 20
+      }
+    ],
+    "present": true,
+    "status": 200
+  },
+  "per_day": [
+    {
+      "date": "2026-10-06",
+      "fires": 11,
+      "tokens": 14613911.0
+    },
+    {
+      "date": "2026-10-07",
+      "fires": 15,
+      "tokens": 9078788.0
+    },
+    {
+      "date": "2026-10-08",
+      "fires": 15,
+      "tokens": 9516661.0
+    },
+    {
+      "date": "2026-10-09",
+      "fires": 14,
+      "tokens": 18902464.0
+    },
+    {
+      "date": "2026-10-10",
+      "fires": 2,
+      "tokens": 1290822.0
+    },
+    {
+      "date": "2026-10-11",
+      "fires": 6,
+      "tokens": 4766974.0
+    },
+    {
+      "date": "2026-10-12",
+      "fires": 15,
+      "tokens": 12809986.0
+    },
+    {
+      "date": "2026-10-13",
+      "fires": 15,
+      "tokens": 11724168.0
+    },
+    {
+      "date": "2026-10-14",
+      "fires": 15,
+      "tokens": 9546506.0
+    },
+    {
+      "date": "2026-10-15",
+      "fires": 15,
+      "tokens": 19053477.0
+    },
+    {
+      "date": "2026-10-16",
+      "fires": 14,
+      "tokens": 13830474.0
+    },
+    {
+      "date": "2026-10-17",
+      "fires": 2,
+      "tokens": 620978.0
+    },
+    {
+      "date": "2026-10-18",
+      "fires": 6,
+      "tokens": 5716239.0
+    },
+    {
+      "date": "2026-10-19",
+      "fires": 15,
+      "tokens": 16103764.0
+    },
+    {
+      "date": "2026-10-20",
+      "fires": 15,
+      "tokens": 17444785.0
+    },
+    {
+      "date": "2026-10-21",
+      "fires": 15,
+      "tokens": 19879863.0
+    },
+    {
+      "date": "2026-10-22",
+      "fires": 16,
+      "tokens": 26780397.0
+    },
+    {
+      "date": "2026-10-23",
+      "fires": 14,
+      "tokens": 26156833.0
+    },
+    {
+      "date": "2026-10-24",
+      "fires": 2,
+      "tokens": 3216559.0
+    },
+    {
+      "date": "2026-10-25",
+      "fires": 6,
+      "tokens": 9967717.0
+    },
+    {
+      "date": "2026-10-26",
+      "fires": 15,
+      "tokens": 24903633.0
+    },
+    {
+      "date": "2026-10-27",
+      "fires": 15,
+      "tokens": 25573594.0
+    },
+    {
+      "date": "2026-10-28",
+      "fires": 8,
+      "tokens": 13892287.0
+    }
+  ],
+  "per_job": [
+    {
+      "fires": 49,
+      "job_id": "a45fa5554935",
+      "tokens": 62609763.0
+    },
+    {
+      "fires": 49,
+      "job_id": "1c07031c186a",
+      "tokens": 58427487.0
+    },
+    {
+      "fires": 33,
+      "job_id": "0491a073d76e",
+      "tokens": 55182764.0
+    },
+    {
+      "fires": 33,
+      "job_id": "524df0bfab78",
+      "tokens": 31651401.0
+    },
+    {
+      "fires": 16,
+      "job_id": "917cb22ab576",
+      "tokens": 28284772.0
+    },
+    {
+      "fires": 23,
+      "job_id": "8603a33a6af3",
+      "tokens": 25133188.0
+    },
+    {
+      "fires": 22,
+      "job_id": "03c65acde203",
+      "tokens": 21003846.0
+    },
+    {
+      "fires": 16,
+      "job_id": "14bde8ddf76a",
+      "tokens": 17643032.0
+    },
+    {
+      "fires": 19,
+      "job_id": "c17b932ad40d",
+      "tokens": 6413882.0
+    },
+    {
+      "fires": 3,
+      "job_id": "18d90a8913af",
+      "tokens": 4681571.0
+    },
+    {
+      "fires": 3,
+      "job_id": "9fa71fefb218",
+      "tokens": 4359174.0
+    }
+  ],
+  "per_job_omitted": 0,
+  "spend": {
+    "available": true,
+    "lifetime_usd": 40.59747,
+    "per_job": {
+      "037e34acb29c": 0.024931,
+      "03c65acde203": 1.576289,
+      "0491a073d76e": 2.92862,
+      "05aff0a41ced": 0.0,
+      "06734bbd244f": 0.0,
+      "14bde8ddf76a": 1.886454,
+      "16141b5d8d20": 0.028299,
+      "18d90a8913af": 0.167959,
+      "1c07031c186a": 3.569229,
+      "1c65bfc55e34": 0.010536,
+      "2a305d92e5ce": 0.007622,
+      "2da1e8f21f86": 0.012011,
+      "40f2b34b0f55": 0.032975,
+      "4e3f3f05b845": 0.021885,
+      "504aa0a29ae1": 0.0,
+      "524df0bfab78": 3.141257,
+      "539762cefdff": 0.002523,
+      "58ae526b1b5c": 0.03967,
+      "58e6a0751ff6": 0.0,
+      "59b3a38b2e49": 0.077197,
+      "5b4a7794327c": 0.015935,
+      "5bf8fb278837": 0.0,
+      "5c56f020c603": 0.01925,
+      "67a400ca3a03": 0.02115,
+      "67cbc4a0e38d": 0.015603,
+      "69d3a534b45e": 0.0,
+      "7046d927bca3": 0.0,
+      "7445381c3fae": 0.037085,
+      "81cbd5c9dc05": 0.0,
+      "8270b13cbd2b": 0.063828,
+      "8603a33a6af3": 1.329192,
+      "87da814fddc2": 0.033896,
+      "8ad88113e5e7": 0.010227,
+      "8c2fc65c91e8": 0.201514,
+      "8e1c31007b64": 0.03975,
+      "8e8456e1d41b": 0.0,
+      "917cb22ab576": 1.34949,
+      "9d55f348e134": 0.041925,
+      "9e9e9cf569e6": 0.049443,
+      "9fa71fefb218": 0.19127,
+      "a45fa5554935": 5.626495,
+      "a497075504a8": 0.007601,
+      "a829554dcacf": 0.0,
+      "a8ed69aa3e47": 0.162331,
+      "b4b640d3600e": 0.15751,
+      "bb0c28b7ec40": 0.0,
+      "bb922492c945": 0.031232,
+      "c17b932ad40d": 0.886923,
+      "c2fe47025848": 0.0,
+      "c51b97fca94c": 0.004353,
+      "c6f8a624f1de": 0.0,
+      "ca52d5b7e4f4": 0.340938,
+      "cfc8d1eb2392": 0.364148,
+      "d410832a877a": 0.050064,
+      "d5e07cd95f82": 0.0,
+      "d6efb935d9c8": 0.0,
+      "dcd63e44d91c": 0.0,
+      "deca51c77008": 0.400613,
+      "e5c8e028f5c1": 0.0,
+      "e60234a656b0": 0.007452,
+      "e9341ea181b3": 0.29333,
+      "eded6fc98171": 1.842998,
+      "f46c6efc1eb6": 0.371745,
+      "f811c62f3f90": 0.0,
+      "f98ffc16ff8d": 0.031932,
+      "fb227b0b0057": 0.0,
+      "ff55f521864b": 9.420059,
+      "local-01c6bbec9820250fe93ea736f9e8668cfe51b3ada7c76a8c50468fa031c49893": 0.05838,
+      "local-0a74e0a523812a77d91b2d3b8251d34bdd5d9d434d2becc81b7a93996142c5fa": 0.011346,
+      "local-0bdad636ae4f3ba374da46f7472e8f90e2533cb04269bc21e00943264f03c4e1": 0.156069,
+      "local-178a092f10b7badc90473c2459d5a8dabbda92d373189e4542359d949b8c3030": 0.030807,
+      "local-1a0dd17665115d7fd0527e345837bea26ef068382ee64dabcabc426c261f0a46": 0.095649,
+      "local-2117d395aa7bfa49c144beb084e3241020ae2d2db5b372bf3253406427a92a3a": 0.076017,
+      "local-239d6a4376cfd2f63c483ed79e7cb35f03fdcb45fa8b2599df11feb91845ffce": 0.07281,
+      "local-2a9d7aa13c3a8ba3fcea89d615df15981a2f4fe227dbdf215396054023ef9133": 0.008319,
+      "local-2f9835bb4f65bf55890e8aefe043b3ed723a1638d35fa1ab7da4b5da42d03371": 0.011157,
+      "local-3040f245b4f7ef7f1e84822472491c5038f268ffa9a534276b7f950420acb175": 0.029041,
+      "local-308b87eecc4e8808850cf260d75af0313c68129880d738c28c5d3900e3fe1876": 0.007553,
+      "local-34b123349980fbf85fd97a79f0ac4fc5f0d22e2be7f5631136f0351a64239e08": 0.022394,
+      "local-39506b60b30429024ee9fd0102a8fc0a539d5f69739395e481a7094060ffc21c": 0.075211,
+      "local-3989ff4a0246f95530382f3f0e2e7837d04bfe59690ad3dda7dc2f4a28c8ff96": 0.066212,
+      "local-3a32b1ddef1278d6f565635cd71a3cd68764377069870fa271c6de84fbf4a635": 0.003955,
+      "local-3fcb040bc957af2705f26da2c8b9f17ec66e00a343fa7407334221dccdb1308d": 0.065649,
+      "local-410f681d06bd15f68d6c26aa22044f3b13039349e01f52948d537a80378ca153": 0.053433,
+      "local-44c0afc3890f587a8c819f4284f06ffaf41cc94b9bc71c9e318aac73d0808aad": 0.064413,
+      "local-4575b2e520557829db5949839bc321a0ec50d8ad1d0d10ebf6855d09b67da8e1": 0.101648,
+      "local-46b586a97ffbc6beaa6691ca988aa0e13c7a2f8927bdc7d22d7132dcad1f359c": 0.029536,
+      "local-4d8d742d0ba1cd99ff63a6bbfa96502d620bb8c96876163f6443992ec2d21738": 0.011617,
+      "local-4fb7de58a3895193b8e08f7e93a50dedeccbc74b02cc9d5152f45af8b143a4e5": 0.10212,
+      "local-577c5636da020c4d563308db3f7bf8896449f22f683bf83851e739dca655a85b": 0.048594,
+      "local-591496d794ca676571d0a6e313adeef45f87da39d10fa50ec31562264b8f8fd6": 0.085086,
+      "local-5b5b204c108926a1faf366fad2d568b802fccc84b9dd58664c5940f15f1f6e56": 0.016846,
+      "local-6522ec3d182f930cde470c618f3135f305771425c76b9fa3e020f8281fc25a3a": 0.09082,
+      "local-6a5fe0aa65fff9268d2248745cd6cb250181b0910ec5e22632bc30fee46d19d5": 0.009641,
+      "local-6d37131e90d50a7084be7bbfa40cc6341092d8e7f181fa4b647b9b749327828f": 0.001528,
+      "local-752ef0ab36e82ebc15e78f2b705b442a2faf7408fcd65f8958c649fbbf4af2c9": 0.029244,
+      "local-778fbb76c411d927e8be981bd4b36fe4f47082d689ebe99c064d48cc3e0022e5": 0.024073,
+      "local-81104e2bd27ce6e4ea143c999baf7a48d92020e447f018bd0bf4c0d6e2c3172c": 0.01404,
+      "local-844b744d7bedbae9eaf8ae227618a759360761d094d0aee652483dd2e41498e2": 0.080001,
+      "local-876382d65e5ca384e7c481a11fbfc2325e6c17151aa439fac3c67f1e48b508ed": 0.049956,
+      "local-8c423a3863caa1284a170145bd0bd765d4b3fc7421e4febf06e6f24829c05599": 0.0686,
+      "local-8d27f09fef5c3629aa1caa352fb9da5d6e79247ef4c9f855f481d78e449712d9": 0.027521,
+      "local-8dc62dbf276231fb79ddbfb6da75ee08caf40a364c60867ca3c5e867a2a1ecfa": 0.011584,
+      "local-8e22ce52e60a1c1f3044bc042bae3cddd805094a4b4f8148b39cfc484fbc68c5": 0.049053,
+      "local-906eadb8996303e9f27cfe067cc52f76f1c91bfe58ecfc50df562ab2cad5ddbd": 0.106095,
+      "local-910e8e3e342e2bfc486525d867bb60a56e385c97b66c7aa1ee2f9a11efcae97b": 0.014473,
+      "local-9244415ba5f6df843cb5d056026ded49b8da3c6e6b66996464425cd0879a39e2": 0.047328,
+      "local-93b9528217e20ab55ba231d5bddbd0ad975a75cc18dcbf399ad4aafdbadef279": 0.055788,
+      "local-93e1ad12b037a99bec40fd3da99f175053a3e2de889fb5b41ad13b1560771ea1": 0.012324,
+      "local-9b0254cbb6bc42e527acde10137fa5e3e8b9f2790e86fde9052ff514a84b8923": 0.007365,
+      "local-9bc3b868230df9ec05d99d86cd6bc283fca8ee3474a6571352ea71d3d2822def": 0.008281,
+      "local-a3e1cddb35b58260f3580369c6fd257322499c211d49f0dc07f1eb7d63a4b779": 0.005963,
+      "local-a70cd930b624ef634c9b8a5606cf3413b585e59f0fd95fe73f11d739a5332dd5": 0.04346,
+      "local-a78d87fa5aa6aa5592a479f4e41b6aef58293213afe4ac833c9c9f29542a0a20": 0.010945,
+      "local-a99902fa49d492b06ade5298694fbf77abaad1f58cd852afe7a128fbe76f77dd": 0.080583,
+      "local-ae02f238cb2e9acb907a8275ecdbdf80a060d04c429406b6c5b3d64077b1c992": 0.054797,
+      "local-b056d71e8dece75fb11fc4aa3c50f1299d475be6fa9a5c9d995bbd12525d32d9": 0.004745,
+      "local-b489ed58f93f457ea0e1925b7c49892b881168c362d1d31891f7108c3670bd4d": 0.11061,
+      "local-b99ef78d5fa3cf80400c60cebfa6d4c906288faa0043b91c600ca169f1fc23e4": 0.017317,
+      "local-baf1faa74502b7054666f9be11646d98ba9bf6b8e3c18bee8cbb4bd5ee21d239": 0.087286,
+      "local-bb95c0310ea4f1be3a1774b6ce51d680614396ae1629ceb6919d8e10b1b9e93e": 0.070278,
+      "local-ca6cd09ac3e481ccb80ad6b9745cf9fbf6ae277bd950d1a9da71c916b327921a": 0.089321,
+      "local-cab1c9289a9ab93f46472b347cec00e6976c263c06ed3789bb94cf3ed35c4233": 0.103529,
+      "local-ce9fdde06baac8188ddb7c8e0a48cf1e27843ad5a96a9574df98e569f302aba5": 0.011151,
+      "local-cfed01938e0177f2fd76dba9128d394155cf05d8ddbab9cac999335c3a52124f": 0.121041,
+      "local-d0e93b266b84e1f3677820562bf56b262b57751c0d31ed40c06ff7d2b0cee4d3": 0.029497,
+      "local-d27b4dcc6cb65879d2df47969b43a82b4bee56c7c38a742355fc0ebcf7b750c1": 0.085817,
+      "local-d47a107e0d5a6a5c07f1ecaf31d8b8ab588978f9257eea247ba27eb788f2604e": 0.103112,
+      "local-d534c4059feb55b2c50b9e69b1a98a0918f529a752fceca53adf3635a0e3ccdc": 0.029789,
+      "local-dc66179661015fb6044f0203f52229c3fe54927b07fe4e3aafd965c7a7e58b42": 0.034699,
+      "local-dca549227e0c41c9adbdc5849ea64a3de5e2709590ead0a06673eefdad6d449e": 0.087295,
+      "local-de28ea272b4d6dcc32549ef1dc3b0f6bc0541c9ee8d859e211e3e74edfd80f26": 0.098917,
+      "local-e56ef5cc7aa7b6e86a0bde32820886928ce04ec2376da9b38d733d945f085807": 0.012752,
+      "local-e5f50108e77568f61a3ac99a2bff005adc6dd7c2117d40979d93cfd3f8278166": 0.080378,
+      "local-ea0b9fc6499b0b05d2762165177b7bcbdd34417a34e5813ab415fa7375047c51": 0.078452,
+      "local-ea29f27c28a149902b107df7bda191d0f505a72a5082ac558afc38ccdcbf7cd3": 0.007416,
+      "local-ed0766866c52a02d982fb3d50c1595b0f853f07c0aae5d636d56c314b0f0db79": 0.041006,
+      "local-ed3abf115c0e9307a09b02d352a8cbff99642346ba5eb9e87c5e940ef45cf02a": 0.03576,
+      "local-eefc7c953ddfc9ea27e404f0f1471b9df583512e6eb61ffb5732b48514d8dfd2": 0.003302,
+      "local-efd34f8340cef4260ed1043839d5eeb6ad14b5ef5effced732b0595e121b471d": 0.028409,
+      "local-fcc3d5ae88667e9842445ae38ea0ea75dd09536b4e4b1d5e3eb219015e2857a2": 0.071527
+    }
+  },
+  "window": {
+    "since": "2026-10-06"
+  }
+}
+
+===== gisu (corr=cost4-gisu-20261028a) =====
+{
+  "agent": "gisu",
+  "audit": {
+    "first_ts": "2026-08-09T14:13:18.328Z",
+    "last_ts": "2026-10-28T11:35:14.320Z",
+    "path": "$HOME/.hermes/cron/usage_audit.jsonl",
+    "rows": 1363,
+    "skipped_rows": 0
+  },
+  "generated_at": "2026-10-28T13:25:25+00:00",
+  "langfuse": {
+    "checked": true,
+    "days": [
+      {
+        "cost_usd": 0.93139753,
+        "date": "2026-10-28",
+        "traces": 14
+      },
+      {
+        "cost_usd": 0.9696470336,
+        "date": "2026-10-27",
+        "traces": 14
+      },
+      {
+        "cost_usd": 0.58171833296,
+        "date": "2026-10-26",
+        "traces": 14
+      },
+      {
+        "cost_usd": 0.030180958168,
+        "date": "2026-10-25",
+        "traces": 5
+      },
+      {
+        "cost_usd": 0.01410448436,
+        "date": "2026-10-24",
+        "traces": 1
+      },
+      {
+        "cost_usd": 0.814300194128,
+        "date": "2026-10-23",
+        "traces": 15
+      },
+      {
+        "cost_usd": 0.490569038264,
+        "date": "2026-10-22",
+        "traces": 16
+      }
+    ],
+    "present": true,
+    "status": 200
+  },
+  "per_day": [
+    {
+      "date": "2026-10-06",
+      "fires": 14,
+      "tokens": 15192141.0
+    },
+    {
+      "date": "2026-10-07",
+      "fires": 14,
+      "tokens": 9445941.0
+    },
+    {
+      "date": "2026-10-08",
+      "fires": 14,
+      "tokens": 10022554.0
+    },
+    {
+      "date": "2026-10-09",
+      "fires": 13,
+      "tokens": 18707887.0
+    },
+    {
+      "date": "2026-10-10",
+      "fires": 1,
+      "tokens": 868319.0
+    },
+    {
+      "date": "2026-10-11",
+      "fires": 5,
+      "tokens": 2833793.0
+    },
+    {
+      "date": "2026-10-12",
+      "fires": 14,
+      "tokens": 8843847.0
+    },
+    {
+      "date": "2026-10-13",
+      "fires": 14,
+      "tokens": 8185681.0
+    },
+    {
+      "date": "2026-10-14",
+      "fires": 14,
+      "tokens": 9086076.0
+    },
+    {
+      "date": "2026-10-15",
+      "fires": 14,
+      "tokens": 7598667.0
+    },
+    {
+      "date": "2026-10-16",
+      "fires": 13,
+      "tokens": 7931657.0
+    },
+    {
+      "date": "2026-10-17",
+      "fires": 1,
+      "tokens": 1091688.0
+    },
+    {
+      "date": "2026-10-18",
+      "fires": 5,
+      "tokens": 6881408.0
+    },
+    {
+      "date": "2026-10-19",
+      "fires": 14,
+      "tokens": 6044946.0
+    },
+    {
+      "date": "2026-10-20",
+      "fires": 14,
+      "tokens": 11003654.0
+    },
+    {
+      "date": "2026-10-21",
+      "fires": 14,
+      "tokens": 23007557.0
+    },
+    {
+      "date": "2026-10-22",
+      "fires": 14,
+      "tokens": 21674173.0
+    },
+    {
+      "date": "2026-10-23",
+      "fires": 13,
+      "tokens": 21234164.0
+    },
+    {
+      "date": "2026-10-24",
+      "fires": 1,
+      "tokens": 2789715.0
+    },
+    {
+      "date": "2026-10-25",
+      "fires": 5,
+      "tokens": 4801859.0
+    },
+    {
+      "date": "2026-10-26",
+      "fires": 14,
+      "tokens": 20142698.0
+    },
+    {
+      "date": "2026-10-27",
+      "fires": 14,
+      "tokens": 31587727.0
+    },
+    {
+      "date": "2026-10-28",
+      "fires": 6,
+      "tokens": 9010422.0
+    }
+  ],
+  "per_job": [
+    {
+      "fires": 50,
+      "job_id": "43dffd55077e",
+      "tokens": 66816023.0
+    },
+    {
+      "fires": 33,
+      "job_id": "4258bd0e05f4",
+      "tokens": 49373767.0
+    },
+    {
+      "fires": 22,
+      "job_id": "ad77f951f753",
+      "tokens": 35677618.0
+    },
+    {
+      "fires": 16,
+      "job_id": "98657d3ee1eb",
+      "tokens": 32760387.0
+    },
+    {
+      "fires": 50,
+      "job_id": "4097b13f81ce",
+      "tokens": 22282353.0
+    },
+    {
+      "fires": 33,
+      "job_id": "6147fa373f5f",
+      "tokens": 20527967.0
+    },
+    {
+      "fires": 16,
+      "job_id": "3da60df3f25e",
+      "tokens": 20100323.0
+    },
+    {
+      "fires": 19,
+      "job_id": "274e856664c1",
+      "tokens": 4368123.0
+    },
+    {
+      "fires": 3,
+      "job_id": "ce91bbc15f21",
+      "tokens": 3109436.0
+    },
+    {
+      "fires": 3,
+      "job_id": "87663c42ef00",
+      "tokens": 2970577.0
+    }
+  ],
+  "per_job_omitted": 0,
+  "spend": {
+    "available": true,
+    "lifetime_usd": 64.533558,
+    "per_job": {
+      "03a0c3d869d2": 0.008104,
+      "0dcc24d5707e": 0.006576,
+      "102200": 0.0,
+      "274e856664c1": 0.359084,
+      "32b58740b2d9": 6.442426,
+      "34e92cbeda33": 0.221949,
+      "362df8a07a93": 2.011171,
+      "3da60df3f25e": 0.89161,
+      "4097b13f81ce": 2.737701,
+      "41b85221579e": 0.0,
+      "4258bd0e05f4": 1.662334,
+      "43dffd55077e": 2.513225,
+      "49f3c691a0b6": 0.011532,
+      "4cdcc8e6d449": 0.0,
+      "50ed3e2b863b": 1.202486,
+      "5143905ff2f7": 0.0,
+      "5363cfa5bb37": 0.080078,
+      "6147fa373f5f": 2.950043,
+      "64a6832597ad": 0.007238,
+      "6df0604d1909": 0.525459,
+      "76d83c85546e": 0.104337,
+      "78e2e492fb6b": 0.035446,
+      "7ac9255c931a": 0.53016,
+      "7bad96b8cb0b": 0.0,
+      "7be4be10e68f": 0.00965,
+      "7db268669f98": 0.036756,
+      "7f29775752f9": 0.117063,
+      "811d22799597": 0.019997,
+      "8690a46c51e4": 0.006342,
+      "87663c42ef00": 0.123425,
+      "87b40014d130": 0.444736,
+      "8e3524ad25c3": 0.079427,
+      "98657d3ee1eb": 1.471219,
+      "9ad5d1844248": 0.176174,
+      "9d78078a0018": 0.053795,
+      "9e550f29a573": 0.0,
+      "a29e0f0cfe13": 0.024681,
+      "ac11222a884d": 0.005161,
+      "ad77f951f753": 1.23316,
+      "ae35d4e46ef6": 0.272539,
+      "b117893bb403": 0.247243,
+      "b5344e9b6008": 3.092182,
+      "c0fce0f9df69": 0.010456,
+      "c4d8d609987b": 0.030466,
+      "ce91bbc15f21": 0.117344,
+      "cea03f5b7916": 0.0,
+      "d76fff2f56b6": 0.0,
+      "d7c09aa9510a": 0.010033,
+      "db4d6cabca78": 16.536039,
+      "db89827ef183": 0.356984,
+      "dcaa8d64280b": 0.0,
+      "dd126045ed38": 6.412389,
+      "e029a91a5bbf": 8.148421,
+      "e19f8aa6c19a": 0.047393,
+      "e56e5597f2a0": 0.0,
+      "ee209521c8d7": 0.088534,
+      "f8623f779d6e": 0.172364,
+      "local-082658b28c0d2e7fed78dfaf0593710333dbd9c812bd2422aedfa0e04821525c": 0.170826,
+      "local-08b011ae4244ce0c497b61d0be6d3c530d939960175bf4a60d6435dc2e913d43": 0.054446,
+      "local-0a713b5f031d4eaf8d0d58967d45fb4faeff29abe2a0851af84c3f6d91052e9b": 0.008498,
+      "local-0f5e35b09164959a587eb725ed9d1cacd945e34e1a7ae80db63ffdc29f54e638": 0.009345,
+      "local-179b18f9f3e4c5492fa7ed92af96b0e17e6336c2d1fb99168ea22656f666322d": 0.009589,
+      "local-1cd346a9007b42dda2253fcabcfabe19286954cbc0bd1d8986db6ea529431def": 0.047656,
+      "local-2620c4cd5d6e89981f94761326ecee27f18d89c500020cee2770313f1feef126": 0.09838,
+      "local-298c815888fd76056613dc893672e3f0d71074e85e992188342a26a7f7c0d82b": 0.00395,
+      "local-2ce61c0291fff701ac45f17e1e0a7f07b0d993ed8038551ea3f328c067eb5130": 0.102688,
+      "local-2d9e8edc4c0d733fb8d0c91cae830f8c2c38b89c7f5bd8bc5c02195c6ccc695e": 0.021738,
+      "local-2db00289272e0f8a3b6e7e08d5d05e4fe54f98d9bcfa7eec1e8ca8ecb81082e6": 0.115496,
+      "local-31464d6d40d17978dfe5b4aa6a5b64fdd5eb0f49dcfd5cd52a38e73f3587d7a5": 0.014104,
+      "local-32448f4ffd7fd5f6beba808e6f99640bc8851e39293dc352f57436d41d1e7255": 0.092747,
+      "local-3905a900c39dd58f95e14fc70eb12e0a4548cae844ce3d99d77812081388be57": 0.145707,
+      "local-3b1e638dabe70a0ec1e6d8d788fb3b584782f82f3ccb2c89f8f40611af1d3118": 0.007372,
+      "local-3d18896b41fb49c496662c022b4b9166a858fdd0a42cb42f68d51b516872faa5": 0.055558,
+      "local-417d85f0024f792ca7325e82a82b3b721f3f8e2f3b1bbb219bc130db96a841a1": 0.111395,
+      "local-418f818f5dbb7d90b5b1ad0579ec3f057c2037c410842d18e7400c468b68d4f5": 0.083781,
+      "local-433e025b7b8d886169f2cac6e7215adbc136abe2f518ba969e70a06fcb268b0b": 0.09673,
+      "local-4e26ea0c4d9ceb56f9dc9ac7d635e5a48218ed2f0fdc06a7918b2f915a674184": 0.043518,
+      "local-4e95ca5aca49ae811715000c99c4ddb2afb5de3e9bffd64331f0366a3f95cce6": 0.091548,
+      "local-51d27347e0b22694131095c2cfc4a5d05728e6c2eaee044409bd22b1b1f02249": 0.006157,
+      "local-588f0af1dc75f79b5791c0a4df8fce8c96646fcc944ee4bf9b9eddda62083c3d": 0.064787,
+      "local-5dd4dede7fd59192a7a8b852405dfa16ef4136173632f565b17810177277b3c5": 0.086991,
+      "local-625044335cb8022aa99b4681158d2831ec7f207f07ce2ccfdbfceeb3adea07c4": 0.063541,
+      "local-65a3cc590ab6bbd809a069441d3619d89ec06d93f9542f005fe1f7a2621a93cb": 0.033666,
+      "local-6c39193addcdc423f130713234bbd1f506a4fb4dd02f64d6ca5421808bbb37a7": 0.106514,
+      "local-7000bca1e7a24f9778f3eede3c46c733c4d59d1967916272648ced98a5e39acc": 0.104094,
+      "local-7182d0798a6c84cf4695baf5bd1760a9aeb1ff608508c83ad9da1fdbdcbb10ea": 0.007304,
+      "local-7267859f152c0b301ff9722d801113cdb2005153085251cb26a449a15df2ab94": 0.05941,
+      "local-740a8a81c3a1ed7872b3775da673fd5b1233b0250cea65c81ce78d623bf682e8": 0.037252,
+      "local-74b1cae5ceebd7fcc0de4ec02f5b7d4bb941d377cc2e0ddb220077642426dc32": 0.060586,
+      "local-77c1c62f49827b0c02b123c08f1c49bc52f541de34b8f8afce28fcb53beebf67": 0.001477,
+      "local-7886de7f9c44a9e6b9326325e1b71f97c19c02e5858933d7063391801ceab463": 0.00447,
+      "local-8d1243e4d28fb66af97d05a69e88cb2a55817c3eeaca94ea4bf8aafc93fd9160": 0.023598,
+      "local-925af3bbea28a34a0cda95ec1e21f5c0c064d198a1f0fe3990f0834a7010fa98": 0.00731,
+      "local-937829e061596873ca0ae593aaa4065a46ad168bc68a1d21a5286d2846802eb5": 0.054134,
+      "local-9810475628cf120c8cdcc02f3cb4c15e469e04a3a82b02886ad0e7a992d2f9ee": 0.014404,
+      "local-988480cf32091fa4f16c93aab6749e428c1105557bb0f89a324312a69285b019": 0.003114,
+      "local-99f843f51b2bc3643e90a47efaddf5a126b7600227ac0e638c603bedbfb88485": 0.026384,
+      "local-9f8a9204e53e7f0f25a7741d11e0484f435896c4ed30e296dc8791cd7d0379f0": 0.006998,
+      "local-a0a8f454eacca2c6b0835d36312bb1fca2af874ce88f835181607bcb6272868a": 0.09429,
+      "local-a0d52066eac86a1f0c47a7bccd6c3da4122e3d11fc4a99214e1116d8d4e066ea": 0.00334,
+      "local-a174ae47d7e823e2dee06764cf9cebce75900ba3a4f0b78aa03d26ce21f5bc68": 0.008338,
+      "local-acdec7e76c995d37132fe95e797bbf4e250a8b5f0e1d1795959e5c0875f9f4c0": 0.00764,
+      "local-ad86d62cf9ebb9f2c731b88c190f7896049468e76afe2ab0970399367fc73de6": 0.027308,
+      "local-adcd226737135e58b2afb91bbc625d24b26722279164f2bb97bcab09f551f63c": 0.051076,
+      "local-aed05ec3f9255ee649ab60eaa2cb3f0b5a15f6599e6b04150034d3c102fa6d88": 0.15462,
+      "local-b12ab74a8372d07204780f277fd0ebacb8cbd802d68f0e70f512bee864fd0414": 0.009516,
+      "local-b4ab5f1dd5e8c2283e1b0f4ad7e32b58112e3a1996f481efcc38c56abd81bb90": 0.073288,
+      "local-b4cc9d2cdf038c0dc98de53ae1156bce077d15cfc21103346e531bc46b7a0847": 0.009707,
+      "local-b700eca83f2f90cb73bdcfe11dc58a3654677fded304de80125bc4a2dc5f531f": 0.009695,
+      "local-bb1371d5e94d7cab159fac6ff1cf3732fee0c0a19659e58d2c937aafe4e2cf94": 0.008774,
+      "local-be707aecdbacccd7c0cce527b33f52fc6fb8d2faa9b1add7aa125984734d76b1": 0.018404,
+      "local-c2932d2a337c978d6450bfbf36b11b882d22bf0263e2cf6eaadd25939d0ab51d": 0.010004,
+      "local-c4c93e7c0400660890f9bba3412af822b21aef3a15f82fb93d37476d0fc8dd85": 0.006078,
+      "local-c767ad6681244b698176a318b2442b4ceb7ea222ce17a4c692b61e8688b4806e": 0.0079,
+      "local-dc5715b662c6f23272e649916de08e4a1389f7bfc127cfe5c2e4b9858a38aef4": 0.017645,
+      "local-e14d7a76056b8bee4adfd15ff083cc6174d0af24f78fdd617f52d4270800a1ee": 0.087305,
+      "local-e249878bff82fee8aa6e69ba9d9a17ad64e52f04b2fc6412c22482edbb11d021": 0.051972,
+      "local-e293a53600d21ce0350cca93530106c7571b281c5f65d78069a524bf9c9b5132": 0.006627,
+      "local-e518c4c571c7a9c641d8bffa7b0b5d2a9620f083afa2321b207e484ae3654eab": 0.013685,
+      "local-ef3f17200e0472e81d4039b4c686e2baa650973f7c2d87d83e93d4b941d509bb": 0.015335,
+      "local-f26edf299a6a0193b6b183e04f2aa0cbc156669c1495d42932f0238100bc8881": 0.009179,
+      "local-fecd3a1d31be976d3f699b9b1ab8e7211a5d3f0e94f9199f7b5be977eaea1a8b": 0.029635
+    }
+  },
+  "window": {
+    "since": "2026-10-06"
+  }
+}
+
+===== titus (corr=cost4-titus-20261028a) =====
+{
+  "agent": "titus",
+  "audit": {
+    "first_ts": "2026-08-09T16:13:57.094Z",
+    "last_ts": "2026-10-28T11:35:59.751Z",
+    "path": "$HOME/.hermes/cron/usage_audit.jsonl",
+    "rows": 970,
+    "skipped_rows": 0
+  },
+  "generated_at": "2026-10-28T13:27:39+00:00",
+  "langfuse": {
+    "checked": true,
+    "present": false,
+    "reason": "nothing listening at http://127.0.0.1:3000 (URLError)"
+  },
+  "per_day": [
+    {
+      "date": "2026-10-06",
+      "fires": 14,
+      "tokens": 11727627.0
+    },
+    {
+      "date": "2026-10-07",
+      "fires": 8,
+      "tokens": 6112372.0
+    },
+    {
+      "date": "2026-10-08",
+      "fires": 18,
+      "tokens": 48691330.0
+    },
+    {
+      "date": "2026-10-09",
+      "fires": 13,
+      "tokens": 55820627.0
+    },
+    {
+      "date": "2026-10-10",
+      "fires": 1,
+      "tokens": 1793383.0
+    },
+    {
+      "date": "2026-10-11",
+      "fires": 5,
+      "tokens": 8449936.0
+    },
+    {
+      "date": "2026-10-12",
+      "fires": 14,
+      "tokens": 13427370.0
+    },
+    {
+      "date": "2026-10-13",
+      "fires": 14,
+      "tokens": 6084403.0
+    },
+    {
+      "date": "2026-10-14",
+      "fires": 13,
+      "tokens": 6622136.0
+    },
+    {
+      "date": "2026-10-15",
+      "fires": 15,
+      "tokens": 8526723.0
+    },
+    {
+      "date": "2026-10-16",
+      "fires": 13,
+      "tokens": 10204224.0
+    },
+    {
+      "date": "2026-10-17",
+      "fires": 1,
+      "tokens": 1594961.0
+    },
+    {
+      "date": "2026-10-18",
+      "fires": 5,
+      "tokens": 2641946.0
+    },
+    {
+      "date": "2026-10-19",
+      "fires": 14,
+      "tokens": 5853792.0
+    },
+    {
+      "date": "2026-10-20",
+      "fires": 14,
+      "tokens": 9710252.0
+    },
+    {
+      "date": "2026-10-21",
+      "fires": 14,
+      "tokens": 12192188.0
+    },
+    {
+      "date": "2026-10-22",
+      "fires": 12,
+      "tokens": 8298433.0
+    },
+    {
+      "date": "2026-10-23",
+      "fires": 13,
+      "tokens": 12475731.0
+    },
+    {
+      "date": "2026-10-24",
+      "fires": 1,
+      "tokens": 587731.0
+    },
+    {
+      "date": "2026-10-25",
+      "fires": 5,
+      "tokens": 3067427.0
+    },
+    {
+      "date": "2026-10-26",
+      "fires": 13,
+      "tokens": 15448822.0
+    },
+    {
+      "date": "2026-10-27",
+      "fires": 15,
+      "tokens": 13889129.0
+    },
+    {
+      "date": "2026-10-28",
+      "fires": 6,
+      "tokens": 5086503.0
+    }
+  ],
+  "per_job": [
+    {
+      "fires": 31,
+      "job_id": "2fede3031fae",
+      "tokens": 51882838.0
+    },
+    {
+      "fires": 50,
+      "job_id": "6af957eebfe4",
+      "tokens": 43235337.0
+    },
+    {
+      "fires": 3,
+      "job_id": "755e01580e00",
+      "tokens": 35024545.0
+    },
+    {
+      "fires": 31,
+      "job_id": "cd7ca240d2dc",
+      "tokens": 33612855.0
+    },
+    {
+      "fires": 50,
+      "job_id": "946a0be4156f",
+      "tokens": 31259193.0
+    },
+    {
+      "fires": 22,
+      "job_id": "a28f8be0bc4e",
+      "tokens": 30041479.0
+    },
+    {
+      "fires": 16,
+      "job_id": "eeb1e7e9d10f",
+      "tokens": 24435146.0
+    },
+    {
+      "fires": 16,
+      "job_id": "e7ce31e8ce1b",
+      "tokens": 11893580.0
+    },
+    {
+      "fires": 19,
+      "job_id": "2c107b84ed59",
+      "tokens": 4777671.0
+    },
+    {
+      "fires": 3,
+      "job_id": "c6a55cf9f7f3",
+      "tokens": 2144402.0
+    }
+  ],
+  "per_job_omitted": 0,
+  "spend": {
+    "available": true,
+    "lifetime_usd": 16.546914,
+    "per_job": {
+      "060406": 0.0,
+      "081049": 0.0,
+      "0e6a56f4145c": 0.0,
+      "211240": 0.080726,
+      "2c107b84ed59": 0.473714,
+      "2f4798600a0d": 0.0,
+      "2fede3031fae": 2.680012,
+      "3167c5a5feb0": 0.0,
+      "3476fa9cf82d": 0.099879,
+      "36e1e5a998d0": 0.038197,
+      "5660ec7fff44": 0.0,
+      "57287b54561e": 0.182434,
+      "678fd27dc39e": 0.000919,
+      "6af957eebfe4": 2.185329,
+      "755e01580e00": 0.506884,
+      "76efa3b38eef": 0.001628,
+      "8021a871ea28": 0.018041,
+      "946a0be4156f": 2.971405,
+      "a28f8be0bc4e": 1.6419,
+      "c6a55cf9f7f3": 0.16962,
+      "cca4519f91a1": 0.0,
+      "cd7ca240d2dc": 3.019051,
+      "e7ce31e8ce1b": 0.924125,
+      "ee20583ee947": 0.0,
+      "eeb1e7e9d10f": 1.553051
+    }
+  },
+  "window": {
+    "since": "2026-10-06"
+  }
+}
+
+## 2. Window totals (summed from the per_day arrays above)
+
+esther (self-test)   rows= 1865 days= 23 fires= 510 tokens=  1594.7M  langfuse present, 7 day(s), latest 2026-10-28 cost $2.8548713662
+joseph               rows= 1020 days= 23 fires= 240 tokens=   292.3M  langfuse {"checked": true, "present": true, "error": "HTTP 401 from http://localhost:3000"}
+kustos               rows= 1094 days= 23 fires= 266 tokens=   315.4M  langfuse present, 7 day(s), latest 2026-10-28 cost $1.5230747406
+gisu                 rows= 1363 days= 23 fires= 245 tokens=   258.0M  langfuse present, 7 day(s), latest 2026-10-28 cost $0.93139753
+titus                rows=  970 days= 23 fires= 241 tokens=   268.3M  langfuse {"checked": true, "present": false, "reason": "nothing listening at http://127.0.0.1:3000 (URLError)"}
+
+## 3. Derived fleet coverage
+
+hosts that answered the identical instrument with real numbers in this window: 5 of 5 attempted -> esther, joseph, kustos, gisu, titus (all 2026-10-28).
+With moses (measured 2026-10-26/27 on the identical instrument, evidence docs/evidence/cost4-host-cost-adapter/moses-aggregate-2026-10-27.txt) that is 6 of 6 hosts, against the baseline's 2 of 6 (docs/evidence/cost-baseline-2026-10-19.txt).
+
+Per-host answers to the adapter's Langfuse probe (slice item 2): esther,
+kustos and gisu answer 200 with day rows; joseph's Langfuse ANSWERS but
+rejects the read with HTTP 401 on every call (its own credential is
+missing/stale, which the tool reports rather than silently omitting); titus
+has nothing listening on :3000 (macOS host, no Langfuse instance).
+These are per-host observations, NOT a fleet Langfuse measurement.
+

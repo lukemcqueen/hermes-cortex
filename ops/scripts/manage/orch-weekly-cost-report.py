@@ -43,23 +43,23 @@ DEFAULT_AUDIT = Path.home() / ".hermes" / "cron" / "usage_audit.jsonl"
 DEFAULT_STATE_DB = Path.home() / ".hermes" / "state.db"
 DEFAULT_TARGET_USD = 10.0
 
-# Fleet coverage as measured, not assumed. The four worker hosts are NO LONGER
-# unmeasured: on 2026-10-26/27 joseph/kustos/titus answered `cron-cost-metrics.py
-# --json-summary` with rc=0 and moses followed on the identical instrument, taking
-# the baseline's 2 of 6 to 5 of 6 (fleet cost coverage [cost/4]). Those aggregates
-# live in committed evidence files and are NOT ingested by this report — it reads
-# only THIS host's audit log and state.db — so the average below still covers one
-# host and must say so rather than implying fleet scope. gisu is the one host that
-# remains unmeasured, and that is an operator decision (a6fc254a), not a gap this
-# script can close.
-UNMEASURED = ("fleet coverage: 5 of 6 hosts measured on the same instrument — esther, joseph, "
-              "kustos, titus, moses — via cron-cost-metrics.py --json-summary over EXEC on "
-              "2026-10-26/27 (evidence: docs/evidence/cost4-host-cost-adapter/"
-              "moses-aggregate-2026-10-27.txt and docs/evidence/morning-task-pass-2026-10-27/"
-              "cost4-reexec-2026-10-27.txt). Those aggregates are NOT ingested here, so the "
-              "average above covers this host only. not measured: gisu — its deployed tree "
-              "predates the tool and its repo is divergent (operator decision a6fc254a); fleet "
-              "cost coverage [cost/4] stays open on that host alone.")
+# Fleet coverage as measured, not assumed. All six hosts now answer the same
+# instrument: joseph/kustos/titus and moses on 2026-10-26/27, and gisu — the last
+# host outstanding, then blocked on operator decision a6fc254a — on 2026-10-28,
+# taking the baseline's 2 of 6 to 6 of 6 (fleet cost coverage [cost/4]). Those
+# aggregates live in committed evidence files and are NOT ingested by this report
+# — it reads only THIS host's audit log and state.db — so the average below still
+# covers one host and must say so rather than implying fleet scope. Nothing here
+# is extrapolated: every host returned its own numbers, and the hosts that cannot
+# answer the Langfuse half say so themselves (joseph HTTP 401, titus no instance).
+UNMEASURED = ("fleet coverage: 6 of 6 hosts measured on the same instrument — esther, joseph, "
+              "kustos, gisu, titus and moses — via cron-cost-metrics.py --json-summary over EXEC "
+              "(evidence: docs/evidence/cost4-coverage-2026-10-28.txt for the 2026-10-28 run; "
+              "docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt and "
+              "docs/evidence/cost4-host-cost-adapter/ for 2026-10-26/27). Those aggregates are "
+              "NOT ingested here, so the average above covers this host only. no host is "
+              "outstanding — fleet cost coverage [cost/4] holds all four worker-host "
+              "aggregates — so the average is not an extrapolation across unmeasured hosts.")
 
 
 def read_tokens_by_job(path: Path):

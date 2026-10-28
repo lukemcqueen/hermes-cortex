@@ -1,0 +1,53 @@
+# [cost/4] coverage paste — 5 of 6 -> 6 of 6 after gisu answered (2026-10-28)
+# cycle 13942  session cron_1954deb5ad76_20261028_222110  host: esther
+# runner: .hermes/tools/pytest-venv (the runtime interpreter has no pytest).
+# every line below is the command's own output, nothing retyped.
+
+## 1. /home/esther/.hermes/tools/pytest-venv/bin/python -m pytest tests/test_runtime/test_cron_cost_reporting.py
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+collected 22 items
+
+tests/test_runtime/test_cron_cost_reporting.py ......................    [100%]
+
+============================== 22 passed in 3.12s ==============================
+PYTEST_RC=0
+
+## 2. the pinned COVERAGE-contract test alone
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+collected 1 item
+
+tests/test_runtime/test_cron_cost_reporting.py .                         [100%]
+
+============================== 1 passed in 0.23s ===============================
+PYTEST_RC=0
+
+## 3. the real report (repo copy) — COVERAGE block as it now prints
+💰 Weekly fleet cost report — this host, window 7d
+Spend by day (state.db sessions, source=cron):
+  2026-10-21  $0.15
+  2026-10-22  $1.92
+  2026-10-23  $1.66
+  2026-10-24  $1.56
+  2026-10-25  $1.73
+  2026-10-26  $1.43
+  2026-10-27  $0.95
+  2026-10-28  $0.29
+Measured days: 8 (2026-10-21/2026-10-22/2026-10-23/2026-10-24/2026-10-25/2026-10-26/2026-10-27/2026-10-28)
+Measured daily average: $1.21  (target $10.00)
+Window total: $9.69
+Top jobs by tokens (audit log, lifetime):
+  dbcdec6bb40d  829603169 tokens, 262 fires
+  1954deb5ad76  383228647 tokens, 57 fires
+  8a46f1b96b7d  364547425 tokens, 46 fires
+  8449be867645  330378848 tokens, 74 fires
+  418bbf45277d  258238115 tokens, 233 fires
+COVERAGE
+  measured: this host (this host's own state.db / audit log)
+  fleet coverage: 6 of 6 hosts measured on the same instrument — esther, joseph, kustos, gisu, titus and moses — via cron-cost-metrics.py --json-summary over EXEC (evidence: docs/evidence/cost4-coverage-2026-10-28.txt for the 2026-10-28 run; docs/evidence/morning-task-pass-2026-10-27/cost4-reexec-2026-10-27.txt and docs/evidence/cost4-host-cost-adapter/ for 2026-10-26/27). Those aggregates are NOT ingested here, so the average above covers this host only. no host is outstanding — fleet cost coverage [cost/4] holds all four worker-host aggregates — so the average is not an extrapolation across unmeasured hosts.
+REPORT_RC=0
