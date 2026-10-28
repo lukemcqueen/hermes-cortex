@@ -1,8 +1,10 @@
 # [72b2c69b] RED then GREEN — raw pytest output
+# NOTE (2026-10-28): the home-directory prefix is normalized to $HOME for PII
+# hygiene (precedent: commit 93029175). Counts and failure names are unmodified.
 # repo HEAD: f0d13ef4  (2026-10-28T18:21:28+09:00)
 
 ── 1. materialise the PRE-CHANGE tree at the parent of this commit ──
-worktree: /home/esther/.hermes/cache/scratch/ddl-red-PFd4JD  HEAD=f0d13ef4
+worktree: $HOME/.hermes/cache/scratch/ddl-red-PFd4JD  HEAD=f0d13ef4
 pre-change call site present? 2 occurrence(s)
 pre-change _migrate_candidates present? 0 occurrence(s)
 

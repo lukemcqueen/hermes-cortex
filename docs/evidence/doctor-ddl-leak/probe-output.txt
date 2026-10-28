@@ -1,3 +1,6 @@
+# NOTE (2026-10-28, task doctor-apply-schema-leak): the home-directory prefix is
+# normalized to $HOME for PII hygiene (precedent: commit 93029175). Every number,
+# path, version and exit code below is unmodified; re-run with probe-doctor-apply-schema.sh.
 === 1. deployed schema dir (~/.hermes-cortex/services/tasks/schema) ===
 v001__tasks.sql
 v002__doctor-probe-source.sql
@@ -24,9 +27,9 @@ v016__task-upsert-plan.sql
 === 3. which migrate.py does cmd_apply_schema pick? (candidate list, in order) ===
 CORTEX_REPO env = None
   1. exists=True  ops/services/tasks/migrate.py
-  2. exists=True  /home/esther/hermes-cortex/ops/services/tasks/migrate.py
-  3. exists=False  /home/esther/.hermes-cortex/scripts/ops/services/tasks/migrate.py
-  4. exists=True  /home/esther/.hermes-cortex/services/tasks/migrate.py
+  2. exists=True  $HOME/hermes-cortex/ops/services/tasks/migrate.py
+  3. exists=False  $HOME/.hermes-cortex/scripts/ops/services/tasks/migrate.py
+  4. exists=True  $HOME/.hermes-cortex/services/tasks/migrate.py
 PICKED: ops/services/tasks/migrate.py
 === 4. live tasks.schema_version + task_upsert arity (via the deployed CLI's own psql seam) ===
 live schema_version : 16
@@ -36,4 +39,4 @@ task_upsert args    : p_id uuid DEFAULT NULL::uuid, p_content text DEFAULT NULL:
 5357:    ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"],
 5359:    # --apply-schema prints "schema now at version N"; parse it. Fall back to
 === 6. deployed doctor copy present? ===
--rwxr-xr-x 1 esther esther 294324 Oct 28 18:22 /home/esther/.hermes-cortex/scripts/cortex_doctor/checks.py
+-rwxr-xr-x 1 esther esther 294324 Oct 28 18:22 $HOME/.hermes-cortex/scripts/cortex_doctor/checks.py
