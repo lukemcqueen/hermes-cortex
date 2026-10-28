@@ -237,3 +237,15 @@ def test_the_derivation_covers_every_pool_head():
     expected = {f"{tier}/{spec}" for tier, specs in doc["tiers"].items() for spec in specs}
     assert expected <= set(doc["derivation"]["heads"]), \
         f"heads without derivation: {sorted(expected - set(doc['derivation']['heads']))}"
+
+
+def test_simple_pools_respect_their_own_ceiling():
+    """ADV-13902-1/2: the file said 0.5x and a simple pool carried a 0.62x model. A
+    stated ceiling the contents violate is a promise nobody can trust."""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    ceiling = float(doc["policy"]["simple"]["max_multiple_of_baseline"])
+    offenders = [f"simple/{spec} -> {m} (${_bl(doc, m):.3f}/M = {_bl(doc, m)/base:.2f}x)"
+                 for spec, models in doc["tiers"]["simple"].items() for m in models
+                 if _bl(doc, m) > base * ceiling]
+    assert not offenders, f"above the simple ceiling ({ceiling:g}x): {offenders}"

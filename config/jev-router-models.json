@@ -5,7 +5,7 @@
   "policy": {
     "simple": {
       "max_multiple_of_baseline": 0.5,
-      "note": "ALWAYS cheaper than the baseline, every model in the pool, not just the head; ceiling 0.5x"
+      "note": "ALWAYS cheaper than the baseline, every model in the pool, not just the head; ceiling 0.5x, enforced by tests/test_jev_router_pools.py"
     },
     "medium": {
       "max_multiple_of_baseline": 1.0,
@@ -24,24 +24,19 @@
   "tiers": {
     "simple": {
       "general": [
-        "openrouter:qwen/qwen3.7-flash",
-        "openrouter:inclusionai/ling-3.1-flash"
+        "openrouter:qwen/qwen3.7-flash"
       ],
       "vision": [
-        "openrouter:qwen/qwen3.7-flash",
-        "openrouter:xiaomi/mimo-v2.6-flash"
+        "openrouter:qwen/qwen3.7-flash"
       ],
       "coding": [
-        "openrouter:qwen/qwen3.7-flash",
-        "openrouter:qwen/qwen3-coder-30b-a3b-instruct"
+        "openrouter:qwen/qwen3.7-flash"
       ],
       "writing": [
-        "openrouter:qwen/qwen3.7-flash",
-        "openrouter:inclusionai/ling-3.1-flash"
+        "openrouter:qwen/qwen3.7-flash"
       ],
       "research": [
-        "openrouter:qwen/qwen3.7-flash",
-        "openrouter:inclusionai/ling-3.1-flash"
+        "openrouter:qwen/qwen3.7-flash"
       ]
     },
     "medium": {
@@ -398,6 +393,7 @@
     "openrouter:anthropic/claude-haiku-5.5": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:deepseek/deepseek-v4.1-flash-1017": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:inclusionai/ling-3.0-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:inclusionai/ling-3.1-flash": "priced only, NOT routed",
     "openrouter:liquid/lfm-2.5-24b-a2b": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:meta-llama/llama-3.1-8b-instruct": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:mistralai/codestral-2508": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
@@ -408,6 +404,7 @@
     "openrouter:qwen/qwen3-coder": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:qwen/qwen3-coder-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
     "openrouter:qwen/qwen3-coder-next": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:xiaomi/mimo-v2.6-flash": "priced only, NOT routed",
     "openrouter:z-ai/glm-5.3-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit"
   },
   "rejected": {
