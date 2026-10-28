@@ -10,6 +10,7 @@ import time
 
 from .results import Results
 from .jev import check_jev_layer
+from .mcp_names import check_mcp_review_name
 from .checks import (
     check_repo,
     check_deployed_gate_smoke,
@@ -136,6 +137,7 @@ def main():
         check_mycortex_parity,
         check_mem_plugins,
         check_jev_layer,
+        check_mcp_review_name,
         check_hook_drift,
         check_cron_runtime_scripts,
         check_langfuse_observability,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-claude-governance.sh — Register loop-governance MCP
+#  install-claude-governance.sh — Register the review MCP (server name "review")
 #  servers at USER scope so Claude Code gets them in EVERY repo.
 #
 #  Problem (2026-09-29, Luke): the repo-root .mcp.json is PROJECT
@@ -85,7 +85,7 @@ def server(command, args, env=None):
     return s
 
 GOVERNANCE = {
-    "loop-governance": server(py_cmd,
+    "review": server(py_cmd,
                               ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
                               {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "tasks": server(py_cmd,

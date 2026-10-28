@@ -731,7 +731,7 @@ The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_ma
 hermes mcp list | grep loop-governance
 
 # 2. If not registered, add it:
-hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
 
 # 3. Restart the Hermes session for the MCP server to load
 #    → Exit and re-enter the chat session

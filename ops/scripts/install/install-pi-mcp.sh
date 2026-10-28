@@ -349,7 +349,7 @@ try:
     data = json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(0)   # unreadable or malformed: nothing to preserve, and not our failure
-for name in ("loop-governance", "tasks", "executor", "agent-bus", "cortex-context"):
+for name in ("review", "tasks", "executor", "agent-bus", "cortex-context"):
     cmd = ((data.get("mcpServers") or {}).get(name) or {}).get("command") or ""
     if cmd and os.access(cmd, os.X_OK) and subprocess.run(
             [cmd, "-c", "import mcp"], capture_output=True).returncode == 0:
@@ -419,7 +419,7 @@ def server(path, description, env=None):
 
 
 GOVERNANCE = {
-    "loop-governance": server(
+    "review": server(
         loop_gov,
         "Loop governance: begin_change, cache_search, cycle_query, "
         "feedback_accept/override, end_change — the interactive ritual."),

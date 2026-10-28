@@ -46,9 +46,9 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["machineID"] == "abc123", "existing key lost"
 assert d["mcpServers"]["user-own-server"]["command"] == "uvx", "user server clobbered"
-for n in ("loop-governance", "tasks", "executor", "agent-bus"):
+for n in ("review", "tasks", "executor", "agent-bus"):
     assert n in d["mcpServers"], f"{n} missing"
-assert d["mcpServers"]["loop-governance"]["env"]["AGENT_NAME"] == "titusclaude"
+assert d["mcpServers"]["review"]["env"]["AGENT_NAME"] == "titusclaude"
 EOF
 check "run1: user keys preserved + 4 governance servers + AGENT_NAME" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
@@ -65,7 +65,7 @@ python3 - "$CJ" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert "user-own-server" in d["mcpServers"], "remove took the user's server"
-assert "loop-governance" not in d["mcpServers"], "governance server survived remove"
+assert "review" not in d["mcpServers"], "governance server survived remove"
 EOF
 check "--remove strips governance only, keeps user's own" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 

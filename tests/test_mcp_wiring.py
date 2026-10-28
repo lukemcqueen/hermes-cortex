@@ -20,7 +20,7 @@ MOD = REPO / "ops" / "scripts" / "manage" / "mcp_wiring.py"
 
 GOOD = """\
 mcp_servers:
-  loop-governance:
+  review:
     command: /opt/venv/bin/python3
     args:
     - /opt/tools/loop-gov-mcp.py
@@ -42,27 +42,27 @@ def _load():
 def test_entries_are_split_by_indent_not_by_child_keys():
     """`command:` sits deeper than the entry and must not start a new entry."""
     blocks = _load()._entry_blocks(GOOD)
-    assert set(blocks) == {"loop-governance", "tasks"}, blocks
-    assert "command:" in blocks["loop-governance"]
+    assert set(blocks) == {"review", "tasks"}, blocks
+    assert "command:" in blocks["review"]
     assert "/opt/repo/mcp-servers/task-mcp.py" in blocks["tasks"]
 
 
 def test_paths_include_the_command_and_every_argument_form():
     m = _load()
-    p = m._paths_of(m._entry_blocks(GOOD)["loop-governance"])
+    p = m._paths_of(m._entry_blocks(GOOD)["review"])
     assert p == ["/opt/venv/bin/python3", "/opt/tools/loop-gov-mcp.py"], p
     q = m._paths_of(m._entry_blocks(GOOD)["tasks"])
     assert "/opt/repo/mcp-servers/task-mcp.py" in q, q
 
 
 def test_a_healthy_entry_passes():
-    res = _load().audit(GOOD, {"loop-governance": "x.py"}, exists=lambda p: True)
-    assert res == [("loop-governance", "PASS", "configured and its paths exist", "")], res
+    res = _load().audit(GOOD, {"review": "x.py"}, exists=lambda p: True)
+    assert res == [("review", "PASS", "configured and its paths exist", "")], res
 
 
 def test_an_entry_pointing_at_a_dead_path_FAILS_and_says_which_path():
     """THE regression: present-but-dead used to read as configured-and-fine."""
-    res = _load().audit(GOOD, {"loop-governance": "x.py"},
+    res = _load().audit(GOOD, {"review": "x.py"},
                         exists=lambda p: p == "/opt/venv/bin/python3")
     name, status, detail, fix = res[0]
     assert status == "FAIL", res
@@ -98,12 +98,12 @@ def test_cli_reports_and_exits_1_on_a_dead_path():
         cfg = Path(td) / "config.yaml"
         cfg.write_text(GOOD.replace("/opt/tools/loop-gov-mcp.py", "/opt/gone/loop-gov-mcp.py"))
         r = subprocess.run([sys.executable, str(MOD), "--config", str(cfg),
-                            "--expected", "loop-governance", "--json"],
+                            "--expected", "review", "--json"],
                            capture_output=True, text=True)
         assert r.returncode == 1, r.stdout + r.stderr
         assert "fix:" in r.stdout, r.stdout
         data = json.loads(r.stdout.strip().splitlines()[-1])
-        assert data["failures"] == ["loop-governance"], data
+        assert data["failures"] == ["review"], data
 
 
 def test_cli_is_3_when_there_is_no_config_to_read():
