@@ -1,0 +1,32 @@
+plugin   : /home/esther/.hermes/plugins/hermes-jev/__init__.py
+scratch  : /home/esther/.hermes/cache/scratch/jev-notice-MXa4vt  (HERMES_HOME repointed; live state and log untouched)
+
+--- prompt=trivial notice=on ---
+  answers : null
+  decision: routed=True tier=simple specialty=general model=openrouter:qwen/qwen3.7-flash confidence=1.0
+  reply ends with: '[Jev] simple · general → qwen/qwen3.7-flash · confidence 1.00'
+
+--- prompt=trivial notice=off ---
+  answers : null
+  decision: routed=True tier=simple specialty=general model=openrouter:qwen/qwen3.7-flash confidence=1.0
+  reply ends with: 'Here is the change you asked for.'
+
+--- prompt=coding notice=on ---
+  answers : null
+  decision: routed=True tier=hard specialty=coding model=openrouter:deepseek/deepseek-v4-pro-0813 confidence=0.81
+  reply ends with: '[Jev] hard · coding → deepseek/deepseek-v4-pro-0813 · confidence 0.81'
+
+--- prompt=coding notice=off ---
+  answers : null
+  decision: routed=True tier=hard specialty=coding model=openrouter:deepseek/deepseek-v4-pro-0813 confidence=0.81
+  reply ends with: 'Here is the change you asked for.'
+
+=== the notice string the plugin itself composed (last switching turn) ===
+  [Jev] simple · general → qwen/qwen3.7-flash · confidence 1.00
+
+=== decision log (scratch) ===
+  route: {'routed': True, 'tier': 'simple', 'specialty': 'general', 'confidence': 1.0, 'difficulty': 0.0, 'reason': 'simple general', 'policy': 'route-2'}
+  route: {'routed': True, 'tier': 'simple', 'specialty': 'general', 'confidence': 1.0, 'difficulty': 0.0, 'reason': 'simple general', 'policy': 'route-2'}
+  route: {'routed': True, 'tier': 'hard', 'specialty': 'coding', 'confidence': 0.81, 'difficulty': 1.89, 'reason': 'hard coding', 'policy': 'route-2'}
+  route: {'routed': True, 'tier': 'hard', 'specialty': 'coding', 'confidence': 0.81, 'difficulty': 1.89, 'reason': 'hard coding', 'policy': 'route-2'}
+  route: {'routed': True, 'tier': 'simple', 'specialty': 'general', 'confidence': 1.0, 'difficulty': 0.0, 'reason': 'simple general', 'policy': 'route-2'}
