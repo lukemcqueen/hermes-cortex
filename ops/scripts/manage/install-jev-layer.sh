@@ -75,10 +75,17 @@ if [ "$MODE" = "check" ]; then
   python3 "$CHECKOUT/install.py" --check --hermes-home "$HERMES_HOME" || die "installer --check failed"
   say "  (check mode: nothing was installed)"
 else
-  python3 "$CHECKOUT/install.py" --check --hermes-home "$HERMES_HOME" >/dev/null 2>&1 || true
+  # The pre-flight result is PRINTED and its failure is fatal: a check that fails
+  # and is ignored is a check that was never run, and the real install would then
+  # fail later with a worse message (or half-install).
+  PREFLIGHT="$(python3 "$CHECKOUT/install.py" --check --hermes-home "$HERMES_HOME" 2>&1)"
+  PREFLIGHT_RC=$?
+  [ -n "$PREFLIGHT" ] && printf '%s\n' "$PREFLIGHT"
+  [ "$PREFLIGHT_RC" -eq 0 ] || die "the upstream installer's pre-flight check failed (rc=$PREFLIGHT_RC) — nothing was installed"
   python3 "$CHECKOUT/install.py" --hermes-home "$HERMES_HOME" || die "installer failed"
 fi
 
+DOCTOR_FAILED=0
 say "== 3. jev doctor =="
 JEV_BIN="$HERMES_HOME/bin/jev"
 [ -x "$JEV_BIN" ] || JEV_BIN="$(command -v jev 2>/dev/null || true)"
@@ -87,7 +94,10 @@ if [ -z "$JEV_BIN" ]; then
 elif [ "$MODE" = "check" ]; then
   say "  (check mode: not running doctor)"
 else
-  "$JEV_BIN" doctor || say "  WARN: doctor reported a problem — fix it before enabling routing"
+  if ! "$JEV_BIN" doctor; then
+    say "  FAIL: \`jev doctor\` reported a problem — the layer is installed but NOT VERIFIED"
+    DOCTOR_FAILED=1
+  fi
 fi
 
 say "== 4. cost-ordered routing pools =="
@@ -97,7 +107,14 @@ if [ -f "$POOLS" ] && [ "$FORCE_POOLS" -eq 0 ]; then
 elif [ "$MODE" = "check" ]; then
   say "  would write $POOLS with the cheap model first in every simple/medium pool"
 else
-  [ -x "$JEV_BIN" ] && "$JEV_BIN" models suggest --write >/dev/null 2>&1 || say "  WARN: could not seed pools; writing the cost-ordered draft directly"
+  if [ -x "$JEV_BIN" ]; then
+    if ! SEED_OUT="$("$JEV_BIN" models suggest --write 2>&1)"; then
+      say "  WARN: \`jev models suggest --write\` failed; writing the cost-ordered draft directly. Its output:"
+      printf '%s\n' "$SEED_OUT" | head -5
+    fi
+  else
+    say "  WARN: no \`jev\` command yet; writing the cost-ordered draft directly"
+  fi
   JEV_POOLS="$POOLS" python3 - <<'PY'
 import json, os, pathlib
 
@@ -134,7 +151,11 @@ if [ "$MODE" = "check" ]; then
   say "VERDICT: check complete — nothing changed"
   exit 0
 fi
-say "VERDICT: installed/upgraded at $ACTUAL"
+if [ "$DOCTOR_FAILED" -ne 0 ]; then
+  say "VERDICT: installed/upgraded at $ACTUAL, but NOT VERIFIED — \`jev doctor\` failed above"
+  exit 1
+fi
+say "VERDICT: installed/upgraded at $ACTUAL, doctor verified"
 say "NEXT: restart the gateway (the plugin loads at start), then in a session:"
 say "  /jev            status"
 say "  /jev routing shadow    decide and log, switch nothing  <- start here"
