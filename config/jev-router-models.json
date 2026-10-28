@@ -410,8 +410,8 @@
   "rejected": {
     "openrouter:moonshotai/kimi-k2.7-code": {
       "price_usd_per_m": 3.66,
-      "reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first",
-      "ratio_of_baseline": 6.54
+      "ratio_of_baseline": 6.54,
+      "reason_ref": "policy.rejected_reason"
     }
   }
 }
