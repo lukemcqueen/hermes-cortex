@@ -1,0 +1,8 @@
+{"state": "The governance lock gate refused a write outside any governed repo.",
+ "questions": [
+   {"id": "correct", "type": "noul", "instructions": "The refusal is correct for a path that is not in a governed checkout"},
+   {"id": "owner", "type": "choice", "instructions": "Which layer owns that refusal?",
+    "criteria": {"enforcer": "the governance enforcer plugin", "client": "the calling client", "nobody": "nobody"}},
+   {"id": "cost", "type": "score", "instructions": "How costly is a mistake here?",
+    "criteria": ["trivial", "minor", "moderate", "serious", "severe"]}
+ ]}

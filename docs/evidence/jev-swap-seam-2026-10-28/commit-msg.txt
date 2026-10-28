@@ -1,0 +1,29 @@
+docs(jev): install notes for the Jev decision layer, and a re-runnable proof the decision model is swappable
+
+Installed github.com/kerpopule/hermes-jev-skills (MIT) on one host and verified it
+rather than trusting the report: install.py read whole, A4 static scan clean, the
+config.yaml diff is exactly the two plugin names it added (the installer's own
+backup is the control), jev doctor reaches Jev in ~175 ms, and the routing pools
+were written. Nothing switches a model yet — shadow only.
+
+The decision model is NOT locked to TypeSafe. TYPESAFE_BASE_URL + TYPESAFE_MODEL +
+JEV_PROXY_API_KEY move it to any endpoint speaking the typed /v1/systemone wire
+format (a self-hosted von, or a steadfaste model), with no consumer-code change.
+
+docs/evidence/jev-swap-seam-2026-10-28/ is the re-runnable proof, against a local
+stub rather than the real provider: 6/6 — the override is accepted and named by
+`jev doctor`; a real routing decision is answered BY THE STUB; noul + choice +
+score all validate from it; the real provider credential is never forwarded (the
+stub sees JEV_PROXY_API_KEY on all 3 calls and TYPESAFE_API_KEY on none); a dead
+endpoint fails open (current model kept, exit 0); and plaintext to a non-loopback
+host is refused with invalid_endpoint.
+
+docs/design/jev-decision-layer.md records the verified shadow contract (shadow
+decides and logs but the middleware returns None; `on` swaps the model), the
+money caveat — the suggested pools route a MEDIUM coding turn to a model MORE
+expensive than our current cheap default, so turning routing on without reordering
+the pools would raise spend — and the boundary against our own judgment client.
+
+plugin_hook_probe.py drives the plugin's real `llm_request` middleware with
+HERMES_HOME repointed at a scratch dir, so it proves the behaviour without a
+gateway restart and without writing live state.

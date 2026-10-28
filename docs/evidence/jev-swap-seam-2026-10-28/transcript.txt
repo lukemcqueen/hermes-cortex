@@ -1,0 +1,21 @@
+== 1. doctor names the override ==
+  ok: override accepted
+== 2. a real decision is answered by the stub ==
+  ok: routed through the override
+== 3. typed noul + choice + score validate from that endpoint ==
+  ok: noul validated
+  ok: choice validated
+  ok: score validated
+== 4. the real provider credential does not travel ==
+  ok: POST /v1/systemone · model jev-latest · questions ['ok'] · types ['noul']
+  ok: POST /v1/systemone · model jev-latest · questions ['costly_mistake', 'difficulty', 'kind'] · types ['choice', 'noul', 'score']
+  ok: POST /v1/systemone · model jev-latest · questions ['correct', 'cost', 'owner'] · types ['choice', 'noul', 'score']
+  ok: the proxy key arrived on all 3 call(s)
+  ok: the real provider key was NOT forwarded on any call
+== 5. a dead endpoint fails open ==
+  ok: kept the current model
+  ok: exit 0 (nothing blocked)
+== 6. plaintext to a non-loopback host is refused ==
+  ok: refused with invalid_endpoint
+
+VERDICT: the decision model is swappable and the swap is safe (6/6)

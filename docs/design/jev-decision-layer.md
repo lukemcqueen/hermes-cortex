@@ -1,0 +1,108 @@
+# The Jev decision layer — install, shadow, and swapping the decision model
+
+Status: installed and verified on one host (esther, 2026-10-28). **Shadow only** — nothing
+switches a model yet. This is the reference for the fleet rollout.
+
+Upstream: `github.com/kerpopule/hermes-jev-skills` (MIT), 13 `SKILL.md` files + a Hermes plugin
+(`hermes-jev`) + a stdlib-only `jev` CLI. TypeSafe Jev is a *decision* model: you hand it a state
+and typed questions (`noul` yes/no, `choice`, `score`) and it returns calibrated answers. It never
+writes text.
+
+## Why this is worth having
+
+Our turns burn frontier tokens on things that are not thinking: which model a turn needs, which of
+~400 skills to load, which retrieved passages matter, which search results to open. Those are
+decisions, not prose.
+
+**Honest reading for this fleet:** our default model is already the cheap tier
+(`openrouter:deepseek/deepseek-v4.1-flash`, $0.0525/M blended). So routing mostly *keeps* what we
+have; the saving is **escalation discipline** (pay for hard work, not for everything) plus the
+non-model decisions — skill selection, memory filtering, search screening. Do not quote the
+marketing multiple on this host; measure it.
+
+## Install
+
+```bash
+git clone https://github.com/kerpopule/hermes-jev-skills ~/hermes-jev-skills
+python3 ~/hermes-jev-skills/install.py --check     # ALWAYS first: it changes nothing
+python3 ~/hermes-jev-skills/install.py
+jev doctor                                          # key present, Jev reachable, pools
+jev models suggest --write                           # create the routing pools
+```
+
+What it writes: plugins into `$HERMES_HOME/plugins/`, 13 skills into `$HERMES_HOME/skills/jev/`
+(symlinked into `~/.claude/skills` and `~/.agents/skills`), one script, a `jev` symlink in
+`~/.local/bin` and `$HERMES_HOME/bin`, and **two lines added to `$HERMES_HOME/config.yaml`** to
+enable the two plugins. It backs that file up first. Nothing else is touched — verify with
+`diff` against the backup it leaves, not by trusting the report. It creates no cron or systemd
+units. `install.py --uninstall` reverses it.
+
+It never reads, asks for, or prints the API key: `jev setup-key` is a separate private step.
+
+## Shadow first (this is the contract, verified)
+
+```text
+/jev                    status
+/jev routing shadow     decide and log, switch nothing   <- start here
+/jev routing on         switch models
+/jev notice on          show the one-line routing notice on routed replies
+```
+
+Verified by driving the plugin's own `llm_request` middleware (not by reading its docs):
+
+| mode | decision | outgoing model |
+|---|---|---|
+| `shadow` | `routed: true · medium · coding · kimi-k2.7-code · 178 ms` | **unchanged** (middleware returned `None`) |
+| `on` | same decision | **swapped** — `{"request": {"model": "moonshotai/kimi-k2.7-code", …}}` |
+| `off` | none | unchanged |
+
+Decisions are logged, without prompt text, to `$HERMES_HOME/logs/jev-decisions.jsonl` — that log is
+what you tune the pools from.
+
+**⚠️ Pool order is the money.** `jev models suggest --write` bands by price, and on this host a
+*medium coding* turn resolved to `moonshotai/kimi-k2.7-code` — a more expensive model than the
+default we already run. Turning `routing on` with the suggested pools would **raise** spend on
+medium turns. Edit `$HERMES_HOME/jev/routing.json` so the cheap model we already trust sits FIRST
+in the simple/medium pools (first fit wins), and leave escalation to the `hard` tier. Re-check
+after a day of shadow data, never from a hunch.
+
+## Swapping the decision model (steadfaste / self-hosted von)
+
+The decision model is **not** locked to TypeSafe. Three env vars move it, with no consumer-code
+change, because both speak the typed `/v1/systemone` wire format:
+
+```bash
+TYPESAFE_BASE_URL=https://<steadfaste-host>/jev   # or http://127.0.0.1:<port> for a local model
+TYPESAFE_MODEL=<model-id>                          # optional: which decision model answers
+JEV_PROXY_API_KEY=<that gateway's key>             # the ONLY credential an override may receive
+```
+
+Verified properties (see `docs/evidence/jev-swap-seam-2026-10-28/`, re-runnable):
+
+- **It works end to end.** With the override pointed at a local `/v1/systemone` stub, `jev route`,
+  `jev ask` (`noul` + `choice` + `score` all validated) and `jev doctor` all answered **from that
+  endpoint** — `doctor` names it as `endpoint_override`.
+- **The real provider key never travels.** The stub recorded `bearer_is_expected_proxy_key: true`
+  and `bearer_equals_env_typesafe_key: false`: the override receives `JEV_PROXY_API_KEY` only,
+  never `TYPESAFE_API_KEY`.
+- **Fail-open.** A dead endpoint leaves the turn on its current model (`routed: false`, reason
+  `Jev unavailable (network)`, exit 0) — never a blocked or failed turn.
+- **SSRF guard.** Plaintext to a non-loopback host is refused with
+  `invalid_endpoint: use https:// (or http:// on 127.0.0.1 or ::1)`; redirects are not followed.
+
+So "swap to a steadfaste model later" is a config change plus an endpoint that speaks the typed
+wire format. Nothing in our consumers changes.
+
+## Relationship to our own judgment client
+
+The fleet already has `ops/scripts/judgment.py` + `judgment-providers.yaml` with the same wire
+format and the same hot-swap premise (see the `judgment-integration` and `system-one-judgment`
+skills). The rule that keeps them from drifting: **fleet code keeps calling `judgment.py`**;
+`jev` is the agent-facing decision layer (model routing, skill selection, search screening) and
+its `jevkit` is not a second integration point for our scripts.
+
+## Fleet rollout (not done)
+
+One host is installed. A rollout needs the same three things on every host: the installer run,
+`jev models suggest --write`, and the gateway restarted before `/jev routing shadow`. Do it on
+this host first, with shadow data, then decide.
