@@ -3,10 +3,10 @@
 # runner: .hermes/tools/pytest-venv (the runtime interpreter has no pytest).
 # every line below is the command's own output, nothing retyped.
 
-## 1. /home/esther/.hermes/tools/pytest-venv/bin/python -m pytest tests/test_runtime/test_cron_cost_reporting.py
+## 1. $HOME/.hermes/tools/pytest-venv/bin/python -m pytest tests/test_runtime/test_cron_cost_reporting.py
 ============================= test session starts ==============================
 platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
-rootdir: /home/esther/hermes-cortex
+rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
 collected 22 items
 
@@ -18,7 +18,7 @@ PYTEST_RC=0
 ## 2. the pinned COVERAGE-contract test alone
 ============================= test session starts ==============================
 platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.7.0
-rootdir: /home/esther/hermes-cortex
+rootdir: $HOME/hermes-cortex
 configfile: pytest.ini
 collected 1 item
 
