@@ -263,14 +263,16 @@ def test_hard_routes_only_whitelisted_models():
     assert not offenders, f"hard routes models off the whitelist: {offenders}"
 
 
-def test_no_model_dearer_than_the_hard_ceiling_is_even_listed():
-    """'Keep the ridiculously expensive models out of our list completely.'"""
+def test_no_model_dearer_than_the_hard_cap_is_even_listed():
+    """'Keep the ridiculously expensive models out of our list completely.' The cap is an
+    absolute $/M so a cheaper baseline cannot move it. `rejected` is exempt: it records why
+    a dear model is NOT routed, price and all."""
     doc = _config()
-    base = _bl(doc, doc["baseline"])
-    ceiling = float(doc["policy"]["hard"]["max_multiple_of_baseline"])
-    offenders = [f"{m} ${_bl(doc, m):.3f}/M = {_bl(doc, m)/base:.1f}x"
-                 for m in doc["prices"] if _bl(doc, m) > base * ceiling]
-    assert not offenders, f"above the hard ceiling but still in the file: {offenders}"
+    cap = float(doc["policy"]["hard"]["max_price_usd_per_m"])
+    rejected = set(doc.get("rejected") or {})
+    offenders = [f"{m} ${_bl(doc, m):.3f}/M" for m in doc["prices"]
+                 if m not in rejected and _bl(doc, m) > cap]
+    assert not offenders, f"above the ${cap:.2f}/M hard cap but still in the file: {offenders}"
 
 
 def test_the_whitelist_head_is_deepseek_v4_pro_and_stays_affordable():
@@ -279,5 +281,28 @@ def test_the_whitelist_head_is_deepseek_v4_pro_and_stays_affordable():
     base = _bl(doc, doc["baseline"])
     head = doc["tiers"]["hard"]["coding"][0]
     assert head == "openrouter:deepseek/deepseek-v4-pro-0813"
-    assert _bl(doc, head) < base * 5, f"{head} is ${_bl(doc, head)/base:.2f}x - over budget"
+    cap = float(doc["policy"]["hard"]["max_price_usd_per_m"])
+    assert _bl(doc, head) <= cap, f"{head} is ${_bl(doc, head):.3f}/M - over the ${cap:.2f}/M cap"
     assert doc["hard_whitelist"][head]["ctx"] >= 200000
+
+
+def test_the_baseline_is_the_model_the_host_actually_runs():
+    """Luke 2026-10-28: the default model is deepseek-v4-flash-0731. The multipliers and the
+    doctor's cost guard are anchored to the baseline, so a baseline that is not the model we
+    run makes every 'x cheaper' claim compare against the wrong thing."""
+    doc = _config()
+    assert doc["baseline"] == "openrouter:deepseek/deepseek-v4-flash-0731"
+    assert doc["prices"][doc["baseline"]]["in"] + doc["prices"][doc["baseline"]]["out"] < 0.560
+
+
+def test_every_model_in_a_medium_pool_is_within_the_medium_ceiling():
+    """The medium ceiling is 1x: the fallback is allowed to BE the baseline, but nothing
+    dearer may sit in the pool. Caught for real when the baseline got cheaper and left the
+    old, dearer baseline stranded above the new ceiling."""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    ceiling = float(doc["policy"]["medium"]["max_multiple_of_baseline"])
+    offenders = [f"medium/{spec} -> {m} (${_bl(doc, m):.3f}/M = {_bl(doc, m)/base:.2f}x)"
+                 for spec, models in doc["tiers"]["medium"].items() for m in models
+                 if _bl(doc, m) > base * ceiling]
+    assert not offenders, f"above the medium ceiling ({ceiling:g}x): {offenders}"

@@ -241,7 +241,9 @@ def _selftest(doc: dict) -> int:
         failures.append(f"{model} is priced but neither routed nor named")
     if set(doc.get("candidates") or {}) & set(doc.get("rejected") or {}):
         failures.append("a model is both a candidate and rejected")
-    hard_ceiling = (policy.get("hard") or {}).get("max_multiple_of_baseline")
+    # The hard budget is an ABSOLUTE $/M cap: a multiple of the baseline silently changes
+    # meaning when the baseline gets cheaper, and would evict good models for no reason.
+    hard_cap = (policy.get("hard") or {}).get("max_price_usd_per_m")
     whitelist = set(doc.get("hard_whitelist") or {})
     if (policy.get("hard") or {}).get("whitelist_only"):
         if not whitelist:
@@ -250,12 +252,17 @@ def _selftest(doc: dict) -> int:
             for model in models:
                 if model not in whitelist:
                     failures.append(f"hard/{spec} routes {model}, which is not on the hard whitelist")
-    if hard_ceiling is not None and base_price:
+    if hard_cap is not None:
+        # `rejected` is exempt on purpose: it exists to record WHY a dear model is not
+        # routed, price and all. Everything else must be inside the budget.
         for model, entry in prices.items():
+            if model in (doc.get("rejected") or {}):
+                continue
             price = blended(entry)
-            if price > base_price * float(hard_ceiling):
-                failures.append(f"{model} is ${price:.3f}/M, above the hard ceiling, but is still "
-                                f"present in the list - expensive models must not be listed at all")
+            if price > float(hard_cap):
+                failures.append(f"{model} is ${price:.3f}/M, above the ${float(hard_cap):.2f}/M "
+                                f"hard cap, but is still present in the list - expensive models "
+                                f"must not be listed at all")
     expected_heads = {f"{t}/{s}" for t, specs in tiers.items() for s in specs}
     missing = expected_heads - set((doc.get("derivation") or {}).get("heads") or {})
     if missing:
@@ -269,7 +276,7 @@ def _selftest(doc: dict) -> int:
     print(f"SELFTEST PASSED — {len(tiers)} tiers, {len(routed)} routed model(s), "
           f"baseline ${base_price:.3f}/M, every non-hard head cheaper, every simple pool "
           f"within its ceiling, {len(whitelist)} model(s) on the hard whitelist and nothing "
-          f"dearer than {float(hard_ceiling or 0):g}x listed at all")
+          f"dearer than ${float(hard_cap or 0):.2f}/M listed at all")
     return RC_OK
 
 

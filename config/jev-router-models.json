@@ -1,7 +1,7 @@
 {
   "source": "models.dev, read through `jev models list` (cache: ~/.cache/jev/models_dev.json)",
   "captured": "2026-10-28",
-  "baseline": "openrouter:deepseek/deepseek-v4.1-flash",
+  "baseline": "openrouter:deepseek/deepseek-v4-flash-0731",
   "policy": {
     "simple": {
       "max_multiple_of_baseline": 0.5,
@@ -12,15 +12,15 @@
       "note": "leads BELOW the baseline (operator directive 2026-10-28, cycle 13902: always cheaper, except very complex work); the baseline stays in-pool as the fallback"
     },
     "hard": {
-      "max_multiple_of_baseline": 5.0,
+      "max_price_usd_per_m": 3.0,
       "whitelist_only": true,
-      "note": "the exception for very complex work, but BUDGET-CAPPED: only models on hard_whitelist may be routed, and nothing above the ceiling is even present in this file. The closed frontier seats (gemini-4-argon $12/M, gpt-5.3-codex $15.75/M, muse-wonder $24/M, claude-sonnet-5.5 $12/M, pareto-26.9 $10/M) were removed on Luke's directive 2026-10-28"
+      "note": "the exception for very complex work, but BUDGET-CAPPED at an absolute $3.00/M: only models on hard_whitelist may be routed, and nothing dearer than the cap is present in this file (the closed frontier seats - gemini-4-argon $12/M, gpt-5.3-codex $15.75/M, muse-wonder $24/M - were removed on Luke's directive 2026-10-28). Expressed absolutely, not as a multiple of the baseline, so a cheaper baseline cannot evict a good model."
     },
     "rejected": [
       "openrouter:moonshotai/kimi-k2.7-code"
     ],
     "rejected_reason": "6.54x the baseline ($3.660/M vs $0.560/M) for a medium coding turn; the suggested pool order put it first. Ratio computed from this file's prices.",
-    "rule": "Every pool must LEAD with a model cheaper than the baseline. Every model in a SIMPLE pool is cheaper than the baseline. A medium pool may carry the baseline as the in-pool fallback. `hard` may lead dearer - that is the exception for very complex work - but only from the hard whitelist and never above 5x the baseline."
+    "rule": "Every pool must LEAD with a model cheaper than the baseline. Every model in a SIMPLE pool is cheaper than the baseline. A medium pool may carry the baseline as the in-pool fallback. `hard` may lead dearer - that is the exception for very complex work - but only from the hard whitelist and never above $3.00/M."
   },
   "tiers": {
     "simple": {
@@ -43,23 +43,23 @@
     "medium": {
       "general": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash"
+        "openrouter:deepseek/deepseek-v4-flash-0731"
       ],
       "vision": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash"
+        "openrouter:deepseek/deepseek-v4-flash-0731"
       ],
       "coding": [
         "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
-        "openrouter:deepseek/deepseek-v4.1-flash"
+        "openrouter:deepseek/deepseek-v4-flash-0731"
       ],
       "writing": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash"
+        "openrouter:deepseek/deepseek-v4-flash-0731"
       ],
       "research": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash"
+        "openrouter:deepseek/deepseek-v4-flash-0731"
       ]
     },
     "hard": {
@@ -147,32 +147,41 @@
       "out": 1.4,
       "ctx": 1048576,
       "vision": false
+    },
+    "openrouter:deepseek/deepseek-v4-flash-0731": {
+      "in": 0.119,
+      "out": 0.238,
+      "ctx": 1048576,
+      "vision": false
     }
   },
-  "baseline_price_usd_per_m": 0.56,
+  "baseline_price_usd_per_m": 0.357,
   "derivation": {
     "basis": "blended $/M = catalog cost.input + cost.output, the SAME basis the doctor's cost guard uses; cache_read is carried but not counted",
-    "baseline": "openrouter:deepseek/deepseek-v4.1-flash = 0.14 in + 0.42 out = $0.560/M",
+    "baseline": "openrouter:deepseek/deepseek-v4-flash-0731 = 0.119 in + 0.238 out = $0.357/M",
     "source": "~/.cache/jev/models_dev.json (models.dev); the filtered extract this list was built from is committed at docs/evidence/jev-router-pools-2026-10-28/catalog-prices.json",
     "heads": {
-      "simple/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "simple/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "simple/coding": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "simple/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "simple/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "medium/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "medium/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "medium/coding": "openrouter:qwen/qwen3-coder-30b-a3b-instruct = 0.07 in + 0.28 out = $0.350/M = 0.62x baseline",
-      "medium/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "medium/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
-      "hard/general": "openrouter:deepseek/deepseek-v4-pro-0813 = 0.66 in + 1.98 out = $2.640/M = 4.71x baseline",
-      "hard/coding": "openrouter:deepseek/deepseek-v4-pro-0813 = 0.66 in + 1.98 out = $2.640/M = 4.71x baseline",
-      "hard/vision": "openrouter:minimax/minimax-m3 = 0.3 in + 1.2 out = $1.500/M = 2.68x baseline",
-      "hard/writing": "openrouter:z-ai/glm-5.3 = 0.0699 in + 1.4 out = $1.470/M = 2.62x baseline",
-      "hard/research": "openrouter:z-ai/glm-5.3 = 0.0699 in + 1.4 out = $1.470/M = 2.62x baseline"
-    }
+      "simple/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "simple/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "simple/coding": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "simple/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "simple/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "medium/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "medium/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "medium/coding": "openrouter:qwen/qwen3-coder-30b-a3b-instruct = 0.07 in + 0.28 out = $0.350/M = 0.98x baseline",
+      "medium/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "medium/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.45x baseline",
+      "hard/general": "openrouter:deepseek/deepseek-v4-pro-0813 = 0.66 in + 1.98 out = $2.640/M = 7.39x baseline",
+      "hard/coding": "openrouter:deepseek/deepseek-v4-pro-0813 = 0.66 in + 1.98 out = $2.640/M = 7.39x baseline",
+      "hard/vision": "openrouter:minimax/minimax-m3 = 0.3 in + 1.2 out = $1.500/M = 4.2x baseline",
+      "hard/writing": "openrouter:z-ai/glm-5.3 = 0.0699 in + 1.4 out = $1.470/M = 4.12x baseline",
+      "hard/research": "openrouter:z-ai/glm-5.3 = 0.0699 in + 1.4 out = $1.470/M = 4.12x baseline"
+    },
+    "baseline_change_note": "baseline moved from openrouter:deepseek/deepseek-v4.1-flash ($0.560/M) to openrouter:deepseek/deepseek-v4-flash-0731 ($0.357/M) on Luke's directive 2026-10-28, so the multipliers stay anchored to the model the host actually runs; the hard cap was re-expressed absolutely at the same time for that reason"
   },
-  "candidates": {},
+  "candidates": {
+    "openrouter:deepseek/deepseek-v4.1-flash": "priced only, NOT routed: within budget, promoted by a one-file edit"
+  },
   "rejected": {
     "openrouter:moonshotai/kimi-k2.7-code": {
       "price_usd_per_m": 3.66,

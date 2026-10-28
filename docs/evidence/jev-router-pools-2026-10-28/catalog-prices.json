@@ -3,6 +3,20 @@
   "capture_command": "python3 -c \"import json,pathlib; raw=json.loads(pathlib.Path('~/.cache/jev/models_dev.json').expanduser().read_text()); ...\"  # filtered extract of cost+limit for the ids this list prices",
   "source_file": "~/.cache/jev/models_dev.json (models.dev, via `jev models list`)",
   "models": {
+    "openrouter:deepseek/deepseek-v4-flash-0731": {
+      "cost": {
+        "input": 0.119,
+        "output": 0.238,
+        "cache_read": 0.0238
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 943718
+      },
+      "open_weights": true,
+      "reasoning": true,
+      "tool_call": true
+    },
     "openrouter:deepseek/deepseek-v4-pro-0813": {
       "cost": {
         "input": 0.66,
@@ -166,5 +180,7 @@
       "tool_call": true
     }
   },
-  "hard_whitelist_criteria": "open_weights AND reasoning AND tool_call AND limit.context >= 200000 AND blended <= 5x baseline; the closed frontier seats were removed from the list entirely"
+  "hard_whitelist_criteria": "open_weights AND reasoning AND tool_call AND limit.context >= 200000 AND blended <= 5x baseline; the closed frontier seats were removed from the list entirely",
+  "baseline": "openrouter:deepseek/deepseek-v4-flash-0731",
+  "hard_cap_usd_per_m": 3.0
 }
