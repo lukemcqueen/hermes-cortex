@@ -66,6 +66,38 @@ jev route --prompt "fix the failing test" --current "<provider>:<model>"   # one
 `routed: false` with `reason: low confidence …` is the documented fail-open, not a fault: Jev
 declines to gamble when it is unsure.
 
+## 3b. Monitoring shadow (what you actually read)
+
+Shadow switches nothing, so the log is the only evidence. Three surfaces:
+
+```bash
+python3 ops/scripts/manage/jev-shadow-report.py            # the summary + a verdict
+python3 ops/scripts/manage/jev-shadow-report.py --json     # machine-readable
+python3 ops/scripts/manage/jev-shadow-report.py --days 1
+jev dashboard                                              # live page, loopback
+```
+
+The report reads `$HERMES_HOME/logs/jev-decisions.jsonl` (decisions only, never prompt
+text) and prints rows, tiers, confidence distribution, `routed` vs `applied`, what it
+*would* have switched to with the price delta, and a verdict. **Read the verdict, not the
+counts:** a log full of `routed: false` on low confidence means the POOLS are not the
+lever — Jev is not recognising those turns as asks, so moving models between pools
+changes nothing and the fix is what the turn shows it. Measured on this host's first two
+decisions: median confidence **0.075**, nothing would have switched.
+
+For the money side, price the same tokens against a cheaper model — note that a `$0.00`
+"actual" means unknown billing, not free, so read the *comparison* line:
+
+```bash
+jev spend --hermes-db "$HERMES_HOME/state.db" --compare openrouter:qwen/qwen3.7-flash
+# 7 days, 49M tokens: $8.63 on our default vs $2.10 on qwen3.7-flash — the UPPER bound
+# of a routing saving, since only the simple turns would move down.
+```
+
+`jev replay <turns.jsonl> --current <model>` prices logged turns through the policy, but
+it needs a `prompt` field per turn and our decision log deliberately carries none — so
+replay needs a separate turn export, not this log.
+
 ## 4. The cost rule (the reason the check exists)
 
 Pools are **first fit wins**, so the ORDER is the money. `jev models suggest --write` bands by
