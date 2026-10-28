@@ -553,7 +553,8 @@ def _injected_session_id(args: dict | None) -> str:
     """The per-call session id the ENFORCER injected, or "" when absent.
 
     Its presence is ALSO the "this caller is Hermes" signal: the enforcer injects
-    on every mcp__loop_governance__* call (see ``get_session_id`` Priority 0), so
+    on every mcp__loop_governance__* / mcp__review__* call (see ``get_session_id``
+    Priority 0; the review-gateway server was renamed to `review` 2026-10-28), so
     a caller without it is a non-Hermes harness or the CLI.
     """
     if not isinstance(args, dict):

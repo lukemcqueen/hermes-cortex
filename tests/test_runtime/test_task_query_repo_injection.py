@@ -75,6 +75,23 @@ def test_unobserved_repo_is_never_invented(monkeypatch):
     assert args == {"session_id": _SESSION}
 
 
+def test_review_server_injection_after_rename(monkeypatch):
+    """The review-gateway MCP server was renamed loop-governance -> review (Luke
+    2026-10-28), and the enforcer is the ONLY component that knows the session's
+    id and repo. If it does not stamp mcp__review__* calls, the server derives a
+    fallback id, the lock name diverges from the enforcer's view, and EVERY
+    write-class tool deadlocks with GOVERNANCE LOCK REQUIRED even after a fresh
+    begin_change — measured on esther the minute the rename landed."""
+    _patch_repo(monkeypatch, _OBSERVED)
+    for tool in ("mcp__review__begin_change", "mcp__review__end_change",
+                 "mcp__review__cycle_query", "mcp__review__cache_search"):
+        args = {}
+        _enforcer._inject_session_context(_SESSION, tool, args)
+        assert args["session_id"] == _SESSION, tool
+        assert args["repo_path"] == str(_OBSERVED), tool
+        assert args["repo_slug"] == "steadfaste", tool
+
+
 def test_legacy_slug_hint_travels_when_no_path_was_observed(monkeypatch):
     _patch_repo(monkeypatch, None, legacy="steadfaste")
     args = {}

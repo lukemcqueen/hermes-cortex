@@ -1124,7 +1124,7 @@ def _inject_session_context(session_id: str, tool_name: str, args: Dict[str, Any
     if not isinstance(args, dict):
         return
     args["session_id"] = session_id
-    if tool_name.startswith(("mcp__loop_governance__", "mcp__tasks__")):
+    if tool_name.startswith(("mcp__loop_governance__", "mcp__review__", "mcp__tasks__")):
         repo = _session_repo_path(session_id)
         if repo is not None:
             # Absolute path AND the name: the MCP resolves the repo from the
@@ -2890,7 +2890,7 @@ def register(ctx):
                 # tool_name is passed so the hint can tell a call that WORKS in a repo
                 # (a write, or an explicit workdir) from one that merely reads it.
                 _note_session_repo(hermes_session_id, args, tool_name)
-                if tool_name.startswith("mcp__loop_governance__"):
+                if tool_name.startswith(("mcp__loop_governance__", "mcp__review__")):
                     _inject_session_context(hermes_session_id, tool_name, args)
 
             # ── Track skill_view calls ──
