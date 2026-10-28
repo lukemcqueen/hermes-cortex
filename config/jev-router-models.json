@@ -5,11 +5,11 @@
   "policy": {
     "simple": {
       "max_multiple_of_baseline": 0.5,
-      "note": "ALWAYS cheaper than the baseline, every model in the pool, not just the head; ceiling 0.5x, enforced by tests/test_jev_router_pools.py"
+      "note": "ALWAYS cheaper than the baseline, every model in the pool, not just the head; ceiling 0.5x, asserted for every simple pool by tests/test_jev_router_pools.py"
     },
     "medium": {
       "max_multiple_of_baseline": 1.0,
-      "note": "leads BELOW the baseline (Luke: always cheaper, except very complex work); the baseline stays in-pool as the fallback"
+      "note": "leads BELOW the baseline (operator directive 2026-10-28, cycle 13902: always cheaper, except very complex work); the baseline stays in-pool as the fallback"
     },
     "hard": {
       "max_multiple_of_baseline": null,
@@ -18,7 +18,7 @@
     "rejected": [
       "openrouter:moonshotai/kimi-k2.7-code"
     ],
-    "rejected_reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first",
+    "rejected_reason": "6.54x the baseline ($3.660/M vs $0.560/M) for a medium coding turn; the suggested pool order put it first. Ratio computed from this file's prices.",
     "rule": "Every pool must LEAD with a model cheaper than the baseline. Every model in a SIMPLE pool is cheaper than the baseline. A medium pool may carry the baseline itself as the in-pool fallback. Only `hard` may lead dearer - that is the exception for very complex work."
   },
   "tiers": {
@@ -410,7 +410,8 @@
   "rejected": {
     "openrouter:moonshotai/kimi-k2.7-code": {
       "price_usd_per_m": 3.66,
-      "reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first"
+      "reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first",
+      "ratio_of_baseline": 6.54
     }
   }
 }
