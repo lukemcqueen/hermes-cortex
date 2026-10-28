@@ -13,7 +13,7 @@ verdicts are unit-testable without a live host. The CLI reads a real config.
 USAGE
   python3 mcp-wiring.py --config ~/.hermes/config.yaml            # report
   python3 mcp-wiring.py --config ~/.hermes/config.yaml --json     # last line is JSON
-  python3 mcp-wiring.py --config ... --expected loop-governance,tasks
+  python3 mcp-wiring.py --config ... --expected review,tasks
 
 EXIT
   0 every expected server is present AND its paths exist
@@ -37,7 +37,7 @@ from pathlib import Path
 #: path is built by repo_rel_script() wherever one is printed.
 DEFAULT_EXPECTED = {
     "agent-bus": "cortex-bus-mcp.py",
-    "loop-governance": "loop-gov-mcp.py",
+    "review": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
     "executor": "executor-mcp.py",
 }
