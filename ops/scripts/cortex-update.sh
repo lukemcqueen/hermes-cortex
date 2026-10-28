@@ -1004,6 +1004,10 @@ register "ops/scripts/manage/remove-cron-jobs.py"      "${CORTEX_DEPLOY_HOME}/sc
 # allowlist omits `skills`, so gate 1 blocks its writes forever. Deployed to
 # scripts/manage/ so any host can run it locally — and dispatch it over the bus.
 register "ops/scripts/manage/fix-cron-skills-toolset.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/fix-cron-skills-toolset.py"
+# Installs/upgrades the optional Jev decision layer on a host (pinned upstream
+# revision, cost-ordered routing pools, verified with `jev doctor`). Idempotent:
+# re-running it IS the upgrade path. WARNs rather than installs by itself.
+register "ops/scripts/manage/install-jev-layer.sh" "${CORTEX_DEPLOY_HOME}/scripts/manage/install-jev-layer.sh"
 register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
 register "ops/scripts/manage/cron-cost-metrics.py"      "${CORTEX_DEPLOY_HOME}/scripts/cron-cost-metrics.py"
 register "ops/scripts/manage/orch-weekly-cost-report.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-cost-report.py"
