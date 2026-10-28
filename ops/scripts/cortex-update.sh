@@ -1013,6 +1013,7 @@ register "ops/scripts/manage/fix-cron-skills-toolset.py" "${CORTEX_DEPLOY_HOME}/
 # re-running it IS the upgrade path. WARNs rather than installs by itself.
 register "ops/scripts/manage/install-jev-layer.sh" "${CORTEX_DEPLOY_HOME}/scripts/manage/install-jev-layer.sh"
 register "ops/scripts/manage/jev-shadow-report.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/jev-shadow-report.py"
+register "config/jev-router-models.json"             "${CORTEX_DEPLOY_HOME}/config/jev-router-models.json"
 register "ops/scripts/manage/agent-push-metrics.sh"     "${CORTEX_DEPLOY_HOME}/scripts/agent-push-metrics.sh"
 register "ops/scripts/manage/cron-cost-metrics.py"      "${CORTEX_DEPLOY_HOME}/scripts/cron-cost-metrics.py"
 register "ops/scripts/manage/orch-weekly-cost-report.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-weekly-cost-report.py"

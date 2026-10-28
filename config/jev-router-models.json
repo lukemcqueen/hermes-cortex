@@ -1,0 +1,392 @@
+{
+  "source": "models.dev, read through `jev models list` (cache: ~/.cache/jev/models_dev.json)",
+  "captured": "2026-10-28",
+  "baseline": "openrouter:deepseek/deepseek-v4.1-flash",
+  "policy": {
+    "simple": {
+      "max_multiple_of_baseline": 1.0,
+      "note": "the cheap tier may lead with anything at or below the baseline price"
+    },
+    "medium": {
+      "max_multiple_of_baseline": 1.0,
+      "note": "never dearer than what we already run; escalation belongs in hard"
+    },
+    "hard": {
+      "max_multiple_of_baseline": null,
+      "note": "deliberate escalation - a dearer head here is the POINT, not a mistake"
+    },
+    "rejected": [
+      "openrouter:moonshotai/kimi-k2.7-code"
+    ],
+    "rejected_reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first"
+  },
+  "tiers": {
+    "simple": {
+      "general": [
+        "openrouter:qwen/qwen3.7-flash",
+        "deepseek:deepseek-flash",
+        "openrouter:deepseek/deepseek-v4.1-flash-1017",
+        "openrouter:nvidia/nemotron-3.5-super-vl",
+        "openrouter:liquid/lfm-2.5-24b-a2b",
+        "openrouter:anthropic/claude-haiku-5.5",
+        "openrouter:inclusionai/ling-3.1-flash"
+      ],
+      "vision": [
+        "openrouter:qwen/qwen3.7-flash",
+        "deepseek:deepseek-flash",
+        "openrouter:deepseek/deepseek-v4.1-flash-1017",
+        "openrouter:nvidia/nemotron-3.5-super-vl",
+        "openrouter:anthropic/claude-haiku-5.5",
+        "openrouter:perceptron/perceptron-mk1.5",
+        "openrouter:xiaomi/mimo-v2.6-flash"
+      ],
+      "coding": [
+        "openrouter:qwen/qwen3.7-flash",
+        "openrouter:qwen/qwen3-coder-next",
+        "openrouter:mistralai/codestral-2508",
+        "openrouter:qwen/qwen3-coder-flash",
+        "openrouter:qwen/qwen3-coder",
+        "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+        "deepseek:deepseek-flash"
+      ],
+      "writing": [
+        "openrouter:qwen/qwen3.7-flash",
+        "deepseek:deepseek-flash",
+        "openrouter:deepseek/deepseek-v4.1-flash-1017",
+        "openrouter:nvidia/nemotron-3.5-super-vl",
+        "openrouter:liquid/lfm-2.5-24b-a2b",
+        "openrouter:anthropic/claude-haiku-5.5",
+        "openrouter:inclusionai/ling-3.1-flash"
+      ],
+      "research": [
+        "openrouter:qwen/qwen3.7-flash",
+        "deepseek:deepseek-flash",
+        "openrouter:deepseek/deepseek-v4.1-flash-1017",
+        "openrouter:nvidia/nemotron-3.5-super-vl",
+        "openrouter:liquid/lfm-2.5-24b-a2b",
+        "openrouter:anthropic/claude-haiku-5.5",
+        "openrouter:inclusionai/ling-3.1-flash"
+      ]
+    },
+    "medium": {
+      "general": [
+        "openrouter:deepseek/deepseek-v4.1-flash",
+        "openrouter:elorian/glimpse",
+        "openrouter:reflection/beam-1.0-501b-a23b",
+        "openrouter:unbiased/pareto-26.10",
+        "openrouter:meta/muse-spark-open",
+        "openrouter:mistralai/mistral-large-4-0",
+        "openrouter:google/gemini-nano-banana-2.1"
+      ],
+      "vision": [
+        "openrouter:deepseek/deepseek-v4.1-flash",
+        "openrouter:elorian/glimpse",
+        "openrouter:unbiased/pareto-26.10",
+        "openrouter:meta/muse-spark-open",
+        "openrouter:mistralai/mistral-large-4-0",
+        "openrouter:google/gemini-nano-banana-2.1",
+        "openrouter:x-ai/grok-4.7"
+      ],
+      "coding": [
+        "openrouter:deepseek/deepseek-v4.1-flash",
+        "openrouter:bytedance-seed/seed-2.0-code",
+        "openrouter:mistralai/devstral-2512",
+        "openrouter:openai/gpt-5.1-codex-mini",
+        "openrouter:openai/gpt-5.1-codex",
+        "openrouter:openai/gpt-5.1-codex-max"
+      ],
+      "writing": [
+        "openrouter:deepseek/deepseek-v4.1-flash",
+        "openrouter:elorian/glimpse",
+        "openrouter:reflection/beam-1.0-501b-a23b",
+        "openrouter:unbiased/pareto-26.10",
+        "openrouter:meta/muse-spark-open",
+        "openrouter:mistralai/mistral-large-4-0",
+        "openrouter:google/gemini-nano-banana-2.1"
+      ],
+      "research": [
+        "openrouter:deepseek/deepseek-v4.1-flash",
+        "openrouter:x-ai/grok-4.7",
+        "openrouter:x-ai/grok-4.6",
+        "openrouter:x-ai/grok-4.5",
+        "openrouter:x-ai/grok-4.3",
+        "openrouter:x-ai/grok-build-0.1",
+        "openrouter:x-ai/grok-4.20"
+      ]
+    },
+    "hard": {
+      "general": [
+        "openrouter:unbiased/pareto-26.9",
+        "openrouter:google/gemini-4-argon",
+        "openrouter:meta/muse-wonder",
+        "openrouter:openai/gpt-6.1-sol",
+        "openrouter:openai/gpt-6.1-sol-pro",
+        "openrouter:anthropic/claude-sonnet-5.5"
+      ],
+      "vision": [
+        "openrouter:unbiased/pareto-26.9",
+        "openrouter:google/gemini-4-argon",
+        "openrouter:meta/muse-wonder",
+        "openrouter:openai/gpt-6.1-sol",
+        "openrouter:openai/gpt-6.1-sol-pro",
+        "openrouter:anthropic/claude-sonnet-5.5"
+      ],
+      "coding": [
+        "openrouter:openai/gpt-5.3-codex",
+        "openrouter:openai/gpt-5.2-codex",
+        "openrouter:unbiased/pareto-26.9",
+        "openrouter:google/gemini-4-argon",
+        "openrouter:meta/muse-wonder",
+        "openrouter:openai/gpt-6.1-sol"
+      ],
+      "writing": [
+        "openrouter:unbiased/pareto-26.9",
+        "openrouter:google/gemini-4-argon",
+        "openrouter:meta/muse-wonder",
+        "openrouter:openai/gpt-6.1-sol",
+        "openrouter:openai/gpt-6.1-sol-pro",
+        "openrouter:anthropic/claude-sonnet-5.5"
+      ],
+      "research": [
+        "openrouter:unbiased/pareto-26.9",
+        "openrouter:google/gemini-4-argon",
+        "openrouter:meta/muse-wonder",
+        "openrouter:openai/gpt-6.1-sol",
+        "openrouter:openai/gpt-6.1-sol-pro",
+        "openrouter:anthropic/claude-sonnet-5.5"
+      ]
+    }
+  },
+  "prices": {
+    "deepseek:deepseek-flash": {
+      "in": 0.15,
+      "out": 0.6,
+      "cache_read": 0.003
+    },
+    "openrouter:anthropic/claude-haiku-5.5": {
+      "in": 0.1,
+      "out": 0.5,
+      "cache_read": 0.01
+    },
+    "openrouter:anthropic/claude-sonnet-5.5": {
+      "in": 2.0,
+      "out": 10.0,
+      "cache_read": 0.1
+    },
+    "openrouter:bytedance-seed/seed-2.0-code": {
+      "in": 0.5,
+      "out": 3.0,
+      "cache_read": 0.0
+    },
+    "openrouter:deepseek/deepseek-v4.1-flash": {
+      "in": 0.14,
+      "out": 0.42,
+      "cache_read": 0.0042
+    },
+    "openrouter:deepseek/deepseek-v4.1-flash-1017": {
+      "in": 0.15,
+      "out": 0.6,
+      "cache_read": 0.003
+    },
+    "openrouter:elorian/glimpse": {
+      "in": 0.6,
+      "out": 3.0,
+      "cache_read": 0.06
+    },
+    "openrouter:google/gemini-4-argon": {
+      "in": 2.0,
+      "out": 10.0,
+      "cache_read": 0.1
+    },
+    "openrouter:google/gemini-nano-banana-2.1": {
+      "in": 1.5,
+      "out": 7.5,
+      "cache_read": 0.0
+    },
+    "openrouter:inclusionai/ling-3.1-flash": {
+      "in": 0.075,
+      "out": 0.225,
+      "cache_read": 0.015
+    },
+    "openrouter:liquid/lfm-2.5-24b-a2b": {
+      "in": 0.05,
+      "out": 0.7,
+      "cache_read": 0.025
+    },
+    "openrouter:meta/muse-spark-open": {
+      "in": 1.25,
+      "out": 4.25,
+      "cache_read": 0.15
+    },
+    "openrouter:meta/muse-wonder": {
+      "in": 4.0,
+      "out": 20.0,
+      "cache_read": 0.2
+    },
+    "openrouter:mistralai/codestral-2508": {
+      "in": 0.3,
+      "out": 0.9,
+      "cache_read": 0.03
+    },
+    "openrouter:mistralai/devstral-2512": {
+      "in": 0.4,
+      "out": 2.0,
+      "cache_read": 0.04
+    },
+    "openrouter:mistralai/mistral-large-4-0": {
+      "in": 1.36,
+      "out": 4.18,
+      "cache_read": 0.14
+    },
+    "openrouter:nvidia/nemotron-3.5-super-vl": {
+      "in": 0.15,
+      "out": 0.5,
+      "cache_read": 0.02
+    },
+    "openrouter:openai/gpt-5.1-codex": {
+      "in": 1.25,
+      "out": 10.0,
+      "cache_read": 0.13
+    },
+    "openrouter:openai/gpt-5.1-codex-max": {
+      "in": 1.25,
+      "out": 10.0,
+      "cache_read": 0.125
+    },
+    "openrouter:openai/gpt-5.1-codex-mini": {
+      "in": 0.25,
+      "out": 2.0,
+      "cache_read": 0.03
+    },
+    "openrouter:openai/gpt-5.2-codex": {
+      "in": 1.75,
+      "out": 14.0,
+      "cache_read": 0.175
+    },
+    "openrouter:openai/gpt-5.3-codex": {
+      "in": 1.75,
+      "out": 14.0,
+      "cache_read": 0.175
+    },
+    "openrouter:openai/gpt-6.1-sol": {
+      "in": 2.0,
+      "out": 10.0,
+      "cache_read": 0.1
+    },
+    "openrouter:openai/gpt-6.1-sol-pro": {
+      "in": 2.0,
+      "out": 10.0,
+      "cache_read": 0.1
+    },
+    "openrouter:perceptron/perceptron-mk1.5": {
+      "in": 0.15,
+      "out": 1.5,
+      "cache_read": 0.0
+    },
+    "openrouter:qwen/qwen3-coder": {
+      "in": 0.3,
+      "out": 1.0,
+      "cache_read": 0.1
+    },
+    "openrouter:qwen/qwen3-coder-30b-a3b-instruct": {
+      "in": 0.07,
+      "out": 0.28,
+      "cache_read": 0.0
+    },
+    "openrouter:qwen/qwen3-coder-flash": {
+      "in": 0.195,
+      "out": 0.975,
+      "cache_read": 0.039
+    },
+    "openrouter:qwen/qwen3-coder-next": {
+      "in": 0.12,
+      "out": 0.8,
+      "cache_read": 0.07
+    },
+    "openrouter:qwen/qwen3.7-flash": {
+      "in": 0.03,
+      "out": 0.13,
+      "cache_read": 0.006
+    },
+    "openrouter:reflection/beam-1.0-501b-a23b": {
+      "in": 0.25,
+      "out": 1.0,
+      "cache_read": 0.05
+    },
+    "openrouter:unbiased/pareto-26.10": {
+      "in": 0.8,
+      "out": 3.2,
+      "cache_read": 0.03
+    },
+    "openrouter:unbiased/pareto-26.9": {
+      "in": 2.5,
+      "out": 7.5,
+      "cache_read": 0.25
+    },
+    "openrouter:x-ai/grok-4.20": {
+      "in": 1.25,
+      "out": 2.5,
+      "cache_read": 0.2
+    },
+    "openrouter:x-ai/grok-4.3": {
+      "in": 1.25,
+      "out": 2.5,
+      "cache_read": 0.2
+    },
+    "openrouter:x-ai/grok-4.5": {
+      "in": 2.0,
+      "out": 6.0,
+      "cache_read": 0.3
+    },
+    "openrouter:x-ai/grok-4.6": {
+      "in": 2.0,
+      "out": 6.0,
+      "cache_read": 0.5
+    },
+    "openrouter:x-ai/grok-4.7": {
+      "in": 2.0,
+      "out": 6.0,
+      "cache_read": 0.5
+    },
+    "openrouter:x-ai/grok-build-0.1": {
+      "in": 1.0,
+      "out": 2.0,
+      "cache_read": 0.2
+    },
+    "openrouter:xiaomi/mimo-v2.6-flash": {
+      "in": 0.14,
+      "out": 0.28,
+      "cache_read": 0.0028
+    },
+    "openrouter:meta-llama/llama-3.1-8b-instruct": {
+      "in": 0.02,
+      "out": 0.04,
+      "cache_read": 0.0
+    },
+    "openrouter:mistralai/mistral-nemo": {
+      "in": 0.029,
+      "out": 0.03,
+      "cache_read": 0.0
+    },
+    "openrouter:inclusionai/ling-3.0-flash": {
+      "in": 0.021,
+      "out": 0.063,
+      "cache_read": 0.0042
+    },
+    "openrouter:openai/gpt-oss-20b": {
+      "in": 0.018,
+      "out": 0.09,
+      "cache_read": 0.009
+    },
+    "openrouter:z-ai/glm-5.3-flash": {
+      "in": 0.0462,
+      "out": 0.0737,
+      "cache_read": 0.03
+    },
+    "openrouter:moonshotai/kimi-k2.7-code": {
+      "in": 0.56,
+      "out": 3.1,
+      "cache_read": 0.15
+    }
+  }
+}
