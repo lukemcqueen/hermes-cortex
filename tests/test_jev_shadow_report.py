@@ -153,3 +153,19 @@ def test_confidence_is_read_from_the_reason_when_the_field_is_null(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["confidence"]["n"] == 2, payload["confidence"]
     assert payload["confidence"]["median"] == pytest.approx(0.21)
+
+
+def test_the_verdict_says_switched_when_routing_is_live(tmp_path):
+    """With routing `on` the same rows are real switches, not a rehearsal — a report
+    that still says 'would have switched' misleads the person auditing spend."""
+    path = _log(tmp_path, [
+        {"ts": NOW - 60, "kind": "route", "mode": "on", "routed": True,
+         "model": "openrouter:qwen/qwen3.7-flash", "reason": "simple coding", "confidence": 0.9},
+        {"ts": NOW - 30, "kind": "route_effective", "mode": "on", "applied": True,
+         "reason": "simple coding"},
+    ])
+
+    result = _run(path)
+
+    assert "1 of 1 decision(s) SWITCHED" in result.stdout, result.stdout
+    assert "actually applied: 1" in result.stdout

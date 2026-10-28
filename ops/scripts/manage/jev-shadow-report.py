@@ -145,11 +145,13 @@ def verdict(summary: dict, prices=None, price_for=None) -> str:
         return ("no routing decisions logged yet — the plugin logs one per fresh turn; "
                 "if this stays empty, the plugin is not loaded or routing is off")
     if not summary["routed_true"]:
-        return (f"{summary['route_rows']} decision(s), none would have switched "
+        return (f"{summary['route_rows']} decision(s), none switched or would switch "
                 f"(median confidence {summary['confidence']['median']}) — the POOLS are not "
                 f"the lever here: Jev is not recognising these turns as asks. Fix what the "
                 f"turn shows it, not the model prices.")
-    lines = [f"{summary['routed_true']} of {summary['route_rows']} decision(s) would have switched:"]
+    live = "on" in (summary.get("modes") or [])
+    verb = "SWITCHED" if live else "would have switched"
+    lines = [f"{summary['routed_true']} of {summary['route_rows']} decision(s) {verb}:"]
     for model, count in summary["would_switch_to"].items():
         delta = ""
         if prices is not None and price_for is not None:

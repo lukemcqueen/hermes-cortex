@@ -4,21 +4,22 @@
   "baseline": "openrouter:deepseek/deepseek-v4.1-flash",
   "policy": {
     "simple": {
-      "max_multiple_of_baseline": 1.0,
-      "note": "the cheap tier may lead with anything at or below the baseline price"
+      "max_multiple_of_baseline": 0.5,
+      "note": "ALWAYS cheaper than the baseline; 0.5x is the ceiling, the head is 0.29x"
     },
     "medium": {
       "max_multiple_of_baseline": 1.0,
-      "note": "never dearer than what we already run; escalation belongs in hard"
+      "note": "leads BELOW the baseline (Luke: always cheaper, except very complex work); the baseline stays in-pool as the fallback"
     },
     "hard": {
       "max_multiple_of_baseline": null,
-      "note": "deliberate escalation - a dearer head here is the POINT, not a mistake"
+      "note": "the exception: very complex work escalates, and a dearer head here is the point"
     },
     "rejected": [
       "openrouter:moonshotai/kimi-k2.7-code"
     ],
-    "rejected_reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first"
+    "rejected_reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first",
+    "rule": "Every simple and medium pool must lead with a model CHEAPER than the baseline. Only `hard` may lead dearer."
   },
   "tiers": {
     "simple": {
@@ -70,6 +71,7 @@
     },
     "medium": {
       "general": [
+        "openrouter:qwen/qwen3.7-flash",
         "openrouter:deepseek/deepseek-v4.1-flash",
         "openrouter:elorian/glimpse",
         "openrouter:reflection/beam-1.0-501b-a23b",
@@ -79,6 +81,7 @@
         "openrouter:google/gemini-nano-banana-2.1"
       ],
       "vision": [
+        "openrouter:qwen/qwen3.7-flash",
         "openrouter:deepseek/deepseek-v4.1-flash",
         "openrouter:elorian/glimpse",
         "openrouter:unbiased/pareto-26.10",
@@ -88,6 +91,7 @@
         "openrouter:x-ai/grok-4.7"
       ],
       "coding": [
+        "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
         "openrouter:deepseek/deepseek-v4.1-flash",
         "openrouter:bytedance-seed/seed-2.0-code",
         "openrouter:mistralai/devstral-2512",
@@ -96,6 +100,7 @@
         "openrouter:openai/gpt-5.1-codex-max"
       ],
       "writing": [
+        "openrouter:qwen/qwen3.7-flash",
         "openrouter:deepseek/deepseek-v4.1-flash",
         "openrouter:elorian/glimpse",
         "openrouter:reflection/beam-1.0-501b-a23b",
@@ -105,6 +110,7 @@
         "openrouter:google/gemini-nano-banana-2.1"
       ],
       "research": [
+        "openrouter:qwen/qwen3.7-flash",
         "openrouter:deepseek/deepseek-v4.1-flash",
         "openrouter:x-ai/grok-4.7",
         "openrouter:x-ai/grok-4.6",
