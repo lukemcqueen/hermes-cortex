@@ -241,6 +241,21 @@ def _selftest(doc: dict) -> int:
         failures.append(f"{model} is priced but neither routed nor named")
     if set(doc.get("candidates") or {}) & set(doc.get("rejected") or {}):
         failures.append("a model is both a candidate and rejected")
+    hard_ceiling = (policy.get("hard") or {}).get("max_multiple_of_baseline")
+    whitelist = set(doc.get("hard_whitelist") or {})
+    if (policy.get("hard") or {}).get("whitelist_only"):
+        if not whitelist:
+            failures.append("hard is whitelist_only but hard_whitelist is empty")
+        for spec, models in (tiers.get("hard") or {}).items():
+            for model in models:
+                if model not in whitelist:
+                    failures.append(f"hard/{spec} routes {model}, which is not on the hard whitelist")
+    if hard_ceiling is not None and base_price:
+        for model, entry in prices.items():
+            price = blended(entry)
+            if price > base_price * float(hard_ceiling):
+                failures.append(f"{model} is ${price:.3f}/M, above the hard ceiling, but is still "
+                                f"present in the list - expensive models must not be listed at all")
     expected_heads = {f"{t}/{s}" for t, specs in tiers.items() for s in specs}
     missing = expected_heads - set((doc.get("derivation") or {}).get("heads") or {})
     if missing:
@@ -253,7 +268,8 @@ def _selftest(doc: dict) -> int:
         return RC_FINDINGS
     print(f"SELFTEST PASSED — {len(tiers)} tiers, {len(routed)} routed model(s), "
           f"baseline ${base_price:.3f}/M, every non-hard head cheaper, every simple pool "
-          f"within its ceiling")
+          f"within its ceiling, {len(whitelist)} model(s) on the hard whitelist and nothing "
+          f"dearer than {float(hard_ceiling or 0):g}x listed at all")
     return RC_OK
 
 

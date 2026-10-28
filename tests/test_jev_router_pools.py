@@ -249,3 +249,35 @@ def test_simple_pools_respect_their_own_ceiling():
                  for spec, models in doc["tiers"]["simple"].items() for m in models
                  if _bl(doc, m) > base * ceiling]
     assert not offenders, f"above the simple ceiling ({ceiling:g}x): {offenders}"
+
+
+def test_hard_routes_only_whitelisted_models():
+    """Luke 2026-10-28: the hard tier is the exception for complex work, not a licence to
+    spend 28x. Only models that fit the budget may be routed there."""
+    doc = _config()
+    assert doc["policy"]["hard"]["whitelist_only"] is True
+    wl = set(doc["hard_whitelist"])
+    assert wl, "the whitelist is the control; it cannot be empty"
+    offenders = [f"hard/{spec} -> {m}" for spec, models in doc["tiers"]["hard"].items()
+                 for m in models if m not in wl]
+    assert not offenders, f"hard routes models off the whitelist: {offenders}"
+
+
+def test_no_model_dearer_than_the_hard_ceiling_is_even_listed():
+    """'Keep the ridiculously expensive models out of our list completely.'"""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    ceiling = float(doc["policy"]["hard"]["max_multiple_of_baseline"])
+    offenders = [f"{m} ${_bl(doc, m):.3f}/M = {_bl(doc, m)/base:.1f}x"
+                 for m in doc["prices"] if _bl(doc, m) > base * ceiling]
+    assert not offenders, f"above the hard ceiling but still in the file: {offenders}"
+
+
+def test_the_whitelist_head_is_deepseek_v4_pro_and_stays_affordable():
+    """Luke's pick, and the reason it qualifies: cheapest pro seat, 1048k ctx."""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    head = doc["tiers"]["hard"]["coding"][0]
+    assert head == "openrouter:deepseek/deepseek-v4-pro-0813"
+    assert _bl(doc, head) < base * 5, f"{head} is ${_bl(doc, head)/base:.2f}x - over budget"
+    assert doc["hard_whitelist"][head]["ctx"] >= 200000
