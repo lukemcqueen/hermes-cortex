@@ -97,7 +97,12 @@ refused off loopback — all four properties are re-checkable with
 
 ## 6. Do not
 
-- Do not hand-write `$HERMES_HOME/jev/state.json` to flip a switch — use `/jev`.
+- Prefer `/jev routing shadow` in a session: it validates the word list and writes the shared
+  state file. There is **no CLI for the routing switch** — `jev switches` covers the FEATURES
+  (gate, lanes, retry, vision…) and deliberately excludes routing — so a host with no
+  interactive session writes `$HERMES_HOME/jev/state.json` as exactly `{"routing": "shadow"}`:
+  the same file, key and value the command writes. Never invent other keys, and re-read it
+  with `_setting('routing', 'off')` to confirm the plugin sees it before trusting it.
 - Do not enable `routing on` before a day of shadow data, and never with a pool whose head is
   dearer than the model you run.
 - Do not copy another host's `routing.json` blind: pools are built from the models **that host**
