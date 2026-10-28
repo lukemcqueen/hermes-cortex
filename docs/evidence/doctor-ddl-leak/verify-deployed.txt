@@ -1,0 +1,43 @@
+# [72b2c69b] the doctor REPORTS the tasks schema; it does not apply it.
+# captured-at: 2026-10-28T20:38:21+09:00
+# repo HEAD: 82b9c0cd
+# doctor under test (DEPLOYED): /home/esther/.hermes-cortex/scripts/cortex-doctor.py
+
+── 1. the DEPLOYED call site carries no --apply-schema CALL ──
+rc=1 (1 = no quoted --apply-schema argument in the deployed doctor)
+  and the read-only probe IS present in the deployed doctor:
+    5378:            "SELECT COALESCE(MAX(version), 0) FROM tasks.schema_version;")
+
+── 2. the DEPLOYED resolver prefers the deployed tree ──
+  1. exists=True  /home/esther/.hermes-cortex/services/tasks/migrate.py
+  2. exists=False  /home/esther/.hermes-cortex/scripts/ops/services/tasks/migrate.py
+  3. exists=True  /home/esther/hermes-cortex/ops/services/tasks/migrate.py
+  PICKED: /home/esther/.hermes-cortex/services/tasks/migrate.py
+  is the DEPLOYED tree: True
+  deployed_schema_version(): 16
+
+── 3. live schema BEFORE the doctor run ──
+  schema_version    : 16
+  task_upsert count : 1
+
+── 4. run the DEPLOYED doctor (the active path) ──
+  doctor rc=1
+  relevant lines:
+      ✅ Task Lifecycle v2 schema — tasks schema_version = 16 (v2 lifecycle available)
+  lines STARTING with the FAIL marker in the whole run (expected: none):
+
+── 4b. the MIGRATION RUNNER never ran during the doctor run ──
+    'applying v'             occurrences in the doctor transcript: 0 (expected 0)
+    'schema now at version'  occurrences in the doctor transcript: 0 (expected 0)
+    NOTE: the uncommitted-migration scenario is NOT re-run as a live probe.
+    Reproducing it would attempt a PRODUCTION write if the fix ever regressed,
+    so it is demonstrated by the absent call site + the RED test instead
+    (a defensive no-op on destructive steps without explicit instruction).
+
+── 5. live schema AFTER the doctor run (must be IDENTICAL — no mutation) ──
+  schema_version    : 16
+  task_upsert count : 1
+
+── 6. deployed copy == repo source (ignoring the deploy's header block) ──
+  ops/scripts/manage/task-db.py                  SAME (modulo the deploy header)
+  ops/scripts/manage/cortex_doctor/checks.py     SAME (modulo the deploy header)
