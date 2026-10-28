@@ -1558,18 +1558,66 @@ def cmd_prune(older_than: str):
     print(f"Pruned {result.strip()} archived task(s) older than {older_than}.")
 
 
+def _deploy_home() -> Path:
+    """The DEPLOYED tree's root — what cortex-update.sh syncs into."""
+    return Path(os.environ.get("CORTEX_DEPLOY_HOME")
+                or (Path.home() / ".hermes-cortex"))
+
+
+def _repo_checkout() -> Path:
+    """The source checkout. An UNSET CORTEX_REPO must still yield an ABSOLUTE
+    path: `Path(os.environ.get("CORTEX_REPO", ""))` is the relative path
+    'ops/...' and resolves against the process's cwd (backlog 72b2c69b)."""
+    return Path(os.environ.get("CORTEX_REPO")
+                or (Path.home() / "hermes-cortex"))
+
+
+def _migrate_candidates() -> list[Path]:
+    """Where the DDL runner may be found, IN PREFERENCE ORDER.
+
+    The DEPLOYED tree comes first, and that order is load-bearing rather than
+    cosmetic: `cortex-update.sh:3298` applies `${CORTEX_DEPLOY_HOME}/services/
+    tasks/migrate.py`, and `cortex-update.sh:446` states the contract — "the
+    register map IS the deploy. migrate.py discovers migrations by FILE — the
+    repo applying cleanly proves nothing about any other host." A repo working
+    tree is therefore only a FALLBACK for a host with nothing deployed; it must
+    never be authoritative for production DDL (backlog 72b2c69b).
+    """
+    deploy = _deploy_home()
+    repo = _repo_checkout()
+    return [
+        deploy / "services/tasks/migrate.py",              # register-map target
+        deploy / "scripts/ops/services/tasks/migrate.py",  # legacy deployed shape
+        repo / "ops/services/tasks/migrate.py",            # source tree — fallback
+    ]
+
+
+def deployed_schema_version() -> int | None:
+    """Highest migration number in the DEPLOYED schema dir, or None.
+
+    Read-only and pure: it lists files, it does not run them. `migrate.py`
+    discovers migrations BY FILE in its sibling `schema/`, so the highest
+    `vNNN__*.sql` there IS the level the deploy can reach. None means "no
+    deployed schema dir" — never a fabricated 0.
+    """
+    schema_dir = _deploy_home() / "services/tasks/schema"
+    if not schema_dir.is_dir():
+        return None
+    versions = []
+    for entry in schema_dir.iterdir():
+        m = re.fullmatch(r"v(\d+)__.+\.sql", entry.name)
+        if m:
+            versions.append(int(m.group(1)))
+    return max(versions) if versions else None
+
+
 def cmd_apply_schema():
     """Delegate DDL to the version-gated migrate runner (as DB owner)."""
-    candidates = [
-        Path(os.environ.get("CORTEX_REPO", "")) / "ops/services/tasks/migrate.py",
-        Path.home() / "hermes-cortex/ops/services/tasks/migrate.py",
-        Path.home() / ".hermes-cortex/scripts/ops/services/tasks/migrate.py",
-        Path.home() / ".hermes-cortex/services/tasks/migrate.py",
-    ]
+    candidates = _migrate_candidates()
     migrate = next((c for c in candidates if c.exists()), None)
     if migrate is None:
-        print("ERROR: ops/services/tasks/migrate.py not found (tried 4 paths)",
-              file=sys.stderr)
+        print("ERROR: ops/services/tasks/migrate.py not found (tried "
+              f"{len(candidates)} paths, deployed first)", file=sys.stderr)
         sys.exit(1)
     result = subprocess.run([sys.executable, str(migrate)], capture_output=True,
                             text=True, timeout=120)

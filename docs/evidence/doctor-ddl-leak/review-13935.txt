@@ -1,0 +1,31 @@
+material bytes = 13297
+reviewer rc = 0
+review_id       = e4d05c6f-0c5e-41d8-9a58-caddad3b3fb7
+reviewer_model  = deepseek/deepseek-v4-pro
+verdict         = CLEAN
+ts              = 2026-10-28T11:27:14.101214+00:00
+findings        = [
+  {
+    "finding_id": "ADV-13935-1",
+    "severity": "info",
+    "technique": "unverified-claim",
+    "target": "Plan \u00a74 'Verification that will be shown (REAL, this cycle)'",
+    "evidence": "The plan states 'Verification that will be shown (REAL, this cycle)' but the material contains only the plan and the raw probe; the specified tests, py_compile runs, no-mutation counts, and deployed-copy diffs are not executed or shown here.",
+    "recommendation": "In the implementation cycle, commit the test file, run the named suites, and attach the transcript/evidence artifacts so the claims are re-runnable rather than promised."
+  }
+]
+summary         = {
+  "cycle_id": 13935,
+  "verdict": "CLEAN",
+  "findings": [
+    {
+      "finding_id": "ADV-13935-1",
+      "severity": "info",
+      "technique": "unverified-claim",
+      "target": "Plan §4 'Verification that will be shown (REAL, this cycle)'",
+      "evidence": "The plan states 'Verification that will be shown (REAL, this cycle)' but the material contains only the plan and the raw probe; the specified tests, py_compile runs, no-mutation counts, and deployed-copy diffs are not executed or shown here.",
+      "recommendation": "In the implementation cycle, commit the test file, run the named suites, and attach the transcript/evidence artifacts so the claims are re-runnable rather than promised."
+    }
+  ],
+  "summary": "I treated the plan as a pre-code plan and checked its measured starting state against the included raw probe. The raw probe confirms the doctor call site at checks.py:5357, the current candidate order with repo first and deployed last, live schema_version 16, and task_upsert arity. The proposed design is coherent and scoped: it replaces the doctor's mutating --apply-schema version read with a read-only psql seam, and reorders cmd_apply_schema candidates to prefer the deployed tree while fixing the unset-CORTEX_REPO relative path. The future verification items are not present in this plan window, so I recorded that as info; I found no contradiction or actionable defect in the material."
+}

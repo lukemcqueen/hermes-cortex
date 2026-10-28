@@ -1,0 +1,39 @@
+=== 1. deployed schema dir (~/.hermes-cortex/services/tasks/schema) ===
+v001__tasks.sql
+v002__doctor-probe-source.sql
+v003__cancel-column-null.sql
+v004__cancel-update-column.sql
+v005__lifecycle.sql
+v006__schema-version-grant.sql
+v007__upsert-preserve-partial.sql
+v008__v006-deferred.sql
+v009__task-model-v3.sql
+v010__task-model-v3-matrix-fix.sql
+v011__release-stale-assignment.sql
+v012__parked-rows-return-to-pool.sql
+v013__fleet-slice-orch-parent.sql
+v014__orchestrator-only-verify-arc.sql
+v015__story-completion-verified-precondition.sql
+v016__task-upsert-plan.sql
+=== 2. repo schema dir ===
+v012__parked-rows-return-to-pool.sql
+v013__fleet-slice-orch-parent.sql
+v014__orchestrator-only-verify-arc.sql
+v015__story-completion-verified-precondition.sql
+v016__task-upsert-plan.sql
+=== 3. which migrate.py does cmd_apply_schema pick? (candidate list, in order) ===
+CORTEX_REPO env = None
+  1. exists=True  ops/services/tasks/migrate.py
+  2. exists=True  /home/esther/hermes-cortex/ops/services/tasks/migrate.py
+  3. exists=False  /home/esther/.hermes-cortex/scripts/ops/services/tasks/migrate.py
+  4. exists=True  /home/esther/.hermes-cortex/services/tasks/migrate.py
+PICKED: ops/services/tasks/migrate.py
+=== 4. live tasks.schema_version + task_upsert arity (via the deployed CLI's own psql seam) ===
+live schema_version : 16
+task_upsert count   : 1
+task_upsert args    : p_id uuid DEFAULT NULL::uuid, p_content text DEFAULT NULL::text, p_created_by text DEFAULT NULL::text, p_assignee text DEFAULT NULL::text, p_project text DEFAULT NULL::text, p_repo text DEFAULT NULL::text, p_target text DEFAULT NULL::text, p_scope text DEFAULT NULL::text, p_status text DEFAULT NULL::text, p_column text DEFAULT NULL::text, p_position integer DEFAULT NULL::integer, p_priority integer DEFAULT NULL::integer, p_due timestamp with time zone DEFAULT NULL::timestamp with time zone, p_tags text[] DEFAULT NULL::text[], p_source text DEFAULT NULL::text, p_depends_on uuid[] DEFAULT NULL::uuid[], p_session_id text DEFAULT NULL::text, p_parent_id uuid DEFAULT NULL::uuid, p_kind text DEFAULT NULL::text, p_correlation_id text DEFAULT NULL::text, p_plan text DEFAULT NULL::text
+=== 5. doctor call site ===
+5357:    ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"],
+5359:    # --apply-schema prints "schema now at version N"; parse it. Fall back to
+=== 6. deployed doctor copy present? ===
+-rwxr-xr-x 1 esther esther 294324 Oct 28 18:22 /home/esther/.hermes-cortex/scripts/cortex_doctor/checks.py

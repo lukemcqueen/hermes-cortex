@@ -1,0 +1,40 @@
+# [72b2c69b] RED then GREEN — raw pytest output
+# repo HEAD: f0d13ef4  (2026-10-28T18:21:28+09:00)
+
+── 1. materialise the PRE-CHANGE tree at the parent of this commit ──
+worktree: /home/esther/.hermes/cache/scratch/ddl-red-PFd4JD  HEAD=f0d13ef4
+pre-change call site present? 2 occurrence(s)
+pre-change _migrate_candidates present? 0 occurrence(s)
+
+── 2. RED — the new tests against the PRE-CHANGE files ──
+tests/test_doctor_no_ddl_schema_probe.py:163: in test_deployed_schema_version_is_none_when_absent
+    assert task_db.deployed_schema_version() is None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'task_db_ddl_probe' has no attribute 'deployed_schema_version'
+=========================== short test summary info ============================
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_doctor_check_does_not_call_apply_schema
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_doctor_reads_the_version_read_only
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_doctor_warns_when_the_deployed_migrations_are_ahead
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_candidates_prefer_the_deployed_tree
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_candidates_are_never_cwd_relative
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_cmd_apply_schema_runs_the_deployed_runner
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_deployed_schema_version_reads_the_deployed_dir
+FAILED tests/test_doctor_no_ddl_schema_probe.py::test_deployed_schema_version_is_none_when_absent
+============================== 8 failed in 0.45s ===============================
+  ^ each failure IS the report: the property the test pins does not hold
+    on the pre-change tree, which is what makes the test a test.
+
+── 3. GREEN — the same tests at this tip ──
+
+tests/test_doctor_no_ddl_schema_probe.py ........                        [100%]
+
+============================== 8 passed in 0.25s ===============================
+
+── 4. regression: the pre-existing task-db suites still pass ──
+................................................                         [ 93%]
+tests/test_task_db_v4.py .......                                         [100%]
+
+============================= 100 passed in 2.57s ==============================
+
+── 5. cleanup ──
+worktree removed rc=0

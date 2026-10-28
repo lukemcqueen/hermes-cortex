@@ -5350,14 +5350,32 @@ def check_task_lifecycle_v2(res):
     if not task_script.is_file():
         return  # check_task_db already FAILs on the missing script
 
-    # ── 1. schema_version >= 5 (FAIL when older) ──────────────────
-    ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"],
-                     timeout=120)
-    # --apply-schema prints "schema now at version N"; parse it. Fall back to
-    # a direct probe via the module (same psql seam as the CLI).
-    import re as _re
-    m = _re.search(r"version (\d+)", ver_out or "")
-    ver = int(m.group(1)) if m else 0
+    # Load the CLI once as a module: every probe below goes through its psql
+    # seam (read-only), never through a subprocess that could mutate.
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("task_db_v2check", task_script)
+    if spec is None or spec.loader is None:
+        res.add("Task Lifecycle v2 schema", "FAIL",
+                "cannot load task-db.py module for probe",
+                "Check task-db.py deployment (cortex-update.sh)")
+        return
+    tdb = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(tdb)
+
+    # ── 1. schema_version >= 5 (READ-ONLY probe; FAIL when older) ──
+    # A health check REPORTS; it does not apply DDL. Until 2026-10-28 this ran
+    # `task-db.py --apply-schema`, and cmd_apply_schema resolved migrate.py from
+    # a candidate list that preferred the REPO WORKING TREE — so an unattended
+    # tick applied an UNCOMMITTED migration to the live database ~50 s after the
+    # file was written, bypassing the register map (backlog 72b2c69b). The
+    # version now comes from a plain SELECT on the same read seam.
+    ver = 0
+    try:
+        ver_out = tdb.psql(
+            "SELECT COALESCE(MAX(version), 0) FROM tasks.schema_version;")
+        ver = int((ver_out or "").strip().splitlines()[0] or 0)
+    except (SystemExit, ValueError, IndexError):
+        ver = 0
     if ver < 5:
         res.add("Task Lifecycle v2 schema", "FAIL",
                 f"tasks schema_version = {ver} (< 5) — paused/switch/"
@@ -5367,16 +5385,27 @@ def check_task_lifecycle_v2(res):
         res.add("Task Lifecycle v2 schema", "PASS",
                 f"tasks schema_version = {ver} (v2 lifecycle available)")
 
+    # ── 1b. the DEPLOYED migrations may be AHEAD of the live DB ────
+    # Report the divergence and name the deploy path that is allowed to close
+    # it. Applying the difference here is exactly the defect above.
+    # Guarded: checks.py and task-db.py are deployed together, but the doctor
+    # must not crash on a host mid-deploy whose deployed task-db.py predates the
+    # helper. An unreadable deployed level is reported, never guessed.
+    dep_ver = None
+    _dep_probe = getattr(tdb, "deployed_schema_version", None)
+    if callable(_dep_probe):
+        _dep = _dep_probe()
+        dep_ver = _dep if isinstance(_dep, int) else None
+    if dep_ver is not None and dep_ver > ver:
+        res.add("Task Lifecycle v2 schema sources", "WARN",
+                f"live tasks.schema_version {ver} < deployed schema dir "
+                f"{dep_ver} — this host is behind its deployed migrations",
+                "Run: bash cortex-update.sh (applies the DEPLOYED schema as "
+                "DB owner)")
+
     # ── 2. task_events RLS assertion (FAIL when forgeable) ────────
     # Security R-1: app roles must have SELECT only (INSERT via the
     # SECURITY DEFINER task_log_event); no direct UPDATE/DELETE grants.
-    import importlib.util as _ilu
-    spec = _ilu.spec_from_file_location("task_db_v2check", task_script)
-    if spec is None or spec.loader is None:
-        res.add("Task Lifecycle v2 events RLS", "FAIL",
-                "cannot load task-db.py module for probe",
-                "Check task-db.py deployment (cortex-update.sh)")
-        return
     tdb = _ilu.module_from_spec(spec)
     spec.loader.exec_module(tdb)
     try:
