@@ -13,7 +13,7 @@ servers crashed at import, governance tools vanished, every session
 write-deadlocked until an out-of-band fix).
 
 Severity (M-001/M-002, docs/elicit/2026-08-18_governance-fail-loudly-party.md):
-  loop-governance / tasks down -> CRITICAL (write-deadlock risk — ALL WRITES BLOCKED)
+  review / tasks down -> CRITICAL (write-deadlock risk — ALL WRITES BLOCKED)
   agent-bus (cortex-bus) down   -> WARNING  (no deadlock)
   unknown configured server     -> WARNING  (probed generically)
 
@@ -65,7 +65,7 @@ WARNING = "WARNING"
 # Live config server key -> (display name, severity, required tool names)
 # Config uses `agent-bus`; the doctor's canonical name is `cortex-bus`.
 EXPECTED_TOOLS = {
-    "loop-governance": ("loop-governance", CRITICAL, ["begin_change", "end_change", "check_lock"]),
+    "review": ("review", CRITICAL, ["begin_change", "end_change", "check_lock"]),
     "tasks": ("tasks", CRITICAL, ["task_add", "task_update"]),
     "agent-bus": ("agent-bus (cortex-bus)", WARNING, ["inbox_read", "inbox_send"]),
     "cortex-bus": ("agent-bus (cortex-bus)", WARNING, ["inbox_read", "inbox_send"]),

@@ -131,7 +131,7 @@ EXPECTED_MCP_SERVERS = {
     # wrong reason and `--fix` would have added a SECOND, wrongly-named server for the same
     # script. 2026-10-13.
     "agent-bus": "cortex-bus-mcp.py",
-    "loop-governance": "loop-gov-mcp.py",
+    "review": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
     "executor": "executor-mcp.py",
 }

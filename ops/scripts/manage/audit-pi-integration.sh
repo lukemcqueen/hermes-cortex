@@ -4,7 +4,7 @@
 #
 # WHY VERSION-AWARE. The integration has TWO routes and the correct checks differ:
 #
-#   MCP route    Pi >= 0.99 — an MCP client. Five cortex servers (loop-governance,
+#   MCP route    Pi >= 0.99 — an MCP client. Five cortex servers (review,
 #                tasks, executor, agent-bus, cortex-context) via ~/.pi/agent/mcp.json.
 #   HOOKS route  Pi <  0.99 (the shipped 0.87.1 has NO MCP client) — governance and
 #                the cortex tools arrive through the git hooks + ops/scripts/loop-gov.py.
@@ -80,7 +80,7 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
     # old "4 servers configured" line outlived cortex-context's 2026-10-03
     # deployment precisely because the set was written out twice — a loop that
     # checked four names and a sentence that claimed four of them.
-    REQUIRED="loop-governance tasks executor agent-bus cortex-context"
+    REQUIRED="review tasks executor agent-bus cortex-context"
     missing=""
     for s in $REQUIRED; do
       grep -q "\"$s\"" "$MCP_JSON" || missing="$missing $s"
@@ -243,7 +243,7 @@ fi
 
 # ── Layer 4: governance wiring ──
 if [[ -f "$DEPLOY/tools/loop-governance/loop-gov-mcp.py" ]]; then
-  _line 4 PASS "loop-governance gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)"
+  _line 4 PASS "review gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)"
 else
   _failed 4 "loop-governance gate not deployed at $DEPLOY/tools/loop-governance/ — run cortex-update.sh"
 fi

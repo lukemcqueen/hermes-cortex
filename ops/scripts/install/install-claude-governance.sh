@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-claude-governance.sh — Register loop-governance MCP
+#  install-claude-governance.sh — Register the review MCP (server name "review")
 #  servers at USER scope so Claude Code gets them in EVERY repo.
 #
 #  Problem (2026-09-29, Luke): the repo-root .mcp.json is PROJECT
@@ -85,7 +85,7 @@ def server(command, args, env=None):
     return s
 
 GOVERNANCE = {
-    "loop-governance": server(py_cmd,
+    "review": server(py_cmd,
                               ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
                               {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "tasks": server(py_cmd,
@@ -111,6 +111,11 @@ if not isinstance(data, dict):
     data = {}
 
 servers = data.setdefault("mcpServers", {})
+# Rename, never duplicate: drop any legacy "loop-governance" entry pointing at the same
+# probe binary before the update, so the one-name rule (review) holds through upgrades.
+for _legacy in [n for n, c in list(servers.items())
+                if n != "review" and (c or {}).get("args", []) == GOVERNANCE["review"]["args"]]:
+    del servers[_legacy]
 if mode == "remove":
     removed = [n for n in GOVERNANCE if n in servers]
     for n in removed:

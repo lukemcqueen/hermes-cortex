@@ -349,7 +349,7 @@ try:
     data = json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(0)   # unreadable or malformed: nothing to preserve, and not our failure
-for name in ("loop-governance", "tasks", "executor", "agent-bus", "cortex-context"):
+for name in ("review", "tasks", "executor", "agent-bus", "cortex-context"):
     cmd = ((data.get("mcpServers") or {}).get(name) or {}).get("command") or ""
     if cmd and os.access(cmd, os.X_OK) and subprocess.run(
             [cmd, "-c", "import mcp"], capture_output=True).returncode == 0:
@@ -419,7 +419,7 @@ def server(path, description, env=None):
 
 
 GOVERNANCE = {
-    "loop-governance": server(
+    "review": server(
         loop_gov,
         "Loop governance: begin_change, cache_search, cycle_query, "
         "feedback_accept/override, end_change — the interactive ritual."),
@@ -461,6 +461,14 @@ servers = data.setdefault("mcpServers", {})
 if not isinstance(servers, dict):
     servers = {}
     data["mcpServers"] = servers
+
+# Rename, never duplicate: a pre-rename host still carries the legacy "loop-governance"
+# key pointing at the SAME probe binary. Two registrations of one process is exactly the
+# fragmentation the one-name rule (review) exists to kill, and the doctor FAILs it.
+for _legacy in [n for n, c in list(servers.items())
+                if n != "review" and (c or {}).get("args") == [loop_gov]]:
+    del servers[_legacy]
+    print("Renamed legacy MCP server entry:", _legacy, "-> review")
 
 if mode == "remove":
     removed = [n for n in GOVERNANCE if n in servers]
