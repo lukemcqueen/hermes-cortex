@@ -178,7 +178,62 @@ def test_every_priced_model_is_routed_or_named_as_a_candidate():
     routed = {m for specs in doc["tiers"].values() for models in specs.values() for m in models}
     priced = set(doc["prices"])
     orphans = priced - routed
-    assert orphans <= set(doc.get("candidates") or {}), \
-        f"priced but neither routed nor named as candidates: {sorted(orphans)}"
-    # and the derivation the policy notes lean on must be in the file
-    assert doc["derivation"]["heads"]["simple/*"].count("x baseline") == 1
+    named = set(doc.get("candidates") or {}) | set(doc.get("rejected") or {})
+    assert orphans <= named, \
+        f"priced but neither routed nor named as candidates/rejected: {sorted(orphans)}"
+    # and every head the policy leans on carries its arithmetic in the file
+    heads = doc["derivation"]["heads"]
+    assert heads and all("x baseline" in v for v in heads.values()), heads
+
+
+def _config():
+    import json as _json
+    return _json.loads((Path(__file__).resolve().parents[1] / "config"
+                        / "jev-router-models.json").read_text())
+
+
+def _bl(doc, model):
+    x = doc["prices"][model]
+    return x["in"] + x["out"]
+
+
+def test_every_non_hard_pool_head_is_cheaper_than_the_baseline():
+    """Luke's rule: always cheaper, except very complex work. The HEAD is what first fit
+    takes, so a head at or above the baseline is the rule broken."""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    offenders = []
+    for tier, specs in doc["tiers"].items():
+        if tier == "hard":
+            continue
+        for spec, models in specs.items():
+            if _bl(doc, models[0]) >= base:
+                offenders.append(f"{tier}/{spec} -> {models[0]}")
+    assert not offenders, f"heads not cheaper than the baseline: {offenders}"
+
+
+def test_every_model_in_a_simple_pool_is_cheaper_than_the_baseline():
+    """'ALWAYS cheaper' is a claim about the whole simple pool, not only its head."""
+    doc = _config()
+    base = _bl(doc, doc["baseline"])
+    offenders = [f"simple/{spec} -> {m}" for spec, models in doc["tiers"]["simple"].items()
+                 for m in models if _bl(doc, m) >= base]
+    assert not offenders, f"simple pools contain models at/above baseline: {offenders}"
+
+
+def test_a_rejected_model_is_never_also_a_candidate():
+    """ADV-13902-3: 'rejected' and 'promotable by a one-file edit' cannot both be true."""
+    doc = _config()
+    rejected = set(doc.get("rejected") or {})
+    candidates = set(doc.get("candidates") or {})
+    assert not (rejected & candidates), f"both rejected and a candidate: {sorted(rejected & candidates)}"
+    assert doc["rejected"]["openrouter:moonshotai/kimi-k2.7-code"]["price_usd_per_m"] > _bl(doc, doc["baseline"])
+
+
+def test_the_derivation_covers_every_pool_head():
+    """ADV-13902-5: two heads computed and the rest implicit is how an unverified claim
+    survives. Every head must carry its arithmetic."""
+    doc = _config()
+    expected = {f"{tier}/{spec}" for tier, specs in doc["tiers"].items() for spec in specs}
+    assert expected <= set(doc["derivation"]["heads"]), \
+        f"heads without derivation: {sorted(expected - set(doc['derivation']['heads']))}"

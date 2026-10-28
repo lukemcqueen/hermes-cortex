@@ -5,7 +5,7 @@
   "policy": {
     "simple": {
       "max_multiple_of_baseline": 0.5,
-      "note": "ALWAYS cheaper than the baseline; 0.5x is the ceiling, the head is 0.29x"
+      "note": "ALWAYS cheaper than the baseline, every model in the pool, not just the head; ceiling 0.5x"
     },
     "medium": {
       "max_multiple_of_baseline": 1.0,
@@ -19,53 +19,28 @@
       "openrouter:moonshotai/kimi-k2.7-code"
     ],
     "rejected_reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first",
-    "rule": "Every simple and medium pool must lead with a model CHEAPER than the baseline. Only `hard` may lead dearer."
+    "rule": "Every pool must LEAD with a model cheaper than the baseline. Every model in a SIMPLE pool is cheaper than the baseline. A medium pool may carry the baseline itself as the in-pool fallback. Only `hard` may lead dearer - that is the exception for very complex work."
   },
   "tiers": {
     "simple": {
       "general": [
         "openrouter:qwen/qwen3.7-flash",
-        "deepseek:deepseek-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash-1017",
-        "openrouter:nvidia/nemotron-3.5-super-vl",
-        "openrouter:liquid/lfm-2.5-24b-a2b",
-        "openrouter:anthropic/claude-haiku-5.5",
         "openrouter:inclusionai/ling-3.1-flash"
       ],
       "vision": [
         "openrouter:qwen/qwen3.7-flash",
-        "deepseek:deepseek-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash-1017",
-        "openrouter:nvidia/nemotron-3.5-super-vl",
-        "openrouter:anthropic/claude-haiku-5.5",
-        "openrouter:perceptron/perceptron-mk1.5",
         "openrouter:xiaomi/mimo-v2.6-flash"
       ],
       "coding": [
         "openrouter:qwen/qwen3.7-flash",
-        "openrouter:qwen/qwen3-coder-next",
-        "openrouter:mistralai/codestral-2508",
-        "openrouter:qwen/qwen3-coder-flash",
-        "openrouter:qwen/qwen3-coder",
-        "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
-        "deepseek:deepseek-flash"
+        "openrouter:qwen/qwen3-coder-30b-a3b-instruct"
       ],
       "writing": [
         "openrouter:qwen/qwen3.7-flash",
-        "deepseek:deepseek-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash-1017",
-        "openrouter:nvidia/nemotron-3.5-super-vl",
-        "openrouter:liquid/lfm-2.5-24b-a2b",
-        "openrouter:anthropic/claude-haiku-5.5",
         "openrouter:inclusionai/ling-3.1-flash"
       ],
       "research": [
         "openrouter:qwen/qwen3.7-flash",
-        "deepseek:deepseek-flash",
-        "openrouter:deepseek/deepseek-v4.1-flash-1017",
-        "openrouter:nvidia/nemotron-3.5-super-vl",
-        "openrouter:liquid/lfm-2.5-24b-a2b",
-        "openrouter:anthropic/claude-haiku-5.5",
         "openrouter:inclusionai/ling-3.1-flash"
       ]
     },
@@ -397,20 +372,48 @@
   },
   "baseline_price_usd_per_m": 0.56,
   "derivation": {
-    "basis": "blended $/M = catalog cost.input + cost.output, the SAME basis the doctor's cost guard uses; cache_read is carried but not counted here",
+    "basis": "blended $/M = catalog cost.input + cost.output, the SAME basis the doctor's cost guard uses; cache_read is carried but not counted",
     "baseline": "openrouter:deepseek/deepseek-v4.1-flash = 0.14 in + 0.42 out = $0.560/M",
+    "source": "~/.cache/jev/models_dev.json (models.dev); the filtered extract this list was built from is committed at docs/evidence/jev-router-pools-2026-10-28/catalog-prices.json",
     "heads": {
-      "simple/*": "openrouter:qwen/qwen3.7-flash = 0.03 + 0.13 = $0.160/M = 0.29x baseline",
-      "medium/coding": "openrouter:qwen/qwen3-coder-30b-a3b-instruct = $0.350/M = 0.62x baseline"
-    },
-    "source": "~/.cache/jev/models_dev.json (models.dev), captured 2026-10-28"
+      "simple/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "simple/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "simple/coding": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "simple/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "simple/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "medium/general": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "medium/vision": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "medium/coding": "openrouter:qwen/qwen3-coder-30b-a3b-instruct = 0.07 in + 0.28 out = $0.350/M = 0.62x baseline",
+      "medium/writing": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "medium/research": "openrouter:qwen/qwen3.7-flash = 0.03 in + 0.13 out = $0.160/M = 0.29x baseline",
+      "hard/general": "openrouter:unbiased/pareto-26.9 = 2.5 in + 7.5 out = $10.000/M = 17.86x baseline",
+      "hard/vision": "openrouter:unbiased/pareto-26.9 = 2.5 in + 7.5 out = $10.000/M = 17.86x baseline",
+      "hard/coding": "openrouter:openai/gpt-5.3-codex = 1.75 in + 14.0 out = $15.750/M = 28.12x baseline",
+      "hard/writing": "openrouter:unbiased/pareto-26.9 = 2.5 in + 7.5 out = $10.000/M = 17.86x baseline",
+      "hard/research": "openrouter:unbiased/pareto-26.9 = 2.5 in + 7.5 out = $10.000/M = 17.86x baseline"
+    }
   },
   "candidates": {
-    "openrouter:inclusionai/ling-3.0-flash": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
-    "openrouter:meta-llama/llama-3.1-8b-instruct": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
-    "openrouter:mistralai/mistral-nemo": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
-    "openrouter:moonshotai/kimi-k2.7-code": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
-    "openrouter:openai/gpt-oss-20b": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit",
-    "openrouter:z-ai/glm-5.3-flash": "priced alternative, not routed: kept so promoting a cheaper model is a one-file edit"
+    "deepseek:deepseek-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:anthropic/claude-haiku-5.5": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:deepseek/deepseek-v4.1-flash-1017": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:inclusionai/ling-3.0-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:liquid/lfm-2.5-24b-a2b": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:meta-llama/llama-3.1-8b-instruct": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:mistralai/codestral-2508": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:mistralai/mistral-nemo": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:nvidia/nemotron-3.5-super-vl": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:openai/gpt-oss-20b": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:perceptron/perceptron-mk1.5": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:qwen/qwen3-coder": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:qwen/qwen3-coder-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:qwen/qwen3-coder-next": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit",
+    "openrouter:z-ai/glm-5.3-flash": "priced only, NOT routed: a price change here changes nothing until a tier names it. Kept priced so promoting a cheaper model is a one-file edit"
+  },
+  "rejected": {
+    "openrouter:moonshotai/kimi-k2.7-code": {
+      "price_usd_per_m": 3.66,
+      "reason": "5.4x the baseline for a medium coding turn; the suggested pool order put it first"
+    }
   }
 }

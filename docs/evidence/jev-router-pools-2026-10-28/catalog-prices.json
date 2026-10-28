@@ -1,0 +1,722 @@
+{
+  "captured": "2026-10-28",
+  "capture_command": "python3 -c \"import json,pathlib; raw=json.loads(pathlib.Path('~/.cache/jev/models_dev.json').expanduser().read_text()); ...\"  # filtered extract of cost+limit for the ids this list prices",
+  "source_file": "~/.cache/jev/models_dev.json (models.dev, via `jev models list`)",
+  "models": {
+    "deepseek:deepseek-flash": {
+      "cost": {
+        "input": 0.15,
+        "output": 0.6,
+        "reasoning": 0.6,
+        "cache_read": 0.003
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 393216
+      }
+    },
+    "openrouter:anthropic/claude-haiku-5.5": {
+      "cost": {
+        "input": 0.1,
+        "output": 0.5,
+        "cache_read": 0.01,
+        "cache_write": 0.125,
+        "tiers": [
+          {
+            "input": 0.5,
+            "output": 2.5,
+            "cache_read": 0.05,
+            "cache_write": 0.625,
+            "tier": {
+              "type": "context",
+              "size": 100000
+            }
+          }
+        ]
+      },
+      "limit": {
+        "context": 1000000,
+        "output": 128000
+      }
+    },
+    "openrouter:anthropic/claude-sonnet-5.5": {
+      "cost": {
+        "input": 2,
+        "output": 10,
+        "cache_read": 0.1,
+        "cache_write": 2.5
+      },
+      "limit": {
+        "context": 1000000,
+        "output": 128000
+      }
+    },
+    "openrouter:bytedance-seed/seed-2.0-code": {
+      "cost": {
+        "input": 0.5,
+        "output": 3,
+        "tiers": [
+          {
+            "input": 1,
+            "output": 6,
+            "tier": {
+              "type": "context",
+              "size": 128000
+            }
+          }
+        ]
+      },
+      "limit": {
+        "context": 262144,
+        "output": 131072
+      }
+    },
+    "openrouter:deepseek/deepseek-v4.1-flash": {
+      "cost": {
+        "input": 0.14,
+        "output": 0.42,
+        "cache_read": 0.0042
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      }
+    },
+    "openrouter:deepseek/deepseek-v4.1-flash-1017": {
+      "cost": {
+        "input": 0.15,
+        "output": 0.6,
+        "cache_read": 0.003
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 393216
+      }
+    },
+    "openrouter:elorian/glimpse": {
+      "cost": {
+        "input": 0.6,
+        "output": 3,
+        "cache_read": 0.06
+      },
+      "limit": {
+        "context": 262144,
+        "output": 256000
+      }
+    },
+    "openrouter:google/gemini-4-argon": {
+      "cost": {
+        "input": 2,
+        "output": 10,
+        "reasoning": 10,
+        "cache_read": 0.1,
+        "cache_write": 0.1875,
+        "input_audio": 2
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 943718
+      }
+    },
+    "openrouter:google/gemini-nano-banana-2.1": {
+      "cost": {
+        "input": 1.5,
+        "output": 7.5
+      },
+      "limit": {
+        "context": 65536,
+        "output": 58982
+      }
+    },
+    "openrouter:inclusionai/ling-3.0-flash": {
+      "cost": {
+        "input": 0.021,
+        "output": 0.063,
+        "cache_read": 0.0042
+      },
+      "limit": {
+        "context": 262144,
+        "output": 32768
+      }
+    },
+    "openrouter:inclusionai/ling-3.1-flash": {
+      "cost": {
+        "input": 0.075,
+        "output": 0.225,
+        "cache_read": 0.015
+      },
+      "limit": {
+        "context": 1000000,
+        "output": 262144
+      }
+    },
+    "openrouter:liquid/lfm-2.5-24b-a2b": {
+      "cost": {
+        "input": 0.05,
+        "output": 0.7,
+        "cache_read": 0.025
+      },
+      "limit": {
+        "context": 128000,
+        "output": 8192
+      }
+    },
+    "openrouter:meta-llama/llama-3.1-8b-instruct": {
+      "cost": {
+        "input": 0.02,
+        "output": 0.04
+      },
+      "limit": {
+        "context": 131072,
+        "output": 16384
+      }
+    },
+    "openrouter:meta/muse-spark-open": {
+      "cost": {
+        "input": 1.25,
+        "output": 4.25,
+        "cache_read": 0.15
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 943718
+      }
+    },
+    "openrouter:meta/muse-wonder": {
+      "cost": {
+        "input": 4,
+        "output": 20,
+        "cache_read": 0.2
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 943718
+      }
+    },
+    "openrouter:mistralai/codestral-2508": {
+      "cost": {
+        "input": 0.3,
+        "output": 0.9,
+        "cache_read": 0.03
+      },
+      "limit": {
+        "context": 256000,
+        "output": 204800
+      }
+    },
+    "openrouter:mistralai/devstral-2512": {
+      "cost": {
+        "input": 0.4,
+        "output": 2,
+        "cache_read": 0.04
+      },
+      "limit": {
+        "context": 262144,
+        "output": 209715
+      }
+    },
+    "openrouter:mistralai/mistral-large-4-0": {
+      "cost": {
+        "input": 1.36,
+        "output": 4.18,
+        "cache_read": 0.14
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 262144
+      }
+    },
+    "openrouter:mistralai/mistral-nemo": {
+      "cost": {
+        "input": 0.029,
+        "output": 0.03
+      },
+      "limit": {
+        "context": 131072,
+        "output": 16384
+      }
+    },
+    "openrouter:moonshotai/kimi-k2.7-code": {
+      "cost": {
+        "input": 0.56,
+        "output": 3.1,
+        "cache_read": 0.15
+      },
+      "limit": {
+        "context": 262144,
+        "output": 235929
+      }
+    },
+    "openrouter:nvidia/nemotron-3.5-super-vl": {
+      "cost": {
+        "input": 0.15,
+        "output": 0.5,
+        "cache_read": 0.02
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 235929
+      }
+    },
+    "openrouter:openai/gpt-5.1-codex": {
+      "cost": {
+        "input": 1.25,
+        "output": 10,
+        "cache_read": 0.13
+      },
+      "limit": {
+        "context": 400000,
+        "input": 272000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-5.1-codex-max": {
+      "cost": {
+        "input": 1.25,
+        "output": 10,
+        "cache_read": 0.125
+      },
+      "limit": {
+        "context": 400000,
+        "input": 272000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-5.1-codex-mini": {
+      "cost": {
+        "input": 0.25,
+        "output": 2,
+        "cache_read": 0.03
+      },
+      "limit": {
+        "context": 400000,
+        "input": 272000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-5.2-codex": {
+      "cost": {
+        "input": 1.75,
+        "output": 14,
+        "cache_read": 0.175
+      },
+      "limit": {
+        "context": 400000,
+        "input": 272000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-5.3-codex": {
+      "cost": {
+        "input": 1.75,
+        "output": 14,
+        "cache_read": 0.175
+      },
+      "limit": {
+        "context": 400000,
+        "input": 272000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-6.1-sol": {
+      "cost": {
+        "input": 2,
+        "output": 10,
+        "cache_read": 0.1,
+        "cache_write": 2.5,
+        "tiers": [
+          {
+            "input": 4,
+            "output": 15,
+            "cache_read": 0.2,
+            "cache_write": 5,
+            "tier": {
+              "type": "context",
+              "size": 272000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 4,
+          "output": 15,
+          "cache_read": 0.2,
+          "cache_write": 5
+        }
+      },
+      "limit": {
+        "context": 1050000,
+        "input": 922000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-6.1-sol-pro": {
+      "cost": {
+        "input": 2,
+        "output": 10,
+        "cache_read": 0.1,
+        "cache_write": 2.5,
+        "tiers": [
+          {
+            "input": 4,
+            "output": 15,
+            "cache_read": 0.2,
+            "cache_write": 5,
+            "tier": {
+              "type": "context",
+              "size": 272000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 4,
+          "output": 15,
+          "cache_read": 0.2,
+          "cache_write": 5
+        }
+      },
+      "limit": {
+        "context": 1050000,
+        "output": 128000
+      }
+    },
+    "openrouter:openai/gpt-oss-20b": {
+      "cost": {
+        "input": 0.018,
+        "output": 0.09,
+        "cache_read": 0.009
+      },
+      "limit": {
+        "context": 131072,
+        "output": 32768
+      }
+    },
+    "openrouter:perceptron/perceptron-mk1.5": {
+      "cost": {
+        "input": 0.15,
+        "output": 1.5
+      },
+      "limit": {
+        "context": 36864,
+        "output": 8192
+      }
+    },
+    "openrouter:qwen/qwen3-coder": {
+      "cost": {
+        "input": 0.3,
+        "output": 1,
+        "cache_read": 0.1
+      },
+      "limit": {
+        "context": 262144,
+        "output": 65536
+      }
+    },
+    "openrouter:qwen/qwen3-coder-30b-a3b-instruct": {
+      "cost": {
+        "input": 0.07,
+        "output": 0.28
+      },
+      "limit": {
+        "context": 262144,
+        "output": 235929
+      }
+    },
+    "openrouter:qwen/qwen3-coder-flash": {
+      "cost": {
+        "input": 0.195,
+        "output": 0.975,
+        "cache_read": 0.039,
+        "cache_write": 0.24375,
+        "tiers": [
+          {
+            "input": 0.325,
+            "output": 1.625,
+            "cache_read": 0.065,
+            "cache_write": 0.40625,
+            "tier": {
+              "type": "context",
+              "size": 32000
+            }
+          },
+          {
+            "input": 0.52,
+            "output": 2.6,
+            "cache_read": 0.104,
+            "cache_write": 0.65,
+            "tier": {
+              "type": "context",
+              "size": 128000
+            }
+          }
+        ]
+      },
+      "limit": {
+        "context": 1000000,
+        "output": 65536
+      }
+    },
+    "openrouter:qwen/qwen3-coder-next": {
+      "cost": {
+        "input": 0.12,
+        "output": 0.8,
+        "cache_read": 0.07
+      },
+      "limit": {
+        "context": 262144,
+        "output": 235929
+      }
+    },
+    "openrouter:qwen/qwen3.7-flash": {
+      "cost": {
+        "input": 0.03,
+        "output": 0.13,
+        "cache_read": 0.006,
+        "cache_write": 0.038,
+        "tiers": [
+          {
+            "input": 0.1,
+            "output": 0.4,
+            "cache_read": 0.02,
+            "cache_write": 0.125,
+            "tier": {
+              "type": "context",
+              "size": 32000
+            }
+          },
+          {
+            "input": 0.2,
+            "output": 0.8,
+            "cache_read": 0.04,
+            "cache_write": 0.25,
+            "tier": {
+              "type": "context",
+              "size": 256000
+            }
+          }
+        ]
+      },
+      "limit": {
+        "context": 1000000,
+        "input": 991808,
+        "output": 65536
+      }
+    },
+    "openrouter:reflection/beam-1.0-501b-a23b": {
+      "cost": {
+        "input": 0.25,
+        "output": 1,
+        "cache_read": 0.05
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      }
+    },
+    "openrouter:unbiased/pareto-26.10": {
+      "cost": {
+        "input": 0.8,
+        "output": 3.2,
+        "cache_read": 0.03
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      }
+    },
+    "openrouter:unbiased/pareto-26.9": {
+      "cost": {
+        "input": 2.5,
+        "output": 7.5,
+        "cache_read": 0.25
+      },
+      "limit": {
+        "context": 262144,
+        "output": 131072
+      }
+    },
+    "openrouter:x-ai/grok-4.20": {
+      "cost": {
+        "input": 1.25,
+        "output": 2.5,
+        "cache_read": 0.2,
+        "tiers": [
+          {
+            "input": 2.5,
+            "output": 5,
+            "cache_read": 0.4,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 2.5,
+          "output": 5,
+          "cache_read": 0.4
+        }
+      },
+      "limit": {
+        "context": 2000000,
+        "output": 1800000
+      }
+    },
+    "openrouter:x-ai/grok-4.3": {
+      "cost": {
+        "input": 1.25,
+        "output": 2.5,
+        "cache_read": 0.2,
+        "tiers": [
+          {
+            "input": 2.5,
+            "output": 5,
+            "cache_read": 0.4,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 2.5,
+          "output": 5,
+          "cache_read": 0.4
+        }
+      },
+      "limit": {
+        "context": 1000000,
+        "output": 900000
+      }
+    },
+    "openrouter:x-ai/grok-4.5": {
+      "cost": {
+        "input": 2,
+        "output": 6,
+        "cache_read": 0.3,
+        "tiers": [
+          {
+            "input": 4,
+            "output": 12,
+            "cache_read": 0.6,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 4,
+          "output": 12,
+          "cache_read": 0.6
+        }
+      },
+      "limit": {
+        "context": 500000,
+        "output": 450000
+      }
+    },
+    "openrouter:x-ai/grok-4.6": {
+      "cost": {
+        "input": 2,
+        "output": 6,
+        "cache_read": 0.5,
+        "tiers": [
+          {
+            "input": 4,
+            "output": 12,
+            "cache_read": 1,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 4,
+          "output": 12,
+          "cache_read": 1
+        }
+      },
+      "limit": {
+        "context": 500000,
+        "output": 450000
+      }
+    },
+    "openrouter:x-ai/grok-4.7": {
+      "cost": {
+        "input": 2,
+        "output": 6,
+        "cache_read": 0.5,
+        "tiers": [
+          {
+            "input": 4,
+            "output": 12,
+            "cache_read": 1,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 4,
+          "output": 12,
+          "cache_read": 1
+        }
+      },
+      "limit": {
+        "context": 500000,
+        "output": 450000
+      }
+    },
+    "openrouter:x-ai/grok-build-0.1": {
+      "cost": {
+        "input": 1,
+        "output": 2,
+        "cache_read": 0.2,
+        "tiers": [
+          {
+            "input": 2,
+            "output": 4,
+            "cache_read": 0.4,
+            "tier": {
+              "type": "context",
+              "size": 200000
+            }
+          }
+        ],
+        "context_over_200k": {
+          "input": 2,
+          "output": 4,
+          "cache_read": 0.4
+        }
+      },
+      "limit": {
+        "context": 256000,
+        "output": 230400
+      }
+    },
+    "openrouter:xiaomi/mimo-v2.6-flash": {
+      "cost": {
+        "input": 0.14,
+        "output": 0.28,
+        "cache_read": 0.0028
+      },
+      "limit": {
+        "context": 1050000,
+        "output": 131072
+      }
+    },
+    "openrouter:z-ai/glm-5.3-flash": {
+      "cost": {
+        "input": 0.0462,
+        "output": 0.0737,
+        "cache_read": 0.03
+      },
+      "limit": {
+        "context": 1048576,
+        "output": 131072
+      }
+    }
+  }
+}
