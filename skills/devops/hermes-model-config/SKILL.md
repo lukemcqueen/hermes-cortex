@@ -51,9 +51,26 @@ warning, cron model overrides, model.default regressions after `hermes update`.
 
 - `hermes config set model.default <model-id>` — **NEVER hand-edit
   config.yaml** (stray indent breaks the live gateway; hermes-agent hard
-  invariant). `provider` / `base_url` are untouched by this command.
+  invariant). Agent file-write tools refuse the file outright
+  (`Refusing to write to Hermes config file: … security-sensitive configuration`),
+  so the CLI is not just preferred — it is the ONLY path from an agent.
+  Verify by reading back BOTH the resolved value (`hermes config get
+  model.default`) and the file on disk; the change applies to NEW sessions
+  (the running session keeps its start-of-session model).
+- `provider` / `base_url` are untouched by this command.
 - No gateway restart needed: `_resolve_gateway_model` (gateway/run.py) reads
   `model.default` fresh per session from raw YAML.
+- **Re-anchor the Jev router when the default moves.** If the Jev layer is live,
+  its pricing-list `baseline` is the anchor every multiplier and every
+  "cheaper than" claim is measured against, and the doctor's cost guard compares
+  pool heads to the host's actual model. `model.default` change → update the
+  baseline to the same model, swap the medium pools' in-pool fallback (a
+  cheaper baseline can leave the old fallback above the 1x ceiling), and
+  express hard-tier budget caps in absolute $/M rather than multiples of the
+  baseline so a cheaper baseline cannot evict whitelisted models
+  (see the pricing-list-policy reference of the system-one-judgment skill).
+  The selftest checks EVERY model in a pool and catches the stranded fallback
+  the tests miss.
 
 ## Verify end-to-end (mandatory)
 

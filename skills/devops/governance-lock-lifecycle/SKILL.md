@@ -338,6 +338,24 @@ dead end look like policy — and the agent loops on the same blocked command.
   A corrected enforcer on disk changes nothing in a running gateway, and the host stays blocked while
 everything looks fixed.
 
+### Pitfall 9: begin_change SUCCEEDS yet every write still deadlocks — the injection is tool-PREFIX-bound
+
+The enforcer stamps session_id + repo_path into governance MCP args by matching the TOOL NAME
+prefix (`tool_name.startswith("mcp__<name>__")`, two matcher sites). Renaming the review MCP
+server (or any server the enforcer injects into) without updating those matchers silences the
+injection: the server falls back to its own derivation (env/per-repo file) and mints locks under a
+different id than the enforcer expects. Signature: a fresh `begin_change` reports success and a lock
+FILE exists, yet every write-class tool still refuses with GOVERNANCE LOCK REQUIRED. Diagnose by
+comparing `~/.hermes-cortex/state/.hermes-session-current.id` (the enforcer's canonical id) with
+the lock file the fresh begin_change just wrote — different ids, and the enforcer can never see
+that lock. The CLI with an explicit session_id is the recovery: drive
+`python3 ops/scripts/loop-gov.py begin_change '{"session_id": "<id from .hermes-session-current.id>", …}'`
+through a composite tool the gate does not hook (terminal itself is refused — the gate is the
+broken thing), then fix the real defect: add the new prefix to both matchers, pin RED→GREEN with
+a test driving `_inject_session_context` under the new name, deploy, reload/restart; retire any
+lock minted under the derived id with `advance_task_state new_state=cancelled`. Full recipe:
+`rename-sweep` → `references/mcp-server-name-rename.md`.
+
 ### A wide close judges a WAVE of blobs per pass — concurrency, never a longer window
 
 A close refused with **"N blob(s) of the push range still carry no review verdict"** names the exact

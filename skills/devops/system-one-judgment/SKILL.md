@@ -113,6 +113,14 @@ hot-swap provider abstraction (design doc: steadfaste
   other leaves every call `unavailable` while the config looks present — and a consumer
   script absent from the deploy map exists only in the repo.
 
+## Model-routing pricing list (the strength-1 cousin)
+
+When Jev also routes WHICH model a coding turn gets, the order-of-pools artifact is the
+spend decision: first fit wins, so the pool ORDER is the money. The rules for keeping that
+list honest — absolute $/M caps instead of multiples, computed ratios, pools give way to
+their stated ceilings, the whitelist enforced by selftest, and the no-gateway probe
+pitfalls — live in `references/pricing-list-policy.md`.
+
 ## Pitfalls
 
 - **A client that discards the response body hides the cause of its own

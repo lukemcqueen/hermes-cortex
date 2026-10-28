@@ -121,6 +121,21 @@ metadata:
   the paths (`git commit -m 'one line' -- path/a path/b`). Staging first with
   `git add` also makes git commit from the real index, which reads as bare —
   leave the index clean and name the paths instead.
+- **A single-line `-m` is ALSO refused as BARE when the message carries a
+  slash-token like `cost/4:` or `[cost/4]`** — the parser reads that token as a
+  pathspec, so it stops seeing your real paths and refuses (measured 2026-10-28:
+  the same commit landed unchanged once the message dropped the `cost/4:` prefix).
+  Keep the message free of `x/y:`-shaped tokens; put the slice id in the body of
+  the evidence file instead, not in the subject line.
+- **Untracked evidence needs `git add -N <path>` immediately before the commit** —
+  `git commit -- <untracked>` dies with "did not match any file(s) known to git",
+  and a `git reset` (to clear an index) drops the intent-to-add, so pair them in
+  ONE command: `git add -N <path> && git commit -m '<one line>' -- <tracked> <path>`.
+- **The pre-push DEPLOY-SYNC gate blocks a source change that is not yet deployed:**
+  it compares the deployed copy against the repo tree and refuses with
+  `❌ Deploy sync / ❌ Script content (<name>)`. The order is therefore
+  commit → **`cortex-update.sh`** → push, not commit → push. (`--delta` does not
+  deploy an unpushed commit; use the full script.)
 - **`terminal` is refused in a governed repo even for read-only work**
   (`python3 …`, `ls; echo`, compound chains). You cannot check a deployed
   path from the scratch dir — the lock is repo-scoped. Take a
@@ -203,3 +218,20 @@ metadata:
   predicate also matches your own REQUEST and reads it back as the answer.
 - **No fabricating results.** If the agent didn't respond or the EXEC failed,
   report that. A completed task without EXEC_RESULT evidence is a lie.
+- **A worker's EXEC_RESULT may not be in `inbox_moses`, and its payload key
+  varies by host — poll BOTH orchestrator queues and accept both shapes.**
+  Measured 2026-10-28 (corr `cost4-titus-20261028a`): titus's result was
+  addressed `to: esther` and archived in **`inbox_orchestrator`**, while
+  joseph/kustos/gisu post to `inbox_moses` (commands.py `send_bus_result`). An
+  inbox_moses-only poll calls titus a non-responder while his answer is already
+  archived — peek `inbox_moses` AND `inbox_orchestrator` (pending + archived)
+  before concluding silence. Shape also differs: the four Linux hosts return the
+  adapter object as a JSON *string* under `stdout`, titus nests the same object
+  under `summary`. A reader keyed on `stdout` alone reads titus as "no data".
+- **Read the whole envelope the bus actually stores, not the key you expect.**
+  The archives endpoint returns `{msg_id, queue_name, correlation_id, state,
+  enqueued_at, body: {from, to, subject, body: "<json string>"}}` — `subject`
+  is NOT top-level, so `m.get("subject") == 'EXEC_RESULT'` silently filters
+  every result away and the read-back reports all hosts MISSING while the data
+  sits on the bus. Match on the top-level `correlation_id` and read `subject`
+  from inside `body`.

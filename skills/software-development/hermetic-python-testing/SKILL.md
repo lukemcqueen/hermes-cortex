@@ -476,6 +476,14 @@ unit seams cannot. Two rules keep that test honest and durable:
   green in a bare CI shell and red on a real host. Keep the real-resource assertion
   as ONE explicitly-labelled case. Clearing unrelated state is the cheapest way to
   discover tests that were passing by accident.
+  **The same trap fires when the subject reads a WELL-KNOWN HOST PATH, not an env var.**
+  Code that merges several registries (`~/.pi/agent/mcp.json`, `~/.claude.json`, the
+  Hermes `config.yaml`) reads the LIVE files even when you substituted the fixture for
+  one of them — the first two failing tests in a new suite both reported the host's
+  real server name from the OTHER registry. A runner that submits fixtures to the
+  subject must neutralise EVERY known path it reads (point them at a non-existent path
+  in the runner's default, opt-in per test for the one under test), or the real files'
+  content bleeds into every fixture.
 - **A fake path standing in for a real resource silently selects the FALLBACK branch.** Pointing the
   code under test at `/tmp` (or any path holding no repository, no config, no service) is not a
   neutral stand-in once the code gains an environment-derived branch: a probe like "is there a git
@@ -524,6 +532,15 @@ unit seams cannot. Two rules keep that test honest and durable:
   — run the victim alone, pair it with each candidate that touches the module,
   then bisect the failing group — and for what to do when the failure will not
   reproduce at all.
+- **A regression test whose SEED stage fails silently passes trivially — guard the seed
+  before the exercise step.** A rename test that seeded the legacy entry by cloning a key
+  that a prior stage had already deleted died with KeyError, and the assertions that
+  followed passed against the UNSEDED fixture: the check was green without ever exercising
+  the rename. Any multi-stage test where later stages depend on an earlier stage's write
+  must assert the fixture landed (`grep -q '"key"' <fixture>` / `assert marker in
+  fixture`) between seed and exercise, so a dead seed fails the test instead of passing it
+  for the wrong reason. A check that reads "PASS" while its setup raised is a false green,
+  not a flake.
 - **Derive a state-machine test's cases from the module's OWN table, not from your
   memory of it.** A test that hardcodes "advance X → completed" fails when the
   machine does not allow that edge, and the red run blames the transition instead

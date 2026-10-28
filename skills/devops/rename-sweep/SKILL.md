@@ -198,6 +198,11 @@ treat that as part of the deliverable, not a follow-up.
 
 ## Pitfalls
 
+- **Renaming an MCP server registration name is a sweep with its own traps** — every name
+  writer in one commit (installers, audits, watchdog maps, enforcer text, doctor wiring maps,
+  tests), rename-not-add by probe binary, `hermes mcp add` is interactive (pipe `printf 'Y\n' |`),
+  and the rename kills the live session's own `mcp__<old>__*` tools mid-cycle (CLI close-out
+  with an explicit session_id is the fallback). Full recipe: `references/mcp-server-name-rename.md`.
 - **A directory that LOOKS like a duplicate copy is not provably one — diff it
   file-by-file before deleting anything.** The same sub-path appearing twice
   (`<dir>/docs/…` alongside `<dir>/docs/new/<project>/docs/…`) usually means a
