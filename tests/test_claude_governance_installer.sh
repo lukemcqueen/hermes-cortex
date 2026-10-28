@@ -69,6 +69,32 @@ assert "review" not in d["mcpServers"], "governance server survived remove"
 EOF
 check "--remove strips governance only, keeps user's own" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
+# 6. A PRE-RENAME host carries the legacy "loop-governance" key pointing at the SAME
+#    binary. A run must RENAME it, never duplicate it — one process under two names is
+#    the exact fragmentation the one-name rule (review) exists to kill, and the doctor
+#    FAILs it.
+python3 - "$CJ" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+# After --remove no governance server is left to clone: build the legacy entry standalone,
+# with the args that identify the probe binary (the drop condition matches on args).
+d["mcpServers"]["loop-governance"] = {
+    "command": "python3",
+    "args": ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
+}
+json.dump(d, open(sys.argv[1], "w"))
+EOF
+grep -q '"loop-governance"' "$CJ" || { echo "  FAIL  rename: legacy seed itself did not land"; FAILS=$((FAILS+1)); }
+bash "$SCRIPT" >/dev/null 2>&1
+python3 - "$CJ" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert "review" in d["mcpServers"], "review missing"
+assert "loop-governance" not in d["mcpServers"], "legacy entry survived the rename"
+print("legacy renamed to review; single registration")
+EOF
+check "rename: legacy loop-governance entry becomes review, never duplicated" "$([ $? -eq 0 ] && echo 1 || echo 0)"
+
 echo
 if [[ "$FAILS" -gt 0 ]]; then echo "$FAILS FAILED"; exit 1; fi
 echo "ALL PASS"

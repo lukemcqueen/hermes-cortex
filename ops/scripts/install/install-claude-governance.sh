@@ -111,6 +111,11 @@ if not isinstance(data, dict):
     data = {}
 
 servers = data.setdefault("mcpServers", {})
+# Rename, never duplicate: drop any legacy "loop-governance" entry pointing at the same
+# probe binary before the update, so the one-name rule (review) holds through upgrades.
+for _legacy in [n for n, c in list(servers.items())
+                if n != "review" and (c or {}).get("args", []) == GOVERNANCE["review"]["args"]]:
+    del servers[_legacy]
 if mode == "remove":
     removed = [n for n in GOVERNANCE if n in servers]
     for n in removed:
