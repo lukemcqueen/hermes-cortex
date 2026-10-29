@@ -1,0 +1,52 @@
+Review-cost baseline — close-gate review volume (READ-ONLY measurement)
+generated-by: scratch generator run in cycle review-risk-routing-plan (13955), 2026-10-29
+captured-at: 7e10a98a (the revision the working tree sat on when this ran; writing this file moves HEAD, so this line is not a claim about the range)
+re-run: each block below carries its own command. The DB is opened read-only (mode=ro) and nothing here writes.
+note: these are VOLUME measurements of an existing store plus a commit census. They are not a projected
+      saving, and blocks 1 and 2 are stated in verdict ROWS because reviewer_model is empty on older rows.
+
+==============================================================================
+BLOCK 1 — blob_reviews by reviewer model, all time
+==============================================================================
+command: open ~/.hermes-cortex/data/loop-governance.db read-only; group blob_reviews by reviewer_model
+  deepseek/deepseek-v4-pro     n=940   first=2026-10-18T09:38:51Z last=2026-10-29T05:27:54Z
+  (empty)                      n=144   first=2026-10-16T09:03:56Z last=2026-10-18T08:41:13Z
+  reading: the 940 pro rows are the reviewer calls whose model was recorded; the 144 '(empty)' rows
+           predate the 2026-10-18 fix that made the writer name the judge.
+
+==============================================================================
+BLOCK 2 — verdict rows per day vs cycles created, last 14 days
+==============================================================================
+command: blob_reviews grouped by substr(ts,1,10); loop_cycles grouped by substr(timestamp,1,10), window now-14d
+  day          verdict rows       cycles created
+  2026-10-29   7                  5
+  2026-10-28   62                 67
+  2026-10-27   46                 46
+  2026-10-26   10                 24
+  2026-10-25   28                 27
+  2026-10-24   6                  18
+  2026-10-23   101                71
+  2026-10-22   322                115
+  2026-10-21   85                 92
+  2026-10-20   137                99
+  2026-10-19   58                 56
+  2026-10-18   149                286
+  2026-10-17   48                 285
+  2026-10-16   25                 51
+  2026-10-15   0                  60
+  totals: 1084 verdict rows (all models), 1302 cycles created
+  reading: one close may issue several blob verdicts and one verdict may be cached across closes, so
+           these two columns are related, not equal. The window covers both labelled and '(empty)' rows.
+
+==============================================================================
+BLOCK 3 — commit composition, documentation-only share
+==============================================================================
+command: git log --since=2026-10-15 --format=%H, then per commit: git show --name-only --format=
+  commits since 2026-10-15: 547
+  documentation-only (every path docs/** or .md/.txt/.rst): 199 (36%)
+  documentation+tests only: 58
+  touching code/ops/skills/plugins: 268
+  no changed paths listed (e.g. merges): 22
+  check: 199 + 58 + 268 + 22 = 547
+  limit: a COMMIT census, not a review census — blob_reviews carries no path column, so review spend
+         cannot be joined to it. It motivates the class; it does not predict the saving.
