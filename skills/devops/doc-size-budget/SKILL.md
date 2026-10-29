@@ -33,7 +33,7 @@ deployed copy fleet-wide.
 
 | Layer | What it counts | Wrong trim's consequence |
 |-------|---------------|--------------------------|
-| Doctor `_extract_soul_markers` | `- **` list bullets ONLY (Core Traits) | Consolidating trait bullets = permanent reverse-drift WARN on every deployed copy (soul-merge never removes them) |
+| Doctor `_extract_soul_markers` | `- **` list bullets ONLY (Core Traits) | ADDING a new trait bullet to the template FAILs "SOUL.md template sync" on every host — soul-merge propagates principles + sub-points only, never `- **` trait bullets, so deployed SOULs never gain the marker; consolidating/removing WARNs as reverse drift (soul-merge never removes them) |
 | Doctor `check_soul_sync` | `### N. Title` principle headings (title-key matched) | Removing a canonical title = FAIL "missing canonical principles" |
 | soul-merge `_find_missing_subpoints` | `**marker**` prefix anywhere in a principle body | Renaming/merging markers = OLD marker stays + NEW one added on deployed = duplication, not consolidation |
 | agents-doc-audit | heading regexes (`^## Identity`, `^## Core Mission`, …) | Removing a heading = commit-gate FAIL |
@@ -110,8 +110,13 @@ EOF
 
 ## Pitfalls
 
-- **Consolidating trait bullets** seems like easy wins but permanently WARNs
-  every deployed copy. Keep all `- **` bullet names; shorten only their prose.
+- **Adding OR consolidating trait bullets** in the SOUL template breaks sync:
+  a NEW `- **` bullet under Core Traits is never merged into deployed SOULs —
+  soul-merge propagates principles and bold-marker sub-points only, so the
+  doctor's `SOUL.md template sync` FAILs on every host until each SOUL is
+  edited by hand; consolidating WARNs as reverse drift. Keep trait marker
+  NAMES unchanged; shorten only their prose, and put a NEW rule where every
+  agent actually reads it (AGENTS.md) instead of a new SOUL trait.
 - **Renaming a sub-point marker** duplicates content on deployed copies (old +
   new both present). Fold into the existing marker name instead.
 - **Rewriting from memory** re-pastes identical bytes — always edit on-disk via

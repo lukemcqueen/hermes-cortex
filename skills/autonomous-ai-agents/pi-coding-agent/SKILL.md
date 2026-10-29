@@ -303,6 +303,9 @@ An older Pi (<= 0.87, no MCP client) reaches the same governance through the
 The extension registers **NO tools** and wires only the lifecycle:
 
 - `before_agent_start` → restore + inject the checkpoint (a fresh session resumes)
+  AND inject any standing rule you want in EVERY session (see "Standing rules are
+  INJECTED" below); cover BOTH branches — fresh and resume-with-no-snapshot — or a
+  restored session silently misses the rule.
 - **`turn_end` → write a checkpoint** — the harness owns WHEN, never the model
 - `session_before_compact` → checkpoint before continuity is lost
 - **`tool_result` → record the tool event** for tools a gate asks about. The git hook
@@ -310,6 +313,28 @@ The extension registers **NO tools** and wires only the lifecycle:
   that gate reads HC's store — not the harness's own DB. With no `tool_result` hook a
   Pi session has no recorded evidence and **every commit is refused** no matter how
   well the agent behaved.
+
+### Standing rules are INJECTED, not loaded — the third binding surface
+
+Pi's standing context = skill NAMES+descriptions + what the harness injects; a rule
+inside a skill body binds only if the agent happens to load it, and SOUL/MEMORY/USER.md
+are never read by Pi. Three surfaces reach EVERY Pi session, cheapest-effective first:
+
+1. **`before_agent_start` systemPrompt injection** (cortex-context extension) — the
+   ONLY surface that is truly always-on; it is PAID as context on every turn, so keep
+   it to a compact checklist (~7 lines; the pre-ship checklist is the exemplar:
+   right-first-time, survey-before-build, test-edge-cases, evidence-before-done,
+   doctor-clean, plan-review-first, escalate-review-first). Inject in BOTH branches —
+   fresh AND resume-with-no-snapshot: the verifier sets `CORTEX_STUB_EMPTY_RESTORE=1`
+   to force the no-snapshot branch and asserts the checklist appears in each output,
+   or a restore silently misses the rule.
+2. **AGENTS.md / CLAUDE.md** — zero persistent token cost; the place for durable prose.
+3. **The commit-time ritual gate** — a discipline listed in the ritual loop
+   (`reflexion-check survey-before-action prove-before-create agent-contract`) is
+   REFUSED-until-loaded; the only surface with teeth.
+
+Behaviour rules for the agent: insurance at (1), durable prose at (2), the hard
+rule at (3) — never only in a skill body it may never load.
 
 ### The WRITE GATE — a SECOND extension, because pi's tools are not Hermes' tools
 
@@ -323,11 +348,12 @@ repo. Load it with the harness: `bash install-pi-integration.sh` registers both 
   plugin*. It runs in the Hermes agent loop, so pi's native `read`/`bash`/`edit`/`write`
   never cross it. Registering loop-governance over MCP gives pi the *ritual*, not a
   gate: an MCP server is a tool surface and cannot see the host's own tools.
-- The commit-time hook DOES carry a lock check (`pre-commit-score`, "Level 3"), so a
-  claim that it has none is wrong — but its refusal is scoped
+- The commit-time hook DOES carry a lock check (`pre-commit-score`, "Level 3"), so a claim that it has none is wrong — but its refusal is scoped
   `IS_CORTEX_REPO && !LOCK_FOUND`, i.e. `~/hermes-cortex` only, deliberately, so manual
-  human commits in client repos are not blocked. In a PROJECT repo a pi session
-  therefore had no lock gate at write OR commit time.
+  human commits in client repos are not blocked. The RITUAL gate is NOT so scoped:
+  the reflexion/survey loop demands the ritual skills in EVERY repo since 2026-10-29,
+  skipping only no-session (human) commits — so a Pi session IS disciplined in its
+  project repos, by a gate placed where the agent actually works.
 
 **It adds no semantics.** The verdict comes from the shared implementation —
 `loop-gov.py check_repo_lock '{"repo_path":"<repo>"}'`, which is `loop-gov-mcp.py`'s
@@ -412,6 +438,25 @@ tools that already existed in the contract, and the copy that broke silently whe
 moved 0.87.1 → 1.0.0. Two definitions of one capability means the runtime resolves one
 and the other becomes a phantom. Tools stay in the shared MCP server; only the
 triggers stay in the extension.
+
+### The COMMIT-time ritual gate — where DISCIPLINE binds (all repos)
+
+Beyond the write lock, a Pi commit is judged by the same pre-commit ritual gate as
+Hermes — in EVERY repo. `hc-reflexion-check.py --skill <name>` is generic, and the
+gate's loop demands `reflexion-check survey-before-action prove-before-create
+agent-contract` for a governed session. The session split is what makes "all repos"
+safe: a Pi session holds a begin_change lock, so it is JUDGED anywhere; a human
+commit has no session and is skipped (`--skip-no-session`). A discipline meant to
+change Pi's behaviour belongs HERE — a skill in the loop that the gate refuses until
+the agent loads (loading = reading the SKILL.md, recorded by the `tool_result`
+hook) — never only in a skill body it may never load.
+
+**Consequence for guidance placement:** the only files a non-Hermes agent always has
+in context are AGENTS.md (and CLAUDE.md for Claude). SOUL.md / MEMORY.md / USER.md
+are never read by Pi, and skills are name-only until the agent chooses to load one —
+so a rule living only in a SOUL trait or a skill's body reaches NO coding agent. Put
+behaviour rules for Pi in AGENTS.md/CLAUDE.md (a short "Core Operating Rules" block is
+the pattern), and make them bind by putting the discipline into the ritual-gate loop.
 
 Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
 `registry.yaml` + `generate-harnesses.py` · Runbook:

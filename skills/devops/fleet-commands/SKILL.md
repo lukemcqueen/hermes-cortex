@@ -301,13 +301,13 @@ Check audit log for reads on the target queue:
 
 ```bash
 sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
-SELECT action, agent_name, queue, COUNT(*) as cnt,
+SELECT action, agent_name, queue_name, COUNT(*) as cnt,
     MIN(created_at)::timestamptz(0) as first_seen
 FROM bus.audit_log
-WHERE queue = 'inbox_<agent>'
+WHERE queue_name = 'inbox_<agent>'
   AND created_at > NOW() - INTERVAL '5 minutes'
-GROUP BY action, agent_name, queue
-ORDER BY queue, action;
+GROUP BY action, agent_name, queue_name
+ORDER BY queue_name, action;
 \""
 ```
 
@@ -344,6 +344,14 @@ responded, re-run it on the authoritative bus BEFORE concluding a failure.
 The archive/git_sha_after discipline above still applies: results are
 archived silently by handlers within ~5 min, and `git_sha_after == target`
 is the proof of install, not the success flag.
+
+**The ssh→sg→docker→psql nesting mangles single-quoted SQL literals.**
+Inline SQL through `ssh … 'sg docker -c "docker exec … psql … -c \"…\""'` drops the
+inner quotes — a `WHERE state = 'pending'` arrives as `state = pending` and errors on a
+nonexistent column. Write the SQL to a local file and feed it via STDIN from the LAST layer
+(`ssh -o BatchMode=yes mosesaaron "sg docker -c 'docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A'" < q.sql`)
+so no shell ever sees the SQL's quotes. And the audit_log column is `queue_name`,
+never `queue`.
 
 **Filter by SUBJECT, not correlation_id alone.** A correlation_id is on BOTH
 the request and its result, so `WHERE correlation_id = '<corr>'` returns the
@@ -408,7 +416,7 @@ When you need to test whether a specific agent (e.g. Esther) can receive and pro
 **Step 1 — Check if the agent is alive on the bus**
 ```bash
 sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycortex -t -c \"
-SELECT action, queue, created_at::timestamptz(0)
+SELECT action, queue_name, created_at::timestamptz(0)
 FROM bus.audit_log
 WHERE agent_name = '<agent>' AND created_at > NOW() - INTERVAL '10 minutes'
 ORDER BY created_at DESC LIMIT 5;
@@ -540,6 +548,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 - **Stale-host remediation: CLASSIFY with `git-main-sync.sh --check` before dispatching, and do NOT assume it is out of bus reach.** The deployed `git-main-sync.sh` supports a report-only mode — `hc exec <agent> git-main-sync.sh --check --output-schema RAW` prints branch + `behind/ahead` and changes nothing. That is the cheapest way to tell the three cases apart, and the fix differs per case:
   - **behind > 0, ahead == 0** → pure fast-forward. Run `hc exec <agent> git-main-sync.sh` (no `--check`); the repo's post-merge hook auto-runs `cortex-update.sh` in the same pass, so a stale DEPLOYED tree is repaired without a separate UPDATE_REQUEST. Verified end-to-end: a host 53 commits behind went to `0 behind, 0 ahead` and its deploy-drift audit went from 31 items to exit 0 silent. The tool exits 1 and leaves the tree untouched on any error.
   - **ahead > 0 (divergent)** → a pull is a MERGE, not a fast-forward, and those local commits may be work in progress. Do NOT pull; escalate to the operator with the exact commands.
+  - **A dirty tree that carries a `[deliberate (host, date)]` doctor disposition is an OWNER decision — a behind host whose pull is blocked by it does NOT self-heal.** The doctor's `Repo clean [deliberate ...]` is the signal the uncommitted changes were consciously left (deferred, not missed); on such a host `git pull --rebase` refuses (`cannot pull with rebase: You have unstaged changes`), so UPDATE_REQUEST and `git-main-sync.sh` both fail to advance it. Do NOT commit or stash the tree to unblock it — that is the owner's call — and do not read `git_sha_before == git_sha_after` as the update succeeding on that host. Read the doctor's `Repo sync` / `Deploy sync` / `Repo clean` LINES for the real state, and report the host as needing its dirty tree resolved by its owner, then a `git-main-sync.sh` fast-forward.
   - **stale ORIGIN** (`behind` large but HEAD never moves after a pull) → the one-liner ON the host (`git remote set-url origin <correct-url>`) — genuinely out of bus reach; escalate.
 - **EXEC bootstrap chicken-egg: a host whose repo is stale can't run tools that only exist in newer commits.** `hc exec <agent> git-main-sync.sh` → `Script not found` (exit -1) when the DEPLOYED tree predates the tool (the EXEC handler runs `~/.hermes-cortex/scripts/`, i.e. the deployed copy). New recovery tooling cannot reach the host it was written to fix — but any host that HAS deployed recently can run it, so try the probe above before concluding it is unreachable.
 
@@ -585,6 +594,10 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 - **Visibility timeout (VT) does NOT bound processing time — the subprocess timeout does.** The handler reads with `vt=120` and archives immediately after reading (early archive, `c7231c3`), so the VT only covers the read→archive window — it can never re-expose a message mid-processing. What actually bounds `cortex-update.sh` is the subprocess `timeout=` in `run_cortex_update()`: it was `120` (commit `feb8ef1` era, when cortex-update+doctor took ~96s) but the 08-10 fleet dispatch false-flagged titus/moses with `cortex-update TIMEOUT after 120s` — the doctor's Task Lifecycle v2 checks pushed update+doctor past 120s on slower hosts. Raised to `300` (2026-08-11, matching `orch-bus-fleet-dispatch --timeout 300` default). When debugging stuck `processing` messages, check `timeout_at` vs current time — but remember a stuck message means the handler *crashed* (see poll_once exception pitfall), not that the VT expired mid-update.
 - **cortex-update.sh exit=1 with empty stderr = soft success** — `cortex-update.sh` uses `set -euo pipefail` and `needs_update()` returns 1 for files already up to date (hashes match). This return code propagates as the script's exit code even though the update completed successfully. Fix (commit `821cdfd`): `run_cortex_update()` treats exit=1 as success when stderr is empty. If you see `UPDATE_RESULT success=false` with error `"cortex-update failed: "` (empty detail), check the handler cron log — the script likely completed normally.
+
+- **The SAME rule is a trap in the other direction: one WARNING on stderr at exit=1 is reported as a fleet-wide `cortex-update failed`.** The success test is `rc == 0 or (rc == 1 and not stderr)`, and the error field takes the FIRST 200 chars of stderr — so any byte a script writes to stderr converts a completed update into `❌ FAILED`, with the script's own diagnostic quoted as the reason. A dispatch in which every host failed with `cost keys NOT dropped: ruamel.yaml missing in this interpreter` had in fact completed on every host.
+  - **Triage: read the DETAIL TEXT before touching the subject.** A detail that is a WARNING (`could not X, skipping`, `no interpreter to do Y`) rather than an error means the script is over-verbose on a path where it had nothing to do. Fix THAT — decide "is there anything to do?" with a cheap check on the file and return silently when there is not, resolving the dependency by capability for the case that needs it. Do NOT loosen the caller's success rule: it exists because stderr usually does mean a problem, and widening it changes every host's failure detection to treat a real error as success.
+  - **Authoring rule for anything a fleet handler calls:** never write to stderr on a healthy, nothing-to-do path. A `warn` is an operator FYI; under this caller it is a fleet outage.
 
 - **`hc exec` polls only 300s but a fleet agent's handler ticks every 5 min — results can land AFTER the poll gives up (2026-08-11).** The round-trip worked (probe was read/processed), but `hc exec` reported "Timed out waiting for EXEC_RESULT" because the result arrived at ~5:05 while the poll window closed at 5:00. **Decoupled pattern that always wins:** use `hc send <agent> EXEC '<json>' --self-tested` with a correlation_id, then poll `bus.archives` for `EXEC_RESULT` after ~5.5 min (see the archive queries above). Also: archiving your own stuck probe messages is fine — the handler already read them into `processing` (early-archive), so the result still comes back; don't resend the same probe, just wait and check archives.
 

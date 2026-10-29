@@ -1426,6 +1426,48 @@ blocks correct work and the operator's own diagnosis gets sent down the wrong pa
 - **Print the identity the guard decided on** (`Session repo : …`) beside the candidate list, so
   the next reader can tell a bad guard from a bad tag without re-deriving it.
 
+## Rule 33: A Discipline Gate Must Fire Where the Agent It Governs Actually Works
+
+A gate meant to CHANGE an agent's behaviour (survey-before-build, plan-review, any ritual
+discipline) is placed by WHERE that agent commits, not by where the existing gate happens to
+live. The reflexion gate is scoped to the cortex repo because its proof needs a session a human
+manual commit lacks — but a dev agent (Pi, Claude Code, Codex) does its real work in PROJECT
+repos, so a survey gate wired only into the cortex-scoped reflexion gate governs NONE of it.
+Measure the agent's ACTIVE path (which repos it actually commits in) before placing the gate.
+
+To govern project repos WITHOUT blocking human manual commits, split on SESSION presence —
+the same signal the reflexion gate already uses:
+- a dev agent's commit holds a governance lock (`begin_change` via MCP; the Pi extension records
+  skill loads into the tool-event store) → an active session exists → the ritual gate applies and
+  refuses on missing evidence;
+- a human `git commit` by hand holds no lock → no active session → skip.
+
+A host-wide gate is therefore safe only when it SKIPS on "no session resolvable" and fires only
+on "active governance session present". Missing that split is both failure modes at once:
+HC-only placement misses the agent the gate was meant to change, and an unscoped host-wide
+version blocks manual commits. (Same signal as `hc-reflexion-check.py active_session_id()`.)
+
+## Rule 33: A Discipline Gate Must Fire Where the Agent It Governs Actually Works
+
+A gate meant to CHANGE an agent's behaviour (survey-before-build, plan-review, any ritual discipline) is placed by WHERE that agent commits, not by where the existing gate happens to live. The reflexion gate is cortex-repo-scoped because its proof needs a session a human manual commit lacks — but a dev agent (Pi, Claude Code, Codex) does its real work in PROJECT repos, so a survey gate wired only into the cortex-scoped reflexion gate governs NONE of it. Measure the agent's ACTIVE path (which repos it actually commits in) before placing the gate.
+
+To govern project repos WITHOUT blocking human manual commits, split on SESSION PRESENCE — the same signal the reflexion gate already uses:
+
+- a dev agent's commit holds a governance lock (`begin_change` via MCP; the Pi extension records skill loads into the tool-event store) → an active session exists → the ritual gate applies and refuses on missing evidence;
+- a human `git commit` by hand holds no lock → no active session → skip.
+
+A host-wide gate is therefore safe only when it SKIPS on "no session resolvable" and fires only on "active governance session present". Missing that split is SOWING both failure modes: HC-only placement misses the very agent the gate was meant to change, and an unscoped host-wide version blocks manual commits.
+
+Reuse the shared session-resolution implementation (`hc-reflexion-check.py active_session_id()`, and pass `--skip-no-session` for the ungoverned skip) rather than re-deriving "which session does this repo's commit belong to" in each new gate — one implementation, or the copies drift and one host is refused forever while nothing reports a fault.
+
+Making a behaviour discipline (survey, leverage, plan-review) actually BIND, rather than being prose an agent skips: promote the governing skill into the required-set (`_REQUIRED_SKILLS` + `skills.yaml always:` + the doctor's required list — the three MUST stay in sync), and verify the LOAD in the commit gate. `hc-reflexion-check.py` is a generic checker — `--skill <name>` answers "did this session load X" — so the gate loops it over the ritual set instead of defaulting to reflexion-check only. The `prove-before-create` skill's "Enforcement — Pinned ≠ Enforced" section is the worked example.
+
+## References
+
+- **All-repos discipline gates & the session split** (fire where the agent works,
+  skip no-session commits; block messages must name the live MCP tool prefix):
+  `references/all-repos-session-split-gate.md`
+
 ## References
 
 - `references/memory-seed-clobber-2026-08-05.md` — the memory-clobber root

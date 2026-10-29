@@ -82,6 +82,16 @@ same job. Keep it on reasoning-heavy work (orchestrator decisions, diagnosis,
 evaluation). Pin via the cron manifest so it survives deploys, not just live
 jobs.json (live edits get reverted by cortex-update).
 
+**Enabling per-turn reasoning-effort routing needs a MEASURED capability map,
+never a guess** — a level a model does not accept either 400s the request or is
+silently ignored, and the whole point is the token bill. Probe each pool model at
+each level WITH a no-effort baseline, separate the two non-acceptance shapes
+(level REFUSED while the bare request works = a model you declare without that
+value; bare request fails too = a route/data-policy problem, exclude the model
+with the reason and declare nothing), declare only verified levels, and key the
+going map on EXACT `provider:model`. Full protocol + the gate-model-replacement
+head-to-head in `references/model-selection-for-cost.md`.
+
 ## Session-continuation economics (same session vs new)
 
 Same-session continuation is CHEAPER and better, because re-sent history is a
@@ -147,6 +157,32 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
    secondary.
 6. **Report coverage %** — a cost report must show missing hosts/fields as gaps,
    never as zeros. Fake-precise numbers are worse than no numbers.
+
+## The close-gate review is its own cost surface
+
+Every change that crosses a governed gate's complexity bar pays for a full model
+call, and a looping cycle pays repeatedly — on a busy fleet that is often the
+largest single LLM line item, and it is invisible in cron/session telemetry.
+Three always-on rules before proposing any lever on it:
+
+1. **Measure the gate's DECISION, not its declared tiers.** A tier that changes
+   transport or wait budget while resolving the SAME judge model is a no-op for
+   spend — the tier names then describe latency, not money. Read the resolver the
+   tier calls, and grep for a second constant holding a cheaper default (a stray
+   duplicate is where one creeps back).
+2. **Prefer a computed risk class over a size threshold.** Line/file counts are a
+   poor proxy for risk: a 50-line prose edit buys a full review while a small edit
+   to a security check may not. Bound the classes a reviewer adds least to
+   (documentation-only ranges) with a predicate computed FROM the diff, never
+   self-declared, and record every skip with the class and its inputs.
+3. **Two caps that look like savings are false negatives.** An output-token cap
+   below the reviewer's reasoning budget returns EMPTY content, which the gate reads
+   as "reviewer unavailable" and uses to refuse a valid close; trimming what the
+   reviewer reads past the point where it can judge manufactures unanswerable
+   findings. Each costs a full re-review — the expensive outcome dressed as thrift.
+
+Where the verdicts are recorded, how to count them read-only, and the fail-closed
+rules for a skip-class: `references/review-gate-spend.md`.
 
 ## Pitfalls
 
@@ -261,3 +297,11 @@ compaction/rewrites fire (those bust cache worse than a fresh start).
   per provider), model-id matching, where speed actually comes from (and its
   chars/sec unit), and free-tier-pin verification. Read before recommending or
   re-pinning any model.
+- `references/model-selection-for-cost.md` — the measured capability-map
+  protocol for turning on a per-model request knob (effort levels), and the
+  head-to-head protocol for choosing whether a cheaper model may replace a
+  gate/reasoner (recall AND precision, not price).
+- `references/review-gate-spend.md` — the close-gate review as a cost surface:
+  reading the gate's decision instead of its tier names, where verdicts are
+  recorded and how to count them read-only, computed risk classes with their
+  fail-closed rules, and the two caps that manufacture false negatives.

@@ -186,6 +186,22 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 ## Phase 1.5: Adversarial Verification (MANDATORY — no bypass)
 
 Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit until adversarial-verifier loaded), and this checklist.
+- [ ] **A test judged by the close reviewer must DERIVE its expected values from the system's
+      OWN surface — never assert a hand-copied duplicate equals the module's constant, and
+      never match a magic bound or a message substring.** Three refuser patterns recur on a
+      submitted test: (a) a CIRCULAR constant-equality assert (`mod.REVIEW_TOOLS ==
+      REVIEW_EXPECT` with REVIEW_EXPECT hand-written in the test) proves nothing beyond the
+      test's own definition — import the authoritative value from the module
+      (`set(mod.REVIEW_TOOLS)`) so there is ONE source of truth, and make the load-bearing
+      check the BEHAVIOURAL surface (what `list_tools`/`call_tool` return under each role),
+      not a constant-vs-constant echo; (b) a MAGIC LOWER BOUND (`assert len(full) >= 13`)
+      with no pointer — assert SET EQUALITY against a value derived from the runtime
+      surface instead; (c) a MAGIC-SUBSTRING match on a human-editable message
+      (`"not exposed" in text`) — pair the direct behavioural predicate
+      (`mod._role_allows("x") is False`) with a structural check that the guard names the
+      tool AND the role, never one fragile phrase. Read the stored `findings_json` between
+      closes and fix the TEST in place each round — the reviewer re-judges a new blob on its
+      own, so a strengthened test is a new commit, never an argument.
 - [ ] Static gate on every changed script: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <file> --level A2 --gate. A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, cortex_doctor/, quality/, tests/, and enforcement scripts. Critical/high → block. No --no-verify.
 - [ ] **Pin a before/after comparison to an immutable revision, and name both revisions in the
       artifact.** A baseline recorded as "HEAD", "the working tree", or a stash is unrepeatable the

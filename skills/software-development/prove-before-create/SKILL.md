@@ -88,6 +88,25 @@ Name the file at the **class level**, not after today's session artifact.
 A file called `fix-registry-timeout.py` is wrong (session-specific).
 A file called `circuit-breaker.py` is right (class-level).
 
+## Enforcement — Pinned ≠ Enforced
+
+This skill being `pinned: true` only means its body is reachable; an agent that never
+loads it can skip the whole survey. To make the "extend, don't rebuild" rule BIND, wire it
+as a required ritual, never leave it as documentation:
+
+- Add `prove-before-create` to the enforcer `_REQUIRED_SKILLS` AND to `skills.yaml always:`
+  (the write-gate then forces the load) and mirror it in the doctor's required-skill list —
+  the three MUST stay in sync (the enforcer comment names all three synchronisation points).
+- Extend the pre-commit ritual gate to VERIFY the load: `hc-reflexion-check.py` is a generic
+  checker — `--skill <name>` answers "did this session load X" from the tool-event store, but
+  the gate defaults to `reflexion-check` only. Looping it over
+  `reflexion-check survey-before-action prove-before-create` is the difference between proving
+the agent *reflected* (it loaded the self-critique skill) and proving it *surveyed* (it loaded
+the pre-flight + extend-don't-rebuild rules).
+- Place the gate where the agent actually COMMITS. A discipline gate aimed at changing a dev
+  agent's behaviour does nothing if it fires only inside the cortex repo and the agent does its
+  work in project repos (see the `enforcement-change-safety` skill, Rule 33, for the scope split).
+
 ## Choose the Implementation Stack by MEASURING the Host
 
 Creating a new tool is also a choice of language, runtime, and dependencies — and that choice is a

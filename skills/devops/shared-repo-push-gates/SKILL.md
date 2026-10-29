@@ -280,6 +280,13 @@ does not apply.
   trick above: the next close re-reads the window with the evidence now in it. Claims about
   a tool RUN (a deploy, a doctor, a dogfood script) need a committed transcript for the same
   reason — the reviewer cannot see your terminal.
+  - **A script's SCOPE or EXEMPTION claim must be implemented IN the script, not only in the
+    calling hook — hook-level scoping is invisible to the close reviewer (it flags the
+    docstring's claim as HIGH `unverified-claim`) and to direct invocation.** When a close
+    finding flags a docstring that declares an exemption ("this repo is covered elsewhere"),
+    implement the check in the script itself (early-return PASS for the exempted slug), then
+    regenerate any test asserting it; editing the comment alone cannot clear a per-blob
+    verdict — the changed script IS the new blob judged next round.
   - **A REFUSED close releases the lock, so the artifact lands in a NEW cycle — and that
     cycle's receipt covers the commit the review refused. Say so in the note.** You cannot
     re-open the refused window: `end_change` refused, the lock is gone, and a fresh
@@ -483,7 +490,7 @@ does not apply.
      the extracted helper, never the tool; a fixture written to a path the reader does not
      read is exactly how the live store gets written while the test still looks hermetic. Symptom: push blocked with "doctor reports N
    failure" + `❌ PENDING cycles`, even after dogfood passes. Fix: query
-   `mcp__loop_governance__cycle_query(unreviewed=true)`, `feedback_accept`
+   `mcp__review__cycle_query(unreviewed=true)`, `feedback_accept`
    (or `feedback_override`) every orphaned PENDING cycle, re-run doctor to
    0 fail, then push. The current task's own cycle (lock held) is INFO, not
    a blocker.

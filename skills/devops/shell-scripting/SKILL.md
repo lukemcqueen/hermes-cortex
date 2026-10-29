@@ -395,12 +395,42 @@ real commit:
    differ between source and deployed).
 5. **sed delimiter pitfall:** when the pattern contains `||`, `s|old|new|`
    dies with "unknown option to `s'`" — use `@`: `s@old@new@`.
+6. **For a script the fleet RUNS, drive the DEPLOYED copy — the runtime tree is the truth.**
+   The repo source may differ from `~/.hermes-cortex/scripts/` (SOURCE header added, drift, an
+   old deploy). Extract the function from the DEPLOYED file, run it against a THROWAWAY HOME and a
+   fake `PATH`, and expect a repo-only green to be refused as proving nothing about what the fleet
+   actually executed. Grep the deployed copy for the fix marker before the probe, so the harness
+   refuses loudly when the deploy never landed.
+7. **Emulate a MISSING CAPABILITY on PATH, not a missing binary.** To reproduce the fleet shape
+   "`python3` cannot import ruamel", make a temp dir holding a `python3` shim that prints the
+   exact real failure line and exits the real code, and prepend it to PATH — then assert the shim
+   SHADOWS the real one (`command -v python3` resolves to it), or the probe exercises the real
+   interpreter and the failing branch never runs. Probe CAPABILITY (`<py> -c 'import X'` with
+   `PYTHONPATH`/`PYTHONHOME` stripped), never path existence.
+8. **Add a NON-VACUITY direction — the same probe against a PINNED pre-fix revision must FAIL.**
+   Materialise the baseline with `git show <rev>:<path> > <tmp>` into a throwaway HOME (pinned
+   immutable SHA, never a moving ref), ASSERT the extraction really is the pre-change copy by
+   grepping for a symbol the fix INTRODUCED (absent ⇒ genuine), then run the SAME probe and require
+   non-zero. A harness that only runs against the fixed code passes vacuously — the differential
+   (pre-fix fails, fixed passes, live == deployed) is what proves the check would NOTICE a
+   regression. For a bash function, extract by brace-matching to the function's own closing brace
+   (a column-0 `}`), never by assuming a marker sits inside it.
 
 Worked example (2026-07-31): `pre-commit-score` ORCH_CONFIG silent failure —
 `set -euo pipefail` + `VAR=$(git show HEAD:... || cat ... 2>/dev/null)` died
 silently (exit 1, no output) in repos without `docs/orchestrator-only-paths.txt`.
 Reproduced via this harness, fixed with `|| true`, all three cases verified,
 deployed, doctor clean.
+
+**A helper added beside a function that a test extracts BY NAME vanishes from the
+harness.** A harness that pulls one function out of a large script (brace-matching
+`<name>() {` … the first column-0 `}`) gets ONLY that function: a helper it now calls
+is undefined there, so every pre-existing test in that file fails with
+`command not found` — which reads as your change breaking unrelated behaviour, in a
+file you never opened. Pick one deliberately: **inline the helper** into the function
+(keeps it self-contained under extraction, and is the smaller change), or extract the
+helper as its own function **and teach the harness to include it in the same commit**.
+Never leave the harness broken and report those failures as "pre-existing".
 
 ## Awk Portability
 
@@ -879,6 +909,12 @@ exit 3
   when a caller only needs the path). Reuse it rather than writing another copy — it is
   registered in `cortex-update.sh` and deploys to `scripts/lib/`.
 - `PYTHON=` is the escape hatch an operator reaches for; honour it first.
+- **An interpreter handed to a CHILD must be an ABSOLUTE path when that child manipulates
+  `PATH`.** A probe that finds the capable interpreter with `shutil.which("python3")` / `command -v`
+  and passes the bare NAME into a harness whose `PATH` is deliberately poisoned (the stub-first
+  recipe used to exercise the "no capable python3" branch) re-resolves that name to the STUB inside
+  the child — so the capability branch under test never runs and the run reports the fallback path
+  while looking like a pass. Resolve to a path, pass the path, and print which interpreter answered.
 - **Declare ONE interpreter; never let each caller re-derive a path.** A rule copied into seven
   scripts is seven chances to write it differently, and the copies WILL disagree — one check calls
   a venv healthy while another warns about it, and a validator blames a file. Provision a per-host
