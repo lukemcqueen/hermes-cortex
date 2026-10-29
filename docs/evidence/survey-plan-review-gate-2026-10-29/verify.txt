@@ -1,0 +1,244 @@
+# Survey/Plan-Review gate verify — captured 2026-10-29T09:17:04Z
+root=/home/esther/hermes-cortex py=/home/esther/.hermes-cortex/venv/bin/python3
+tip=f850648d
+
+===== bash -n changelist =====
+rc=0
+
+===== reflexion gate hermetic test =====
+
+═══ AC1: verifier says LOADED → gate passes ═══
+  ✅ loaded session passes the gate
+
+═══ AC2: verifier says NOT-LOADED → gate refuses ═══
+  ✅ not-loaded session is refused with an explanation
+
+═══ AC3: store unreachable → gate REFUSES (fail-closed) ═══
+  ✅ unverifiable outcome fails closed rather than passing
+
+═══ AC4: verifier missing → gate refuses, actionably ═══
+  ✅ missing verifier refuses and names the fix
+
+═══ AC5/AC6: skip paths preserved (non-HC repo, sanctioned pipeline) ═══
+  ✅ non-HC ungoverned repo skips the gate (skip flag passed)
+  ✅ sanctioned pipeline commit skips the gate
+
+═══ AC7: the real verifier ═══
+  ✅ refuses a session with no recorded evidence
+  ✅ empty --skill is a usage error
+  ✅ verifier defines a distinct store-unreachable code
+  ✅ --skip-no-session skips when there is no governed session
+  ✅ no-session is refuse-able (rc 1) when the skip flag is absent
+
+═══ AC8: STORE-ONLY — an enforcer-journal-only session is REFUSED ═══
+  ✅ journal-only session refused — the store is authoritative, bridge gone
+  ✅ no bridge code remains in the verifier
+
+═══ AC9: STORE UNREACHABLE → rc 3, fail-closed, actionable ═══
+  ✅ store module missing → rc 3, names the fix
+  ✅ store unreachable → rc 3 with the actionable fix named
+
+═══ AC10: store raises mid-query → rc 3, no stack dump leaked ═══
+  ✅ an exception inside the store still refuses (rc 3), never crashes or passes
+  ✅ no stack trace in the gate output
+  ✅ gate output stays a single line (no raw dump)
+  ✅ no run-time store-path override exists in the verifier
+
+═══ Summary ═══
+  19 passed, 0 failed
+  ✅ ALL TESTS PASSED
+rc=0
+
+===== reflexion gate e2e test =====
+
+═══ Setup: is the store reachable? ═══
+  store reachable
+
+═══ AC1: the ENFORCER WRITER records a real row (no manual insert) ═══
+  ✅ writer produced the expected row: hermes|skill_view|tool|{"name": "reflexion-check"}
+
+═══ AC2: the verifier reads that row (store, not a journal) ═══
+  ✅ verifier returns LOADED for the recorded session
+
+═══ AC3: per-skill discrimination — loaded True, never-loaded False ═══
+  ✅ a skill this session never loaded is NOT-LOADED
+
+═══ AC4: a session with no rows at all is refused ═══
+  ✅ absent session is refused
+
+═══ AC5: a PREFIXED skill_view record still satisfies the gate ═══
+  ✅ prefixed (category/name) record satisfies the gate
+  ✅ prefixed session still refuses a never-loaded skill
+
+═══ Summary ═══
+  6 passed, 0 failed
+  ✅ ALL TESTS PASSED
+rc=0
+
+===== plan-review gate pytest =====
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 10 items
+
+tests/test_plan_review_gate.py ..........                                [100%]
+
+============================== 10 passed in 0.75s ==============================
+rc=0
+
+===== enforcer yaml compat + pi evidence pytest =====
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 19 items
+
+tests/test_enforcer_yaml_compat.py .sss......                            [ 52%]
+tests/test_pi_skill_load_evidence.py .........                           [100%]
+
+======================== 16 passed, 3 skipped in 3.82s =========================
+rc=0
+
+===== adversarial A2 ops/scripts/pre-commit-score =====
+
+── /home/esther/hermes-cortex/ops/scripts/pre-commit-score ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 7 item(s)
+     ⚠️ State: 6 item(s)
+     ⚠️ Dependencies: 4 item(s)
+     ⚠️ Concurrency: 1 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== adversarial A2 ops/scripts/hc-reflexion-check.py =====
+
+── /home/esther/hermes-cortex/ops/scripts/hc-reflexion-check.py ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 12 item(s)
+     ⚠️ State: 12 item(s)
+     ⚠️ Dependencies: 12 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 2
+     - _import_module(path)
+     - load_store_module()
+   Fuzz inputs generated: 9
+
+📊 Summary: 1 file(s), 10 finding(s)
+   🟡 Medium: 2
+   ⚪ Info: 8
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== adversarial A2 ops/scripts/hc-plan-review-check.py =====
+
+── /home/esther/hermes-cortex/ops/scripts/hc-plan-review-check.py ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 8 item(s)
+     ⚠️ State: 3 item(s)
+     ⚠️ Dependencies: 14 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 1
+     - _load_hcrc()
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 1 finding(s)
+   🟡 Medium: 1
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== adversarial A2 ops/scripts/cortex-update.sh =====
+
+── /home/esther/hermes-cortex/ops/scripts/cortex-update.sh ──
+   Level: A2
+   Attack Surface:
+     ⚠️ Inputs: 25 item(s)
+     ⚠️ State: 19 item(s)
+     ⚠️ Dependencies: 19 item(s)
+     ⚠️ Concurrency: 13 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== adversarial A4 ops/scripts/manage/cortex_doctor/checks.py =====
+
+── /home/esther/hermes-cortex/ops/scripts/manage/cortex_doctor/checks.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 180 item(s)
+     ⚠️ State: 58 item(s)
+     ⚠️ Dependencies: 121 item(s)
+     ⚠️ Concurrency: 24 item(s)
+   Functions: 73
+     - _invokes_score_cycle(text)
+     - _score_cycle_consumers(search_roots)
+     - _is_git_repo(repo_dir)
+     - _is_cortex_worktree(repo_dir)
+     - check_soul_sync(res)
+     ... and 68 more
+   Fuzz inputs generated: 728
+
+📊 Summary: 1 file(s), 75 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 18
+   ⚪ Info: 53
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== adversarial A4 plugins/governance-enforcer/__init__.py =====
+
+── /home/esther/hermes-cortex/plugins/governance-enforcer/__init__.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 78 item(s)
+     ⚠️ State: 20 item(s)
+     ⚠️ Dependencies: 34 item(s)
+     ⚠️ Concurrency: 15 item(s)
+   Functions: 8
+     - _hc_store_module()
+     - _skill_file(name)
+     - _receipt_checker()
+     - _git_subcommand_with_dir(segment)
+     - _pii_sensitive_hits(content)
+     ... and 3 more
+   Fuzz inputs generated: 69
+
+📊 Summary: 1 file(s), 27 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 2
+   ⚪ Info: 21
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+===== hc-reflexion-check --skip-no-session (no session) =====
+NO-SESSION — reflexion gate skipped for repo 'no-such-repo-evidence' (no governed session; nothing to judge)
+rc=0
+
+===== VERDICT =====
+ALL PASS
