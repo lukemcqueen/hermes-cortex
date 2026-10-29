@@ -1,7 +1,8 @@
 # The Jev decision layer — install, shadow, and swapping the decision model
 
-Status: installed and verified on one host (esther, 2026-10-28). **Shadow only** — nothing
-switches a model yet. This is the reference for the fleet rollout.
+Status: installed and verified on one host (esther, 2026-10-28); routing is **on** (since
+2026-10-28) and per-turn reasoning-effort routing is **on** (2026-10-29, see
+«Per-turn reasoning-effort routing» below). This is the reference for the fleet rollout.
 
 Upstream: `github.com/kerpopule/hermes-jev-skills` (MIT), 13 `SKILL.md` files + a Hermes plugin
 (`hermes-jev`) + a stdlib-only `jev` CLI. TypeSafe Jev is a *decision* model: you hand it a state
@@ -111,6 +112,32 @@ format and the same hot-swap premise (see the `judgment-integration` and `system
 skills). The rule that keeps them from drifting: **fleet code keeps calling `judgment.py`**;
 `jev` is the agent-facing decision layer (model routing, skill selection, search screening) and
 its `jevkit` is not a second integration point for our scripts.
+
+## Per-turn reasoning-effort routing
+
+The routing difficulty answer already buys the model; the same answer now also buys the
+`reasoning_effort` level for that turn (reused, no second Jev call). Every reasoning-capable
+pool model is asked the same mechanical prompt at each level to record (a) which levels it
+accepts and (b) how many output tokens each buys — see
+`docs/evidence/jev-effort-levels-2026-10-29/` (re-runnable `probe-effort-levels.sh`).
+
+Measured: `none` turns thinking OFF on every reasoning model (0 reasoning tokens); `low` /
+`medium` / `high` buy comparable thinking on mechanical turns. So the ladder is the cost
+control: trivial→`low`, routine→`low`, substantial→`medium`, expert→`high` (chosen over
+`none` on trivial to avoid the recorded "tool-needing turn answered without calling a tool"
+regression when thinking is off).
+
+- `effort.enabled` + `effort.levels` + `effort.models` (capability map) + `effort.excluded`
+  live in the ONE reviewable artifact `config/jev-router-models.json`; `jev-router-pools.py
+  --write` projects them into each host's `~/.hermes/jev/routing.json`, and `--check` /
+  `--selftest` fail on drift or an unsound map.
+- The capability map is exact `provider:model` (verified against the probe). Untested models
+  keep their existing effort — the plugin only applies a level when that model's own list
+  contains it.
+- Two distinct non-acceptance cases, recorded separately: `z-ai/glm-5.3` refuses `none`
+  (reasoning mandatory → listed without `none`); `qwen/qwen3.7-flash` 404s on every level
+  AND the no-effort baseline on the probe key (OpenRouter data-policy guardrail → NOT an
+  effort problem, so it is listed in `effort.excluded`, not in `effort.models`).
 
 ## Fleet rollout (not done)
 

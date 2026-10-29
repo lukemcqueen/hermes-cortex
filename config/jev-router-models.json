@@ -22,6 +22,28 @@
     "rejected_reason": "6.54x the baseline ($3.660/M vs $0.560/M) for a medium coding turn; the suggested pool order put it first. Ratio computed from this file's prices.",
     "rule": "Every pool must LEAD with a model cheaper than the baseline. Every model in a SIMPLE pool is cheaper than the baseline. A medium pool may carry the baseline as the in-pool fallback. `hard` may lead dearer - that is the exception for very complex work - but only from the hard whitelist and never above $3.00/M."
   },
+  "effort": {
+    "enabled": true,
+    "levels": ["low", "low", "medium", "high"],
+    "note": "trivial->low, routine->low, substantial->medium, expert->high. Chosen over [none,low,medium,high] because none on a confident-trivial tool-needing turn is the recorded regression (upstream jevkit/effort.py: a live fleet turn answered without calling a single tool when thinking was off); low on trivial buys most of the saving without that failure. One config value flips back if the operator wants none.",
+    "models": {
+      "openrouter:deepseek/deepseek-v4-flash-0731": ["none", "low", "medium", "high"],
+      "openrouter:qwen/qwen3-coder-30b-a3b-instruct": ["none", "low", "medium", "high"],
+      "openrouter:deepseek/deepseek-v4-pro-0813": ["none", "low", "medium", "high"],
+      "openrouter:z-ai/glm-4.7": ["none", "low", "medium", "high"],
+      "openrouter:minimax/minimax-m3": ["none", "low", "medium", "high"],
+      "openrouter:qwen/qwen3.5-122b-a10b": ["none", "low", "medium", "high"],
+      "openrouter:xiaomi/mimo-v2.6-pro": ["none", "low", "medium", "high"],
+      "openrouter:thinkingmachines/inkling-small": ["none", "low", "medium", "high"],
+      "openrouter:z-ai/glm-5.3": ["low", "medium", "high"]
+    },
+    "excluded": {
+      "openrouter:qwen/qwen3.7-flash": {
+        "reason": "route-unreachable on this key (OpenRouter data-policy guardrail: 0 endpoints matching; 404 on every level AND the no-effort baseline). This is NOT an effort refusal - do not declare any level it was never seen to accept.",
+        "evidence": "docs/evidence/jev-effort-levels-2026-10-29/effort-levels.txt"
+      }
+    }
+  },
   "tiers": {
     "simple": {
       "general": [

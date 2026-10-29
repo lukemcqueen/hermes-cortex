@@ -32,10 +32,16 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Mapping
 
 RC_OK = 0
 RC_FINDINGS = 1
 RC_COULD_NOT_VERIFY = 3
+
+# Reasoning-effort levels the effort.py ladder can name (see the upstream plugin's
+# jevkit/effort.py:KNOWN_LEVELS). Used only for the selftest's defensive check; the
+# plugin clamps anything an endpoint does not support.
+EFFORT_LEVELS = ("none", "low", "medium", "high", "xhigh", "max")
 
 REPO_ROOT = Path(__file__).resolve().parents[3]   # ops/scripts/manage/ -> repo root
 
@@ -118,12 +124,33 @@ def check(list_doc: dict, live: dict) -> list:
                                f"{float(ceiling):g}x baseline ceiling (${base_price:.3f}/M)"),
                     "delta_usd_per_m": round(head_price - base_price, 4),
                 })
+    # Reasoning-effort policy is policy too: a list that enables effort must see it
+    # reflected in the live routing.json, or a host runs without the cost control it
+    # thinks it has. Silently absent on an older list (no effort block) -> no check.
+    effort = list_doc.get("effort")
+    if isinstance(effort, Mapping) and effort.get("enabled"):
+        live_effort = live.get("effort")
+        if not isinstance(live_effort, Mapping):
+            findings.append({"tier": "-", "specialty": "-", "kind": "effort",
+                             "detail": "effort enabled in the list but the live routing.json has "
+                                       "no effort block (run --write)"})
+        else:
+            for key in ("enabled", "levels", "models", "excluded"):
+                if live_effort.get(key) != effort.get(key):
+                    findings.append({"tier": "-", "specialty": "-", "kind": "effort-drift",
+                                     "detail": f"live effort.{key} != list effort.{key} "
+                                               f"(run --write)"})
+                    break
     return findings
 
 
 def rebuild(list_doc: dict, live: dict, available=None) -> dict:
-    """The live pools, reordered from the list (filtered to what this host can call)."""
+    """The live pools + effort policy, from the list (pools filtered to what this host can call)."""
     out = json.loads(json.dumps(live))  # deep copy: everything else is preserved
+    # The effort block is policy the same way the pool ORDER is: it is not written by
+    # hand on each host. Project it from the list so a host cannot drift from it.
+    if isinstance(list_doc.get("effort"), Mapping):
+        out["effort"] = json.loads(json.dumps(list_doc["effort"]))
     tiers = out.setdefault("tiers", {})
     skipped = []
     for tier, specs in (list_doc.get("tiers") or {}).items():
@@ -267,6 +294,26 @@ def _selftest(doc: dict) -> int:
     missing = expected_heads - set((doc.get("derivation") or {}).get("heads") or {})
     if missing:
         failures.append(f"heads with no derivation: {sorted(missing)}")
+    effort = doc.get("effort")
+    if isinstance(effort, Mapping) and effort.get("enabled"):
+        levels = effort.get("levels")
+        if not isinstance(levels, list) or len(levels) != 4:
+            failures.append(f"effort.levels must be 4 (trivial/routine/substantial/expert): {levels!r}")
+        elif any(level not in EFFORT_LEVELS for level in levels):
+            failures.append(f"effort.levels names an unknown level: {levels}")
+        routed = {m for specs in tiers.values() for spec_models in specs.values() for m in spec_models}
+        declared = {m for m in (effort.get("models") or {})}
+        excluded = set(effort.get("excluded") or {})
+        uncovered = routed - declared - excluded
+        if uncovered:
+            failures.append(f"routed models with no effort decision (declare or exclude): {sorted(uncovered)}")
+        for model, supported in (effort.get("models") or {}).items():
+            if not isinstance(supported, list) or not supported or any(
+                    level not in EFFORT_LEVELS for level in supported):
+                failures.append(f"effort.models[{model}] is not a non-empty list of known levels: {supported!r}")
+        for model, entry in (effort.get("excluded") or {}).items():
+            if not isinstance(entry, Mapping) or not entry.get("reason") or not entry.get("evidence"):
+                failures.append(f"effort.excluded[{model}] must carry reason and evidence: {entry!r}")
 
     if failures:
         print(f"SELFTEST FAILED ({len(failures)}):")

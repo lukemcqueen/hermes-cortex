@@ -295,6 +295,113 @@ def test_the_baseline_is_the_model_the_host_actually_runs():
     assert doc["prices"][doc["baseline"]]["in"] + doc["prices"][doc["baseline"]]["out"] < 0.560
 
 
+EFFORT = {
+    "enabled": True,
+    "levels": ["low", "low", "medium", "high"],
+    "models": {
+        "openrouter:deepseek/deepseek-v4-flash-0731": ["none", "low", "medium", "high"],
+        "openrouter:z-ai/glm-5.3": ["low", "medium", "high"],
+    },
+    "excluded": {
+        "openrouter:qwen/qwen3.7-flash": {
+            "reason": "route-unreachable on this key (data-policy guardrail), not an effort refusal",
+            "evidence": "docs/evidence/jev-effort-levels-2026-10-29/effort-levels.txt"},
+    },
+}
+KNOWN_LEVELS = {"none", "low", "medium", "high", "xhigh", "max"}
+
+
+def test_write_projects_the_effort_block(tmp_path):
+    """The effort block is policy, so --write must carry it into the live routing.json
+    exactly as written and preserve everything else (the same rule as the pools)."""
+    list_path = _write(tmp_path, "list.json", {**LIST, "effort": EFFORT})
+    routing = _write(tmp_path, "routing.json", _live(medium={"coding": [BASE]}))
+
+    result = _run(list_path, routing, "--write")
+
+    assert result.returncode == 0, result.stdout
+    live = json.loads(routing.read_text())
+    assert live["effort"] == EFFORT, live.get("effort")
+    assert live["mode"] == "redacted-text" and live["exclude"] == ["*:free"], \
+        "everything outside the effort block is preserved"
+
+
+def test_check_reports_a_missing_effort_block_when_the_list_enables_it(tmp_path):
+    list_path = _write(tmp_path, "list.json", {**LIST, "effort": EFFORT})
+    routing = _write(tmp_path, "routing.json", _live(simple={"coding": [CHEAP]},
+                                                     medium={"coding": [BASE]},
+                                                     hard={"coding": [FRONTIER]}))
+
+    result = _run(list_path, routing)
+
+    assert result.returncode == 1, result.stdout
+    assert "[effort]" in result.stdout, result.stdout
+    assert "missing" in result.stdout, result.stdout
+
+
+def test_check_reports_effort_drift_when_levels_differ(tmp_path):
+    drifted = {**EFFORT, "levels": ["none", "low", "medium", "high"]}
+    list_path = _write(tmp_path, "list.json", {**LIST, "effort": EFFORT})
+    routing = _write(tmp_path, "routing.json",
+                     {**_live(simple={"coding": [CHEAP]}, medium={"coding": [BASE]},
+                              hard={"coding": [FRONTIER]}), "effort": drifted})
+
+    result = _run(list_path, routing)
+
+    assert result.returncode == 1, result.stdout
+    assert "[effort-drift]" in result.stdout, result.stdout
+
+
+def test_effort_check_is_silent_when_the_list_has_no_effort(tmp_path):
+    """Backwards compatible: a pricing list without an effort block declares no effort
+    policy, so --check must not invent finding s for a live routing.json that lacks one."""
+    list_path, routing = _matching(tmp_path)
+
+    result = _run(list_path, routing)
+
+    assert result.returncode == 0, result.stdout
+    assert "no findings" in result.stdout
+
+
+def test_selftest_covers_the_effort_invariants():
+    import json as _json
+    list_path = Path(__file__).resolve().parents[1] / "config" / "jev-router-models.json"
+    result = _run(list_path, Path("/nonexistent/routing.json"), "--selftest")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_config_effort_capability_map_is_sound():
+    """The capability map IS the cost decision for reasoning effort. Assert the rules the
+    close reviewer would: every declared level is a real level; every routed model is
+    either capability-declared or named excluded; a model proven to refuse a level must
+    not declare it; a route-unreachable model is excluded for its real reason."""
+    import json as _json
+    doc = _json.loads((Path(__file__).resolve().parents[1] / "config"
+                       / "jev-router-models.json").read_text())
+    effort = doc.get("effort")
+    assert effort and effort.get("enabled") is True, "the effort block must exist and be enabled"
+    levels = effort["levels"]
+    assert len(levels) == 4, levels
+    assert {lvl for lvl in levels} <= KNOWN_LEVELS, f"unknown levels: {levels}"
+    routed = {m for specs in doc["tiers"].values() for models in specs.values() for m in models}
+    declared = set(effort["models"])
+    excluded_doc = effort.get("excluded") or {}
+    excluded = set(excluded_doc)
+    uncovered = routed - declared - excluded
+    assert not uncovered, f"routed models with no effort decision: {sorted(uncovered)}"
+    # glm-5.3 refuses `none` (measured: 'Reasoning is mandatory'); it must never declare it.
+    assert "none" not in effort["models"].get("openrouter:z-ai/glm-5.3", [])
+    # qwen3.7-flash is route-unreachable on this key, NOT effort-refused: it must be
+    # excluded (with a reason) and NOT declare any level it was never seen to accept.
+    assert "openrouter:qwen/qwen3.7-flash" not in declared
+    assert "openrouter:qwen/qwen3.7-flash" in excluded
+    q_ex = excluded_doc["openrouter:qwen/qwen3.7-flash"]
+    assert q_ex["reason"] and q_ex.get("evidence"), q_ex
+    # every excluded entry names why and where the measurement lives
+    for model, entry in excluded_doc.items():
+        assert entry.get("reason") and entry.get("evidence"), (model, entry)
+
+
 def test_every_model_in_a_medium_pool_is_within_the_medium_ceiling():
     """The medium ceiling is 1x: the fallback is allowed to BE the baseline, but nothing
     dearer may sit in the pool. Caught for real when the baseline got cheaper and left the
