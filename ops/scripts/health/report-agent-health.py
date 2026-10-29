@@ -255,7 +255,11 @@ def send_report(report: dict) -> bool:
             "queue": "inbox_health_check",
             "message": json.dumps({
                 "from": agent_name,
-                "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
+                # subject is the fixed UPPER_CASE protocol name (not per-agent):
+                # the bus validator rejects any subject outside [A-Z][A-Z0-9_]{0,63}
+                # with HTTP 400, and per-agent identification is already carried
+                # by the `from` field that consumers filter on.
+                "subject": "HEALTH",
                 "body": json.dumps({
                     "topic": "health",
                     "report": report,

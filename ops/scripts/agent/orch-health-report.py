@@ -189,7 +189,9 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
 
     Client-only agents (health_method=inbox) push their health vector to the
     ``inbox_health_check`` PGMQ queue via ``health-vector-push.sh`` (POST
-    /api/pgmq/send, body ``{"from":..., "subject":"health", "body":"{...}"}``).
+    /api/pgmq/send, body ``{"from":..., "subject":"HEALTH", "body":"{...}"}``;
+    the subject MUST be the UPPER_CASE protocol name HEALTH — the bus
+    validator rejects lowercase subjects with HTTP 400).
 
     The ``orch-clean-health-queue`` cron (every 10m) drains that queue and
     persists each agent's latest vector + timestamp to

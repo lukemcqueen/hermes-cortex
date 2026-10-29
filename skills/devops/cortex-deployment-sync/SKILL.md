@@ -73,6 +73,20 @@ date) — investigate those warnings; do not assume the enforcer is current.
    - Counterexamples that stay untouched: warnings about missing OPTIONAL infrastructure (no GPU,
      no external key), and warnings whose expected state is not the desired state. Those are
      `--as deliberate` with the reason, not a fix.
+   - **Copy the check NAME exactly as printed on the `· <name>` line of the UNDISPOSED block — the
+     disposition is refused with `no check named '<X>'` when you paraphrase it.** The summary-line
+     prose, the `fix:` command, and the warning text are NOT the check name. Measured twice in one
+     update: `--disposition "CLAUDE.md reconcile"` (real name `CLAUDE.md (dev repos)`) and
+     `--disposition "nightly-handoff.py"` (real name `Stale deploy: scripts/nightly-handoff.py`) each
+     refused. Read the exact name from the UNDISPOSED list and paste it; check the name of an
+     already-disposed item from the doctor's own line (it prints `[deferred (owner, since date)]`).
+   - **A warning a freshly-installed optional layer created is a deliberate artifact of that install,
+     not a defect to "fix" by removing the file.** If the installer is the one that placed the file
+     (e.g. a kit's own tool copied into `~/.hermes-cortex/scripts/` but absent from the deploy map,
+     flagged `Stale deploy: …`), deleting it undoes what the operator asked to install — record
+     `--as deliberate` naming the installer as the owner, and leave the file. Same for the kit's
+     upstream `AGENTS.md` efficiency warning: that file is editorially owned upstream and pinned, so
+     it is deliberate, never rewritten on the host.
 6. Verify clean state
 
 **Do NOT push** during pull-latest. Local pipeline auto-commits stay local (see Pitfall 3).
