@@ -156,6 +156,11 @@ than land that.
 - **Corrupted deployed copy** → re-run `cortex-update.sh` (it re-syncs from repo)
 - **Stuck governance lock** → never force-clear without `end_change` first;
   score the cycle, then `end_change`, then force-clear only if it rejects
+- **Abandoned PENDING cycle after an interrupted session** → score it honestly
+  (`feedback_accept` with zeros + a note that the work was never done). The doctor
+  FAILs on unscored PENDING cycles; scoring zero is the honest close and clears it.
+  Do NOT invent scores to avoid reporting zeros — an interrupted task carried no
+  completed work, and the PENDING cycle is how the doctor surfaces it.
 - **Missing skill content** → restore from the bus archive or official registry
   (see the skill-restoration workflow)
 
