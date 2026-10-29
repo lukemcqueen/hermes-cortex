@@ -1,0 +1,53 @@
+Cost-removal step at the DEPLOYED path — evidence (2026-10-29)
+generated-by: docs/evidence/cortex-update-cost-step-2026-10-29.sh (this is its own output)
+re-run: bash docs/evidence/cortex-update-cost-step-2026-10-29.sh
+
+deployed copy    : <home>/.hermes-cortex/scripts/cortex-update.sh
+carries the fix  : True  (marker: 'no interpreter with ruamel.yaml to edit')
+old fail-loud branch present: False  (must be False; the step no longer needs to fail there)
+captured-at      : working tree revision 63465b89
+note: writing this file moves HEAD, so the line above is the revision the run sat on, not a claim about the range.
+
+==============================================================================
+DIRECTION A — converged host (no cost keys) with a python3 that cannot import ruamel
+==============================================================================
+this is the fleet's failing shape: the queue-driven updater treats exit=1 as success
+ONLY when stderr is empty (ops/scripts/agent/agent-message-handler.py l.519-522).
+  rc     : 0
+  stderr : ''
+  verdict: SILENT — the failure mode is gone
+
+==============================================================================
+DIRECTION B — cost keys PRESENT, a capable interpreter available
+==============================================================================
+  capable interpreter: <home>/.hermes/installs/483c6efb1d92c950/environments/b5932aae9bbb4617a29160b66fbed402/venv/bin/python3
+  rc  : 0   stderr: ''
+  cost-guard / cost_guard / cost_tracking gone : True
+  unrelated config kept (model.default, display.skin): True
+  dropped-line on stdout: True
+
+==============================================================================
+DIRECTION C — cost keys PRESENT and NO capable interpreter (must stay loud)
+==============================================================================
+  rc     : 0   (0 = the deploy continues; this is a warning, not an abort)
+  stderr : 'WARN   cost keys not dropped: no interpreter with ruamel.yaml to edit <home>/.hermes/cache/scratch/cost-step-evidence-7_qlv59t/home/.hermes/config.yaml\n'
+  keys survive (no silent green): True
+
+RESULT: PASS — converged host silent; keys dropped when a capable interpreter exists;
+        keys-present-without-loader still loud and keys untouched.
+
+==============================================================================
+DIRECTION D — non-vacuity: the same probe against the PRE-FIX revision must FAIL
+==============================================================================
+baseline: 7e10a98a:ops/scripts/cortex-update.sh, run under a redirected HOME
+assert the extraction really is the pre-fix revision (marker absent):
+  marker absent in baseline: OK (this is the pre-change tree)
+deployed copy    : <home>/.hermes-cortex/scripts/cortex-update.sh
+carries the fix  : False  (marker: 'no interpreter with ruamel.yaml to edit')
+old fail-loud branch present: True  (must be False; the step no longer needs to fail there)
+captured-at      : working tree revision 
+note: writing this file moves HEAD, so the line above is the revision the run sat on, not a claim about the range.
+FAIL: the deployed copy does not carry the fix — nothing below would measure it
+  pre-fix probe rc=1  (must be non-zero: the guard has to NOTICE a copy without the fix)
+
+generator rc=0
