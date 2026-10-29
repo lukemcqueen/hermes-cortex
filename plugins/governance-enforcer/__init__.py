@@ -84,6 +84,10 @@ _REQUIRED_SKILLS: set = {
     "task-start", "agent-flow",
     "reflexion-check", "change-checklist", "survey-before-action",
     "agent-contract", "test-driven-development", "prove-before-create",
+    # prove-before-create (the "prove existing can't handle it" discipline) is
+    # required by the write gate so extend/rebuild awareness binds as a gate.
+    # COVERED BY: tests/test_plan_review_gate.py::
+    #   test_prove_before_create_is_required_by_the_write_gate
 }
 
 # Per-session loaded-skill registry (2026-08-08 — cross-session bleed fix).
