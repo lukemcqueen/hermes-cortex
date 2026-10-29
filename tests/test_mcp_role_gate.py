@@ -1,11 +1,17 @@
 """Hermetic test for the CORTEX_MCP_ROLE gate on mcp-servers/loop-gov-mcp.py.
 
 Drives the REAL binary (importing it from the repo path) under each role and
-asserts the exposed tool surface — review lists exactly the 7 no-lock-authority
-tools, loop-governance lists the complement (lock lifecycle + scoring + task
-state), and NO role lists the full set. The partition is DERIVED from the
-binary's own full tool list, not a hand-maintained copy, so it cannot drift from
-call_tool's real dispatch surface.
+asserts the exposed tool surface:
+  - review            == REVIEW_EXPECT (the 7 no-lock-authority tools; this set
+                        IS the spec — the binary has no marker saying which tools
+                        are 'review', so it is defined here, not derivable)
+  - loop-governance   == the COMPLEMENT, derived from the binary's own full tool
+                        list (full - REVIEW_EXPECT)
+  - NO role           == the full set, derived from _list_all_tools
+  - unknown role      == fail-open (all allowed)
+So the parts that CAN be derived (full set, complement, no-env surface) come from
+the binary's real dispatch surface and cannot drift; only the review-tool spec is
+hand-written, which is unavoidable and flagged as such.
 
 Runnable two ways:
   python3 tests/test_mcp_role_gate.py    # standalone (no pytest needed)
