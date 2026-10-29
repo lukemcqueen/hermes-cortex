@@ -147,6 +147,25 @@ const LOG_PATH =
 const LOG_MAX_BYTES = Number(process.env.CORTEX_CONTEXT_LOG_MAX_BYTES ?? 1_048_576);
 const DEBUG = process.env.CORTEX_CONTEXT_DEBUG === "1";
 
+/**
+ * The pre-ship checklist, injected into EVERY Pi session's standing context at
+ * `before_agent_start` (systemPrompt). Pi preloads only skill names+descriptions
+ * and loads bodies on demand — so the checklist a session must hold for every
+ * delivery cannot live behind an on-demand skill load. This block is the compact
+ * core of `change-checklist` (the 85KB skill stays the authoritative depth; the
+ * injected 7 lines are what must bind even when nothing else was loaded).
+ * Keep it SHORT — it is paid by every session of every Pi agent.
+ */
+const PRESHIP_CHECKLIST =
+  "\n\n## Cortex pre-ship checklist (binding \u2014 every task, every repo)\n" +
+  "1. Do it right the first time \u2014 thorough, edge-case-seeking; never skim verification.\n" +
+  "2. Survey before building \u2014 prove the existing functionality cannot cover it; extend, don't rebuild.\n" +
+  "3. Test thoroughly \u2014 boundary/empty/malformed inputs and sibling call sites; RED\u2192GREEN with real output.\n" +
+  "4. Evidence before \"done\" \u2014 commit the run: commands, exit codes, output.\n" +
+  "5. Doctor clean before delivery \u2014 fix every issue it reports.\n" +
+  "6. Non-trivial slice? Plan review FIRST \u2014 adversarial review of the plan before implementing.\n" +
+  "7. Escalate on complexity/risk \u2014 unfamiliar, high-risk, or irreversible? Get the plan independently reviewed FIRST (adversarial reviewer); pause for the operator only when the review cannot resolve it. Never improvise alone.";
+
 /** Append one line, rotating to `<log>.1` at the cap. Non-fatal by design. */
 function appendBounded(message: string) {
   try {
@@ -222,30 +241,33 @@ async function gateSessionKey(): Promise<string> {
 }
 
 export default function (pi: any) {
-  // ── 1. Session start: RESUME, injected via the return value ──────
+  // ── 1. Session start: RESUME + checklist, injected via the return value ──
   pi.on("before_agent_start", async (event: any) => {
     const snap = parse<Restored>(await cortex("session_restore", {}), { restored: null }).restored;
+    let resume = "";
     if (!snap) {
       note("CORTEX_RESUME none\n");
-      return;
+    } else {
+      const line = (label: string, items?: string[]) =>
+        items && items.length ? `${label}: ${items.join("; ")}` : "";
+      const parts = [
+        line("Done", snap.done),
+        line("Pending", snap.pending),
+        line("Blocked", snap.blockers),
+        line("Decided", snap.decisions),
+        snap.notes ? `Notes: ${snap.notes}` : "",
+      ].filter(Boolean);
+      note(`CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
+      if (parts.length) {
+        // Only inject the resume block when there is something recorded — but the
+        // CHECKLIST block below is injected ALWAYS (see PRESHIP_CHECKLIST).
+        resume =
+          `\n\n## Session context (cortex, ${snap.session_key ?? "this session"})\n` +
+          `${parts.join("\n")}\n` +
+          `Resume from this — do not re-derive what is already recorded.`;
+      }
     }
-    const line = (label: string, items?: string[]) =>
-      items && items.length ? `${label}: ${items.join("; ")}` : "";
-    const parts = [
-      line("Done", snap.done),
-      line("Pending", snap.pending),
-      line("Blocked", snap.blockers),
-      line("Decided", snap.decisions),
-      snap.notes ? `Notes: ${snap.notes}` : "",
-    ].filter(Boolean);
-    note(`CORTEX_RESUME ${snap.session_key ?? ""} facts=${parts.length}\n`);
-    if (!parts.length) return; // nothing recorded yet — do not inject an empty block
-    return {
-      systemPrompt:
-        `${event?.systemPrompt ?? ""}\n\n## Session context (cortex, ` +
-        `${snap.session_key ?? "this session"})\n${parts.join("\n")}\n` +
-        `Resume from this — do not re-derive what is already recorded.`,
-    };
+    return { systemPrompt: `${event?.systemPrompt ?? ""}${resume}${PRESHIP_CHECKLIST}` };
   });
 
   // ── 2. THE TRIGGER: checkpoint at turn end, without asking the model ──

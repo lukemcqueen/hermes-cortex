@@ -23,7 +23,7 @@ Self-contained by design: a non-Hermes coding agent reads this file (and no SOUL
 
 1. **Do it right the first time** — be thorough and edge-case-seeking; never skim verification.
 2. **Test thoroughly, including edge cases** — boundary inputs, empty/zero/malformed values, sibling call sites. Prove every path with real output before "done".
-3. **Ask for help when complexity or risk rises** — if the task crosses into unfamiliar, high-risk, or irreversible territory, stop and escalate to the orchestrator (or the operator) with the plan, what is at risk, and what is needed — never improvise alone.
+3. **Ask for help when complexity or risk rises** — unfamiliar, high-risk, or irreversible? Get the plan independently reviewed FIRST (adversarial reviewer); pause for the operator only when the review cannot resolve it. Never improvise alone.
 
 ## Core Concepts
 

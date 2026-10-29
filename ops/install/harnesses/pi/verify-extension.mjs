@@ -90,8 +90,11 @@ print("MARKER-CHILD-NOISE: stub wrote to stderr", file=sys.stderr)
 if os.environ.get("CORTEX_STUB_FAIL") == "1":
     sys.exit(3)
 if tool == "session_restore":
-    print(json.dumps({"restored": {"done": ["MARKER-DONE"], "pending": ["MARKER-PENDING"],
-                                   "session_key": "pi:verify:main"}, "session_key": "pi:verify:main"}))
+    if os.environ.get("CORTEX_STUB_EMPTY_RESTORE") == "1":
+        print(json.dumps({"restored": None}))
+    else:
+        print(json.dumps({"restored": {"done": ["MARKER-DONE"], "pending": ["MARKER-PENDING"],
+                                       "session_key": "pi:verify:main"}, "session_key": "pi:verify:main"}))
 else:
     print(json.dumps({"ok": True, "tool": tool}))
 `);
@@ -185,6 +188,24 @@ if (typeof hooks["before_agent_start"] === "function") {
   note(prompt.includes("MARKER-DONE") && prompt.includes("MARKER-PENDING"),
        "the restored checkpoint is INJECTED (done + pending present)");
   note(prompt.includes("pi:verify:main"), "the injection names the session key it restored");
+  note(prompt.includes("pre-ship checklist") && prompt.includes("Escalate on complexity/risk"),
+       "the pre-ship checklist is INJECTED (present in the session's standing context)");
+
+  // A FRESH session (no snapshot) must STILL get the checklist — standing
+  // context is exactly the case an on-demand skill load would miss.
+  process.env.CORTEX_STUB_EMPTY_RESTORE = "1";
+  let fresh;
+  try {
+    fresh = await hooks["before_agent_start"]({ systemPrompt: "BASE" });
+  } catch (err) {
+    note(false, `before_agent_start (fresh) threw: ${err}`);
+  }
+  delete process.env.CORTEX_STUB_EMPTY_RESTORE;
+  const freshPrompt = fresh?.systemPrompt ?? "";
+  note(freshPrompt.includes("pre-ship checklist"),
+       "a fresh session (no snapshot) still receives the pre-ship checklist");
+  note(!freshPrompt.includes("Session context"),
+       "…while an empty snapshot injects no resume block");
 }
 
 if (typeof hooks["turn_end"] === "function") {
