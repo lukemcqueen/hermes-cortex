@@ -17,6 +17,14 @@ Runnable two ways:
   python3 tests/test_mcp_role_gate.py    # standalone (no pytest needed)
   python3 -m pytest tests/test_mcp_role_gate.py  # under pytest
 No live store is touched (list_tools / call_tool role path only inspects names).
+
+SELF-CONTAINED: every helper this file uses is defined IN THIS FILE —
+`REVIEW_EXPECT = set(mod.REVIEW_TOOLS)` (imported from the under-test binary),
+`_role_ctx` (env override), `_argv_ctx` (argv override), `_full_names()`
+(reads mod._list_all_tools), `_listed()` (role surface). None are imported from
+outside; the only external load is the loop-gov binary it tests. `_full_names()`
+is exercised by test_no_role_lists_full_set (no-role surface == full set) and by
+every set-equality assertion comparing a role surface to the complement.
 """
 import asyncio
 import importlib.util
