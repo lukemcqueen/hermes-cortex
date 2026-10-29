@@ -255,7 +255,7 @@ def send_report(report: dict) -> bool:
             "queue": "inbox_health_check",
             "message": json.dumps({
                 "from": agent_name,
-                "subject": f"health-report {report.get('agent', 'unknown')} — {'healthy' if report.get('healthy', False) else 'issues'}",
+                "subject": "HEALTH_REPORT",
                 "body": json.dumps({
                     "topic": "health",
                     "report": report,
