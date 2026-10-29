@@ -83,7 +83,7 @@ log = logging.getLogger("governance-enforcer")
 _REQUIRED_SKILLS: set = {
     "task-start", "agent-flow",
     "reflexion-check", "change-checklist", "survey-before-action",
-    "agent-contract", "test-driven-development",
+    "agent-contract", "test-driven-development", "prove-before-create",
 }
 
 # Per-session loaded-skill registry (2026-08-08 — cross-session bleed fix).

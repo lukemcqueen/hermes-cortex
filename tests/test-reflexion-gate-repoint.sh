@@ -40,12 +40,19 @@ if ! grep -q "hc-reflexion-check" "$BLOCK"; then
   exit 1
 fi
 
-# run_case <stub_exit|none> <is_cortex_repo> <sanctioned> → prints rc
+# run_case <stub|none> <is_cortex_repo> <sanctioned> → prints rc
+#   stub = integer exit code (verifier exits that code, ignores args),
+#          OR "SKIPAWARE" (verifier exits 0 when passed --skip-no-session,
+#          else 1 — models the REAL verifier's ungoverned-commit skip),
+#          OR "none" (verifier file absent).
 run_case() {
   local stub="$1" cortex="$2" sanctioned="$3"
   local root="$WORK/root"
   rm -rf "$root"; mkdir -p "$root/ops/scripts"
-  if [[ "$stub" != "none" ]]; then
+  if [[ "$stub" == "SKIPAWARE" ]]; then
+    printf 'import sys\nsys.exit(0 if "--skip-no-session" in sys.argv else 1)\n' \
+      > "$root/ops/scripts/hc-reflexion-check.py"
+  elif [[ "$stub" != "none" ]]; then
     # The gate invokes the verifier with python3 (it is a python script), so the
     # stub must be python too — a bash stub would fail to parse and every case
     # would "pass" for the wrong reason.
@@ -71,7 +78,7 @@ echo "═══ AC1: verifier says LOADED → gate passes ═══"
 echo ""
 echo "═══ AC2: verifier says NOT-LOADED → gate refuses ═══"
 RC=$(run_case 1 1 0)
-if [[ "$RC" == "1" ]] && grep -q "Reflexion check not completed" "$WORK/out.txt"; then
+if [[ "$RC" == "1" ]] && grep -q "Ritual gated" "$WORK/out.txt"; then
   pass "not-loaded session is refused with an explanation"
 else
   fail "not-loaded session was not refused (rc=$RC)" "$(head -3 "$WORK/out.txt")"
@@ -93,7 +100,13 @@ fi
 
 echo ""
 echo "═══ AC5/AC6: skip paths preserved (non-HC repo, sanctioned pipeline) ═══"
-[[ "$(run_case 1 0 0)" == "0" ]] && pass "non-HC repo skips the gate" || fail "non-HC repo was gated"
+# AC5: a non-HC repo with no governed session is SKIPPED — the block must pass
+# the --skip-no-session flag to the verifier and not refuse its skip verdict
+# (the real verifier skips when no session; an ungoverned/human commit has
+# nothing to judge). A non-HC repo WITH a governed session is judged (covered
+# by AC2's refusal path); the session decision is the verifier's, not the
+# block's, so it is tested against the REAL verifier in AC7+ and directly above.
+[[ "$(run_case SKIPAWARE 0 0)" == "0" ]] && pass "non-HC ungoverned repo skips the gate (skip flag passed)" || fail "non-HC ungoverned repo was gated (skip flag not honoured)"
 [[ "$(run_case 1 1 1)" == "0" ]] && pass "sanctioned pipeline commit skips the gate" || fail "sanctioned pipeline commit was gated"
 
 echo ""
@@ -112,6 +125,14 @@ else
   grep -q "EXIT_STORE_UNREACHABLE = 3" "$CHECKER" && \
     pass "verifier defines a distinct store-unreachable code" || \
     fail "verifier has no distinct store-unreachable code"
+
+  # AC7b: --skip-no-session with NO active session (an ungoverned/human commit
+  # in a non-HC repo) → skip (rc 0); without the flag the same case refuses (rc 1).
+  # This is why the gate may fire in ALL repos without blocking manual commits.
+  out=$(python3 "$CHECKER" --skip-no-session --repo-slug "no-such-repo-$$" 2>&1); rc=$?
+  [[ "$rc" == "0" ]] && pass "--skip-no-session skips when there is no governed session" || fail "--skip-no-session did not skip (rc=$rc)" "$out"
+  out=$(python3 "$CHECKER" --repo-slug "no-such-repo-$$" 2>&1); rc=$?
+  [[ "$rc" == "1" ]] && pass "no-session is refuse-able (rc 1) when the skip flag is absent" || fail "no-session without flag gave rc=$rc expected 1" "$out"
 fi
 
 echo ""

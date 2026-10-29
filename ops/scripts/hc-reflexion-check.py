@@ -237,6 +237,9 @@ def main() -> int:
     ap.add_argument("--session", default="",
                     help="session id override (default: this repo's active governance lock)")
     ap.add_argument("--repo-slug", default="", help="repo slug override (default: git toplevel name)")
+    ap.add_argument("--skip-no-session", action="store_true",
+                    help="exit 0 (skip) when no active governance session — for non-HC repos "
+                         "where an ungoverned/human commit has no session to judge")
     a = ap.parse_args()
 
     if not a.skill.strip():
@@ -246,6 +249,13 @@ def main() -> int:
     slug = a.repo_slug or repo_slug()
     session_id = a.session.strip() or active_session_id(slug)
     if not session_id:
+        if a.skip_no_session:
+            # An ungoverned commit (a human git commit, or a process with no
+            # governance lock) has no session to judge, so there is nothing to
+            # prove and nothing to skip past — pass through, don't block.
+            print(f"NO-SESSION — reflexion gate skipped for repo '{slug}' "
+                  "(no governed session; nothing to judge)")
+            return EXIT_LOADED
         print(f"NO-SESSION — no active governance lock for repo '{slug}'; "
               "call begin_change() before committing", file=sys.stderr)
         return EXIT_NOT_LOADED

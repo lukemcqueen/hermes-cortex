@@ -904,8 +904,12 @@ fi
 # reason, so a failure is never a mystery to debug.
 # SKIPPED for sanctioned pipeline commits — no_agent cron has no session;
 # those commits are gated by the append-only guard + adversarial + scoring.
-# SKIPPED in non-HC repos — a manual commit has no session to prove against.
-if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 ]]; then
+# SCOPE (Luke 2026-10-29): reflexion governs ALL development, not just the
+# hermes-cortex repo. In a non-HC repo, a commit with NO active governance
+# session is an ungoverned/human commit — pass it through (--skip-no-session);
+# a Pi/agent commit HAS a lock, so its session is judged. In the HC repo a
+# no-session commit is still refused (HC commits must be governed).
+if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
   HC_REFLEXION_CHECK=""
   for _cand in "$REPO_ROOT/ops/scripts/hc-reflexion-check.py" \
                "$HOME/.hermes-cortex/scripts/hc-reflexion-check.py" \
@@ -920,17 +924,59 @@ if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -eq 1 ]]; then
     echo ""
     exit 1
   fi
+  # Ritual survey gate (2026-10-29, Luke): the reflexion verifier is ALREADY
+  # generic (--skill <name>), so ask it for the whole survey-before-build
+  # ritual — reflexion-check, survey-before-action, prove-before-create. The
+  # questions apply to ANY development, not just hermes-cortex: did you survey
+  # the codebase / existing functionality before writing, prove you are not
+  # rebuilding what exists, and reflect before delivering. A governed dev
+  # session in ANY repo must load these; an ungoverned/human commit is skipped
+  # by the verifier (--skip-no-session). Any missing skill refuses the commit —
+  # survey/leverage must happen before a change lands, not be prose an agent
+  # can skip.
+  _HC_SKIP_FLAG=""
+  if [[ "$IS_CORTEX_REPO" -ne 1 ]]; then
+    _HC_SKIP_FLAG="--skip-no-session"
+  fi
   _hc_rc=0
-  _hc_out=$(python3 "$HC_REFLEXION_CHECK" 2>&1) || _hc_rc=$?
-  if [[ "$_hc_rc" -ne 0 ]]; then
-    echo ""
-    echo "❌  Reflexion check not completed."
-    echo "    ${_hc_out}"
-    echo ""
-    echo "    Load the skill, answer the 7 questions, then commit:"
-    echo "      skill_view(name='reflexion-check')"
-    echo ""
-    exit 1
+  for _ritual_skill in reflexion-check survey-before-action prove-before-create; do
+    _hc_out=$(python3 "$HC_REFLEXION_CHECK" $_HC_SKIP_FLAG --skill "$_ritual_skill" 2>&1) || _hc_rc=$?
+    if [[ "$_hc_rc" -ne 0 ]]; then
+      echo ""
+      echo "❌  Ritual gated: '$_ritual_skill' not loaded this session."
+      echo "    ${_hc_out}"
+      echo ""
+      echo "    Load it (skill_view / read the SKILL.md), then commit."
+      echo ""
+      exit 1
+    fi
+  done
+fi
+
+# ── Plan-review-before-slice gate (Luke standing rule, 2026-10-29) ─────────
+# A non-trivial slice of development must carry an adversarial plan review on
+# its active cycle before the implementation commit lands. Applies to ANY repo
+# a governed agent develops in (--skip-no-session leaves ungoverned/human
+# commits alone). hermes-cortex's own close-review already covers its slices,
+# so this targets the project repos where Titus works; widening it to
+# hermes-cortex is one condition away.
+if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -ne 1 ]]; then
+  HC_PLAN_REVIEW=""
+  for _cand in "$REPO_ROOT/ops/scripts/hc-plan-review-check.py" \
+               "$HOME/.hermes-cortex/scripts/hc-plan-review-check.py" \
+               "$HOME/.local/bin/hc-plan-review-check.py"; do
+    if [[ -f "$_cand" ]]; then HC_PLAN_REVIEW="$_cand"; break; fi
+  done
+  if [[ -n "$HC_PLAN_REVIEW" ]]; then
+    _prc_rc=0
+    _prc_out=$(python3 "$HC_PLAN_REVIEW" --skip-no-session 2>&1) || _prc_rc=$?
+    if [[ "$_prc_rc" -ne 0 ]]; then
+      echo ""
+      echo "❌  Plan-review gate: a slice needs its plan reviewed before implementing."
+      echo "    ${_prc_out}"
+      echo ""
+      exit 1
+    fi
   fi
 fi
 

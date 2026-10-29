@@ -34,6 +34,8 @@ always:
     why: Non-negotiable execution rules — honesty, verification, citations
   - name: test-driven-development
     why: Iron Law — no production code without a failing test first. Always-loaded so test-first is structurally first, not an afterthought (Titus 2026-08-20)
+  - name: prove-before-create
+    why: Extend-don't-rebuild discipline before creating any file — survey existing functionality first (Luke 2026-10-29)
 
 on_task:
   debug:

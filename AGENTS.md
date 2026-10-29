@@ -67,6 +67,27 @@ Every session: read the skills manifest — `$HOME/.hermes-cortex/skills.yaml` (
 
 Before: `survey-before-action` (search_files → map scope → skill_view). After: [`docs/reference/after-completing-work-6-questions.md`](docs/reference/after-completing-work-6-questions.md)
 
+## Survey & Review Are ENFORCED, in Every Repo (Luke 2026-10-29)
+
+The "survey and leverage existing before building" discipline is a **gate, not
+prose**, and it runs in **every repo** the hook touches (not just this one):
+
+1. **Survey-before-build gate** — the commit hook (`pre-commit-score`) refuses a
+   governed development commit unless the session loaded `reflexion-check`,
+   `survey-before-action`, and `prove-before-create` (extend-don't-rebuild).
+   Ungoverned/human commits (no session) are skipped, so ordinary manual work is
+   never blocked. `prove-before-create` is also in the always-loaded skill set.
+2. **Plan-review-before-slice gate** — a non-trivial slice of development
+   (multi-file or >50 added+deleted lines in a project repo) is refused at
+   commit unless its active cycle has a recorded adversarial plan review
+   (`adversarial-review.py --cycle-id N --review`). This makes "deepseek pro
+   reviews the plan before building" physical: plan → review → implement →
+   commit.
+
+The reflexion questions apply to **any** development, not hermes-cortex-specific
+work: did you survey the codebase / existing functionality before writing, prove
+you are not rebuilding what exists, and reflect before delivering?
+
 ## Three Reach Dimensions — Check All Three Before Shipping
 
 Your change runs in more places than your session. Name all three before calling it done:

@@ -505,6 +505,7 @@ register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/script
 # works for every harness rather than only Hermes. pre-commit-score fails CLOSED if
 # this is missing, so an unregistered verifier would block every commit.
 register "ops/scripts/hc-reflexion-check.py"       "${CORTEX_DEPLOY_HOME}/scripts/hc-reflexion-check.py"
+register "ops/scripts/hc-plan-review-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/hc-plan-review-check.py"
 register "ops/scripts/post-commit-audit" "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/prepare-commit-msg-session" "${CORTEX_DEPLOY_HOME}/scripts/prepare-commit-msg-session"
 register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
