@@ -106,20 +106,27 @@ def apply_fixes(res):
         mcp_path = MCP_SERVERS_DIR / server_script
         venv_python = CORTEX_HOME / "venv" / "bin" / "python3"
         if mcp_path.exists() and venv_python.exists():
+          # The loop-gov binary is role-distinct: its two registrations must
+          # carry `--role <name>` in args (the doctor's role of record), or the
+          # role-name check FAILs. So the auto-add threads --role for that binary.
+          _args = [str(mcp_path)]
+          if server_script == "loop-gov-mcp.py":
+            _args += ["--role", name]
+          _args_json = json.dumps(_args)
           if _run_fix(
             f"Adding MCP server {name} to config.yaml (venv Python)",
             [
               "python3",
               "-c",
               f"""
-import yaml, sys
+import json, yaml, sys
 with open('{CONFIG_FILE}') as f:
   cfg = yaml.safe_load(f)
 if 'mcpServers' not in cfg:
   cfg['mcpServers'] = {{}}
 cfg['mcpServers']['{name}'] = {{
   'command': '{venv_python}',
-  'args': ['{mcp_path}'],
+  'args': {_args_json},
   'enabled': True
 }}
 with open('{CONFIG_FILE}', 'w') as f:

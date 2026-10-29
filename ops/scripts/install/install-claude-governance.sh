@@ -85,8 +85,13 @@ def server(command, args, env=None):
     return s
 
 GOVERNANCE = {
+    # Slice B: the ONE loop-gov binary under BOTH role-distinct names, each with the
+    # matching --role in its args (the doctor's role of record).
+    "loop-governance": server(py_cmd,
+                              ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py", "--role", "loop-governance"],
+                              {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "review": server(py_cmd,
-                              ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
+                              ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py", "--role", "review"],
                               {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "tasks": server(py_cmd,
                     ["~/.hermes-cortex/scripts/task-mcp.py"],
@@ -111,11 +116,9 @@ if not isinstance(data, dict):
     data = {}
 
 servers = data.setdefault("mcpServers", {})
-# Rename, never duplicate: drop any legacy "loop-governance" entry pointing at the same
-# probe binary before the update, so the one-name rule (review) holds through upgrades.
-for _legacy in [n for n, c in list(servers.items())
-                if n != "review" and (c or {}).get("args", []) == GOVERNANCE["review"]["args"]]:
-    del servers[_legacy]
+# Slice B: both role-distinct names (loop-governance + review) are upserted below;
+# the old one-name dedupe that DELETED a loop-governance entry is gone — that name is
+# now a real, role-distinct registration the doctor requires.
 if mode == "remove":
     removed = [n for n in GOVERNANCE if n in servers]
     for n in removed:

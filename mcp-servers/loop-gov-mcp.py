@@ -3692,6 +3692,7 @@ def _config() -> dict:
 # mcp__loop_governance__*) is purely the registration; this filter is what keeps
 # them apart safely.
 import os as _os_mcp
+import sys as _sys_mcp
 REVIEW_TOOLS = {
     "rereview_change", "cycle_query", "cycle_stats",
     "feedback_accept", "feedback_override",
@@ -3699,7 +3700,15 @@ REVIEW_TOOLS = {
 }
 
 def _current_role() -> str:
-    """CORTEX_MCP_ROLE read at CALL time (so one import is testable across roles)."""
+    """Resolve CORTEX_MCP_ROLE / `--role` at CALL time so one import is testable
+    across roles. ARGV `--role <x>` WINS (the registered command line is the role
+    of record — the doctor reads it out of each registration's args); env is the
+    parallel seam for wrappers/tests where argv carries no role.
+    """
+    a = _sys_mcp.argv
+    for i, tok in enumerate(a):
+        if tok == "--role" and i + 1 < len(a):
+            return a[i + 1].strip()
     return _os_mcp.environ.get("CORTEX_MCP_ROLE", "").strip()
 
 def _role_allows(name: str) -> bool:

@@ -65,7 +65,10 @@ WARNING = "WARNING"
 # Live config server key -> (display name, severity, required tool names)
 # Config uses `agent-bus`; the doctor's canonical name is `cortex-bus`.
 EXPECTED_TOOLS = {
-    "review": ("review", CRITICAL, ["begin_change", "end_change", "check_lock"]),
+    # Slice B: the ONE loop-gov binary is role-distinct. Lifecycle/lock tools live on
+    # `loop-governance`; re-review/feedback/cycle-read on `review`. Probe accordingly.
+    "loop-governance": ("loop-governance", CRITICAL, ["begin_change", "end_change", "check_lock"]),
+    "review": ("review", CRITICAL, ["rereview_change", "cycle_query", "feedback_accept"]),
     "tasks": ("tasks", CRITICAL, ["task_add", "task_update"]),
     "agent-bus": ("agent-bus (cortex-bus)", WARNING, ["inbox_read", "inbox_send"]),
     "cortex-bus": ("agent-bus (cortex-bus)", WARNING, ["inbox_read", "inbox_send"]),

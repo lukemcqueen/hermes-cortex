@@ -5,11 +5,30 @@
 
 ---
 
+## MCP servers that own the loop-gov tools (Slice B, 2026-10-29)
+
+The ONE `loop-gov-mcp.py` binary is registered under **two role-distinct names**. The
+name in a doc must match the server that exposes the tool — copying the wrong prefix is
+the "tool not found" trap this split removes.
+
+| Server (registration) | Tool prefix | Exposes |
+|---|---|---|
+| `loop-governance` | `mcp__loop_governance__*` | begin_change, end_change, check_lock, check_repo_lock, config_show, config_set, record_issue, advance_task_state, reclaim_dead_locks, request_interruption, resume_from_interrupt, request_completion, promote_issue_to_task |
+| `review` | `mcp__review__*` | rereview_change, cycle_query, cycle_stats, feedback_accept, feedback_override, cache_search, session_identity |
+
+Lifecycle / lock / scoring / task tools live on **`loop-governance`**; re-review /
+feedback / cycle-read tools live on **`review`**. So `begin_change` and `end_change` are
+`mcp__loop_governance__begin_change` / `mcp__loop_governance__end_change` — NEVER
+`mcp__review__begin_change` — while `feedback_accept` and `cycle_query` are
+`mcp__review__feedback_accept` / `mcp__review__cycle_query` — NEVER
+`mcp__loop_governance__feedback_accept`. A review tool under the loop-governance prefix
+does not exist and returns "tool not found".
+
 ## Interface: MCP tools vs CLI
 
 | Situation | Use | Example |
 |-----------|-----|---------|
-| Agent before coding | `cache_search(query)` | `mcp__loop_governance__cache_search(query="build user auth")` |
+| Agent before coding | `cache_search(query)` | `mcp__review__cache_search(query="build user auth")` |
 | Agent session init | `config_show()` + `cycle_stats()` | At session start, query current thresholds + recent stats |
 | Agent after a cycle | `feedback_accept(cycle_id=...)` / `feedback_override(cycle_id=..., ...)` | Confirm or correct the decision |
 | Agent reviewing cycles | `cycle_query(task_id="...")` | Check what was scored for a task |
@@ -89,11 +108,11 @@ nothing had been measured.
 Remedies, in the order you'll usually reach them:
 
 ```
-mcp__loop_governance__feedback_accept(cycle_id=N, note='…',
+mcp__review__feedback_accept(cycle_id=N, note='…',
     completeness=<0-10>, quality=<0-10>, progress=<0-10>)
-mcp__loop_governance__feedback_accept(cycle_id=N, note='…',
+mcp__review__feedback_accept(cycle_id=N, note='…',
     unscored_reason='why nothing could be measured')
-mcp__loop_governance__feedback_override(cycle_id=N, correct_decision='…', note='…',
+mcp__review__feedback_override(cycle_id=N, correct_decision='…', note='…',
     unscored_reason='why nothing could be measured')
 ```
 
@@ -128,7 +147,7 @@ scoring the task's cycle. State what you actually verified.
 | `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
 | `score-cycle not found` | Deprecated — MCP-based governance in use |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
-| MCP tool returns `error` | MCP server not registered | `hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance` |
+| MCP tool returns `error` / `tool not found` | Server not registered, or the doc named the wrong prefix (lifecycle vs review) | See the MCP-server table above — register BOTH: `hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role loop-governance` and `hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role review` |
 
 **Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB corrupt, network unreachable):
 1. Fix the root cause (check Ollama, MCP server, etc.)
@@ -138,8 +157,10 @@ scoring the task's cycle. State what you actually verified.
 ## Setup first time (MCP-based — old CLI tools deprecated)
 
 ```bash
-# Register MCP server (so agents can use MCP tools)
-hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance
+# Register BOTH role-distinct MCP servers (one loop-gov binary, two registrations):
+# lifecycle/lock (+ --role loop-governance) and review-only (+ --role review).
+hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role loop-governance
+hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role review
 
 # Pull embedding model (required for scoring)
 ollama pull nomic-embed-text:v1.5

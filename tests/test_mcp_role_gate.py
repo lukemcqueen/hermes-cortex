@@ -97,6 +97,38 @@ def test_unknown_role_fails_open():
         assert all(mod._role_allows(n) for n in full)
 
 
+class _argv_ctx:
+    """Overrides sys.argv, restored on exit (standalone-runnable, no pytest)."""
+
+    def __init__(self, argv):
+        self.argv, self.saved = argv, list(sys.argv)
+
+    def __enter__(self):
+        sys.argv = self.argv
+
+    def __exit__(self, *_exc):
+        sys.argv = self.saved
+
+
+def test_argv_role_wins_over_env():
+    # argv is the role of record; a stale env must NOT override the registered
+    # --role. env=review, argv=loop-governance => loop-governance surface.
+    with _role_ctx("review"), _argv_ctx(["loop-gov-mcp.py", "--role", "loop-governance"]):
+        res = asyncio.run(mod.list_tools(None, None))
+        names = {t.name for t in res.tools}
+        assert names == (_full_names() - REVIEW_EXPECT)
+        assert mod._role_allows("begin_change") is True
+        assert mod._role_allows("cycle_query") is False
+
+
+def test_argv_role_review_surface():
+    # no env, argv=--role review => exactly the 7 review tools
+    with _argv_ctx(["loop-gov-mcp.py", "--role", "review"]):
+        res = asyncio.run(mod.list_tools(None, None))
+        assert {t.name for t in res.tools} == REVIEW_EXPECT
+        assert mod._role_allows("begin_change") is False
+
+
 def test_call_tool_refuses_out_of_role_tool():
     class P:  # minimal params stand-in
         name = "begin_change"

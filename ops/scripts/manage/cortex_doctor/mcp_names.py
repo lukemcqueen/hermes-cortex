@@ -1,25 +1,40 @@
-"""Doctor check: the review-gateway MCP server must be registered as exactly `review`.
+"""Doctor check: loop-gov-mcp.py is registered as EXACTLY the two role-distinct servers.
 
-Luke, 2026-10-28: "keep the name 'review' for mcp instead of anything weird."
+Slice B (Moses plan, pro review 13983/13990): the single binary runs under TWO named
+registrations distinguished by `--role` in their args — `loop-governance` (lock lifecycle
++ scoring + task state) and `review` (re-review + feedback + cycle-read, no lock authority).
+This replaces the old one-name rule (2026-10-28: "keep the name review") because the
+mcp__loop_governance__* vs mcp__review__* prefix confusion came from docs/agents calling the
+lifecycle tools by the loop-governance name while the server was only registered as review.
+Both names are now real, role-distinct, and the doctor enforces BOTH present and correctly
+role-matched.
 
-There is ONE canonical name for the governance/review gateway (the process running
-mcp-servers/loop-gov-mcp.py). A host whose server is registered under any other name
-still works - the tools all function - but the agent sees `mcp__<weirdname>__begin_change`
-for its whole life, and docs/instructions that say "call mcp__review__*" no longer match
-reality. The installed name is therefore enforced like any other crown-jewel invariant.
-
-Only the REGISTRATION NAME is checked: the binary path tools/loop-governance/loop-gov-mcp.py
-stays as the deploy path and is used here only to identify which registration IS the
-review gateway.
+Exactly these two may run the probe; a THIRD registration of the probe would create a
+second view of the lock store (begin_change/end_change/check_lock/reclaim_dead_locks are
+single-lock-authority tools) and is a FAIL.
 """
 
 import os
 import re
 from pathlib import Path
 
-CANONICAL_NAME = "review"
+# Two role-distinct registrations of the single loop-gov binary (Slice B, pro review
+# 13983/13990). `review` = the 7 no-lock-authority tools; `loop-governance` = the
+# complement (lock lifecycle + scoring + task state). Each registration carries the
+# matching `--role` in its args — the doctor's role of record. Exactly these two
+# may run the probe; a third process would double the lock-store views.
+ROLE_NAMES = {"loop-governance": "loop-governance", "review": "review"}
 PROBE_BINARY = "loop-gov-mcp.py"
 DEFAULT_CONFIG = Path(os.path.expanduser("~/.hermes/config.yaml"))
+
+
+def _registered_role(joined_args: str) -> str:
+    """Pull `--role <x>` out of a joined-args string; empty if absent."""
+    parts = joined_args.split()
+    for i, tok in enumerate(parts):
+        if tok == "--role" and i + 1 < len(parts):
+            return parts[i + 1]
+    return ""
 
 # "OPEN" checks also read the Pi/Claude mcp.json when present, so the same doctor run
 # covers every harness a host may run.
@@ -81,29 +96,46 @@ def _registrations() -> dict:
     return merged
 
 
-def check_mcp_review_name(res) -> None:
-    """One name for the review gateway: `review`, registered, and nothing else running the probe."""
+def check_mcp_role_names(res) -> None:
+    """Exactly the two role-distinct loop-gov registrations, role-matched.
+
+    loop-governance (--role loop-governance: lifecycle/scoring/task) and review
+    (--role review: re-review/feedback/cycle-read) — both running the probe, each
+    with the matching --role in its args, and no third registration of the probe
+    (a third process would create a second view of the lock store)."""
     registered = _registrations()
-    review_like = sorted(name for name, args in registered.items()
-                         if PROBE_BINARY in args)
-    if not review_like:
+    role_by_name = {n: _registered_role(args) for n, args in registered.items()
+                    if PROBE_BINARY in args}
+    if not role_by_name:
         res.add(
-            "MCP review server name",
+            "MCP loop-gov role servers",
             "FAIL",
-            f"no MCP server runs {PROBE_BINARY} — the review/close gate is unreachable",
-            fix=f"hermes mcp add {CANONICAL_NAME} --command $(command -v python3) "
-                f"--args $HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY}")
+            f"no MCP server runs {PROBE_BINARY} — governance is unreachable",
+            fix="hermes mcp add loop-governance --command $(command -v python3) --args "
+                f"$HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY} --role loop-governance "
+                "&& hermes mcp add review --command $(command -v python3) --args "
+                f"$HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY} --role review")
         return
-    if review_like == [CANONICAL_NAME]:
-        res.add("MCP review server name", "PASS",
-                f"review-gateway MCP registered as exactly '{CANONICAL_NAME}'")
+    bad = []
+    for n in sorted(role_by_name):
+        if n not in ROLE_NAMES:
+            bad.append(f"{n} (unexpected third registration runs the probe)")
+    for name, want in ROLE_NAMES.items():
+        if name not in role_by_name:
+            bad.append(f"{name} missing")
+            continue
+        got = role_by_name[name]
+        if got != want:
+            bad.append(f"{name} has --role '{got or '(none)'}', expected '{want}'")
+    if not bad:
+        res.add("MCP loop-gov role servers", "PASS",
+                "loop-gov MCP = exactly loop-governance(--role loop-governance) + "
+                "review(--role review)")
         return
     res.add(
-        "MCP review server name",
+        "MCP loop-gov role servers",
         "FAIL",
-        f"review-gateway MCP registered as {review_like} — the canonical name is exactly "
-        f"'{CANONICAL_NAME}' (Luke 2026-10-28: keep the name review, not anything weird)",
-        fix="hermes mcp remove <old-name> && hermes mcp add "
-            f"{CANONICAL_NAME} --command $(command -v python3) "
-            f"--args $HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY}",
+        "; ".join(bad),
+        fix="ensure loop-gov-mcp.py is registered under BOTH loop-governance and review "
+            "with the matching --role (see docs/loop-governance-reference.md)",
     )

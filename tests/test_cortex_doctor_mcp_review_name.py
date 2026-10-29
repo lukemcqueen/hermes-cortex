@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""The review-gateway MCP server has ONE canonical registration name: `review`.
+"""The loop-gov binary is registered as EXACTLY the two role-distinct servers.
 
-Anything else works mechanically (all the tools function) but the agent sees
-`mcp__<weirdname>__begin_change` for its whole life, and the name is the thing told
-to docs, installers, watchdogs and the enforcer's own instruction text. So the name
-is enforced, not documented.
+Slice B: `loop-governance` (--role loop-governance: lifecycle/lock/scoring/task)
+and `review` (--role review: re-review/feedback/cycle-read). The doctor FAILs on
+either missing, either carrying the wrong/no --role, or a THIRD registration of
+the probe (two processes, two views of one lock store).
 
 Hermetic: fixtures are tmp config files; nothing touches the host's real config.yaml.
 """
@@ -19,6 +19,13 @@ sys.modules["cortex_doctor_mcp_names_test"] = mod
 spec.loader.exec_module(mod)
 
 PROBE = "loop-gov-mcp.py"
+
+
+def _role(argv, role):
+    """argv with the --role appended for the probe."""
+    if role is None:
+        return argv
+    return argv + ["--role", role]
 
 
 class FakeRes:
@@ -44,52 +51,77 @@ def run(tmp_path, config):
     old_cfg, old_pi = mod.DEFAULT_CONFIG, mod.PI_MCP
     try:
         mod.DEFAULT_CONFIG = config
-        mod.PI_MCP = tmp_path / "no-pi-mcp.json"  # isolate: the real ~/.pi/agent/mcp.json must not leak into fixtures
+        mod.PI_MCP = tmp_path / "no-pi-mcp.json"  # isolate: never read the real ~/.pi/agent/mcp.json
         res = FakeRes()
-        mod.check_mcp_review_name(res)
+        mod.check_mcp_role_names(res)
         return res.checks
     finally:
         mod.DEFAULT_CONFIG, mod.PI_MCP = old_cfg, old_pi
 
 
-def test_registered_as_review_passes(tmp_path):
-    cfg = config_with(tmp_path, {"review": [PROBE]})
+def test_both_role_names_match_passes(tmp_path):
+    cfg = config_with(tmp_path, {
+        "loop-governance": _role([PROBE], "loop-governance"),
+        "review": _role([PROBE], "review"),
+    })
     checks = run(tmp_path, cfg)
     assert len(checks) == 1
     name, status, detail, fix = checks[0]
     assert status == "PASS", (status, detail)
-    assert name == "MCP review server name"
-    assert "exactly 'review'" in detail
+    assert name == "MCP loop-gov role servers"
+    assert "loop-governance" in detail and "review" in detail
 
 
-def test_old_name_fails_and_names_the_offender(tmp_path):
-    cfg = config_with(tmp_path, {"loop-governance": [PROBE]})
-    checks = run(tmp_path, cfg)
-    name, status, detail, fix = checks[0]
+def test_missing_loop_governance_fails(tmp_path):
+    # only `review` present (the pre-Slice-B single-registration host) -> FAIL
+    cfg = config_with(tmp_path, {"review": _role([PROBE], "review")})
+    name, status, detail, fix = run(tmp_path, cfg)[0]
     assert status == "FAIL", detail
-    assert "loop-governance" in detail
-    assert "hermes mcp remove" in fix and "hermes mcp add review" in fix
+    assert "loop-governance missing" in detail
 
 
-def test_weird_name_fails(tmp_path):
-    cfg = config_with(tmp_path, {"mcp-gov-server-pi-1": [PROBE]})
-    status = run(tmp_path, cfg)[0][1]
-    assert status == "FAIL"
+def test_missing_review_fails(tmp_path):
+    cfg = config_with(tmp_path, {"loop-governance": _role([PROBE], "loop-governance")})
+    name, status, detail, fix = run(tmp_path, cfg)[0]
+    assert status == "FAIL", detail
+    assert "review missing" in detail
 
 
-def test_review_exists_but_a_second_registration_runs_the_probe_fails(tmp_path):
-    """Bootlegging the probe under a second name while `review` points elsewhere is
-    worse than a plain rename: two processes, two views of one lock store."""
+def test_wrong_role_fails(tmp_path):
+    # loop-governance registered with the WRONG --role (or none) -> FAIL
     cfg = config_with(tmp_path, {
-        "review": ["/opt/other.py"],
-        "loop-governance": [PROBE],
+        "loop-governance": _role([PROBE], "review"),
+        "review": _role([PROBE], "review"),
     })
     name, status, detail, fix = run(tmp_path, cfg)[0]
-    assert status == "FAIL"
-    assert "loop-governance" in detail
+    assert status == "FAIL", detail
+    assert "loop-governance has --role 'review'" in detail
 
 
-def test_no_review_gateway_at_all_fails(tmp_path):
+def test_missing_role_arg_fails(tmp_path):
+    # a role-less loop-gov registration (full set) cannot satisfy the role contract
+    cfg = config_with(tmp_path, {
+        "loop-governance": [PROBE],
+        "review": _role([PROBE], "review"),
+    })
+    name, status, detail, fix = run(tmp_path, cfg)[0]
+    assert status == "FAIL", detail
+    assert "loop-governance has --role '(none)'" in detail
+
+
+def test_third_registration_runs_probe_fails(tmp_path):
+    # two correct plus a THIRD probe registration -> two views of the lock store
+    cfg = config_with(tmp_path, {
+        "loop-governance": _role([PROBE], "loop-governance"),
+        "review": _role([PROBE], "review"),
+        "mcp-gov-server-pi-1": _role([PROBE], "review"),
+    })
+    name, status, detail, fix = run(tmp_path, cfg)[0]
+    assert status == "FAIL", detail
+    assert "third registration" in detail
+
+
+def test_no_probe_at_all_fails(tmp_path):
     cfg = config_with(tmp_path, {"agent-bus": ["cortex-bus-mcp.py"]})
     name, status, detail, fix = run(tmp_path, cfg)[0]
     assert status == "FAIL"
@@ -101,15 +133,19 @@ def test_missing_config_file_fails_closed(tmp_path):
     assert checks[0][1] == "FAIL"
 
 
-def test_pi_mcp_json_registration_is_seen(tmp_path):
+def test_pi_mcp_json_dual_registration_is_seen(tmp_path):
     old_cfg, old_pi = mod.DEFAULT_CONFIG, mod.PI_MCP
     try:
         pi = tmp_path / "mcp.json"
-        pi.write_text('{"mcpServers": {"review": {"args": ["%s"]}}}' % PROBE, encoding="utf-8")
+        pi.write_text(
+            '{"mcpServers": {"loop-governance": {"args": ["%s", "--role", "loop-governance"]}, '
+            '"review": {"args": ["%s", "--role", "review"]}}}' % (PROBE, PROBE),
+            encoding="utf-8")
         mod.PI_MCP = pi
+        # no loop-gov in the hermes config; the Pi json supplies BOTH
         mod.DEFAULT_CONFIG = config_with(tmp_path, {"agent-bus": ["other.py"]})
         res = FakeRes()
-        mod.check_mcp_review_name(res)
+        mod.check_mcp_role_names(res)
         assert res.checks[0][1] == "PASS"
     finally:
         mod.DEFAULT_CONFIG, mod.PI_MCP = old_cfg, old_pi

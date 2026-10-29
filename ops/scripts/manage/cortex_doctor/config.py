@@ -131,6 +131,11 @@ EXPECTED_MCP_SERVERS = {
     # wrong reason and `--fix` would have added a SECOND, wrongly-named server for the same
     # script. 2026-10-13.
     "agent-bus": "cortex-bus-mcp.py",
+    # Two role-distinct registrations of the single loop-gov binary (Moses plan,
+    # pro-reviewed 2026-10-29; Slice B): `review` (7 no-lock-authority tools,
+    # --role review) and `loop-governance` (lock lifecycle + scoring + task
+    # state, --role loop-governance). The doctor enforces BOTH present.
+    "loop-governance": "loop-gov-mcp.py",
     "review": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
     "executor": "executor-mcp.py",

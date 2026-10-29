@@ -405,11 +405,14 @@ import json, os, sys
  agent_name, mode, py_cmd) = sys.argv[1:]
 
 
-def server(path, description, env=None):
+def server(path, description, role=None):
+    args = [path]
+    if role:
+        args += ["--role", role]
     return {
         "command": py_cmd,
-        "args": [path],
-        "env": env or {"AGENT_NAME": agent_name},
+        "args": args,
+        "env": {"AGENT_NAME": agent_name},
         # Governance is a ritual the model must reach without a discovery
         # step: declare the tools (Pi's default `codemode` exposure hides
         # them from the model and only makes them callable from scripts).
@@ -418,11 +421,19 @@ def server(path, description, env=None):
     }
 
 
+# Slice B: the ONE loop-gov binary is registered under BOTH role-distinct names,
+# each carrying the matching `--role` in its args (the doctor's role of record).
 GOVERNANCE = {
+    "loop-governance": server(
+        loop_gov,
+        "Loop governance lifecycle: begin_change, end_change, check_lock, "
+        "config_show/set, scoring, task state (--role loop-governance).",
+        role="loop-governance"),
     "review": server(
         loop_gov,
-        "Loop governance: begin_change, cache_search, cycle_query, "
-        "feedback_accept/override, end_change — the interactive ritual."),
+        "Loop governance review: rereview_change, cycle_query/cycle_stats, "
+        "feedback_accept/override, cache_search, session_identity (--role review).",
+        role="review"),
     "tasks": server(
         task_mcp,
         "Task model v3: claim, report, verify work slices."),
@@ -462,13 +473,10 @@ if not isinstance(servers, dict):
     servers = {}
     data["mcpServers"] = servers
 
-# Rename, never duplicate: a pre-rename host still carries the legacy "loop-governance"
-# key pointing at the SAME probe binary. Two registrations of one process is exactly the
-# fragmentation the one-name rule (review) exists to kill, and the doctor FAILs it.
-for _legacy in [n for n, c in list(servers.items())
-                if n != "review" and (c or {}).get("args") == [loop_gov]]:
-    del servers[_legacy]
-    print("Renamed legacy MCP server entry:", _legacy, "-> review")
+# Upserting BOTH role-distinct names below. A pre-role host's single "review"
+# registration (older full tool set, no --role) is simply replaced by the two
+# role'd entries in GOVERNANCE — the doctor requires both, so stale single
+# entries are never left in place.
 
 if mode == "remove":
     removed = [n for n in GOVERNANCE if n in servers]

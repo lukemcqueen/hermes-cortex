@@ -37,6 +37,9 @@ from pathlib import Path
 #: path is built by repo_rel_script() wherever one is printed.
 DEFAULT_EXPECTED = {
     "agent-bus": "cortex-bus-mcp.py",
+    # Two role-distinct registrations of the single loop-gov binary (Slice B):
+    # loop-governance (lifecycle) + review (review-only).
+    "loop-governance": "loop-gov-mcp.py",
     "review": "loop-gov-mcp.py",
     "tasks": "task-mcp.py",
     "executor": "executor-mcp.py",
