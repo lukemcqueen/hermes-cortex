@@ -19,7 +19,7 @@ the "tool not found" trap this split removes.
 Lifecycle / lock / scoring / task tools live on **`loop-governance`**; re-review /
 feedback / cycle-read tools live on **`review`**. So `begin_change` and `end_change` are
 `mcp__loop_governance__begin_change` / `mcp__loop_governance__end_change` — NEVER
-`mcp__review__begin_change` — while `feedback_accept` and `cycle_query` are
+`mcp__loop_governance__begin_change` — while `feedback_accept` and `cycle_query` are
 `mcp__review__feedback_accept` / `mcp__review__cycle_query` — NEVER
 `mcp__loop_governance__feedback_accept`. A review tool under the loop-governance prefix
 does not exist and returns "tool not found".

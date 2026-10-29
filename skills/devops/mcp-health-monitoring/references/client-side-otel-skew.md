@@ -92,7 +92,7 @@ REAL MCP check_lock -> {
 }
 ```
 
-3. Live agent session on the host (`hermes -z "Call the tool mcp__loop_governance__cache_search …"`):
+3. Live agent session on the host (`hermes -z "Call the tool mcp__review__cache_search …"`):
 
 ```
 {"result": "[{\"id\": 82, \"source\": \"skill\", \"source_id\": \"verification-evidence\", …

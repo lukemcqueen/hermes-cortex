@@ -530,9 +530,9 @@ The MCP server exposes 7 tools: `cache_search`, `config_show`, `config_set`, `cy
 After every change (code, config, script, or deployment), log it to the loop-governance DB. Two paths:
 
 **Path A — MCP tools (for agents):**
-- Before coding: `mcp__loop_governance__cache_search(query="task description")`
-- After change: `mcp__loop_governance__cycle_query(task_id="<task>")`
-- Provide feedback: `mcp__loop_governance__feedback_accept(cycle_id=N)` or `feedback_override(...)`
+- Before coding: `mcp__review__cache_search(query="task description")`
+- After change: `mcp__review__cycle_query(task_id="<task>")`
+- Provide feedback: `mcp__review__feedback_accept(cycle_id=N)` or `feedback_override(...)`
 
 **Path B — CLI tools (for hooks/scripts):**
 ```bash

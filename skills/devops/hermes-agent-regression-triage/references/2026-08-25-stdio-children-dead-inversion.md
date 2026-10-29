@@ -7,7 +7,7 @@ file-content grep at the time of writing; upstream may move.
 ## Symptom on Titus
 
 ```
-tool_desc mcp__loop_governance__cycle_stats/check_lock/config_show  0.0s OK
+tool_desc mcp__review__cycle_stats/check_lock/config_show  0.0s OK
 tool_call mcp__loop_governance__*  →  [MCP call failed: TimeoutError:
 MCP stdio subp...]  (0.0s, repeated ×3)
 ```

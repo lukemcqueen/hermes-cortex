@@ -77,7 +77,7 @@ be duplicating functionality. Investigate before writing.
 ### Step 2: Open Governance Lock
 
 ```python
-mcp__review__begin_change(task_id="<short-description>", description="<what this does>")
+mcp__loop_governance__begin_change(task_id="<short-description>", description="<what this does>")
 ```
 
 This opens a governance lock AND creates a pending cycle in the loop-governance
@@ -313,7 +313,7 @@ mcp__review__cycle_query(task_id="<your-task-id>")
 mcp__review__feedback_accept(id=N, note="<summary>")
 
 # 3. Release the lock
-mcp__review__end_change(task_id="<your-task-id>")
+mcp__loop_governance__end_change(task_id="<your-task-id>")
 ```
 
 **If `end_change` rejects** (no cycle auto-created for this tool type):

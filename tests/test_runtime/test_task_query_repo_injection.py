@@ -90,7 +90,7 @@ def test_review_server_injection_after_rename(monkeypatch):
     per-call injection call site near skill tracking). It is in the same commit
     range as this test, so the dependency travels with the proof."""
     _patch_repo(monkeypatch, _OBSERVED)
-    for tool in ("mcp__review__begin_change", "mcp__review__end_change",
+    for tool in ("mcp__loop_governance__begin_change", "mcp__loop_governance__end_change",
                  "mcp__review__cycle_query", "mcp__review__cache_search"):
         args = {}
         _enforcer._inject_session_context(_SESSION, tool, args)

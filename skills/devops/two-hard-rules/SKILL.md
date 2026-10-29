@@ -18,11 +18,11 @@ metadata:
 Every code, config, or cron change REQUIRES this sequence — no exceptions:
 
 1. `mcp__review__cache_search(query="<what you are about to do>")` — learn from past
-2. `mcp__review__begin_change(task_id="<short-name>", description="<what this does>")` — create lock
+2. `mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")` — create lock
 3. Make your changes (patch, write_file, cronjob, etc.)
 4. `mcp__review__cycle_query(task_id="<short-name>")` — find the cycle
 5. `mcp__review__feedback_accept(cycle_id=N, task_id="<short-name>", note="<evidence>", completeness=<0-10>, quality=<0-10>, progress=<0-10>)` or `feedback_override(...)` — score. **Score in this SAME call** — a bare-note accept is refused ("nothing measured", 2026-09-23): pass the three scores, or `unscored_reason="why nothing could be measured"` for genuinely unmeasurable work. Supplying the scores here is the single-shot close; a bare `note=` triggers a refusal round-trip.
-6. `mcp__review__end_change(task_id="<short-name>")` — release lock
+6. `mcp__loop_governance__end_change(task_id="<short-name>")` — release lock
 
 **If `end_change` rejects** (no cycle auto-created, or cycle not scored — 2026-08-08):
 - `end_change` now BLOCKS while the task's cycle is unscored, and `begin_change`

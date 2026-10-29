@@ -30,10 +30,10 @@ loop-governance DB. Two paths:
 
 **Path A — MCP tools (PRIMARY — enforced by the MCP server):**
 - Before coding: `mcp__loop_governance__begin_change(task_id="<task>", description="...")`
-- `mcp__loop_governance__cache_search(query="task description")` — learn from past
-- After change: `mcp__loop_governance__cycle_query(task_id="<task>")`
-- Provide feedback: `mcp__loop_governance__feedback_accept(cycle_id=N)`
-  or `mcp__loop_governance__feedback_override(cycle_id=N, correct_decision="...", note="...")`
+- `mcp__review__cache_search(query="task description")` — learn from past
+- After change: `mcp__review__cycle_query(task_id="<task>")`
+- Provide feedback: `mcp__review__feedback_accept(cycle_id=N)`
+  or `mcp__review__feedback_override(cycle_id=N, correct_decision="...", note="...")`
 - Release lock: `mcp__loop_governance__end_change(task_id="<task>")`
 
 **Path B — CLI tools (secondary, for manual scoring or script use):**
@@ -53,8 +53,8 @@ At the start of every session, run:
 
 ```python
 mcp__loop_governance__config_show()           # check thresholds
-mcp__loop_governance__cycle_stats(days=7)     # review scoring health
-mcp__loop_governance__cache_search(query="<current task>")  # learn from past
+mcp__review__cycle_stats(days=7)     # review scoring health
+mcp__review__cache_search(query="<current task>")  # learn from past
 ```
 
 ## Multi-file changes

@@ -3351,7 +3351,7 @@ def register(ctx):
                     '    description="<what this does>"\n'
                     "  )\n\n"
                     "After the change, score and release:\n"
-                    '  mcp__loop_governance__feedback_accept(task_id="<task>", note="verified: ...")\n'
+                    '  mcp__review__feedback_accept(task_id="<task>", note="verified: ...")\n'
                     '  mcp__loop_governance__end_change(task_id="<task>")\n\n'
                     "If that tool is NOT in your tool list, the review MCP server (named `review`) is\n"
                     "not registered on this host — a host setup problem, not something to work\n"

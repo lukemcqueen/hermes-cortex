@@ -34,7 +34,7 @@ Reference table — all three agree, so there is nothing to reconcile.**
 mcp__review__cache_search(query="<what you are about to do>")
 
 # 2. Open the governance lock — exact tool name, double underscores:
-mcp__review__begin_change(task_id="<short-name>", description="<what this does>")
+mcp__loop_governance__begin_change(task_id="<short-name>", description="<what this does>")
 
 # 3. All 7 always-skills in ONE turn (7 skill_view calls, batched — read-only, always
 #    allowed). Do this BEFORE your first write tool: Gate 1 blocks a write until all 7
@@ -52,7 +52,7 @@ skill_view(name='test-driven-development')  # TDD Iron Law
 #    note is refused, 2026-09-23; there is no retry-and-add-scores step):
 mcp__review__feedback_accept(task_id="<short-name>", note="verified: <evidence>",
     completeness=<0-10>, quality=<0-10>, progress=<0-10>)
-mcp__review__end_change(task_id="<short-name>")
+mcp__loop_governance__end_change(task_id="<short-name>")
 ```
 
 **Harness note — `skill_view` is a HERMES tool.** A Pi session has no `skill_view`
@@ -70,14 +70,14 @@ call — read it and do exactly that. **Do not go reading
 block message already contains the whole procedure, and source-diving burns turns
 without unblocking anything.
 
-If `mcp__review__begin_change` is not in your tool list, the MCP server is
+If `mcp__loop_governance__begin_change` is not in your tool list, the MCP server is
 not registered on this host — check lock-free with `hermes mcp list`, then report it
 to your orchestrator (Moses/Esther). Never hand-write a lock file.
 
 ## The Sequence
 
 1. Cache search — `mcp__review__cache_search(query="<the user's request>")`
-2. Begin governance — `mcp__review__begin_change(task_id="<short-name>", description="<what you are about to do>")` — mandatory before any write; write tools block without it.
+2. Begin governance — `mcp__loop_governance__begin_change(task_id="<short-name>", description="<what you are about to do>")` — mandatory before any write; write tools block without it.
 3. Load always skills — `skill_view(name)` for every skill in the always section of .hermes-cortex/skills.yaml (7 skills; do all 7 in one turn).
 4. Load domain skills — run survey-before-action Phase 0a (operation × extension mapping); load every matching skill; discovery via skills_list(category=<domain>).
 5. Choose reasoning pattern — from `agent-flow`'s table (Plan-Execute-Verify default; ReAct for debug; Reflexion for quality; Tree of Thoughts for trade-offs). State it explicitly.
