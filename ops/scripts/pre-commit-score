@@ -924,12 +924,15 @@ if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
     echo ""
     exit 1
   fi
-  # Ritual survey gate (2026-10-29, Luke): the reflexion verifier is ALREADY
+  # Ritual gate (2026-10-29, Luke): the reflexion verifier is ALREADY
   # generic (--skill <name>), so ask it for the whole survey-before-build
-  # ritual — reflexion-check, survey-before-action, prove-before-create. The
+  # ritual — reflexion-check, survey-before-action, prove-before-create,
+  # and agent-contract (verify / test-first / say-so-when-unsure). The
   # questions apply to ANY development, not just hermes-cortex: did you survey
   # the codebase / existing functionality before writing, prove you are not
-  # rebuilding what exists, and reflect before delivering. A governed dev
+  # rebuilding what exists, reflect before delivering, and hold the core
+  # operating rules (right first time, test edge cases, escalate on
+  # complexity/risk)? A governed dev
   # session in ANY repo must load these; an ungoverned/human commit is skipped
   # by the verifier (--skip-no-session). Any missing skill refuses the commit —
   # survey/leverage must happen before a change lands, not be prose an agent
@@ -939,7 +942,7 @@ if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
     _HC_SKIP_FLAG="--skip-no-session"
   fi
   _hc_rc=0
-  for _ritual_skill in reflexion-check survey-before-action prove-before-create; do
+  for _ritual_skill in reflexion-check survey-before-action prove-before-create agent-contract; do
     _hc_rc=0
     _hc_out=$(python3 "$HC_REFLEXION_CHECK" $_HC_SKIP_FLAG --skill "$_ritual_skill" 2>&1) || _hc_rc=$?
     if [[ "$_hc_rc" -ne 0 ]]; then

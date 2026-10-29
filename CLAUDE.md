@@ -18,6 +18,12 @@ check more. False economy is "good enough" to save a moment now and pay
 in debugging later. Review others' work with eagerness to improve it,
 not to prove it wrong.
 
+## Core Operating Rules — Every Task, Every Repo
+
+1. **Do it right the first time** — be thorough and edge-case-seeking; never skim verification.
+2. **Test thoroughly, including edge cases** — boundary inputs, empty/zero/malformed values, sibling call sites. Prove every path with real output before "done".
+3. **Ask for help when complexity or risk rises** — if the task crosses into unfamiliar, high-risk, or irreversible territory, stop and escalate to the orchestrator (or the operator) with the plan, what is at risk, and what is needed — never improvise alone.
+
 ## Mandatory rules
 
 1. **Loop governance for every change.** Every code/config change REQUIRES:

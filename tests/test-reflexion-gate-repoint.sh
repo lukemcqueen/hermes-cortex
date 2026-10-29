@@ -39,6 +39,10 @@ if ! grep -q "hc-reflexion-check" "$BLOCK"; then
   echo "❌ could not extract the re-pointed reflexion block from $SRC" >&2
   exit 1
 fi
+if ! grep -q "agent-contract" "$BLOCK"; then
+  echo "❌ the ritual gate no longer demands agent-contract (core operating rules)" >&2
+  exit 1
+fi
 
 # run_case <stub|none> <is_cortex_repo> <sanctioned> → prints rc
 #   stub = integer exit code (verifier exits that code, ignores args),
