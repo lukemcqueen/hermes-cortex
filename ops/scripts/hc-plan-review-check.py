@@ -51,7 +51,6 @@ EXIT_CANNOT_VERIFY = 3
 _HCRC_PATHS = (
     Path(__file__).resolve().parent / "hc-reflexion-check.py",
     Path.home() / ".hermes-cortex" / "scripts" / "hc-reflexion-check.py",
-    Path.home() / ".local" / "bin" / "hc-reflexion-check.py",
 )
 
 
@@ -155,6 +154,13 @@ def main() -> int:
 
     repo_sl = a.repo_root.strip() or _git_toplevel()
     slug = hcrc.repo_slug()
+    if slug == "hermes-cortex":
+        # self-contained HC-repo exemption, matching the pre-commit hook's
+        # IS_CORTEX_REPO scope: hermes-cortex is covered by its own close-time
+        # adversarial review (A2/A4 on staged scripts), so this gate targets
+        # project repos only. Return early regardless of caller.
+        print("PASS — hermes-cortex repo (covered by its own close review)")
+        return EXIT_PASS
     session_id = a.session.strip() or hcrc.active_session_id(slug)
 
     if not session_id:
