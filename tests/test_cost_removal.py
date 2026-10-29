@@ -18,6 +18,7 @@ Run: python3 -m pytest tests/test_cost_removal.py -v
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -70,7 +71,8 @@ def make_host(tmp: Path) -> tuple[Path, Path]:
     return home, deploy
 
 
-def run_cleanup(home: Path, deploy: Path) -> subprocess.CompletedProcess:
+def run_cleanup(home: Path, deploy: Path, path_prefix: Path | None = None,
+                extra_env: dict | None = None) -> subprocess.CompletedProcess:
     script = f"""
 set -uo pipefail
 export HOME="{home}"
@@ -88,7 +90,30 @@ echo "rc=$?"
     venv_bin = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin"
     if venv_bin.is_dir():
         env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
+    if path_prefix is not None:
+        env["PATH"] = f"{path_prefix}{os.pathsep}{env.get('PATH', '')}"
+    if extra_env:
+        env.update(extra_env)
     return subprocess.run(["bash", str(path)], capture_output=True, text=True, env=env, timeout=120)
+
+
+def stub_python3_without_ruamel(tmp: Path) -> Path:
+    """A directory whose `python3` cannot import ruamel.yaml — the fleet's real shape.
+
+    Measured on a fleet host: PATH python3 is /usr/bin/python3 and `import ruamel.yaml`
+    raises ModuleNotFoundError there, while the cortex venv has no ruamel either.
+    """
+    fake_bin = tmp / "yamlless-bin"
+    fake_bin.mkdir(parents=True, exist_ok=True)
+    stub = fake_bin / "python3"
+    stub.write_text(
+        "#!/bin/sh\n"
+        "echo 'cost keys NOT dropped: ruamel.yaml missing in this interpreter' >&2\n"
+        "exit 3\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    return fake_bin
 
 
 def test_removes_every_artifact_and_drops_the_cost_keys(tmp_path):
@@ -179,6 +204,86 @@ echo "rc=$?"
     cfg = yaml.safe_load((home / ".hermes/config.yaml").read_text(encoding="utf-8"))
     assert cfg["cron"]["provider"] == "cost-guard"                    # keys survive
     assert not (home / ".hermes/plugins/cost-guard").exists()         # files still removed
+
+
+def test_converged_host_writes_NOTHING_to_stderr_even_with_a_yamlless_python3(tmp_path):
+    """The defect that failed the fleet's updates — a warning read as a failure.
+
+    A host that already dropped the cost keys has NOTHING for this step to do, so it must
+    produce no stderr at all, whatever interpreter its PATH resolves. The queue-driven
+    updater treats exit=1 (cortex-update's soft "nothing to update" code) as success ONLY
+    when stderr is empty (ops/scripts/agent/agent-message-handler.py l.519-522), so the
+    ruamel warning turned a completed update into "❌ cortex-update failed" on every host
+    whose python3 lacks ruamel — measured on a real fleet host, whose config carries no
+    cost keys and whose PATH python3 is /usr/bin/python3.
+    """
+    home, deploy = make_host(tmp_path)
+    cfg = home / ".hermes/config.yaml"
+    cfg.write_text(
+        "model:\n  default: keep-me\ncron:\n  enabled: true\n"
+        "display:\n  skin: default\n",
+        encoding="utf-8",
+    )
+    before = cfg.read_bytes()
+
+    proc = run_cleanup(home, deploy, path_prefix=stub_python3_without_ruamel(tmp_path))
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stderr == "", f"converged host still wrote to stderr: {proc.stderr!r}"
+    assert cfg.read_bytes() == before
+    assert "not dropped" not in proc.stdout
+
+
+def test_keys_present_finds_an_interpreter_that_can_import_ruamel(tmp_path):
+    """When there IS something to drop, the step must not settle for a useless python3.
+
+    PATH is deliberately poisoned with a python3 that fails, so a pass means the function
+    looked PAST it (CORTEX_PYTHON, then the candidates) instead of using the first python3
+    it met. This is the other direction of the same fix, and it must NOT weaken
+    test_missing_yaml_loader_warns_and_leaves_the_keys: with no capable interpreter at all,
+    the warning and the surviving keys are still correct.
+
+    Skipped only when THIS host has no interpreter that can import ruamel.yaml — which is
+    itself a real host state (a fleet host measured with none), so the skip is reported
+    rather than counted as a pass.
+    """
+    capable = _interpreter_with_ruamel()
+    if capable is None:
+        pytest.skip("no interpreter on this host can import ruamel.yaml — no capability to test")
+    home, deploy = make_host(tmp_path)
+    proc = run_cleanup(home, deploy, path_prefix=stub_python3_without_ruamel(tmp_path),
+                       extra_env={"CORTEX_PYTHON": capable})
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    import yaml
+
+    cfg = yaml.safe_load((home / ".hermes/config.yaml").read_text(encoding="utf-8"))
+    assert cfg["model"]["default"] == "keep-me"
+    assert cfg["display"]["skin"] == "default"
+    assert cfg.get("cron", {}) == {}, "the retired keys must actually be dropped"
+    assert "dropped cron.provider=cost-guard" in proc.stdout
+
+
+def _interpreter_with_ruamel() -> str | None:
+    """An interpreter that can import ruamel.yaml, probed with a CLEAN environment.
+
+    PYTHONPATH/PYTHONHOME are removed for the probe: an inherited site-packages decides a
+    capability test for you, and would otherwise make this test exercise the wrong branch.
+    """
+    candidates = [sys.executable, shutil.which("python3"), "/usr/bin/python3"]
+    candidates += [str(Path.home() / v) for v in (
+        ".hermes-cortex/venv/bin/python", ".hermes/hermes-agent/venv/bin/python",
+        "hermes-cortex/.venv/bin/python",
+    )]
+    for cand in candidates:
+        if not cand or not Path(cand).exists():
+            continue
+        probe = subprocess.run(["env", "-u", "PYTHONPATH", "-u", "PYTHONHOME", cand,
+                                "-c", "import ruamel.yaml"],
+                               capture_output=True, text=True, timeout=60)
+        if probe.returncode == 0:
+            return cand
+    return None
 
 
 if __name__ == "__main__":  # pragma: no cover

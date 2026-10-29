@@ -2569,19 +2569,48 @@ remove_cost_tracking() {
     fi
   done
   # ruamel's round-trip loader is what Hermes itself uses for config writes
-  # (hermes_cli.config.atomic_config_write → utils.atomic_roundtrip_yaml_save):
+  # (hermes_cli.config.config.atomic_config_write → utils.atomic_roundtrip_yaml_save):
   # round-trip is required to preserve comments and key order. It is not
   # yaml.unsafe_load — it constructs no arbitrary Python objects.
-  python3 - "${HOME}/.hermes/config.yaml" <<'PY' || warn "  cost keys not dropped (config read failed)"
+  #
+  # NOTHING TO REMOVE ⇒ WRITE NOTHING (2026-10-29). This step used to run the editor
+  # unconditionally and to fail LOUD on stderr whenever the interpreter could not
+  # `import ruamel.yaml`. Every host here has been converged since 2026-10-06, so there was
+  # nothing to do — and on a host whose python3 lacks ruamel (measured on a fleet host: PATH
+  # python3 = /usr/bin/python3, no ruamel; the cortex venv has none either) that printed
+  # "cost keys NOT dropped…" on EVERY update. That line is not cosmetic: the queue-driven
+  # updater treats exit=1 (the soft "nothing to update" code) as success ONLY when stderr is
+  # empty (ops/scripts/agent/agent-message-handler.py l.519-522), so a harmless warning turned
+  # a completed update into "❌ cortex-update failed" across the fleet (operator, 2026-10-29).
+  # Two changes, in order:
+  #   1. the keys are ABSENT ⇒ no interpreter, no output, done;
+  #   2. the keys are PRESENT ⇒ use an interpreter that can actually import the loader, by
+  #      CAPABILITY rather than whichever `python3` PATH happens to resolve.
+  local config="${HOME}/.hermes/config.yaml"
+  if [[ -f "$config" ]] && grep -qE '^[[:space:]]*(cost_guard|cost_tracking):|^[[:space:]]*provider:[[:space:]]*cost-guard' "$config"; then
+    # Present ⇒ drop them. CORTEX_PYTHON first (the per-host declaration), then the fleet
+    # venvs, then PATH; the probe runs with PYTHONPATH/PYTHONHOME removed, because an
+    # inherited site-packages decides a capability test for you.
+    local _py="" _cand
+    for _cand in "${CORTEX_PYTHON:-}" python3 /usr/bin/python3 \
+                 "${CORTEX_DEPLOY_HOME}/venv/bin/python" \
+                 "${HOME}/.hermes-cortex/venv/bin/python" \
+                 "${HOME}/.hermes/hermes-agent/venv/bin/python"; do
+      [[ -n "$_cand" ]] || continue
+      command -v "$_cand" >/dev/null 2>&1 || continue
+      if env -u PYTHONPATH -u PYTHONHOME "$_cand" -c "import ruamel.yaml" >/dev/null 2>&1; then
+        _py="$_cand"; break
+      fi
+    done
+    if [[ -z "$_py" ]]; then
+      # Still LOUD when it MATTERS: the keys are present and no interpreter here can drop
+      # them. A silent green would leave `cron.provider: cost-guard` pointing at a provider
+      # that is no longer installed (Hermes warns on every start).
+      warn "  cost keys not dropped: no interpreter with ruamel.yaml to edit ${config}"
+    else
+      "$_py" - "$config" <<'PY' || warn "  cost keys not dropped (config read failed)"
 import io, sys, pathlib
-try:
-    from ruamel.yaml import YAML
-except ImportError:
-    # Fail LOUD: this script cannot drop the keys without a round-trip loader, and
-    # a silent skip would leave `cron.provider: cost-guard` pointing at a provider
-    # that is no longer installed (Hermes would warn on every start).
-    print("cost keys NOT dropped: ruamel.yaml missing in this interpreter", file=sys.stderr)
-    sys.exit(3)
+from ruamel.yaml import YAML
 path = pathlib.Path(sys.argv[1])
 if not path.exists():
     sys.exit(0)
@@ -2601,6 +2630,8 @@ if changed:
     path.write_text(buf.getvalue(), encoding="utf-8")
     print("    [cost-removal] dropped cron.provider=cost-guard / cost_guard / cost_tracking")
 PY
+    fi
+  fi
   [[ "${removed:-0}" -gt 0 ]] && \
     info "  cost tracking removed from this host (${removed} artifact(s))"
   return 0
