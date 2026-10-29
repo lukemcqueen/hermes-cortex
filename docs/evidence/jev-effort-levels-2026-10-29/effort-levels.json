@@ -1,0 +1,544 @@
+{
+  "prompt": "Count how many entries below have status pending, and reply with the number only.\na=b done; b=c pending; c=d pending; d=e done; e=f pending",
+  "levels": [
+    "(baseline, no effort field)",
+    "none",
+    "low",
+    "medium",
+    "high"
+  ],
+  "rows": [
+    {
+      "model": "openrouter:qwen/qwen3.7-flash",
+      "level": "(baseline, no effort field)",
+      "status": "refused",
+      "http": 404,
+      "detail": "{\"error\":{\"message\":\"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nZDR violation (guardrail): 2 endpoints excluded; configurable at https://openrouter.ai/w"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.7-flash",
+      "level": "none",
+      "status": "refused",
+      "http": 404,
+      "detail": "{\"error\":{\"message\":\"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nZDR violation (guardrail): 2 endpoints excluded; configurable at https://openrouter.ai/w"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.7-flash",
+      "level": "low",
+      "status": "refused",
+      "http": 404,
+      "detail": "{\"error\":{\"message\":\"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nZDR violation (guardrail): 2 endpoints excluded; configurable at https://openrouter.ai/w"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.7-flash",
+      "level": "medium",
+      "status": "refused",
+      "http": 404,
+      "detail": "{\"error\":{\"message\":\"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nZDR violation (guardrail): 2 endpoints excluded; configurable at https://openrouter.ai/w"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.7-flash",
+      "level": "high",
+      "status": "refused",
+      "http": 404,
+      "detail": "{\"error\":{\"message\":\"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nZDR violation (guardrail): 2 endpoints excluded; configurable at https://openrouter.ai/w"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-flash-0731",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 118,
+      "completion_tokens": 33,
+      "reasoning_tokens": 30,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-flash-0731",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-flash-0731",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 51,
+      "reasoning_tokens": 48,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-flash-0731",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 47,
+      "reasoning_tokens": 44,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-flash-0731",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 118,
+      "completion_tokens": 28,
+      "reasoning_tokens": 25,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 43,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 43,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 43,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 43,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3-coder-30b-a3b-instruct",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 43,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-pro-0813",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-pro-0813",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-pro-0813",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 70,
+      "reasoning_tokens": 67,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-pro-0813",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 111,
+      "reasoning_tokens": 108,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4-pro-0813",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 118,
+      "completion_tokens": 73,
+      "reasoning_tokens": 70,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-4.7",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 40,
+      "completion_tokens": 249,
+      "reasoning_tokens": 247,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-4.7",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 40,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-4.7",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 40,
+      "completion_tokens": 261,
+      "reasoning_tokens": 259,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-4.7",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 40,
+      "completion_tokens": 246,
+      "reasoning_tokens": 244,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-4.7",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 40,
+      "completion_tokens": 318,
+      "reasoning_tokens": 316,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:minimax/minimax-m3",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 211,
+      "completion_tokens": 61,
+      "reasoning_tokens": 59,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:minimax/minimax-m3",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 198,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:minimax/minimax-m3",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 208,
+      "completion_tokens": 63,
+      "reasoning_tokens": 61,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:minimax/minimax-m3",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 208,
+      "completion_tokens": 60,
+      "reasoning_tokens": 58,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:minimax/minimax-m3",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 208,
+      "completion_tokens": 60,
+      "reasoning_tokens": 58,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.5-122b-a10b",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 46,
+      "completion_tokens": 498,
+      "reasoning_tokens": 493,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.5-122b-a10b",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 48,
+      "completion_tokens": 1,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.5-122b-a10b",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 46,
+      "completion_tokens": 493,
+      "reasoning_tokens": 487,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.5-122b-a10b",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 46,
+      "completion_tokens": 498,
+      "reasoning_tokens": 492,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:qwen/qwen3.5-122b-a10b",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 46,
+      "completion_tokens": 497,
+      "reasoning_tokens": 492,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:xiaomi/mimo-v2.6-pro",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 42,
+      "completion_tokens": 52,
+      "reasoning_tokens": 48,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:xiaomi/mimo-v2.6-pro",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 44,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:xiaomi/mimo-v2.6-pro",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 42,
+      "completion_tokens": 52,
+      "reasoning_tokens": 48,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:xiaomi/mimo-v2.6-pro",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 42,
+      "completion_tokens": 52,
+      "reasoning_tokens": 48,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:xiaomi/mimo-v2.6-pro",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 42,
+      "completion_tokens": 52,
+      "reasoning_tokens": 48,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:thinkingmachines/inkling-small",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 49,
+      "completion_tokens": 133,
+      "reasoning_tokens": 103,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:thinkingmachines/inkling-small",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 47,
+      "completion_tokens": 5,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:thinkingmachines/inkling-small",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 49,
+      "completion_tokens": 48,
+      "reasoning_tokens": 29,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:thinkingmachines/inkling-small",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 49,
+      "completion_tokens": 92,
+      "reasoning_tokens": 71,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:thinkingmachines/inkling-small",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 49,
+      "completion_tokens": 74,
+      "reasoning_tokens": 56,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-5.3",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 47,
+      "completion_tokens": 62,
+      "reasoning_tokens": 59,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-5.3",
+      "level": "none",
+      "status": "refused",
+      "http": 400,
+      "detail": "{\"error\":{\"message\":\"Reasoning is mandatory for this endpoint and cannot be disabled.\",\"code\":400,\"metadata\":{\"provider_name\":null}}}"
+    },
+    {
+      "model": "openrouter:z-ai/glm-5.3",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 47,
+      "completion_tokens": 18,
+      "reasoning_tokens": 15,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:z-ai/glm-5.3",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 47,
+      "completion_tokens": 69,
+      "reasoning_tokens": 63,
+      "answer": "33"
+    },
+    {
+      "model": "openrouter:z-ai/glm-5.3",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 47,
+      "completion_tokens": 17,
+      "reasoning_tokens": 14,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4.1-flash",
+      "level": "(baseline, no effort field)",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 65,
+      "completion_tokens": 53,
+      "reasoning_tokens": 52,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4.1-flash",
+      "level": "none",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 39,
+      "completion_tokens": 2,
+      "reasoning_tokens": 0,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4.1-flash",
+      "level": "low",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 65,
+      "completion_tokens": 50,
+      "reasoning_tokens": 49,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4.1-flash",
+      "level": "medium",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 65,
+      "completion_tokens": 43,
+      "reasoning_tokens": 42,
+      "answer": "3"
+    },
+    {
+      "model": "openrouter:deepseek/deepseek-v4.1-flash",
+      "level": "high",
+      "status": "accepted",
+      "http": 200,
+      "prompt_tokens": 65,
+      "completion_tokens": 53,
+      "reasoning_tokens": 52,
+      "answer": "3"
+    }
+  ]
+}

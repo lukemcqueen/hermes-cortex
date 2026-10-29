@@ -1,0 +1,82 @@
+reasoning_effort support and output-token cost, per pool model
+generated-by: docs/evidence/jev-effort-levels-2026-10-29/probe-effort-levels.sh
+captured-at: 31b9a464bd09
+             (captured-at is the revision the working tree sat on when this ran; writing
+              this file changes the revision, so no 'tip' line is claimed here)
+list:        ~/hermes-cortex/config/jev-router-models.json
+method:      one fixed mechanical prompt per (model, level); usage.completion_tokens and
+             usage.completion_tokens_details.reasoning_tokens are recorded per reply.
+
+  openrouter:qwen/qwen3.7-flash                        (baseline, no effort field) refused          http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail 
+  openrouter:qwen/qwen3.7-flash                        none    refused          http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail 
+  openrouter:qwen/qwen3.7-flash                        low     refused          http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail 
+  openrouter:qwen/qwen3.7-flash                        medium  refused          http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail 
+  openrouter:qwen/qwen3.7-flash                        high    refused          http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail 
+  openrouter:deepseek/deepseek-v4-flash-0731           (baseline, no effort field) accepted         out=33 reasoning=30
+  openrouter:deepseek/deepseek-v4-flash-0731           none    accepted         out=2 reasoning=0
+  openrouter:deepseek/deepseek-v4-flash-0731           low     accepted         out=51 reasoning=48
+  openrouter:deepseek/deepseek-v4-flash-0731           medium  accepted         out=47 reasoning=44
+  openrouter:deepseek/deepseek-v4-flash-0731           high    accepted         out=28 reasoning=25
+  openrouter:qwen/qwen3-coder-30b-a3b-instruct         (baseline, no effort field) accepted         out=2 reasoning=0
+  openrouter:qwen/qwen3-coder-30b-a3b-instruct         none    accepted         out=2 reasoning=0
+  openrouter:qwen/qwen3-coder-30b-a3b-instruct         low     accepted         out=2 reasoning=0
+  openrouter:qwen/qwen3-coder-30b-a3b-instruct         medium  accepted         out=2 reasoning=0
+  openrouter:qwen/qwen3-coder-30b-a3b-instruct         high    accepted         out=2 reasoning=0
+  openrouter:deepseek/deepseek-v4-pro-0813             (baseline, no effort field) accepted         out=2 reasoning=0
+  openrouter:deepseek/deepseek-v4-pro-0813             none    accepted         out=2 reasoning=0
+  openrouter:deepseek/deepseek-v4-pro-0813             low     accepted         out=70 reasoning=67
+  openrouter:deepseek/deepseek-v4-pro-0813             medium  accepted         out=111 reasoning=108
+  openrouter:deepseek/deepseek-v4-pro-0813             high    accepted         out=73 reasoning=70
+  openrouter:z-ai/glm-4.7                              (baseline, no effort field) accepted         out=249 reasoning=247
+  openrouter:z-ai/glm-4.7                              none    accepted         out=2 reasoning=0
+  openrouter:z-ai/glm-4.7                              low     accepted         out=261 reasoning=259
+  openrouter:z-ai/glm-4.7                              medium  accepted         out=246 reasoning=244
+  openrouter:z-ai/glm-4.7                              high    accepted         out=318 reasoning=316
+  openrouter:minimax/minimax-m3                        (baseline, no effort field) accepted         out=61 reasoning=59
+  openrouter:minimax/minimax-m3                        none    accepted         out=2 reasoning=0
+  openrouter:minimax/minimax-m3                        low     accepted         out=63 reasoning=61
+  openrouter:minimax/minimax-m3                        medium  accepted         out=60 reasoning=58
+  openrouter:minimax/minimax-m3                        high    accepted         out=60 reasoning=58
+  openrouter:qwen/qwen3.5-122b-a10b                    (baseline, no effort field) accepted         out=498 reasoning=493
+  openrouter:qwen/qwen3.5-122b-a10b                    none    accepted         out=1 reasoning=0
+  openrouter:qwen/qwen3.5-122b-a10b                    low     accepted         out=493 reasoning=487
+  openrouter:qwen/qwen3.5-122b-a10b                    medium  accepted         out=498 reasoning=492
+  openrouter:qwen/qwen3.5-122b-a10b                    high    accepted         out=497 reasoning=492
+  openrouter:xiaomi/mimo-v2.6-pro                      (baseline, no effort field) accepted         out=52 reasoning=48
+  openrouter:xiaomi/mimo-v2.6-pro                      none    accepted         out=2 reasoning=0
+  openrouter:xiaomi/mimo-v2.6-pro                      low     accepted         out=52 reasoning=48
+  openrouter:xiaomi/mimo-v2.6-pro                      medium  accepted         out=52 reasoning=48
+  openrouter:xiaomi/mimo-v2.6-pro                      high    accepted         out=52 reasoning=48
+  openrouter:thinkingmachines/inkling-small            (baseline, no effort field) accepted         out=133 reasoning=103
+  openrouter:thinkingmachines/inkling-small            none    accepted         out=5 reasoning=0
+  openrouter:thinkingmachines/inkling-small            low     accepted         out=48 reasoning=29
+  openrouter:thinkingmachines/inkling-small            medium  accepted         out=92 reasoning=71
+  openrouter:thinkingmachines/inkling-small            high    accepted         out=74 reasoning=56
+  openrouter:z-ai/glm-5.3                              (baseline, no effort field) accepted         out=62 reasoning=59
+  openrouter:z-ai/glm-5.3                              none    refused          http=400 {"error":{"message":"Reasoning is mandatory for this endpoint and cannot be disabled.","co
+  openrouter:z-ai/glm-5.3                              low     accepted         out=18 reasoning=15
+  openrouter:z-ai/glm-5.3                              medium  accepted         out=69 reasoning=63
+  openrouter:z-ai/glm-5.3                              high    accepted         out=17 reasoning=14
+  openrouter:deepseek/deepseek-v4.1-flash              (baseline, no effort field) accepted         out=53 reasoning=52
+  openrouter:deepseek/deepseek-v4.1-flash              none    accepted         out=2 reasoning=0
+  openrouter:deepseek/deepseek-v4.1-flash              low     accepted         out=50 reasoning=49
+  openrouter:deepseek/deepseek-v4.1-flash              medium  accepted         out=43 reasoning=42
+  openrouter:deepseek/deepseek-v4.1-flash              high    accepted         out=53 reasoning=52
+
+probe verdict: 49 accepted row(s) of 55 attempted
+  level (baseline, no effort field) accepted by 10 model(s); reasoning tokens min=0 max=493 mean=109.1
+  level none    accepted by 9 model(s); reasoning tokens min=0 max=0 mean=0.0
+  level low     accepted by 10 model(s); reasoning tokens min=0 max=487 mean=106.3
+  level medium  accepted by 10 model(s); reasoning tokens min=0 max=492 mean=117.0
+  level high    accepted by 10 model(s); reasoning tokens min=0 max=492 mean=113.1
+  NOT ACCEPTED: openrouter:qwen/qwen3.7-flash at level (baseline, no effort field) -> http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for 
+  NOT ACCEPTED: openrouter:qwen/qwen3.7-flash at level none -> http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for 
+  NOT ACCEPTED: openrouter:qwen/qwen3.7-flash at level low -> http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for 
+  NOT ACCEPTED: openrouter:qwen/qwen3.7-flash at level medium -> http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for 
+  NOT ACCEPTED: openrouter:qwen/qwen3.7-flash at level high -> http=404 {"error":{"message":"0 endpoints out of 2 requested are available matching your guardrail restrictions and data policy. We removed them for 
+  NOT ACCEPTED: openrouter:z-ai/glm-5.3 at level none -> http=400 {"error":{"message":"Reasoning is mandatory for this endpoint and cannot be disabled.","code":400,"metadata":{"provider_name":null}}}
+
+read this as: a refusal is a RESULT (that model must not be sent that level), not a
+broken probe. Accepted levels are what the capability map may declare.
+
+rc=0 (0 = the probe ran to completion; refusals above are results, not failures)
