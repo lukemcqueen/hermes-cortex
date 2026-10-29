@@ -6688,6 +6688,102 @@ def _is_always_review_path(path: str) -> bool:
     return bool(path) and any(ap in path for ap in ALWAYS_REVIEW_PATHS)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Risk-triggered close-review depth — lever E (docs/design/review-risk-routing.md)
+#
+# The close gate is SIZE-triggered today: `_complexity` (l. 5224) crosses at
+# 50 lines / 3 files, `end_change` skips only below that (l. 7080-7083), and the
+# depth "tiers" no longer change WHO judges (`_tier` l. 5447; `_light_reviewer_model`
+# l. 5424-5444 resolves the canonical reviewer by default). Net effect: every
+# non-trivial close pays pro prices (measured 2026-10-29: 940 pro verdict rows in 11
+# days; 36% of commits are documentation-only). Lever E replaces the size test with a
+# RISK class computed FROM the diff's file set — never from a note.
+#
+# *** THIS SLICE (E0) DELIBERATELY SHIPS THIS CLASSIFIER INERT. *** Nothing calls
+# `_review_class` here; E1 wires it into the judge selection. Until then behaviour is
+# byte-identical to today.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Protected surface (plan §3 rule 5): C regardless of size, IN ADDITION to
+# ALWAYS_REVIEW_PATHS. Schema/migration, auth/credential, gateway/config, hooks, and
+# deploy-map-owned plumbing. A path a future slice broadens here must be argued in the
+# plan; the default is fail-closed (anything unclassifiable -> C).
+_REVIEW_CLASS_UNCLASSIFIED = "C"   # deep judge, today's behaviour — never A0/B on doubt
+
+
+def _is_documentation_path(path: str) -> bool:
+    """Is `path` documentation, by the SAME rule the material budget uses?
+
+    A path is documentation when it ends in DOC_ONLY_SUFFIXES (`.md/.txt/.rst`) or
+    lives under DOC_ONLY_DIR_PREFIXES (run artifacts under docs/evidence/, any suffix).
+    An always-review path is NEVER documentation — a `.md` inside the enforcement
+    surface is not a doc (mirrors `_range_is_docs_only`, l. 6609).
+    """
+    if not path or _is_always_review_path(path):
+        return False
+    return (path.lower().endswith(DOC_ONLY_SUFFIXES)
+            or any(path.startswith(d) for d in DOC_ONLY_DIR_PREFIXES))
+
+
+def _is_protected_path(path: str) -> bool:
+    """Protected surface (plan §3 rule 5): schema/migration, credential handling,
+    gateway/config, hooks, deploy plumbing — class C regardless of size."""
+    if not path:
+        return False
+    ls = path.lower()
+    if any(ls.startswith(p) for p in (
+            "ops/install/hooks/", "plugins/", "mcp-servers/", "gateway",
+            "ops/install/deploy/", "config/", "core/governance/")):
+        return True
+    if any(t in ls for t in (
+            "migrations/", "alembic/versions/", "migration", "credential",
+            "secret", "/auth", "auth/", "sudoers")):
+        return True
+    return False
+
+
+def _is_test_path(path: str) -> bool:
+    """A test delta: a path in tests/ or a file named like a test."""
+    name = path.rsplit("/", 1)[-1].lower()
+    return (path.startswith("tests/")
+            or name.endswith("_test.py") or name.endswith("test.py")
+            or name.startswith("test_"))
+
+
+def _review_class(paths: list, *, has_uncommitted_code: bool = False) -> str:
+    """Risk class for a review's depth: ``A0`` | ``B`` | ``C``.
+
+    PURE and computed from the diff's file set (the `paths` argument the caller
+    already has from git) — a worker's note never participates. Fail-closed: any
+    ambiguous, unknown, empty, or protected input answers ``C`` (the deep judge,
+    which is today's behaviour).
+
+    - ``A0`` deterministic-only (plan §2): every NON-NOISE path is documentation,
+      and the range is non-empty, with no always-review path and no protected surface.
+      No model judge is needed for prose.
+    - ``B`` cheap judge (plan §2): a code change (a non-doc, non-noise path) that ALSO
+      carries a test delta, with no always-review path and no protected surface.
+    - ``C`` deep judge: everything else — protected surface, untested code, an empty or
+      unparseable path set, or an unresolved identity. Enforcement unchanged.
+
+    Rule order matters: protected/always-review first (C), then A0, then B, then C.
+    """
+    if not paths or has_uncommitted_code:
+        # Empty/unparseable or an explicit uncommitted-code claim -> deep (plan §3 r.1, r.4).
+        return _REVIEW_CLASS_UNCLASSIFIED
+    non_noise = [p for p in paths if not _is_noise(p)]
+    if not non_noise:
+        # Only lockfiles/noise changed — nothing classifiable -> deep.
+        return _REVIEW_CLASS_UNCLASSIFIED
+    if any(_is_always_review_path(p) or _is_protected_path(p) for p in non_noise):
+        return _REVIEW_CLASS_UNCLASSIFIED
+    if all(_is_documentation_path(p) for p in non_noise):
+        return "A0"
+    if any(_is_test_path(p) for p in non_noise):
+        return "B"
+    return _REVIEW_CLASS_UNCLASSIFIED
+
+
 def _bound_per_file(sections: list, budget: int, total: int,
                     docs_only: bool) -> str:
     """Allocate the budget ACROSS the changed files so no file is invisible.
