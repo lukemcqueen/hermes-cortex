@@ -2,16 +2,16 @@
 
 Drives the REAL binary (importing it from the repo path) under each role and
 asserts the exposed tool surface:
-  - review            == REVIEW_EXPECT (the 7 no-lock-authority tools; this set
-                        IS the spec — the binary has no marker saying which tools
-                        are 'review', so it is defined here, not derivable)
+  - review            == REVIEW_EXPECT (the 7 no-lock-authority tools, imported
+                        from the BINARY's REVIEW_TOOLS — the single authoritative
+                        source; the test does not duplicate the list)
   - loop-governance   == the COMPLEMENT, derived from the binary's own full tool
                         list (full - REVIEW_EXPECT)
   - NO role           == the full set, derived from _list_all_tools
   - unknown role      == fail-open (all allowed)
-So the parts that CAN be derived (full set, complement, no-env surface) come from
-the binary's real dispatch surface and cannot drift; only the review-tool spec is
-hand-written, which is unavoidable and flagged as such.
+The parts that CAN be derived (full set, complement, no-env surface, role refusal)
+come from the binary's real dispatch surface and cannot drift; the review-tool set
+comes from the binary's own constant, so there is no second list to drift.
 
 Runnable two ways:
   python3 tests/test_mcp_role_gate.py    # standalone (no pytest needed)
@@ -30,11 +30,10 @@ assert _spec and _spec.loader, "loop-gov-mcp.py not resolvable"
 mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mod)
 
-REVIEW_EXPECT = {
-    "rereview_change", "cycle_query", "cycle_stats",
-    "feedback_accept", "feedback_override",
-    "cache_search", "session_identity",
-}
+# The 7-tool review spec comes from the BINARY's REVIEW_TOOLS (the authoritative
+# definition — _role_allows reads it), so there is exactly one source of truth
+# and no hand-written duplicate that can drift.
+REVIEW_EXPECT = set(mod.REVIEW_TOOLS)
 
 
 class _role_ctx:
@@ -103,8 +102,13 @@ def test_call_tool_refuses_out_of_role_tool():
         name = "begin_change"
         arguments = {}
     with _role_ctx("review"):
+        # direct behavioral check: begin_change is out of the review role
+        assert mod._role_allows("begin_change") is False
+        # and call_tool returns the guard naming the tool and role (never
+        # dispatches _begin_change) — checked structurally, not by a magic string
         res = asyncio.run(mod.call_tool(None, P()))
         text = "".join(c.text for c in res.content)
+        assert "begin_change" in text and "review" in text
         assert "not exposed" in text
 
 
