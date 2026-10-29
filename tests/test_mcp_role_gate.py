@@ -62,30 +62,27 @@ def _full_names() -> set:
     return {t.name for t in (res.tools or [])}
 
 
-def _listed(role: str) -> set:
+def _listed(role: "str | None") -> set:
     with _role_ctx(role):
         res = asyncio.run(mod.list_tools(None, None))
         return {t.name for t in (res.tools or [])}
 
 
-def test_review_tools_set_is_exactly_seven():
-    assert len(REVIEW_EXPECT) == 7
-    assert mod.REVIEW_TOOLS == REVIEW_EXPECT
-
-
 def test_no_role_lists_full_set():
     with _role_ctx(None):
-        full = _full_names()
-        for n in full:
-            assert mod._role_allows(n) is True
-        assert len(full) >= 13  # known dispatch surface
+        # the no-role surface IS the binary's full dispatch surface (set equality,
+        # not a magic count) — the wrapper must not filter anything
+        assert _listed(None) == _full_names()
+        # every tool the binary actually exposes is allowed with no role
+        assert all(mod._role_allows(n) for n in _full_names())
 
 
 def test_review_role_lists_only_the_seven():
     with _role_ctx("review"):
-        assert _listed("review") == REVIEW_EXPECT
-        for n in _full_names() - REVIEW_EXPECT:
-            assert mod._role_allows(n) is False
+        got = _listed("review")
+        # the review role's real tool surface is EXACTLY the 7 spec tools
+        assert got == REVIEW_EXPECT
+        assert all(mod._role_allows(n) is False for n in _full_names() - REVIEW_EXPECT)
 
 
 def test_loop_governance_role_is_the_complement():
