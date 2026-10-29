@@ -1,0 +1,71 @@
+# Core operating rules verify — 2026-10-29T11:14:25Z
+tip=584c24ee
+
+=== reflexion gate repoint (now asserts agent-contract in the loop) ===
+
+═══ AC1: verifier says LOADED → gate passes ═══
+  ✅ loaded session passes the gate
+
+═══ AC2: verifier says NOT-LOADED → gate refuses ═══
+  ✅ not-loaded session is refused with an explanation
+
+═══ AC3: store unreachable → gate REFUSES (fail-closed) ═══
+  ✅ unverifiable outcome fails closed rather than passing
+
+═══ AC4: verifier missing → gate refuses, actionably ═══
+  ✅ missing verifier refuses and names the fix
+
+═══ AC5/AC6: skip paths preserved (non-HC repo, sanctioned pipeline) ═══
+  ✅ non-HC ungoverned repo skips the gate (skip flag passed)
+  ✅ sanctioned pipeline commit skips the gate
+
+═══ AC7: the real verifier ═══
+  ✅ refuses a session with no recorded evidence
+  ✅ empty --skill is a usage error
+  ✅ verifier defines a distinct store-unreachable code
+  ✅ --skip-no-session skips when there is no governed session
+  ✅ no-session is refuse-able (rc 1) when the skip flag is absent
+
+═══ AC8: STORE-ONLY — an enforcer-journal-only session is REFUSED ═══
+  ✅ journal-only session refused — the store is authoritative, bridge gone
+  ✅ no bridge code remains in the verifier
+
+═══ AC9: STORE UNREACHABLE → rc 3, fail-closed, actionable ═══
+  ✅ store module missing → rc 3, names the fix
+  ✅ store unreachable → rc 3 with the actionable fix named
+
+═══ AC10: store raises mid-query → rc 3, no stack dump leaked ═══
+  ✅ an exception inside the store still refuses (rc 3), never crashes or passes
+  ✅ no stack trace in the gate output
+  ✅ gate output stays a single line (no raw dump)
+  ✅ no run-time store-path override exists in the verifier
+
+═══ Summary ═══
+  19 passed, 0 failed
+  ✅ ALL TESTS PASSED
+rc=0
+
+=== plan-review gate pytest ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 11 items
+
+tests/test_plan_review_gate.py ...........                               [100%]
+
+============================== 11 passed in 0.81s ==============================
+rc=0
+
+=== bash -n pre-commit-score ===
+rc=0
+
+=== doctor FAIL count ===
+0
+
+=== template sizes (bytes) ===
+16018 AGENTS.md
+ 3476 CLAUDE.md
+ 9983 docs/templates/SOUL.md
+29477 total
