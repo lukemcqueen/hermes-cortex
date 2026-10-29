@@ -1,8 +1,19 @@
 # Risk-triggered close-review depth — plan (lever E)
 
-**Status: PLAN ONLY.** Nothing in this document is implemented. Next lever after
+**Status: PARTIALLY IMPLEMENTED.** E0 (the `_review_class()` classifier, shipped INERT — no call
+site, behaviour byte-identical) landed at `424e3dc8`. E1 (wiring it into the judge selection) and
+E2/E3 remain PLAN. This document is also the plan record; the earlier "PLAN ONLY" line was true only
+until E0. Next lever after
 `docs/design/adversarial-review-cost-reduction.md` (whose A1 + A2 are shipped; its B and D remain
 plan-only).
+
+**Reviewed 2026-10-29 (governed plan review, cycle 13955, verdict FINDINGS).** The reviewer's four
+findings were all in §1/§3/§4 statistical-claims, none in the class contract; all four addressed in
+this revision: ADV-13955-1 (the "60–115 cycles/day" band contradicted the cited baseline — corrected
+to the observed 5–286 with the incident days attributed), ADV-13955-2 (the 322 peak is an all-model
+verdict-row day, not pro-only — relabelled), ADV-13955-3 (the "single-digit seconds" figure was the
+cheaper model's, the default measured at ~16 s — stated precisely), ADV-13955-4 (the uncommitted-code
+anti-dodge now carries its line reference and the pinning tests).
 
 **Operator request (Luke, 2026-10-29):** *"we are overusing reviews. we should be using them for the
 complex/risky tasks."* Advisory input recorded verbatim in
@@ -38,10 +49,14 @@ judges. Three facts, all from the shipped code:
    budget only.
 
 3. **The volume is pro-sized.** `blob_reviews` in the live store
-   (`~/.hermes-cortex/data/loop-governance.db`) holds **940 `deepseek/deepseek-v4-pro` verdicts
-   between 2026-10-18 and 2026-10-29**, peaking at 322 on 2026-10-22, against 60–115 cycles/day in
-   the same window. And **199 of the 547 commits since 2026-10-15 (36%) touch documentation only** —
-   no code, no config, no executable artifact.
+   (`~/.hermes-cortex/data/loop-governance.db`) holds **940 `deepseek/deepseek-v4-pro` verdict rows**
+   since 2026-10-18 (the store's recorded model is pro on every one). Daily cycle creation over the
+   same 14-day window ranged **5–286 per day**: the two incident days of the review-cost
+   investigation — 10-18 (286) and 10-17 (285) — were the outliers, and a typical working day was
+   ~50–115. The 322-verdict day (2026-10-22) counts **verdict rows across all models**, not a pro-only
+   daily count (the baseline does not split the daily rows by `reviewer_model`; only the all-time
+   total is pro-identified). And **199 of the 547 commits since 2026-10-15 (36%) touch documentation
+   only** — no code, no config, no executable artifact.
 
 For contrast, the push gate is *not* what forces this: a CLEAN receipt is required only when the
 pushed range touches an always-review path (`docs/git-enforcement.md` l. 26, `README.md` l. 82;
@@ -81,7 +96,11 @@ is "complex" and pays pro; under E it is classified by what it *is*.
    (the l. 4423–4430 list, file-wins rule at l. 4437).
 3. **Never self-declared.** A note claiming "docs only" changes nothing; a diff where every path is
    documentation is the only thing that qualifies (same rule the l. 4562–4566 comment already states).
-4. **Uncommitted code ⇒ C** — the anti-dodge property of `_complexity` (l. 5127–5130) is preserved.
+4. **Uncommitted code ⇒ C** — the anti-dodge property of `_complexity` is preserved: it counts the
+   cycle's OWN staged + unstaged working-tree edits on top of its committed work (l. 5127–5130, and
+   `_own_working_tree_paths` l. 5102–5111), so a worker cannot hide a risky edit by leaving it
+   uncommitted. Pinned by `tests/test_reviewer_tier_wiring.py` / the uncommitted-count cases in the
+   review-attribution suite.
 5. **The protected surface is C regardless of size**: `ALWAYS_REVIEW_PATHS`, schema/migration files,
    auth/credential handling, gateway/config, hooks, and any range that changes a file the deploy map
    owns.
@@ -103,7 +122,11 @@ is "complex" and pays pro; under E it is classified by what it *is*.
   2026-10-18 operator decision stands.
 - **It does not make Pro reviews cheaper by trimming material.** Delta-bounding already exists
   (`DIFF_CHAR_BUDGET`, per-file floor + always-review priority, l. 4549–4636) and the runs at
-  `REVIEWER_REASONING_EFFORT_DEFAULT = "none"` already answered in single-digit seconds (l. 4522–4531).
+  `REVIEWER_REASONING_EFFORT_DEFAULT = "none"` answered quickly — the source measurement there
+  records deepseek-v4-pro at **15.6 s** on the same blob where the other effort setting returned a
+  verdict in **3.4 s** (l. 4522–4531), so the sub-10s figure is the CHEAPER model's, not the default
+  reviewer's; "single-digit seconds" applies to the reviewer only in its effort="none" transport,
+  and the measured default-model number is ~16 s.
 - **It adds no second review path.** `change-checklist` forbids one; every class routes through the
   same `_call_reviewer` seam, and A0's verdict is written by the same receipt writer (or explicitly
   not written, with the reason recorded).
