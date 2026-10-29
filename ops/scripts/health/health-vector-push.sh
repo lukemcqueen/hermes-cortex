@@ -159,7 +159,7 @@ import json
 body = json.dumps({'v': [$V_RESOURCES,$V_SERVICES,$V_NO_ERR_CRONS,$V_NO_STALE,$V_NGINX,$V_OLLAMA,$V_MYCORTEX,$V_DISK_OK,$V_MYCORTEX_SRC], 'h': '$HNAME', 't': $NOW_TS})
 msg = {'queue': 'inbox_health_check', 'message': {'from': '$AGENT_NAME', 'subject': 'HEALTH', 'body': body}}
 print(json.dumps(msg))
-" 2>/dev/null || echo '{"queue":"inbox_health_check","message":{"from":"'$AGENT_NAME'","subject":"HEALTH","body":"{}"}}')
+" 2>>"$ERROR_LOG" || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] python3 payload build failed - using fallback payload" >> "$ERROR_LOG"; echo '{"queue":"inbox_health_check","message":{"from":"'$AGENT_NAME'","subject":"HEALTH","body":"{}"}}'; })
 
 # ── POST to PGMQ Agent Bus ──
 RESPONSE_FILE=$(mktemp /tmp/health-push-XXXXXX)
