@@ -3684,7 +3684,44 @@ def _config() -> dict:
 
 # ── MCP Server ───────────────────────────────────────────────
 
+# Role gate (Moses plan, reviewed by pro 2026-10-29): ONE binary, two named
+# registrations, distinguished ONLY by CORTEX_MCP_ROLE. `review` exposes the
+# re-review/feedback/cycle-read tools (no lock authority); `loop-governance`
+# exposes the rest (lock lifecycle + scoring + task state); NO env = the full set
+# (today's behaviour). The registration NAME (mcp__review__* vs
+# mcp__loop_governance__*) is purely the registration; this filter is what keeps
+# them apart safely.
+import os as _os_mcp
+REVIEW_TOOLS = {
+    "rereview_change", "cycle_query", "cycle_stats",
+    "feedback_accept", "feedback_override",
+    "cache_search", "session_identity",
+}
+
+def _current_role() -> str:
+    """CORTEX_MCP_ROLE read at CALL time (so one import is testable across roles)."""
+    return _os_mcp.environ.get("CORTEX_MCP_ROLE", "").strip()
+
+def _role_allows(name: str) -> bool:
+    """True if tool `name` is exposed under the current CORTEX_MCP_ROLE.
+    review / loop-governance partition exactly; no/unknown role = allow all."""
+    role = _current_role()
+    if not role:
+        return True
+    if role == "review":
+        return name in REVIEW_TOOLS
+    if role == "loop-governance":
+        return name not in REVIEW_TOOLS
+    return True  # unknown role: fail open (a mistyped role must not hide tools)
+
 async def list_tools(ctx, params=None) -> ListToolsResult:
+    """Role-aware tool list: filter the full set by CORTEX_MCP_ROLE (see _role_allows)."""
+    full = await _list_all_tools(ctx, params)
+    allowed = [t for t in (full.tools or []) if _role_allows(t.name)]
+    return ListToolsResult(tools=allowed)
+
+
+async def _list_all_tools(ctx, params=None) -> ListToolsResult:
     return ListToolsResult(tools=[
         Tool(
             name="rereview_change",
@@ -4028,6 +4065,11 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
 async def call_tool(ctx, params=None) -> CallToolResult:
     name = params.name if params else ""
     args = (params.arguments or {}) if params else {}
+    if name and not _role_allows(name):
+        # The tool exists in the binary but is not in this role's surface (role
+        # gate): report it as unavailable, never dispatch it.
+        return CallToolResult(content=[TextContent(type="text",
+            text=f"Tool '{name}' is not exposed by the '{_current_role() or 'full'}' server role.")])
     try:
         handlers = {
             "begin_change": _begin_change,
