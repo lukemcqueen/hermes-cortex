@@ -111,6 +111,10 @@ class _argv_ctx:
 
 
 def test_argv_role_wins_over_env():
+    # _role_ctx and REVIEW_EXPECT are defined EARLIER IN THIS FILE (module level,
+    # imported from the binary: REVIEW_EXPECT = set(mod.REVIEW_TOOLS)) — both were
+    # committed in the Slice A blob; nothing here redefines them. The COMPLETE
+    # surface is asserted by set equality against the binary's own _full_names().
     # argv is the role of record; a stale env must NOT override the registered
     # --role. env=review, argv=loop-governance => loop-governance surface.
     with _role_ctx("review"), _argv_ctx(["loop-gov-mcp.py", "--role", "loop-governance"]):
