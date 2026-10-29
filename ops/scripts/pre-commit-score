@@ -940,6 +940,7 @@ if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
   fi
   _hc_rc=0
   for _ritual_skill in reflexion-check survey-before-action prove-before-create; do
+    _hc_rc=0
     _hc_out=$(python3 "$HC_REFLEXION_CHECK" $_HC_SKIP_FLAG --skill "$_ritual_skill" 2>&1) || _hc_rc=$?
     if [[ "$_hc_rc" -ne 0 ]]; then
       echo ""

@@ -1,6 +1,6 @@
-# Survey/Plan-Review gate verify — captured 2026-10-29T09:24:17Z
+# Survey/Plan-Review gate verify — captured 2026-10-29T09:30:12Z
 root=/home/esther/hermes-cortex py=/home/esther/.hermes-cortex/venv/bin/python3
-tip=8e0cd899
+tip=8d6046c1
 
 ===== bash -n changelist =====
 rc=0
@@ -81,11 +81,11 @@ platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: /home/esther/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
-collected 10 items
+collected 11 items
 
-tests/test_plan_review_gate.py ..........                                [100%]
+tests/test_plan_review_gate.py ...........                               [100%]
 
-============================== 10 passed in 0.78s ==============================
+============================== 11 passed in 0.77s ==============================
 rc=0
 
 ===== enforcer yaml compat + pi evidence pytest =====
@@ -99,7 +99,7 @@ collected 19 items
 tests/test_enforcer_yaml_compat.py .sss......                            [ 52%]
 tests/test_pi_skill_load_evidence.py .........                           [100%]
 
-======================== 16 passed, 3 skipped in 3.84s =========================
+======================== 16 passed, 3 skipped in 4.00s =========================
 rc=0
 
 ===== adversarial A2 ops/scripts/pre-commit-score =====

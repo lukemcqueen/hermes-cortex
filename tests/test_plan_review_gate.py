@@ -156,3 +156,38 @@ def test_cycle_reviewed(tmp_path):
     assert p.cycle_reviewed(db, 101) is True
     _seed_db(tmp_path / "nr.db", reviewed=False)
     assert p.cycle_reviewed(tmp_path / "nr.db", 101) is False
+
+
+# ── Gate A: prove-before-create is REQUIRED by the enforcer skills gate ─────
+# The enforcer's write gate keys on `_session_skills_loaded[sid] >=
+# _REQUIRED_SKILLS` (set comparison). Prove the FIXED EXISTING enforcement by
+# driving the enforcer's OWN predicate with controlled per-session loaded sets
+# (never the live store) — a session missing prove-before-create must not
+# satisfy the gate; adding it must. Guards the promotion into the always-set
+# (enforcer __init__.py _REQUIRED_SKILLS / skills.yaml always / doctor list).
+
+
+def _load_enforcer():
+    import importlib.util
+    path = (Path(__file__).resolve().parents[1]
+            / "plugins" / "governance-enforcer" / "__init__.py")
+    spec = importlib.util.spec_from_file_location("gov_enforcer_test", path)
+    assert spec and spec.loader, "governance enforcer module not resolvable"
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_prove_before_create_is_required_by_the_write_gate():
+    enf = _load_enforcer()
+    assert "prove-before-create" in enf._REQUIRED_SKILLS
+
+    others = set(enf._REQUIRED_SKILLS) - {"prove-before-create"}
+    full = set(enf._REQUIRED_SKILLS)
+
+    # The enforcer's write gate fires when the session's loaded set does NOT
+    # cover every required skill (`loaded >= _REQUIRED_SKILLS`): a session that
+    # has loaded every other always-skill but NOT prove-before-create must not
+    # cover the required set, so the gate refuses; loading it covers the set.
+    assert (others >= full) is False   # missing prove-before-create => refused
+    assert (full >= full) is True      # with it loaded             => allowed
