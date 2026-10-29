@@ -2,6 +2,14 @@
 # Re-runnable evidence capture for the survey-before-build + plan-review-before-slice
 # enforcement gates (cycle survey-plan-review-gate, commit f850648d).
 # Emits one block per command beside its own rc, ending on a verdict.
+#
+# Files this capture invokes that are NOT part of this range (all pre-existing at
+# the tip, judged in their own windows; none are authored by this change):
+#   - tests/test-reflexion-gate-repoint.sh  (hermetic reflexion-gate block test)
+#   - tests/test-reflexion-gate-e2e.sh      (end-to-end reflexion gate, needs store)
+#   - tests/test_enforcer_yaml_compat.py    (enforcer manifest yaml compat)
+#   - tests/test_pi_skill_load_evidence.py  (Pi tool-event load evidence)
+#   - ops/scripts/quality/adversarial-verify.py (the A2/A4 static gate)
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PY="${CORTEX_PYTHON:-$HOME/.hermes-cortex/venv/bin/python3}"
