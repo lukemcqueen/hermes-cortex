@@ -99,6 +99,12 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/THIRD_PARTY_LICENSES.md` | Third-party license attributions |
 | `docs/symlink-policy.md` | Symlink policy — where symlinks are allowed/forbidden |
 
+## Research & Advisory
+
+| Doc | Description |
+|-----|-------------|
+| `docs/research/review-cost-advisory-chatgpt-2026-10-29.md` | **Review-cost advisory, verbatim (2026-10-29)** — the external advisor's input recorded word-for-word and labelled advisory (no authority, no fleet measurements). The response our own plan answers; see `docs/design/review-risk-routing.md` |
+
 ## Architecture & Design
 
 | Doc | Description |
@@ -109,6 +115,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/knowledge-isolation-architecture.md` | Knowledge isolation design |
 | `docs/design/DESIGN.md` | Design principles |
 | `docs/design/adversarial-review-cost-reduction.md` | Plan (levers A/B/C) to scope the close review to the session's own blobs, unify tier+material bases, and add a local pre-close pre-flight — measured against cycles 12777/12779/12782 |
+| `docs/design/review-risk-routing.md` | **Lever E — risk-triggered close-review depth (PLAN ONLY, 2026-10-29)** — the close gate is size-triggered (`_complexity` l. 5224, 50-line/3-file thresholds, skip at l. 7080) and its light tier no longer changes who judges (l. 5424–5444), so every non-trivial close pays pro. Proposes `_review_class()` computed FROM THE DIFF — A0 documentation-only → deterministic checks, B ordinary code with a test delta → cheap judge, C everything else → deep — with seven fail-closed rules, the rejected levers (a smaller `REVIEWER_MAX_TOKENS` is a measured false negative), and four slices. Baseline: `docs/evidence/review-cost-baseline-2026-10-29.txt` |
 | `docs/design/task-workflow.md` | Task workflow design (task model v1/v2) |
 | `docs/design/task-lifecycle-v2.md` | Task lifecycle v2 — statuses, transitions, stale sweep |
 | `docs/design/task-model-v3.md` | **Task model v3** — orchestrator-intelligence / worker-execution, claim/report/verify, compete mode |
