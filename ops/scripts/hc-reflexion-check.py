@@ -54,6 +54,14 @@ AUTOMATED_SESSION_PREFIXES = ("cron_", "bg_")
 # The Hermes toolset that carries skill_view/skills_list (hermes_cli/tools_config.py).
 SKILLS_TOOLSET = "skills"
 
+# Audited artefact-marker path (option 2): a tool-deprived automated session proves it
+# did the reflexion check by committing a real answer file, not by loading a skill it
+# cannot. The marker must carry the required header AND a minimum size, and it is keyed
+# to the full session id, so an empty/stub or foreign file cannot satisfy the gate.
+REFLEXION_MARKER_SUBDIR = Path("docs") / "evidence" / "briefings"
+REFLEXION_MARKER_REQUIRED_HEADER = "## Reflexion Check"
+REFLEXION_MARKER_MIN_BYTES = 200
+
 EXIT_LOADED = 0
 EXIT_NOT_LOADED = 1
 EXIT_USAGE = 2
@@ -70,6 +78,24 @@ def repo_slug() -> str:
     except (OSError, subprocess.TimeoutExpired):
         pass
     return "generic"
+
+
+def repo_root() -> "Path | None":
+    """The governed repo's toplevel (git), or None when there is no checkout.
+
+    The artefact-marker path only has meaning inside a checkout being committed —
+    on a host with no git clone there is nothing to commit, so the marker path
+    silently resolves to None and the gate stays fail-closed.
+    """
+    try:
+        r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                           capture_output=True, text=True, timeout=5)
+        out = r.stdout.strip()
+        if r.returncode == 0 and out:
+            return Path(out)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
 
 
 def active_session_id(slug: str) -> str:
@@ -229,6 +255,40 @@ def automated_session_job_hint(session_id: str, jobs_file: "Path | None" = None)
     return []
 
 
+def automated_reflexion_marker(session_id: str) -> tuple[bool, str]:
+    """(found, message) for an audited reflexion-answer marker FOR THIS session.
+
+    Option 2 of the blocker doc: a session whose cron/bg job provably cannot
+    register the skills toolset can never record a `skill_view` load, so the gate
+    accepts a committed, non-trivial, session-keyed answer file under
+    `<repo>/docs/evidence/briefings/` instead of the impossible tool_events row.
+
+    Reachable ONLY with POSITIVE evidence that the session is automated AND its
+    job carries an explicit `enabled_toolsets` allowlist without `skills`
+    (`automated_session_job_hint` non-empty). Every other case — interactive
+    session, unknown job, no allowlist, no git checkout, missing/stub marker —
+    returns (False, "") so the gate stays fail-closed.
+    """
+    if not automated_session_job_hint(session_id):
+        return False, ""
+    root = repo_root()
+    if root is None:
+        return False, ""
+    safe = "".join(c if (c.isalnum() or c in "-_") else "_" for c in session_id)
+    for suffix in (".md", ".txt"):
+        candidate = root / REFLEXION_MARKER_SUBDIR / f"Reflexion-check-{safe}{suffix}"
+        if not candidate.is_file():
+            continue
+        try:
+            text = candidate.read_text()
+        except OSError:
+            continue
+        if (REFLEXION_MARKER_REQUIRED_HEADER in text
+                and len(text) >= REFLEXION_MARKER_MIN_BYTES):
+            return True, f"AUDITED-MARKER {candidate.relative_to(root)}"
+    return False, ""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="hc-reflexion-check",
@@ -261,6 +321,13 @@ def main() -> int:
         return EXIT_NOT_LOADED
 
     code, message = skill_loaded(a.skill.strip(), session_id)
+    if code == EXIT_NOT_LOADED:
+        # Option 2: an automated session whose job provably cannot register a skill
+        # tool may present a committed, session-keyed reflexion-answer marker instead.
+        found, marker_msg = automated_reflexion_marker(session_id)
+        if found:
+            code = EXIT_LOADED
+            message = marker_msg
     stream = sys.stdout if code == EXIT_LOADED else sys.stderr
     print(message, file=stream)
     if code == EXIT_NOT_LOADED:
