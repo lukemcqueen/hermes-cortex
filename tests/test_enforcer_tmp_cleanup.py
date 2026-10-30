@@ -90,16 +90,15 @@ def test_tmp_cleanup_unsafe_is_blocked(cmd):
 
 # ── $TMPDIR resolution ──────────────────────────────────────────────────────
 
-def test_tmpdir_var_operand_resolves():
+def test_tmpdir_var_operand_resolves(monkeypatch):
     """A $TMPDIR operand ALWAYS resolves against /tmp, never TMPDIR's own value."""
-    os.environ["TMPDIR"] = "/tmp"
+    monkeypatch.setenv("TMPDIR", "/tmp")
     assert _ok("rm -f $TMPDIR/scratch.txt && echo done")
     # A $TMPDIR that points outside /tmp is NOT promoted to a scratch root:
     # the operand resolves to /home/esther/scratch.txt and is refused.
-    os.environ["TMPDIR"] = "/home/esther"
+    monkeypatch.setenv("TMPDIR", "/home/esther")
     assert _no("rm -f $TMPDIR/scratch.txt")
-    # Nor may $TMPDIR be used to reach home even if it contains the /tmp shell.
-    del os.environ["TMPDIR"]
+    # monkeypatch restores the original TMPDIR (or its absence) after the test.
 
 
 # ── resolved-path escape ────────────────────────────────────────────────────
