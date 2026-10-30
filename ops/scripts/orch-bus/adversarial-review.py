@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Independent adversarial review — assemble and run the reviewer prompt.
 
-Story M6.3/M6.4/M6.5. This script runs ORCHESTRATOR-SIDE (the worker cannot
-invoke it — no cronjob tool). It:
+Story M6.3/M6.4/M6.5. This script is WORKER-INVOCABLE (deployed to the shared
+path ~/.hermes-cortex/scripts/ for all agents, not orchestrator-only) — it is
+what the plan-review-before-slice gate uses and any governed agent records a
+plan review for their own cycle with it. It:
 
 1. Reads the FIXED reviewer prompt from docs/templates/ (committed,
    orchestrator-only — never from worker-authored input).
@@ -14,10 +16,21 @@ invoke it — no cronjob tool). It:
    loop-governance DB, reviews each, records verdicts. Silent when the queue
    is empty (watchdog pattern).
 
+Material comes from --material (inline) or --material-file <path> (read the
+file; prefer this from a worker — avoids `$(cat ...)` metachar). Single-cycle
+`--review` records one row keyed to --cycle-id and is the plan-review gate's
+sanctioned writer; the enforcer treats that exact invocation as a sanctioned
+lock-free write (same precedent as the brain-write carve-out), so a worker
+with a pending cycle of their own can always satisfy the gate without a second
+lock.
+
 Independence properties asserted here:
 - The prompt source is the committed template, not worker text.
 - The reviewed material is appended BELOW the untrusted-data marker.
 - Empty reviewed material is refused (nothing to review = no review).
+- Independence comes from the fixed prompt + distinct reviewer model
+  (deepseek-v4-pro, not the worker's own model) + recorded reviewer_id/model
+  for audit — NOT from which actor receives the row.
 """
 
 import argparse
@@ -239,6 +252,10 @@ def main() -> int:
                    help="review one specific cycle (with --material)")
     p.add_argument("--material", default=None,
                    help="the reviewed output (worker-authored, untrusted)")
+    p.add_argument("--material-file", default=None,
+                   help="path to a file holding the reviewed output; prefer this "
+                        "over --material from a worker (avoids `$(cat ...)` "
+                        "metachar in the invocation)")
     p.add_argument("--db", default=str(DEFAULT_DB),
                    help="loop-governance DB path")
     p.add_argument("--reviewer-id", default=None,
@@ -253,7 +270,8 @@ def main() -> int:
                    help="assemble and print the prompt; do not call a model")
     args = p.parse_args()
 
-    if not args.sweep and args.cycle_id is None and args.material is None:
+    if not args.sweep and args.cycle_id is None and args.material is None \
+            and args.material_file is None:
         # Cron mode: install-orch-crons.sh create_cron() registers this script
         # with NO argument mechanism, so the orchestrator cron invokes it bare.
         # A bare invocation IS the sweep (docstring: --sweep is "cron mode");
@@ -291,9 +309,19 @@ def main() -> int:
         return 1 if failed else 0
 
     # Single-cycle mode
+    # --cycle-id requires material, from --material (inline) or --material-file
+    # (read the file; the worker-friendly form that avoids $(cat ...)).
+    if args.material_file is not None:
+        try:
+            args.material = Path(args.material_file).expanduser().read_text(
+                encoding="utf-8", errors="replace")
+        except OSError as exc:
+            print(f"Error: cannot read --material-file {args.material_file}: {exc}",
+                  file=sys.stderr)
+            return 2
     if args.cycle_id is None or args.material is None:
         p.error("single-cycle mode requires --cycle-id and --material "
-                "(or use --sweep)")
+                "(or --material-file) — or use --sweep")
     if not args.material.strip():
         print("Error: empty --material — nothing to review", file=sys.stderr)
         return 2

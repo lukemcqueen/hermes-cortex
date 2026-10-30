@@ -202,10 +202,13 @@ def main() -> int:
 
     print(f"PLAN-REVIEW REQUIRED — this is a non-trivial slice ({detail}) and "
           f"cycle {cycle_id} has no recorded adversarial plan review.", file=sys.stderr)
-    print("  Review the plan for this slice BEFORE implementing it:", file=sys.stderr)
-    print("    ops/scripts/orch-bus/adversarial-review.py "
-          f"--cycle-id {cycle_id} --material \"$(cat <plan>)\" --review \\", file=sys.stderr)
-    print("      --reviewer-id plan-<slug>", file=sys.stderr)
+    print("  Review the plan for this slice BEFORE implementing it. This is a command you", file=sys.stderr)
+    print("  can run yourself — no orchestrator, no second governance lock needed:", file=sys.stderr)
+    print(f"    python3 ~/.hermes-cortex/scripts/adversarial-review.py \\", file=sys.stderr)
+    print(f"      --cycle-id {cycle_id} --material-file <your-plan.md> --review \\", file=sys.stderr)
+    print(f"      --reviewer-id plan-<repo-slug>", file=sys.stderr)
+    print("  (--material-file reads the plan from a file; pass the plan CONTENT, not a", file=sys.stderr)
+    print("   path, to the reviewer. Replace <repo-slug> with this repo's directory name.)", file=sys.stderr)
     print("  Then re-commit.", file=sys.stderr)
     return EXIT_REFUSE
 

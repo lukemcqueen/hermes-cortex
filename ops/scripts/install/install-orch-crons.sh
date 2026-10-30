@@ -687,8 +687,10 @@ create_cron "orch-restic-backup" "43 2 * * 0" \
 # FIXED committed template (docs/templates/adversarial-reviewer-prompt.md).
 # The reviewer model is pinned in loop-gov-mcp.py
 # (ADVERSARIAL_REVIEWER_MODEL, default deepseek-v4-pro — independence =
-# context isolation + fixed prompt + orchestrator-side trigger, NOT model
-# difference).
+# context isolation + fixed prompt + recorded reviewer_id/model, NOT model
+# difference nor orchestrator-side trigger — a worker records their own plan
+# review for the plan-review gate via the sanctioned lock-free write, per
+# operator directive 2026-10-30).
 
 # ── 5. Backlog Driver (F-023) ──────────────────────────────
 printf "${CYAN}  5. Backlog Driver${RESET}\n"

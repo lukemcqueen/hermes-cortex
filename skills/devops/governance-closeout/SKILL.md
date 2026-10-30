@@ -314,6 +314,17 @@ cannot edit, and an orchestrator-owned trigger the worker cannot invoke. (The
 gate's reviewer also happens to use a different model, but that is not what makes
 it independent — so never argue independence from the model name.)
 
+**Scope of that trigger claim (2026-10-30, operator directive):** the
+orchestrator-owned trigger described above holds for the CLOSE-TIME reviewer
+(loop-gov-mcp.py `end_change`) — a code review gating the close. The
+PLAN-REVIEW-before-slice gate changed: Luke's directive ("adversarial review
+must NOT be orchestrator gated; automatic for the agent; a review before
+building is always better") made the plan-review RECORD worker-invocable — a
+worker runs `python3 ~/.hermes-cortex/scripts/adversarial-review.py --cycle-id N
+--material-file <plan> --review --reviewer-id plan-<slug>` (sanctioned lock-free
+write). Independence there is the fixed prompt + distinct model + recorded
+reviewer_id, NOT who runs the script. The close-time reviewer is unchanged.
+
 That design point also names the trap: a review the WORKER invokes, in the
 worker's own session, is a self-report — so the two mechanisms are distinct and
 they are named accordingly, in the artifacts rather than only in the design doc:
@@ -321,7 +332,7 @@ they are named accordingly, in the artifacts rather than only in the design doc:
 | Name | Path | Independent? |
 |---|---|---|
 | `self-adversarial review` | loop-gov-mcp.py `end_change`, complexity-gated | **No** — worker-invoked, in-session |
-| `adversarial review` | `ops/scripts/orch-bus/adversarial-review.py` sweep (fixed prompt, own process) | **Yes** — the evaluator |
+| `plan review` | adversarial-review.py `--cycle-id N --review` (worker-invocable for the plan gate, 2026-10-30, per operator directive) | Fixed prompt + distinct model + recorded reviewer_id; recorded by the worker for their own cycle; the code-review equivalent of the sweep — applies only to the plan-review gate, never to a close |
 
 Name a mechanism by the property that DISTINGUISHES it from its lookalike, and
 propagate that name into everything it emits (log lines, verdict text, doctor

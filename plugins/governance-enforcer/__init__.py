@@ -1997,6 +1997,77 @@ def _is_sanctioned_cortex_update_command(command: str) -> bool:
     return _SANCTIONED_CORTEX_UPDATE_RE.fullmatch(command) is not None
 
 
+# ── Plan-review record is sanctioned and lock-free (2026-10-30) ─────────────
+# The plan-review-before-slice gate (hc-plan-review-check.py) refuses a
+# non-trivial slice unless the active cycle has a row in `adversarial_reviews`.
+# The ONLY sanctioned writer is adversarial-review.py --cycle-id N --review,
+# which writes into ~/.hermes-cortex/data/loop-governance.db — governance DATA,
+# not a git repo. `_target_repo_root()` resolves that write to hermes-cortex,
+# so the lock gate demanded a hermes-cortex lock before the worker's own repo
+# lock and pending cycle made one unobtainable: a structural deadlock where a
+# worker could never satisfy the gate that gates their own commit.
+#
+# Same class as the brain-write carve-out above: governance is scoped to a git
+# repo; there is no repo to bind this DATA-store write to; demanding a lock is
+# an impossible demand. The review row is exactly the record the gate needs,
+# so giving any governed agent the sanctioned way to produce it — WITHOUT a
+# secondary hermes-cortex lock — is the fix, and it PRESERVES the gate (review
+# before building stays). Independence is preserved by the fixed committed
+# prompt + a distinct reviewer model (deepseek-v4-pro) + recorded reviewer_id
+# and model for audit; it never depended on which actor receives the row.
+#
+# Deliberately NARROW — the EXACT single-cycle review invocation only:
+#   python3 <any-path>/adversarial-review.py --cycle-id <int>
+#     --material-file <path> --review --reviewer-id <id>
+# and its inline --material variant. --sweep is never sanctioned from here
+# (that is the orchestrator cron's job — a worker never sweeps the shared DB).
+# Metachars/separators/sudo/chaining are rejected. Every other write path still
+# requires a lock.
+_PLAN_REVIEW_SCRIPT_NAMES = ("adversarial-review.py",)
+
+
+def _plan_review_material_ok(command: str) -> bool:
+    """Either --material-file <path> (preferred) or --material <inline> is present."""
+    return bool(re.search(r"--material-file\s+\S+", command)) or bool(
+        re.search(r"--material\s+\S+", command))
+
+
+def _is_sanctioned_plan_review_command(command: str) -> bool:
+    """Exact-match check for the ONE worker plan-review write that is lock-free.
+
+    Returns True only for a single python3 invocation of adversarial-review.py
+    that RECORDS a review (--review) for ONE cycle (--cycle-id <int>) with a
+    reviewer identity (--reviewer-id <id>) and material (--material/-file).
+    --sweep, sudo, `-c`, chained commands, redirects, pipes, metacharacters and
+    separators are all rejected. Fail closed otherwise.
+    """
+    if not command:
+        return False
+    # No metacharacter AND no separator may ride along — the carve-out must
+    # never authorise more than the review write itself.
+    if _COMMAND_FORBIDDEN_METACHARS.search(command) or _COMMAND_SEPARATORS.search(command):
+        return False
+    if re.search(r"\bsudo\b", command):
+        return False
+    if re.search(r"\b--sweep\b", command):
+        return False
+    # A single python3 invocation naming the reviewer script.
+    if not re.search(r"\bpython3?\b", command):
+        return False
+    if not any(name in command for name in _PLAN_REVIEW_SCRIPT_NAMES):
+        return False
+    # The recording shape: one cycle, an identity, material, and --review.
+    if not re.search(r"--cycle-id\s+\d+", command):
+        return False
+    if not re.search(r"--reviewer-id\s+\S+", command):
+        return False
+    if not _plan_review_material_ok(command):
+        return False
+    if not re.search(r"(?<![\w-])--review\b", command):
+        return False
+    return True
+
+
 def _is_cronjob_write(args: Dict[str, Any]) -> bool:
     action = args.get("action", "")
     return action in WRITE_CRON_ACTIONS
@@ -3243,6 +3314,15 @@ def register(ctx):
             # writes inside <home>/brain, and checked BEFORE the no-repo refusal
             # below — which is the refusal it exists to prevent.
             if _is_sanctioned_brain_write(args):
+                return None
+
+            # Plan-review record: sanctioned and lock-free (2026-10-30 — see
+            # `_is_sanctioned_plan_review_command`). A worker recording the
+            # review their own gate demands must never need a hermes-cortex lock
+            # its pending cycle forbids. A command-scoped carve-out, so it is
+            # checked regardless of which repo the command's path resolves to.
+            if tool_name == "terminal" and _is_sanctioned_plan_review_command(
+                    str(args.get("command", ""))):
                 return None
 
             # A session that resolves NO repo is not "in the wrong repo" — it has no repo for
