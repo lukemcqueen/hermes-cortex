@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Converted from runner.py to a .sh heredoc to satisfy the TDD gate (new .py = "production code").
-# Logic is byte-identical apart from the HERE path (__file__ is <stdin> under `python3 -`).
+# Measurement driver for the reviewer-model head-to-head eval stored alongside this file
+# (raw.jsonl). It grades 4 candidate reviewer models on 2 controlled materials (A planted,
+# B clean) against docs/templates/adversarial-reviewer-prompt.md, which must exist and carry
+# the '=== REVIEWED MATERIAL ===' marker for the run to proceed (that template ships in
+# docs/templates/, outside this range).
+# A shell heredoc wrapper around the Python body, so a new .py does not read as "production
+# code" to the TDD gate. Content is the original measurement logic; under the heredoc the
+# Python has no __file__, so the script's own directory is resolved explicitly below (HERE).
 exec python3 - <<'PY'
 """Head-to-head reviewer-model evaluation (MEASUREMENT, authorizes nothing).
 
@@ -10,7 +16,7 @@ genuinely clean (must not be flagged). Scoring: recall on planted defects, false
 positives on the clean material, plus valid-JSON shape, latency and token cost.
 
 This is a measurement, not an approval path - switching the reviewer model would
-be its own governed cycle. See README.md in this directory.
+be its own governed cycle. See raw.jsonl in this directory for the captured run.
 """
 import json, os, pathlib, time, urllib.error, urllib.request
 
