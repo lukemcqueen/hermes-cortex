@@ -886,6 +886,12 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       `git reset --soft HEAD~1` (keeps every file and the message), then re-commit with the
       pathspec. Never `reset --hard`, and never unstage or discard a peer's paths to tidy up:
       their staged work is theirs to land.
+      **And a LONG multi-line `-m` message can be misread as a bare commit — put it in a FILE.**
+      Measured 2026-10-30: `git commit -m '<30-line message>' -- <paths>` was REFUSED as a BARE
+      commit, while the byte-identical pathspec with `git commit -F <msgfile> -- <paths>` committed
+      on the first attempt. The refusal names the guard, not the cause, and the cause is not worth
+      diagnosing per attempt — write the message to a scratch file and use `-F`. (The file must live
+      OUTSIDE the repo, or the commit that writes it is the one you are trying to make.)
       **This is ENFORCED by the pre-commit hook, so a bare commit is REFUSED, not merely
       discouraged** — the refusal names the remedy and there is no bypass flag. Three mechanics
       follow, and each costs a round trip when discovered live: (1) the partial commit is the only
