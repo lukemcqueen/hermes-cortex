@@ -1997,6 +1997,114 @@ def _is_sanctioned_cortex_update_command(command: str) -> bool:
     return _SANCTIONED_CORTEX_UPDATE_RE.fullmatch(command) is not None
 
 
+# ── /tmp cleanup is sanctioned and lock-free (2026-10-30) ───────────────────
+# A worker cleaning scratch after a finished task (`rm -f /tmp/x /tmp/y &&
+# rm -rf /tmp/templates && echo cleaned`) was gated: `rm` is write-class and no
+# lock covers the repo (all cycles closed). /tmp is ephemeral scratch OUTSIDE
+# any repo — requiring a repo lock to delete it is an impossible demand at
+# cleanup time. Same class as the cortex-update/brain-write/plan-review
+# carve-outs (a sanctioned lock-free write the lock rule cannot justly gate).
+#
+# Deliberately NARROW — ONLY scratch deletion, by resolved path:
+#   * command is `rm`/`rmdir` (+ only -f/-r/-rf/-d flags) AND/OR `echo <word>`,
+#     `&&`-chained; no `;`, pipes, redirection, sudo, mv, cd, ~, metachars;
+#   * EVERY operand is resolved with realpath AFTER expanding $TMPDIR, and the
+#     RESOLVED target must be strictly INSIDE the resolved scratch root
+#     (/tmp or $TMPDIR) — a `..` component, a bare root, /home, or a repo path
+#     is refused; wildcards are refused (exact names + an rglob dir cover the
+#     real need). Nothing outside scratch is ever touched, so this never
+#     enlarges the blast radius of what an agent may delete.
+#
+# The ONE scratch root is the system temp dir /tmp (realpath'd). $TMPDIR is NOT
+# trusted as a root of its own: a hostile/buggy TMPDIR=/home/x must not hand
+# the carve-out a home directory to delete. A `$TMPDIR/...` operand is allowed
+# but its RESOLVED path must still land strictly under /tmp.
+_TMP_SCRATCH_ROOTS = ("/tmp",)
+
+
+def _resolve_scratch_roots() -> list[str]:
+    roots = []
+    for r in _TMP_SCRATCH_ROOTS:
+        try:
+            roots.append(os.path.realpath(r))
+        except (OSError, RuntimeError):
+            continue
+    return roots
+
+
+def _operand_under_scratch(operand: str) -> bool:
+    """True when the operand's RESOLVED path is strictly inside a scratch root.
+
+    Rejects escapes (``/tmp/../repo/x``), the bare root itself (``/tmp``),
+    wildcards, home and repo paths — the resolved target must be a STRICT child
+    of /tmp or $TMPDIR. Fails safe: anything unprovable is refused.
+    """
+    if not operand or not operand.startswith(("/", "$")):
+        return False
+    if any(ch in operand for ch in ("*", "?", "[", "{", "}", "~")):
+        return False
+    if operand.startswith("$"):
+        operand = os.path.expandvars(operand)
+        if not operand or not operand.startswith("/"):
+            return False
+    if "/.." in operand or operand.startswith("..") or operand.endswith("/.."):
+        return False
+    try:
+        resolved = os.path.realpath(operand)
+    except (OSError, RuntimeError):
+        return False
+    if resolved in (r for r in (_resolve_scratch_roots())):
+        return False  # the bare scratch root itself is never a delete target
+    for root in _resolve_scratch_roots():
+        if resolved.startswith(root + "/"):
+            return True
+    return False
+
+
+def _is_sanctioned_tmp_cleanup_command(command: str) -> bool:
+    """Exact-match check for the ONE lock-free scratch-cleanup shape.
+
+    Returns True only for a command made of `rm`/`rmdir` (only -f/-r/-rf/-d
+    flags) whose operands ALL resolve strictly inside /tmp or $TMPDIR, chained
+    only by `&&`, with at most one trailing `echo <word>`. Anything else —
+    sudo, cd, mv, `;`, pipes, redirection, metachars, non-scratch or escaped
+    operands, wildcards — returns False (still needs a lock). Fail closed.
+    """
+    if not command:
+        return False
+    # Only `&&` may separate segments. Anything that could smuggle work, mutate
+    # elsewhere, or escape scratch is refused: redirects, backticks, $(), ${},
+    # a lone pipe, `;`, a bare newline, sudo, mv, cd, and wildcard metachars.
+    if re.search(r"[<>`\[\]{}]|\$\(|\$\{|\|(?!\|)|(?:^|[^&]);(?:[^&]|$)|\n"
+                 r"|\bsudo\b|\bmv\b|\bcd\b|\*\??|\?\??", command):
+        return False
+    if re.search(r"&&\s*[|;]|&&\s*$|^\s*&&", command):
+        return False
+    # Whole command must be &&-joined segments each starting with rm/rmdir/echo.
+    segments = _COMMAND_SEPARATORS.split(command)
+    segments = [s.strip() for s in segments if s.strip()]
+    if not segments:
+        return False
+    for i, seg in enumerate(segments):
+        toks = seg.split()
+        head = toks[0] if toks else ""
+        if head in ("echo", "printf"):
+            # Only the LAST segment may be a banner echo; nothing else allowed.
+            if i != len(segments) - 1:
+                return False
+            if len(toks) != 2 or toks[1].startswith(("-", "/", "$", "~")):
+                return False
+            continue
+        if head not in ("rm", "rmdir", "/bin/rm", "/usr/bin/rm"):
+            return False
+        for tok in toks[1:]:
+            if tok.startswith("-") and tok in ("-f", "-r", "-rf", "-fr", "-d"):
+                continue
+            if not _operand_under_scratch(tok):
+                return False
+    return True
+
+
 # ── Plan-review record is sanctioned and lock-free (2026-10-30) ─────────────
 # The plan-review-before-slice gate (hc-plan-review-check.py) refuses a
 # non-trivial slice unless the active cycle has a row in `adversarial_reviews`.
@@ -3407,6 +3515,19 @@ def register(ctx):
             # its pending cycle forbids. A command-scoped carve-out, so it is
             # checked regardless of which repo the command's path resolves to.
             if tool_name == "terminal" and _is_sanctioned_plan_review_command(
+                    str(args.get("command", ""))):
+                return None
+
+            # /tmp cleanup: sanctioned and lock-free (2026-10-30 — see
+            # `_is_sanctioned_tmp_cleanup_command`). Cleaning scratch that lives
+            # OUTSIDE any repo must not demand a repo lock a finished task no
+            # longer holds. Narrow: only rm/rmdir of realpath-resolved paths
+            # strictly inside /tmp or $TMPDIR, &&-chained, optional trailing
+            # echo. Everything else (bare /tmp, /home, repo paths, wildcards,
+            # sudo, escapes) is still refused / lock-gated. Checked BEFORE the
+            # no-repo refusal, AFTER the DB-mutation block (a DB mutation never
+            # counts as /tmp cleanup).
+            if tool_name == "terminal" and _is_sanctioned_tmp_cleanup_command(
                     str(args.get("command", ""))):
                 return None
 
