@@ -191,8 +191,22 @@ def _extract_reviewer_json(text: str) -> tuple[str, str]:
 
 
 def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
-            text: str) -> int:
-    """Insert the review verdict directly into the adversarial_reviews table."""
+            text: str, re_review: bool = False) -> int:
+    """Record the review verdict — CURRENT row per cycle + APPEND-ONLY history.
+
+    Invariants (operator directive 2026-10-30, Luke):
+    - ONE current row per cycle (cycle_id UNIQUE): the close-time reviewer's
+      `_stored_review()` reads a bare fetchone() and its writer UPSERTs on the
+      UNIQUE key — multi-row-per-cycle would break the close gate.
+    - NEVER DELETE: a superseded verdict is MOVED to `adversarial_reviews_history`
+      (append-only) before the fresh verdict becomes the current row. A FINDINGS
+      that was superseded is always recoverable — the audit trail is preserved.
+
+    `re_review=True` (--re-review): move the current row (if any) into HISTORY,
+    then UPSERT the fresh verdict as the new current row. Returns 0.
+    Plain path (`re_review=False`): INSERT; IntegrityError UNIQUE => benign
+    no-op with a hint ("already reviewed — use --re-review to re-judge"), 0.
+    """
     findings_json, verdict = _extract_reviewer_json(text)
     conn = None
     try:
@@ -209,32 +223,91 @@ def _record(db_path: Path, cycle_id: int, reviewer_id: str, model: str,
             " ts TEXT NOT NULL)"
         )
         conn.execute(
-            "INSERT INTO adversarial_reviews"
-            " (review_id, cycle_id, reviewer_id, reviewer_model,"
-            "  verdict, findings_json, summary, ts)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            (
-                str(uuid.uuid4()),
-                cycle_id,
-                reviewer_id,
-                model,
-                verdict,
-                findings_json,
-                text[:2000],
-                datetime.now(timezone.utc).isoformat(),
-            ),
+            "CREATE TABLE IF NOT EXISTS adversarial_reviews_history ("
+            " review_id TEXT PRIMARY KEY,"
+            " cycle_id INTEGER NOT NULL,"
+            " reviewer_id TEXT NOT NULL,"
+            " reviewer_model TEXT NOT NULL,"
+            " verdict TEXT NOT NULL,"
+            " findings_json TEXT NOT NULL,"
+            " summary TEXT,"
+            " ts TEXT NOT NULL,"
+            " superseded_ts TEXT NOT NULL,"
+            " reason TEXT)"
         )
+        if re_review:
+            # Move the current row (if any) into HISTORY, then UPSERT the fresh
+            # verdict — atomic: the audit trail cannot lose the superseded row.
+            old = conn.execute(
+                "SELECT review_id, cycle_id, reviewer_id, reviewer_model,"
+                " verdict, findings_json, summary, ts"
+                " FROM adversarial_reviews WHERE cycle_id=?",
+                (cycle_id,),
+            ).fetchone()
+            if old is not None:
+                now = datetime.now(timezone.utc).isoformat()
+                conn.execute(
+                    "INSERT INTO adversarial_reviews_history (review_id, cycle_id,"
+                    " reviewer_id, reviewer_model, verdict, findings_json,"
+                    " summary, ts, superseded_ts, reason)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (old[0], old[1], old[2], old[3], old[4], old[5], old[6],
+                     old[7], now, "re-review"),
+                )
+                print(f"  cycle #{cycle_id}: superseded {old[4]} into history "
+                      f"({now})", file=sys.stderr)
+            conn.execute(
+                "INSERT INTO adversarial_reviews"
+                " (review_id, cycle_id, reviewer_id, reviewer_model,"
+                "  verdict, findings_json, summary, ts)"
+                " VALUES (?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(cycle_id) DO UPDATE SET"
+                "  review_id=excluded.review_id,"
+                "  reviewer_id=excluded.reviewer_id,"
+                "  reviewer_model=excluded.reviewer_model,"
+                "  verdict=excluded.verdict,"
+                "  findings_json=excluded.findings_json,"
+                "  summary=excluded.summary,"
+                "  ts=excluded.ts",
+                (
+                    str(uuid.uuid4()),
+                    cycle_id,
+                    reviewer_id,
+                    model,
+                    verdict,
+                    findings_json,
+                    text[:2000],
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO adversarial_reviews"
+                " (review_id, cycle_id, reviewer_id, reviewer_model,"
+                "  verdict, findings_json, summary, ts)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    str(uuid.uuid4()),
+                    cycle_id,
+                    reviewer_id,
+                    model,
+                    verdict,
+                    findings_json,
+                    text[:2000],
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
         conn.commit()
         return 0
     except sqlite3.IntegrityError as e:
         if conn is not None:
             conn.rollback()
-        if "UNIQUE" in str(e):
+        if "UNIQUE" in str(e) and not re_review:
             # Already reviewed = the review EXISTS: the sweep's goal is met.
             # Benign no-op — counting it as failure exit-1s the cron and
             # restarts the 3-strike pause (watchdog pattern, fleet dedupe).
-            print(f"  cycle #{cycle_id}: already reviewed (UNIQUE constraint)",
-                  file=sys.stderr)
+            print(f"  cycle #{cycle_id}: already reviewed — use --re-review to "
+                  f"re-judge (UNIQUE constraint)", file=sys.stderr)
             return 0
         print(f"  cycle #{cycle_id}: DB error: {e}", file=sys.stderr)
         return 3
@@ -264,6 +337,10 @@ def main() -> int:
                    help="max cycles per sweep (default 5)")
     p.add_argument("--review", action="store_true",
                    help="call the model and record the verdict")
+    p.add_argument("--re-review", action="store_true",
+                   help="re-judge an already-reviewed cycle: supersede the current "
+                        "verdict into the append-only history and record a fresh one "
+                        "(never DELETE — the old verdict stays recoverable)")
     p.add_argument("--sweep", action="store_true",
                    help="review every completed cycle that has no review yet")
     p.add_argument("--dry-run", action="store_true",
@@ -325,8 +402,8 @@ def main() -> int:
     if not args.material.strip():
         print("Error: empty --material — nothing to review", file=sys.stderr)
         return 2
-    if args.review and not args.reviewer_id:
-        print("Error: --review requires --reviewer-id", file=sys.stderr)
+    if (args.review or args.re_review) and not args.reviewer_id:
+        print("Error: --review/--re-review requires --reviewer-id", file=sys.stderr)
         return 2
 
     prompt = assemble_prompt(args.material)
@@ -335,15 +412,15 @@ def main() -> int:
         print(prompt)
         return 0
 
-    if not args.review:
-        p.error("nothing to do: pass --dry-run, --review, or --sweep")
+    if not args.review and not args.re_review:
+        p.error("nothing to do: pass --dry-run, --review, --re-review, or --sweep")
 
     model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL",
                            "deepseek/deepseek-v4-pro")
     text = _call_model(prompt)
     reviewer_id = args.reviewer_id or f"adv-review-{uuid.uuid4().hex[:8]}"
     return _record(Path(args.db).expanduser(), args.cycle_id, reviewer_id,
-                   model, text)
+                   model, text, re_review=args.re_review)
 
 
 if __name__ == "__main__":

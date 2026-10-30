@@ -2056,16 +2056,101 @@ def _is_sanctioned_plan_review_command(command: str) -> bool:
         return False
     if not any(name in command for name in _PLAN_REVIEW_SCRIPT_NAMES):
         return False
-    # The recording shape: one cycle, an identity, material, and --review.
+    # The recording shape: one cycle, an identity, material, and --review
+    # (or --re-review — the append-only re-judge that supersedes into history).
     if not re.search(r"--cycle-id\s+\d+", command):
         return False
     if not re.search(r"--reviewer-id\s+\S+", command):
         return False
     if not _plan_review_material_ok(command):
         return False
-    if not re.search(r"(?<![\w-])--review\b", command):
+    if not re.search(r"(?<![\w-])--re-review\b", command) and not re.search(
+            r"(?<![\w-])--review\b", command):
         return False
     return True
+
+
+# ── Loop-governance DB is append-only: raw mutation is BLOCKED (2026-10-30) ──
+# A worker was observed doing
+#   sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+#     "DELETE FROM adversarial_reviews WHERE cycle_id=8208;"
+# to clear a stale FINDINGS verdict, then re-recording. The DELETE is the
+# re-roll-until-CLEAN loophole and an audit-tamper: adversarial_reviews is the
+# review-of-record, and a FINDINGS a worker dislikes cannot simply cease to
+# exist. Operator directive (Luke): review/governance must be self-contained on
+# the agent's server (no orchestrator) and the store is APPEND-ONLY — the
+# legitimate need (fresh verdict after improving material) is served by the
+# reviewer's --re-review, which moves the old verdict into
+# adversarial_reviews_history and records a fresh current row. DELETE is never
+# the answer.
+#
+# This gate is a BLOCK (not a carve-out): a write-class terminal command that
+# mentions the governance DB and is NOT the sanctioned reviewer/record-review
+# invocation, and shows MUTATION intent, is refused with the sanctioned path
+# named. Read-only SQL (SELECT/PRAGMA diagnostics — the doctor's own queries)
+# is NOT blocked. Shapes targeted:
+#   * raw sqlite3 CLI:        sqlite3 <db> "DELETE FROM / DROP / UPDATE / ALTER / INSERT"
+#   * a script run with --db: python3 /tmp/adv-review.py ... --db <db>  (copy trick)
+#   * inline python/heredoc:  python3 - <<'PY'  ... execute("DELETE... / executescript(
+#
+# Sanctioned writers that bypass this gate (checked BEFORE it — the plan-review
+# carve-out above, and the manage script record-review.py):
+#   python3 .../adversarial-review.py --cycle-id N --material-file <p> --review
+#     | --re-review --reviewer-id <id> [--db <db>]
+#   python3 .../record-review.py --cycle-id N ... (manage-side record)
+_GOV_DB_BASENAME = "loop-governance.db"
+_GOV_DB_MUTATE_VERBS = re.compile(
+    r"(?:DELETE\s+FROM|DROP\s+TABLE|DROP\s+INDEX|UPDATE\s+\w+|"
+    r"ALTER\s+TABLE|CREATE\s+TABLE|INSERT\s+INTO|REPLACE\s+INTO|"
+    r"VACUUM|REINDEX)", re.IGNORECASE)
+_RECORD_REVIEW_NAMES = ("record-review.py",)
+
+
+def _mentions_governance_db(command: str) -> bool:
+    """The command text names the loop-governance DB (basename anywhere)."""
+    return _GOV_DB_BASENAME in command
+
+
+def _has_db_path_arg(command: str) -> bool:
+    """`--db <path>` (or `--db=<path>`) present — a script pointing at the store."""
+    return bool(re.search(r"--db(?:\s+|=)\S*", command))
+
+
+def _is_sanctioned_gov_db_writer(command: str) -> bool:
+    """The canonical reviewer (--review/--re-review) or the manage record-review.py."""
+    if re.search(r"\bpython3?\b", command) and re.search(
+            r"adversarial-review\.py", command):
+        return True
+    if re.search(r"\bpython3?\b", command) and any(
+            n in command for n in _RECORD_REVIEW_NAMES):
+        return True
+    return False
+
+
+def _is_governance_db_mutation_command(command: str) -> bool:
+    """True when a write-class terminal command mutates the governance DB
+    outside the sanctioned writers. Fail open ON PURPOSE for reads — this gate
+    targets MUTATION only; the ordinary write-class/lock handling still applies
+    to anything this returns False for."""
+    if not command or not _mentions_governance_db(command):
+        return False
+    if _is_sanctioned_gov_db_writer(command):
+        return False
+    # Raw sqlite3 CLI against the DB with any mutating verb.
+    if re.search(r"\bsqlite3\b", command) and _GOV_DB_MUTATE_VERBS.search(command):
+        return True
+    # Any python invocation naming the DB with a mutating verb (a heredoc or
+    # one-liner whose SQL is IN the command text).
+    if re.search(r"\bpython3?\b", command) and _GOV_DB_MUTATE_VERBS.search(command):
+        return True
+    # A `--db <path>` script that is NOT a sanctioned writer is a copy/tamper
+    # shape: the script file's body is not in the command text, so intent is not
+    # visible — refuse the opaque writer pointing at the store.
+    if re.search(r"\bpython3?\b", command) and _has_db_path_arg(command):
+        return True
+    # A bare sqlite3 <db> with no visible mutating verb is not provable as a
+    # mutation from text — leave it to the ordinary lock gate.
+    return False
 
 
 def _is_cronjob_write(args: Dict[str, Any]) -> bool:
@@ -3324,6 +3409,36 @@ def register(ctx):
             if tool_name == "terminal" and _is_sanctioned_plan_review_command(
                     str(args.get("command", ""))):
                 return None
+
+            # Loop-governance DB mutation gate (2026-10-30 — see
+            # `_is_governance_db_mutation_command`). The store is APPEND-ONLY:
+            # raw sqlite3/python mutation of adversarial_reviews is blocked
+            # (re-roll-until-CLEAN / audit-tamper). Read-only SELECT diagnostics
+            # are NOT blocked. The sanctioned reviewer and record-review.py are
+            # exempted by the helper. Checked BEFORE the no-repo refusal.
+            if tool_name == "terminal" and _is_governance_db_mutation_command(
+                    str(args.get("command", ""))):
+                _db_cmd = str(args.get("command", ""))[:160]
+                return {
+                    "action": "block",
+                    "message": (
+                        "🛑 LOOP-GOVERNANCE DB IS APPEND-ONLY — raw mutation blocked.\n\n"
+                        "  The command references the governance store\n"
+                        "  (~/.hermes-cortex/data/loop-governance.db) outside the\n"
+                        "  sanctioned writers. adversarial_reviews is the review-of-\n"
+                        "  record: never DELETE/UPDATE/DROP rows to clear a verdict you\n"
+                        "  disagree with (that is the re-roll-until-CLEAN loophole and an\n"
+                        "  audit-tamper). The legitimate path — a fresh verdict after\n"
+                        "  improving your material — is the reviewer's --re-review,\n"
+                        "  which moves the old verdict into append-only history:\n\n"
+                        "    python3 ~/.hermes-cortex/scripts/adversarial-review.py \\\n"
+                        "      --cycle-id <N> --material-file <plan.md> --re-review \\\n"
+                        "      --reviewer-id plan-<repo-slug>\n\n"
+                        "  Read-only queries (SELECT/PRAGMA) are fine. This gate:\n"
+                        f"  {_db_cmd}\n\n"
+                        "  This enforcement comes from ~/.hermes/plugins/governance-enforcer/."
+                    ),
+                }
 
             # A session that resolves NO repo is not "in the wrong repo" — it has no repo for
             # governance to bind to, so no lock could ever match and the generic refusal reads as an

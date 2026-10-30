@@ -78,7 +78,7 @@ Before: `survey-before-action` (search_files → map scope → skill_view). Afte
 Survey/leverage and plan-review are **gates, not prose**, and run in **every repo** the hook touches:
 
 1. **Survey-before-build gate** — the commit hook refuses a governed development commit unless the session loaded `reflexion-check`, `survey-before-action`, `prove-before-create`, and `agent-contract`. Ungoverned/human commits (no session) are skipped.
-2. **Plan-review-before-slice gate** — a non-trivial slice (multi-file or >50 lines in a project repo) is refused at commit unless its active cycle has a recorded adversarial plan review (`adversarial-review.py --cycle-id N --review`): plan → review → implement → commit.
+2. **Plan-review-before-slice gate** — a non-trivial slice (multi-file or >50 lines in a project repo) is refused at commit unless its active cycle has a recorded adversarial plan review. The worker records it themselves — `python3 ~/.hermes-cortex/scripts/adversarial-review.py --cycle-id <N> --material-file <plan.md> --review --reviewer-id plan-<slug>` — no orchestrator, no second lock (the review write is sanctioned lock-free; the store is append-only). To re-judge after improving the material: `--re-review` (moves the old verdict into history — never DELETE rows). Plan → review → implement → commit.
 
 The reflexion questions apply to **any** development, not hermes-cortex-specific work.
 

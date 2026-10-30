@@ -332,7 +332,7 @@ they are named accordingly, in the artifacts rather than only in the design doc:
 | Name | Path | Independent? |
 |---|---|---|
 | `self-adversarial review` | loop-gov-mcp.py `end_change`, complexity-gated | **No** — worker-invoked, in-session |
-| `plan review` | adversarial-review.py `--cycle-id N --review` (worker-invocable for the plan gate, 2026-10-30, per operator directive) | Fixed prompt + distinct model + recorded reviewer_id; recorded by the worker for their own cycle; the code-review equivalent of the sweep — applies only to the plan-review gate, never to a close |
+| `plan review` | adversarial-review.py `--cycle-id N --review` / `--re-review` (worker-invocable for the plan gate, 2026-10-30, per operator directive) | Fixed prompt + distinct model + recorded reviewer_id; recorded by the worker for their own cycle; the code-review equivalent of the sweep — applies only to the plan-review gate, never to a close. `--re-review` supersedes the current verdict into append-only `adversarial_reviews_history` — never DELETE rows |
 
 Name a mechanism by the property that DISTINGUISHES it from its lookalike, and
 propagate that name into everything it emits (log lines, verdict text, doctor

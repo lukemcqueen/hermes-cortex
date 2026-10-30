@@ -106,14 +106,33 @@ def _header(path: Path) -> str:
 
 
 def _recorded_ids(db_path: Path) -> dict[str, tuple[str, str]] | None:
-    """review_id → (reviewer_id, model) for rows in the store, or None when it cannot be read."""
+    """review_id → (reviewer_id, model) across CURRENT + HISTORY rows.
+
+    Reads both `adversarial_reviews` and `adversarial_reviews_history` (UNION):
+    a `recorded-in:` claim may point at a review that was superseded by
+    --re-review, and that review stays verifyable — history is append-only, so
+    the row still exists and still names its reviewer/model. A store that has
+    no history table yet (pre--re-review deploy) reads current rows only.
+    None when the store cannot be read at all.
+    """
     if not db_path.exists():
         return None
     try:
         conn = sqlite3.connect(str(db_path), timeout=10)
         try:
-            rows = conn.execute("SELECT review_id, reviewer_id, reviewer_model "
-                                "FROM adversarial_reviews").fetchall()
+            sql = (
+                "SELECT review_id, reviewer_id, reviewer_model "
+                "FROM adversarial_reviews"
+            )
+            tables = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            if "adversarial_reviews_history" in tables:
+                sql += (
+                    " UNION "
+                    "SELECT review_id, reviewer_id, reviewer_model "
+                    "FROM adversarial_reviews_history"
+                )
+            rows = conn.execute(sql).fetchall()
             return {str(r[0]): (str(r[1] or "?"), str(r[2] or "?")) for r in rows}
         finally:
             conn.close()

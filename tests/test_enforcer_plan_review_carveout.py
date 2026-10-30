@@ -56,6 +56,12 @@ def test_inline_material_variant_is_sanctioned():
         _cmd(material="--material 'the plan text'")) is True
 
 
+def test_rereview_shape_is_sanctioned():
+    """--re-review is the append-only re-judge: same shape, --re-review flag."""
+    assert enf._is_sanctioned_plan_review_command(
+        _cmd().replace(" --review ", " --re-review ")) is True
+
+
 def test_relative_or_other_script_path_is_sanctioned():
     assert enf._is_sanctioned_plan_review_command(
         _cmd(script="ops/scripts/orch-bus/adversarial-review.py")) is True
@@ -105,3 +111,86 @@ def test_the_exemption_is_wired_before_the_lock_refusal():
     refusal = source.index("if not _repo_for_gate:")
     assert call < refusal, "the plan-review exemption must be consulted before the refusal"
     assert "_has_governance_lock(" in source
+
+
+# ── DB-write gate: adversarial_reviews is append-only (2026-10-30) ──────────
+
+GOV_DB = f"{HOME}/.hermes-cortex/data/loop-governance.db"
+DEPLOYED_REVIEWER = f"{HOME}/.hermes-cortex/scripts/adversarial-review.py"
+
+
+def test_raw_sqlite3_delete_against_gov_db_is_blocked():
+    """The exact observed tamper: sqlite3 <db> \"DELETE FROM adversarial_reviews ...\"."""
+    cmd = f'sqlite3 "{GOV_DB}" "DELETE FROM adversarial_reviews WHERE cycle_id=8208;"'
+    assert enf._is_governance_db_mutation_command(cmd) is True
+
+
+def test_raw_sqlite3_update_and_drop_are_blocked():
+    assert enf._is_governance_db_mutation_command(
+        f'sqlite3 "{GOV_DB}" "UPDATE adversarial_reviews SET verdict=\'CLEAN\' WHERE 1;"') is True
+    assert enf._is_governance_db_mutation_command(
+        f'sqlite3 "{GOV_DB}" "DROP TABLE adversarial_reviews;"') is True
+
+
+def test_tmp_copy_script_with_db_arg_is_blocked():
+    """The copy trick: /tmp/adv-review.py ... --db <gov-db>. The script body is
+    not in the command text, so an opaque writer pointing at the store is refused."""
+    cmd = (f"python3 /tmp/adv-review.py --cycle-id 8208 "
+           f"--material-file /tmp/plan.md --review --reviewer-id plan-x "
+           f"--db {GOV_DB}")
+    assert enf._is_governance_db_mutation_command(cmd) is True
+
+
+def test_inline_python_heredoc_with_mutation_is_blocked():
+    cmd = (f"python3 - <<'PY'\n"
+           f"import sqlite3\n"
+           f"c = sqlite3.connect('{GOV_DB}')\n"
+           f"c.execute('DELETE FROM adversarial_reviews WHERE cycle_id=8208')\n"
+           f"c.commit()\n"
+           f"PY")
+    assert enf._is_governance_db_mutation_command(cmd) is True
+
+
+def test_canonical_reviewer_with_any_db_is_not_blocked():
+    """The sanctioned writer may point --db at the store (it is the record path)."""
+    cmd = (f"python3 {DEPLOYED_REVIEWER} --cycle-id 8208 "
+           f"--material-file /tmp/plan.md --review --reviewer-id plan-x "
+           f"--db {GOV_DB}")
+    assert enf._is_governance_db_mutation_command(cmd) is False
+    rereview = cmd.replace(" --review ", " --re-review ")
+    assert enf._is_governance_db_mutation_command(rereview) is False
+
+
+def test_manage_record_review_script_is_not_blocked():
+    cmd = (f"python3 {HOME}/hermes-cortex/ops/scripts/manage/record-review.py "
+           f"--cycle-id 42 --verdict CLEAN --findings-json '[]' "
+           f"--reviewer-id x --reviewer-model m --summary s --db {GOV_DB}")
+    assert enf._is_governance_db_mutation_command(cmd) is False
+
+
+def test_select_only_reads_are_not_blocked_by_the_mutation_gate():
+    """Diagnostics (the doctor's own queries) keep working."""
+    assert enf._is_governance_db_mutation_command(
+        f'sqlite3 "{GOV_DB}" "SELECT verdict FROM adversarial_reviews WHERE cycle_id=8208;"') is False
+    assert enf._is_governance_db_mutation_command(
+        f"python3 -c \"import sqlite3; "
+        f"print(sqlite3.connect('{GOV_DB}').execute('SELECT count(*) FROM loop_cycles').fetchone())\""
+    ) is False
+
+
+def test_unrelated_commands_are_never_blocked():
+    assert enf._is_governance_db_mutation_command("git status") is False
+    assert enf._is_governance_db_mutation_command("") is False
+    assert enf._is_governance_db_mutation_command(
+        "grep -rn adversarial_reviews ops/") is False
+
+
+def test_mutation_gate_wired_between_carveout_and_no_repo_refusal():
+    """The DB gate must run AFTER the sanctioned carve-out (so the reviewer is
+    never mistaken for a tamper) and BEFORE the no-repo refusal (so the block
+    message names the append-only rule, not the generic lock demand)."""
+    source = _ENFORCER.read_text(encoding="utf-8")
+    carve = source.index("_is_sanctioned_plan_review_command(")
+    db_gate = source.index("_is_governance_db_mutation_command(")
+    refusal = source.index("if not _repo_for_gate:")
+    assert carve < db_gate < refusal, "order: carve-out, then DB gate, then refusals"
