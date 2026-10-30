@@ -66,12 +66,13 @@ hermes-cortex/
 │   ├── agent-registry.json    # Canonical agent list (who, where, accessible?)
 │   └── project-map/           # Dependency graph analysis
 │
-├── .hermes-cortex/            # Agent infra (gitignored content is per-user)
-│   ├── sessions/
-│   │   ├── current.md         # Active session state
-│   │   └── archive/           # Timestamped snapshots
-│   ├── memory/                # Per-user MEMORY.md, USER.md (gitignored)
-│   └── skills/                # Project-specific skills (tracked)
+├── (this repo carries NO .hermes-cortex/)
+│                              # The runtime infra dir is ~/.hermes-cortex/ — it holds
+│                              # sessions/current.md, archive/, memory/ and skills.yaml.
+│                              # Inside ~/hermes-cortex a repo-local .hermes-cortex/ would
+│                              # SHADOW that runtime dir (doctor check: Repo-local
+│                              # .hermes-cortex). A consumer project may keep its own
+│                              # repo-local overlay — this repo must not.
 │
 ├── deploy/                    # Deployment configs
 │   ├── nginx/                 # Nginx site configs
@@ -134,7 +135,7 @@ hermes-cortex/
 
 ### What goes where
 
-| This belongs in the repo (`src/`) | This belongs in `.hermes-cortex/` | This stays in `~/.hermes/` |
+| This belongs in the repo (`src/`) | This belongs in `~/.hermes-cortex/` | This stays in `~/.hermes/` |
 |-----------------------------------|-----------------------------------|----------------------------|
 | Runable scripts | Session state | Agent config (config.yaml) |
 | Skill source code | Agent memory (MEMORY.md, USER.md) | Runtime DBs (loop-governance.db) |
@@ -193,7 +194,7 @@ Use symlinks ONLY when:
 **What NOT to symlink:**
 - Config files — use references or imports instead
 - Secrets — never symlink across boundaries
-- Agent memory — it's per-user and should stay in `.hermes-cortex/memory/`
+- Agent memory — it's per-user and should stay in `~/.hermes-cortex/memory/` (a consumer project keeps its own repo-local overlay instead)
 
 ---
 

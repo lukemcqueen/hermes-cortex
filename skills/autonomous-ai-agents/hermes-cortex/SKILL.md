@@ -2021,10 +2021,10 @@ Agent knowledge in Hermes Cortex spans six layers from fastest/least durable to 
 | Layer | Location | Durability |
 |-------|----------|-----------|
 | 1 — Agent Prompt | `MEMORY.md` / `USER.md` | Hot cache, lost on restart |
-| 2 — Session State | `.hermes-cortex/sessions/current.md` | This session only |
+| 2 — Session State | `~/.hermes-cortex/sessions/current.md` | This session only |
 | 3 — Hermes Profile | `~/.hermes/profiles/` | Legacy isolation layer |
 | 4 — Brain Source | `~/brain/<source>/` | Cross-project deep knowledge (Mycortex) |
-| 5 — Repo Memory | `.hermes-cortex/memory/` | Per-project durable conventions |
+| 5 — Repo Memory | `~/.hermes-cortex/memory/` | Per-project durable conventions |
 | 6 — Repo Docs | `docs/` | Version controlled, team-visible |
 
 **Pointer Pattern:** Keep MEMORY.md under 2,200 chars by storing compact pointers (~120 chars) that point to brain directories for detail. Instead of `"ACME Works uses Python 3.13.13, Meilisearch v1.14 on port 13213..."`, write `+ /brain default acme-works (setup, search config)`.

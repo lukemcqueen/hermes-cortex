@@ -76,7 +76,7 @@ re-derives a plan that has already been superseded, which reads exactly like fre
 
 Write a checkpoint to one of these locations (prefer first):
 
-1. **`.hermes-cortex/sessions/current.md`** (repo root, committed to git) — for ongoing work tracked in a shared repo. Update the Session Notes section.
+1. **`~/.hermes-cortex/sessions/current.md`** (the runtime session dir) — for ongoing work; a shared repo may keep its own repo-local `.hermes-cortex/sessions/current.md` overlay instead. Update the Session Notes section.
 2. A dedicated `session-checkpoint-{timestamp}.md` file — for private or long-running work.
 3. The session's working MEMORY.md — for quick inline saves.
 

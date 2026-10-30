@@ -78,7 +78,7 @@ to your orchestrator (Moses/Esther). Never hand-write a lock file.
 
 1. Cache search — `mcp__review__cache_search(query="<the user's request>")`
 2. Begin governance — `mcp__loop_governance__begin_change(task_id="<short-name>", description="<what you are about to do>")` — mandatory before any write; write tools block without it.
-3. Load always skills — `skill_view(name)` for every skill in the always section of .hermes-cortex/skills.yaml (7 skills; do all 7 in one turn).
+3. Load always skills — `skill_view(name)` for every skill in the always section of `~/.hermes-cortex/skills.yaml` (7 skills; do all 7 in one turn).
 4. Load domain skills — run survey-before-action Phase 0a (operation × extension mapping); load every matching skill; discovery via skills_list(category=<domain>).
 5. Choose reasoning pattern — from `agent-flow`'s table (Plan-Execute-Verify default; ReAct for debug; Reflexion for quality; Tree of Thoughts for trade-offs). State it explicitly.
 6. Classify — match the request against agent-flow's 12 workflow patterns (sets toolset + output format).

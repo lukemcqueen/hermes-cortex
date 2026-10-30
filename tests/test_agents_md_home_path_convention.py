@@ -15,10 +15,17 @@ TWO DIFFERENT DIRECTORIES SHARE THIS NAME:
 Why this is pinned: AGENTS.md is the always-loaded orientation doc (it is also
 copied to ~/.hermes/AGENTS.md), so a bare `.hermes-cortex` there reads as "the
 Hermes agent infra directory" and sends the agent looking for the deploy home
-inside the project. Measured: an agent read a seeded project AGENTS.md, whose
-convention section listed `.hermes-cortex/sessions/`, `.hermes-cortex/memory/`
-and `.hermes-cortex/skills.yaml`, and reported that as the infra directory —
-all three of those actually live in ~/.hermes-cortex.
+inside the project. Operator report, 2026-10-30 (source: a seeded project
+AGENTS.md on a dev host; NOT re-measured here): an agent read that file's
+convention section — which listed `.hermes-cortex/sessions/`,
+`.hermes-cortex/memory/` and `.hermes-cortex/skills.yaml` — and reported it as
+"the Hermes agent infra directory". Verified on this host instead: all three of
+those live in ~/.hermes-cortex/ (evidence:
+docs/evidence/hermes-cortex-path-anchor-2026-10-30.txt; the overlay itself is
+documented at docs/skills-manifest-reference.md).
+
+Subject of this test: `AGENTS.md` at the repo root, provided by commit 43f001a6
+in this range. The test needs no other file of the range to run.
 
 The rule: every `.hermes-cortex` occurrence in AGENTS.md is home-anchored
 (`~/.hermes-cortex`, `$HOME/.hermes-cortex` or `${HOME}/.hermes-cortex`).

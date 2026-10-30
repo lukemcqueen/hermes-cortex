@@ -73,7 +73,7 @@ grep -rn '<name>' ~/.hermes-cortex/scripts/install*.sh ~/hermes-cortex/ops/scrip
 | `~/.hermes-cortex/state/loop-governance.db` (0 bytes) | All scripts reference `data/loop-governance.db`, none reference `state/` copy. **Do NOT touch `data/loop-governance.db` — that is the live governance DB.** | 0 bytes (dead file) |
 | `~/.hermes/hermes-agent/__pycache__/`, `~/.hermes-cortex/{scripts,offline}/__pycache__/` | Regenerable bytecode (Python rebuilds on import) | ~2.5 MB, 800+ dirs |
 | `~/.hermes-cortex/a2a/task-state.db` | Zero references in agent source or cortex scripts (agent-card.json in same dir IS live) | 20 KB |
-| `~/.hermes/state/post-commit-notify` + `.log` | Pre-migration leftovers: old hook wrote to `~/.hermes/state/`, current script writes to `.hermes-cortex/state/` | 3.5 KB |
+| `~/.hermes/state/post-commit-notify` + `.log` | Pre-migration leftovers: old hook wrote to `~/.hermes/state/`, current script writes to `~/.hermes-cortex/state/` | 3.5 KB |
 | `~/.hermes/cron/output/<hash>/` subdirs older than 30 days | Scheduler run artifacts; doctor does NOT read cron/output. **Keep loose named deliverables** (e.g. `sustainability-briefing-*.md/.docx`) | several MB, 1000s of files |
 
 ## Verify-First (do NOT delete without owner OK)

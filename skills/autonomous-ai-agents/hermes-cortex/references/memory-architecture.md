@@ -4,12 +4,16 @@ Six memory layers, from fastest/least durable to slowest/most durable:
 
 ```
 Layer 1: Agent Prompt (MEMORY.md / USER.md)    — hot cache, lost on restart
-Layer 2: Session State (.hermes-cortex/sessions/current.md) — this session only
+Layer 2: Session State (~/.hermes-cortex/sessions/current.md) — this session only
 Layer 3: Hermes Profile (~/.hermes/profiles/)   — agent identity, legacy isolation layer
 Layer 4: Brain Source (~/brain/<source>/)        — cross-project deep knowledge (Mycortex)
-Layer 5: Repo Memory (.hermes-cortex/memory/)    — per-project durable conventions
+Layer 5: Repo Memory (~/.hermes-cortex/memory/)  — per-project durable conventions
 Layer 6: Repo Docs (docs/)                       — version controlled, team-visible
 ```
+
+A **consumer project** may keep its own repo-local `.hermes-cortex/` overlay
+(`seed-project.sh`) holding the same layer names — a DIFFERENT directory from the
+runtime `~/.hermes-cortex/` above. Never write the runtime one bare.
 
 ## How Knowledge Flows Across Projects (Uber-Agent Model)
 

@@ -47,6 +47,11 @@ cortex_doctor/        tests/                profiles/
 docs/templates/       AGENTS.md
 ```
 
+> These entries are quoted from the guard file, which matches them as **repo-relative**
+> prefixes against `git diff --cached --name-only` — so `.hermes-cortex/hooks/` here means
+> a repo-local hooks dir, NOT the deployed `~/.hermes-cortex/hooks/`. A `~/`-prefixed
+> entry in that file could never match a staged path (silently dead guard entry).
+
 ### Phase 2: Classify Each Commit
 
 | Class | Pattern | Response |
@@ -69,7 +74,7 @@ For commits touching enforcement-critical paths, evaluate:
 | `plugins/governance-enforcer/__init__.py` | Did the skills gate change? Was the blocking logic relaxed? Did ALL_TOOLS gate get changed to WRITE_TOOLS only? |
 | `plugins/hermes-governance-enforcer/__init__.py` | Same as above (older plugin path). Did the skills list change (8 vs 10)? Did exemptions change? |
 | `mcp-servers/loop-gov-mcp.py` | Was the DOGFOOD auto-deploy gate added, removed, or changed? Was the file gutted and rebuilt? |
-| `.hermes-cortex/hooks/*` | Did hook symlink targets change? Did content drift from repo source? |
+| `~/.hermes-cortex/hooks/*` | Did hook symlink targets change? Did content drift from repo source? |
 
 ### Phase 4: Distinguish Damage from Legitimate Fixes
 
