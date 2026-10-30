@@ -280,6 +280,126 @@ and governance lock still apply to cron/bg writes.
       re-enable it for crons, crons MUST have the skills toolset in
       `enabled_toolsets` or every write deadlocks again.
 
+## 9. A Gate That Demands a Record Its Target Cannot Write Is a Deadlock, Not a Gate
+
+When a gate requires a record (a review row, a receipt) that is written by an
+ORCHESTRATOR-side tool — and producing it resolves to a second repo/lock the target
+cannot hold while its own cycle is pending — the target structurally cannot satisfy
+the gate that gates ITS OWN commit. The deadlock is real and the operator's fix
+direction is explicit: the review's PURPOSE is the value (a review before building is
+ALWAYS better, plus one after to check), so NEVER delete the gate to unblock the
+worker — give the worker a sanctioned, lock-free way to produce the record
+THEMSELVES. Three moves, in order:
+
+1. **Sanctioned write lane (exact-match carve-out).** Mirror the existing patterns
+   (`_is_sanctioned_cortex_update_command`, the brain-write carve-out): a NARROW
+   predicate matching only the reviewer's single-cycle record invocation
+   (`python3 .../adversarial-review.py --cycle-id N --material-file <plan> --review
+   --reviewer-id <id>`), rejecting `--sweep`, sudo, metachars, separators and
+   chaining; wired BEFORE the lock and no-repo refusals. Rationale that survives
+   review: the loop-governance DB is shared governance DATA, not a git repo —
+   governance is repo-scoped, so demanding a lock for a data-store write is an
+   impossible demand for the identity the gate itself targets. Naming your carve-out
+   and its rationale in the same comment block is what keeps the next editor from
+   widening it.
+2. **The refusal message must carry the exact self-serve command.** Deployed path
+   (`~/.hermes-cortex/scripts/...`, NOT the orchestrator-tree `ops/scripts/orch-bus/`
+   path — that forces the worker into the wrong checkout), the `--material-file`
+   form (never `--material "$(cat ...)"` — the `$(...)` is itself write-class and
+   breaks the exact-match lane), and a plain statement that the agent runs it
+   themselves with no orchestrator and no second lock. An agent looping "why can't
+   I do this myself?" is the gate telling it the wrong path or a false capability
+   claim.
+3. **Sweep stale availability claims in the same change.** A docstring or skill line
+   saying "orchestrator-side — the worker cannot invoke it" becomes the agent's own
+   conclusion that the gate is unsatisfiable, even when the script was always
+   deployed to the shared path for everyone. Grep `worker cannot invoke|orchestrator-
+   side trigger` across ops/ plugins/ skills/ and fix each hit to state the real
+   availability and the self-serve invocation.
+
+Keep the close-time reviewer (the "one after to check" that gates what actually
+lands) MCP-owned and OUT of the worker lane, and say that split explicitly in the
+delivery: the plan review is self-recordable by design; the close-time code review
+is not. A worker run of the close-time reviewer would be the self-report the design
+names as the trap.
+
+## 10. The Sanctioned Review Lane Makes Its Store Append-Only
+
+Opening a worker write lane to a review store creates a NEW hole the moment the
+worker can also DELETE a row it dislikes: delete the FINDINGS, re-record, done —
+the re-roll-until-CLEAN loophole and an audit-tamper, because adversarial rows are
+the review-of-record and a verdict a worker disagrees with must not cease to exist.
+When a worker wants a fresh verdict on IMPROVED material (a legitimate need — they
+added committed proof), that is a RE-REVIEW, and the sane path is the operator's
+own wording: "no dependence on the orchestrator; review/governance self-contained
+on the agent's server." So:
+
+1. **Sanctioned re-review = move to append-only history, never DELETE.** A
+   `--re-review` flag that atomically MOVES the current row into a
+   `adversarial_reviews_history` table (with `superseded_ts` + a reason) then records
+the fresh verdict as the new current row. A plain re-record on an already-reviewed
+cycle is a benign no-op with a "use --re-review" hint (the UNIQUE constraint keeps
+it that way). Nothing is ever deleted; a superseded FINDINGS stays recoverable.
+2. **Keep ONE current row per cycle — do NOT make the primary table multi-row to
+   "simplify" history.** `loop-gov-mcp.py` writes `adversarial_reviews` with
+   `cycle_id UNIQUE` + `ON CONFLICT(cycle_id) DO UPDATE` and reads it with a bare
+   `fetchone()`; multi-row-per-cycle under that schema silently breaks the close
+   gate. History lives in a SEPARATE table via move-then-upsert in one transaction,
+   and the UPSERT must bump `review_id` (`review_id=excluded.review_id` in the DO
+   UPDATE SET) or the second re-review's history INSERT collides on the `review_id`
+   PRIMARY KEY.
+3. **Block raw mutation of the store; keep reads open.** A DB-write gate (`_is_
+   governance_db_mutation_command`) refuses a write-class terminal command that
+   names the store and is NOT a sanctioned writer (raw `sqlite3 <db>
+   "DELETE/UPDATE/DROP..."`, an inline python heredoc mutating it, or any `python3
+   <script> --db <store>` that is not the reviewer/record script — the /tmp-copy
+   trick, whose body the command text cannot see). SELECT/PRAGMA diagnostics (the
+   doctor's own reads) are NOT blocked. Wire it AFTER the sanctioned carve-out
+   (so the reviewer is never mistaken for a tamper) and BEFORE the no-repo refusal
+   (so the message names the append-only rule, not the generic lock demand).
+4. **The block message is itself an instruction the worker follows — say exactly
+   what the sanctioned alternative is.** "never DELETE rows... use --re-review" with
+   the deployed-path command named, not a generic lock refusal. Every gate that can
+   block a real worker must tell it how to proceed; an agent looping on a gate is
+the gate giving a wrong path or an impossible-looking remedy.
+
+## 11. The Lock-Free Lane Extends to Scratch Deletion — Resolve, Don't Trust the Text
+
+A finished task (all cycles scored and closed) cannot hold a repo lock, but its cleanup
+step (`rm -f /tmp/x /tmp/y && rm -rf /tmp/sub && echo cleaned`) is still write-class, so
+it was gated by an impossible demand: delete scratch that lives OUTSIDE any repo under a
+lock that exists, in this task, only before the work runs. The operator's fix direction is
+the same as section 9's: a NARROW lock-free carve-out for the scratch-cleanup write class,
+and the design is where the correctness lives:
+
+1. **Trust ONE scratch root, and never a variable.** Only `/tmp` (realpath'd) is a root.
+   Do NOT fold `$TMPDIR` into the trusted-root list — a hostile or just-buggy
+   `TMPDIR=/home/<user>` would hand the carve-out a home directory to delete. A
+   `$TMPDIR/...` OPERAND is fine (allowed and resolved), but its RESOLVED path must still
+   land strictly under `/tmp`; the env value is never promoted to a root.
+2. **Resolve operands, don't regex them.** `os.path.realpath(operand)` must be a STRICT
+   child of a scratch root (`startswith(root + "/")`), and reject `..` components in the
+   text before resolving (`/tmp/../repo/x` must not pass). A naive `[A-Za-z0-9._-]+`
+   operand allowlist is the escape the reviewer will (correctly) flag as a HIGH.
+3. **Shape-match the whole command, fail closed.** Only `rm`/`rmdir` (with only
+   -f/-r/-rf/-d), `&&`-chained, at most one trailing `echo <word>`. Refuse the bare
+   scratch root itself (`rm -rf /tmp`), wildcards, sudo/mv/cd, `/home` and repo paths,
+   `~`, unpinned `/bin|/usr/bin|/usr/local/bin` prefixes and any other metachar,
+   `;`, pipes, redirects, `$(...)`. One non-scratch operand in a chain poisons the whole
+   command. Any unknown head/flag -> False (still needs a lock) — the carve-out exists to
+   REMOVE the lock on the agent's own scratch files, never to widen what an agent may
+   delete.
+4. **Place it with the other sanctioned lanes** (before the no-repo refusal), but AFTER
+   the DB-mutation gate — a mutation can never count as scratch cleanup, and the ordering
+   proves it.
+5. **Pin escapes with hermetic tests, including the worked shape.** The observed command
+   and close variants are sanctioned; every escape variant (bare root, `/home`, wildcard,
+   `..`, symlink-ish double-slash, sudo, `;`, pipe, redirect, `cd`, `mv`, a poisoned
+   chain, an echo-not-last, `--`-poison, a non-rm command) is blocked. And test that the
+   `$TMPDIR` operand does not grant a home-directory delete when `TMPDIR` points there.
+
+Send the changed enforcer through the adversarial A4 gate and diff its finding count against
+HEAD — new mediums are your change's fault, an unchanged count is pre-existing baseline.
 ## References
 
 - `references/friction-reduction-candidates.md` — the enforcement-friction taxonomy (which gates

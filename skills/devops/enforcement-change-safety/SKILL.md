@@ -1462,8 +1462,10 @@ is the worked example.
 
 ## References
 
-- **All-repos discipline gates & the session split** (fire where the agent works,
-  skip no-session commits; block messages must name the live MCP tool prefix):
+- **All-repos discipline gates, the session split, & the lockout rule** (fire where
+  the agent works and skip no-session commits; a gate whose REMEDY the target agent
+  cannot reach — an artifact only an orchestrator can write — is a structural
+  lockout, not enforcement; block messages must name the live MCP tool prefix):
   `references/all-repos-session-split-gate.md`
 
 ## References

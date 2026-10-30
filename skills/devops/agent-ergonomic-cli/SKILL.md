@@ -59,6 +59,32 @@ lowest cost, ~3 turns/task vs 6–8 for MCP; MCP costs ~2× a good CLI.
    list/mutation output, carrying forward disambiguating flags, `<id>`
    placeholders for runtime values; omit when output is self-contained;
    on errors suggest the fixing command, not "see --help".
+
+## Refusal and gate messages ARE agent-facing output — they must be self-serve
+
+A refusal/block/gate message is the most expensive agent-facing output there is:
+the agent CANNOT proceed until it decodes what the message demands, so every
+missing piece costs a round-trip question ("why can't I do this myself?", "what
+do I run?") instead of one action. The rules that bind a CLI error bind a
+governance refusal, a pre-commit check, and a plan-review gate equally:
+
+- **Name the exact self-serve command with the DEPLOYED path.** The message must
+  be copy-pasteable as-is: the deployed path
+  (`~/.hermes-cortex/scripts/...`), never a repo-relative `ops/scripts/...` path
+  that forces the agent into the wrong checkout, and never a shell metachar form
+  (`--material "$(cat ...)"` is itself write-class and cannot be the remedy a
+  write-gate offers). Placeholders use a shape the agent can resolve in one step
+  (`<your-plan.md>`, `<repo-slug>`), each explained in the same message.
+- **State plainly that the agent does it THEMSELVES.** A gate message that
+  implies an orchestrator or another actor must act ("review will run", "ask
+  the operator") when the agent can do it directly makes the agent loop asking
+  who does what. Say "this is a command you run yourself — no orchestrator, no
+  second lock" in those words.
+- **Do not assert availability the agent cannot verify.** A docstring or skill
+  line claiming "orchestrator-side — the worker cannot invoke it" while the
+  tool is deployed on the shared path is the seed of the question-loop; the
+  message and its docs must agree with the actual deployment (see the enforcer
+  skill's sanctioned plan-review lane).
 10. **Consistent help** — per-subcommand `--help` (flags + defaults, 2–3
     examples); `-v`/`-V`/`--version` prints bare version fast (leaf module,
     heavy graph never loads for a probe).

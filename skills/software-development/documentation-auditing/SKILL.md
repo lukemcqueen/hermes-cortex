@@ -174,8 +174,25 @@ the hazard — a portability table, a "do not use X, it silently no-ops here" no
 are not instances of the problem. Rewriting them "for consistency" deletes the lesson, and it is the
 most common way a correct sweep produces a worse document. Classify every hit as RECIPE (fix it) or
 WARNING (keep it) before editing a single one.
+- **A token with TWO legitimate scopes is not a sweep — it is a CLASSIFICATION.** The same literal
+  often names different things in different files, and a blanket replace silently makes half the docs
+  wrong: a runtime directory under `$HOME` and a repo-local overlay directory can share a name, so one
+  doc's bare reference resolves against the repo while another's resolves against the home dir. Before
+  replacing a single hit, decide per hit WHAT IT NAMES, bucket the hits by that, and rewrite only the
+  bucket that is wrong — the other bucket keeps the bare form and gains a qualifier (`repo-local`, a
+  project path) so it can never be read as the other one. Report the classes you deliberately kept.
+- **Never rewrite a value that something PARSES as a matcher or prefix.** When the token appears in a
+  config file a hook or checker reads (a path allow-list, a blocklist, a prefix rule), the entry is
+  matched against a REPO-RELATIVE subject — making it home-anchored turns a live rule into a silently
+  dead one that still passes and authorises nothing. In such a file fix the COMMENT explaining the
+  entry, never the entry, and state in that comment which scope the entries are matched in.
 - **Prove it by re-grepping for the pattern and reporting the count.** A sweep you did not re-grep
 is a claim, not a fix: say "zero remaining" only when a fresh search says so, and quote the count.
+**But a raw count is not a pass metric when the fix ADDS annotated mentions of the token.** The edit
+that disambiguates a token writes the token again, so the total can go UP while the flawed hits reach
+zero. Report the count per class where the classes are separable, and where they are not — an
+annotated mention reads like the flaw to any pattern match — say so plainly and NAME the files that
+legitimately keep the token, rather than letting a residual count read as work you missed.
 - **When the sweep corrects a CLAIM that a shipped change made false, put the measurement in the
 same edit.** One clause is enough — why the old sentence was wrong (what was measured, what it
 showed) — otherwise the next reader reintroduces it as "obviously true".
@@ -183,7 +200,8 @@ showed) — otherwise the next reader reintroduces it as "obviously true".
 ## Pitfalls
 
 - **A "consistency" sweep that rewrites the warnings is worse than no sweep** — see Bulk sweeps
-  above: teaching text is not an instance of the problem it teaches about.
+  above: teaching text is not an instance of the problem it teaches about, and neither is a hit that
+  names something ELSE (a same-named directory in another scope, a repo-relative guard entry).
 - **The `deploy/` symlink may be gone.** Don't assume `deploy/nginx/hermes-services-apply.py` works via symlink unless you've confirmed the symlink exists. Check it every audit.
 - **`src/` may still partially exist** (e.g., `src/loop-governance/` kept as backward compat, `src/cortex_bus/__pycache__/` as stale cache). A stale path pointing to a still-extant file is less urgent than one pointing to a deleted file, but it's still stale — the backward-compat copy is unsupported and may be removed. Always verify the **actual source file** exists, not just the directory.
 - **Check whether `src/` root exists** — it may be a hollow shell with only `__pycache__` and `.pytest_cache` dirs. `test -d src/` returning true doesn't mean source files are there.

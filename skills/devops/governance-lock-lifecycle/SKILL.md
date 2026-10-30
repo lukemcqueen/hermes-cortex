@@ -368,6 +368,22 @@ CONTENT, so each pass resumes from where the last stopped instead of redoing jud
 size), and a repeat that does NOT decrease is the real signal something is wrong. Do not read the
 repetition as a broken loop, and do not widen the review range to shorten it.
 
+**A blob judged NOT clean must CHANGE content — re-issuing on identical bytes returns nothing.**
+The close reads "no blob was SENT this pass ... re-reviewing identical bytes cannot produce a
+different verdict". That is the save-and-stop signal, not a hang: fix the file so it is a NEW blob,
+commit the fix (a partial `git commit -m msg -- <paths>` — the shared-index hook refuses an
+un-scoped bare commit), then re-issue `end_change`. The committed fix is judged on its own and the
+close continues from there. Do NOT re-roll the reviewer on unchanged material and do NOT open a
+carrier cycle — neither produces a different verdict.
+
+**A reviewer finding on a TEST is often a real lesson: fix the test, not the production code.** The
+tell is a meaningful finding that names exact lines in the test file (e.g. a test mutates
+`os.environ` without restoring it). The fix is the test using the fixture (`monkeypatch.setenv`,
+which restores in a finally regardless of assertion outcome) — shipped as its own small commit, so
+it is a new blob for the close. A dependent-classes finding ("the function is in the sibling file")
+may be a false positive the reviewer itself tells you to downgrade to info-level — read the
+finding's own recommendation before treating it as a blocker.
+
 **Do NOT raise the MCP client ceiling to shorten it.** This skill used to call that "the lever that
 actually shortens it", and that is wrong twice over: the operator's standing requirement is that
 reviews stay under 300 s — the module records it verbatim, "the window is never raised" — and it
