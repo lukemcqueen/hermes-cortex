@@ -1,0 +1,21 @@
+# task-mint fix evidence — 2026-10-31
+task: caed9076 (inbox->task mint bare-token + self-test rows)
+cycle: 14038  adversarial-review verdict: CLEAN (deepseek-v4-pro)
+command: bash tests/run-tests.sh tests/test_task_mint.py tests/test_agent_message_handler_report_subjects.py -q
+captured-at: b8a6be2b
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 35 items
+
+tests/test_task_mint.py ...........                                      [ 31%]
+tests/test_agent_message_handler_report_subjects.py .................... [ 88%]
+....                                                                     [100%]
+
+============================== 35 passed in 0.29s ==============================
+---
+run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+rc=0

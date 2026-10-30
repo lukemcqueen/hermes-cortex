@@ -287,6 +287,46 @@ def _is_duplicate_row(out: str) -> bool:
             and "idx_tasks_inbox_correlation" in text)
 
 
+# Protocol self-test markers (2026-10-31, task caed9076). A protocol self-test
+# sends a REPORT-shaped subject (PROPOSAL/ISSUES/IMPROVEMENTS — all in
+# TASK_CREATING_SUBJECTS) with a self-test body, then each test carries a
+# brand-new correlation_id. The (source='inbox', correlation_id) UNIQUE index
+# cannot dedup those, so a self-test must be refused at the mint entry point
+# before it creates a row. The marker may sit in the subject OR the body text.
+_SELF_TEST_MARKERS = ("SELFTEST", "DOCTOR_TEST", "self-test:", "self test:",
+                      "self-test", "self test", "@selftest")
+
+
+def _is_self_test(subject, content: str) -> bool:
+    """True when the message is a protocol self-test, not a real report/command."""
+    hay = f"{subject or ''} {content or ''}".lower()
+    return any(m.lower() in hay for m in _SELF_TEST_MARKERS)
+
+
+def _build_task_content(subject: str, body) -> str:
+    """Build the source='inbox' task content from a parsed message body.
+
+    The row must carry the message body, not the bare subject. A report
+    (PROPOSAL/ISSUES/IMPROVEMENTS) whose actionable text is the body would
+    otherwise mint a row whose content is just "PROPOSAL" — an unactionable
+    bare token (caed9076). Preference order for the actionable text:
+      dict: text > command > task > reason (report free text lives under
+            "text"; command/task/reason serve the EXEC/UPDATE shape)
+      str : the string itself (JSON-inner body already parsed by poll_once)
+      otherwise: the bare subject (last resort, after the self-test skip).
+    """
+    if not isinstance(body, dict):
+        return subject
+    inner = body.get("body", "")
+    if isinstance(inner, dict):
+        text = (inner.get("text") or inner.get("command")
+                or inner.get("task") or inner.get("reason"))
+        return f"{subject}: {str(text)[:120]}" if text else subject
+    if isinstance(inner, str) and inner.strip():
+        return f"{subject}: {inner.strip()[:120]}"
+    return subject
+
+
 def task_create_from_message(subject: str, correlation_id: str,
                              content: str) -> str | None:
     """Create a source='inbox' task row for a tracked subject (S4).
@@ -1276,17 +1316,12 @@ def main():
     # the archive leaves the row — the stale sweep is the safety net. The
     # partial unique index (source='inbox' AND correlation_id) makes the
     # create idempotent across handler restarts.
-    # Content for the row: subject + a short command/description preview.
-    task_content = subject
-    if isinstance(body, dict):
-      inner = body.get("body", "")
-      if isinstance(inner, dict):
-        cmd = inner.get("command") or inner.get("task") or inner.get("reason")
-        if cmd:
-          task_content = f"{subject}: {str(cmd)[:120]}"
-      elif isinstance(inner, str):
-        task_content = f"{subject}: {inner[:120]}"
-    task_create_from_message(subject, correlation_id, task_content)
+    # Content for the row: carry the body, not the bare subject (caed9076).
+    task_content = _build_task_content(subject, body)
+    # Self-test traffic must not mint a row: it sends report-shaped subjects
+    # under brand-new correlation_ids the UNIQUE index cannot dedup.
+    if not _is_self_test(subject, task_content):
+        task_create_from_message(subject, correlation_id, task_content)
 
     # --- EARLY ARCHIVE ---
     # Archive the message immediately after reading so the PGMQ
