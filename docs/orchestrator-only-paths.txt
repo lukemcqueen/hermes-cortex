@@ -6,6 +6,11 @@
 # trees is automatically protected. Add more specific globs only when needed.
 #
 # Scripts, plugins, hooks, skills, tools — all orchestrator-only
+# NOTE: these are REPO-RELATIVE prefixes (pre-commit-score matches them with
+# `grep "^<entry>"` against `git diff --cached --name-only`). Do NOT write a
+# `~/.hermes-cortex/...` entry here: it can never match a staged path, so the
+# guard entry would be silently DEAD. `.hermes-cortex/hooks/` below means a
+# REPO-LOCAL hooks dir, never the runtime hooks dir at ~/.hermes-cortex/hooks/.
 ops/scripts/
 ops/install/
 plugins/

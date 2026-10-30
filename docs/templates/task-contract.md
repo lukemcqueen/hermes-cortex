@@ -108,11 +108,11 @@ If verification fails at any checkpoint:
 
 ## Usage
 
-1. **Copy this template** to `.hermes-cortex/sessions/task-contract-[timestamp].md`
+1. **Copy this template** to the session dir — `~/.hermes-cortex/sessions/task-contract-[timestamp].md` (a consumer project uses its own repo-local `.hermes-cortex/sessions/` overlay instead)
 2. **Fill in BEFORE starting work** — the discipline is in the upfront thinking
 3. **Reference in session state** — add contract path to `current.md`
 4. **Update post-task** — fill verification section with evidence
-5. **Archive** — move to `.hermes-cortex/sessions/archive/` with session
+5. **Archive** — move to the sessions `archive/` subdirectory with the session
 
 **For cron-driven tasks:** Contract is auto-generated in session state by `update-session-state.sh`
 

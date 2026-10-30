@@ -1,10 +1,21 @@
 # Skills Manifest Reference
 
-Replaces the old approach of copying skill files into `.hermes-cortex/skills/` per project. The manifest is a single YAML file that references global skills by name — no drift, no stale copies, no disk bloat.
+> **Two directories share the name `.hermes-cortex` — know which one you mean.**
+>
+> | Directory | What it is | Written as |
+> |-----------|-----------|------------|
+> | `~/.hermes-cortex/` | The **runtime infra dir**, deployed by `cortex-update.sh`: `scripts/`, `state/`, `sessions/`, `memory/`, `hooks/`, and the `skills.yaml` the governance **enforcer** reads. | Always with the home anchor — `~/.hermes-cortex/…` |
+> | `./.hermes-cortex/` | A **repo-local overlay inside a consumer project**, created by `seed-project.sh`. Only this page describes it. | Qualified — "repo-local", or a project path |
+>
+> A bare `.hermes-cortex/` in a doc that means the runtime dir is a bug: agents read it as this project overlay, then look for the infra dir inside the project and report it as "the Hermes agent infra directory". Measured on a seeded project AGENTS.md whose convention table listed `.hermes-cortex/sessions/`, `.hermes-cortex/memory/` and `.hermes-cortex/skills.yaml` — all three of those live in `~/.hermes-cortex/`. The Cortex repo itself must carry **no** repo-local overlay (doctor check `Repo-local .hermes-cortex`).
+
+Replaces the old approach of copying skill files into the project's repo-local `.hermes-cortex/skills/`. The manifest is a single YAML file that references global skills by name — no drift, no stale copies, no disk bloat.
 
 ## File location
 
-`.hermes-cortex/skills.yaml` at the project root.
+`<project-root>/.hermes-cortex/skills.yaml` — **repo-local**, created by `seed-project.sh`.
+This is a different file from the runtime manifest at `~/.hermes-cortex/skills.yaml`,
+which is the one the enforcer reads.
 
 ## Format
 
@@ -50,7 +61,7 @@ on_task:
 
 ## How agents use it
 
-1. **Session start** — agent reads `AGENTS.md`, which says "load skills from `.hermes-cortex/skills.yaml`".
+1. **Session start** — agent reads `AGENTS.md`, which points at the deployed manifest `~/.hermes-cortex/skills.yaml`. In a seeded project the repo-local manifest is an additional, project-level hint.
 2. **Load `always`** — agent calls `skill_view(name)` for each skill in the `always` section.
 3. **Classify** — agent runs agent-flow to determine the task type.
 4. **Load `on_task`** — agent calls `skill_view(name)` for skills mapped to that task type.
@@ -58,14 +69,14 @@ on_task:
 
 ## Migration from file-copy approach
 
-Projects seeded with the old approach have skill files in `.hermes-cortex/skills/<name>/SKILL.md`.
+Projects seeded with the old approach have skill files in the repo-local `.hermes-cortex/skills/<name>/SKILL.md`.
 Those files still work — Hermes loads them when `workdir` is set.
 The manifest is additive: if both exist, the manifest takes precedence.
 
 To migrate a project from file-copy to manifest:
 
 ```bash
-# 1. Remove stale skill copies (optional — they won't conflict)
+# 1. In the PROJECT root — drop stale repo-local skill copies (optional)
 rm -rf .hermes-cortex/skills/*
 
 # 2. Re-seed to get the manifest
@@ -74,7 +85,7 @@ bash ~/hermes-cortex/ops/scripts/install/seed-project.sh --project=/path/to/proj
 
 ## Generating the manifest
 
-Run `seed-project.sh` which writes `.hermes-cortex/skills.yaml` with the default
+Run `seed-project.sh` which writes the repo-local `.hermes-cortex/skills.yaml` with the default
 skill set. Use `--skill-refs` to customize:
 
 ```bash

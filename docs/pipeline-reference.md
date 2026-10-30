@@ -20,7 +20,7 @@ Preserves active working context across agent sessions.
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Write | `update-session-state.sh` | Every 2h | ✗ | `.hermes-cortex/sessions/` |
+| Write | `update-session-state.sh` | Every 2h | ✗ | `~/.hermes-cortex/sessions/` (consumer projects use their own repo-local overlay) |
 | Archive | `hermes-cortex-session-state` (cron) | Every 2h | ✗ | Archived sessions |
 
 **Closed loop:** Non-negotiable for context continuity.
