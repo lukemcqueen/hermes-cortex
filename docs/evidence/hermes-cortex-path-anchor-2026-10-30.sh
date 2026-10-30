@@ -105,7 +105,7 @@ say ""
 # ---- 3. Moving counts across the doc surface -------------------------------------
 say "3. Moving counts — bare '.hermes-cortex' refs on the tracked tree"
 say "   (excludes docs/older = archived history, and docs/evidence = this artifact)"
-say "   AGENTS.md (the always-loaded doc):  $(git -C "$REPO" grep -c -E '(^|[^/])\.hermes-cortex' "$BASE_REV" -- AGENTS.md 2>/dev/null | awk -F: '{print $NF}')  ->  $(git -C "$REPO" grep -c -E '(^|[^/])\.hermes-cortex' HEAD -- AGENTS.md 2>/dev/null | awk -F: '{print $NF}')"
+say "   AGENTS.md (the always-loaded doc):  $(git -C "$REPO" grep -c -E '(^|[^/])\.hermes-cortex' "$BASE_REV" -- AGENTS.md 2>/dev/null | awk -F: '{t+=$NF} END {print t+0}')  ->  $(git -C "$REPO" grep -c -E '(^|[^/])\.hermes-cortex' HEAD -- AGENTS.md 2>/dev/null | awk -F: '{t+=$NF} END {print t+0}')"
 say "   docs/ + skills/ (all files):        $(count_refs "$BASE_REV")  ->  $(count_refs HEAD)"
 say "   RESIDUAL IS NOT ZERO, and is mostly INTENTIONAL. Bare refs that mean the"
 say "   RUNTIME dir were fixed; the remainder are dominated by pages whose SUBJECT is"

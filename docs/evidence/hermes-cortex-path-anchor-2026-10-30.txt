@@ -1,0 +1,120 @@
+Evidence — anchoring .hermes-cortex references to ~/ (infra dir vs repo-local overlay)
+--------------------------------------------------------------
+generated-by:  bash docs/evidence/hermes-cortex-path-anchor-2026-10-30.sh
+captured-at:   f4b9fbc4 (the revision the working tree sat on)
+baseline:      c161e75c (pre-change tip, pinned in the generator's own default)
+redaction:     ONE normaliser, applied to every COMMAND-OUTPUT line; literal lines are
+               written path-free by hand (no interpolated $HOME path, no hostname).
+note:          the committed copy is one commit AHEAD of the revision above by construction
+               (writing this file changes the revision). Re-run the generator to reproduce.
+rule under test: every '.hermes-cortex' that MEANS the runtime infra dir is home-anchored.
+  ~/.hermes-cortex/  = runtime infra dir (deployed; scripts/ state/ sessions/ memory/
+                       hooks/ and the skills.yaml the enforcer reads)
+  ./.hermes-cortex/  = repo-local overlay inside a CONSUMER project (seed-project.sh)
+--------------------------------------------------------------
+1. BEFORE — test against the pinned pre-change revision
+   extracting AGENTS.md@c161e75c into a scratch tree (path redacted)
+   extracted sha=663e14c950b1f84b  revision=c161e75c56668ddd53bfe40ca55d8fa0c81c944c
+   assert: the extraction does NOT carry the phrase the fix introduced -> pre-change copy confirmed
+   bare '.hermes-cortex' occurrences in AGENTS.md@c161e75c: 1
+F..                                                                      [100%]
+=================================== FAILURES ===================================
+________________ test_repo_agents_md_has_no_bare_hermes_cortex _________________
+
+    def test_repo_agents_md_has_no_bare_hermes_cortex():
+        from pathlib import Path
+    
+        repo_root = Path(__file__).resolve().parents[1]
+        text = (repo_root / "AGENTS.md").read_text()
+        bare = bare_line_numbers(text)
+>       assert bare == [], (
+            f"AGENTS.md line(s) {bare} name `.hermes-cortex` without a home anchor. "
+            f"Write `~/.hermes-cortex/...` for the runtime infra dir; a repo-local "
+            f"overlay belongs in docs/ with an explicit qualifier."
+        )
+E       AssertionError: AGENTS.md line(s) [34] name `.hermes-cortex` without a home anchor. Write `~/.hermes-cortex/...` for the runtime infra dir; a repo-local overlay belongs in docs/ with an explicit qualifier.
+E       assert [34] == []
+E         
+E         Left contains one more item: 34
+E         Use -v to get more diff
+
+tests/test_agents_md_home_path_convention.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_agents_md_home_path_convention.py::test_repo_agents_md_has_no_bare_hermes_cortex
+1 failed, 2 passed in 0.03s
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
+   BEFORE rc=1   (1 = the rule was violated on the pre-change copy, i.e. the test can fail)
+
+2. AFTER — same test file, same runner, against the live checkout
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: ~/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 3 items
+
+tests/test_agents_md_home_path_convention.py ...                         [100%]
+
+============================== 3 passed in 0.11s ===============================
+---
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+   AFTER rc=0   (0 = repo copy and deployed ~/.hermes/AGENTS.md both home-anchored)
+
+3. Moving counts — bare '.hermes-cortex' refs on the tracked tree
+   (excludes docs/older = archived history, and docs/evidence = this artifact)
+   AGENTS.md (the always-loaded doc):  1  ->  0
+   docs/ + skills/ (all files):        104  ->  98
+   RESIDUAL IS NOT ZERO, and is mostly INTENTIONAL. Bare refs that mean the
+   RUNTIME dir were fixed; the remainder are dominated by pages whose SUBJECT is
+   the repo-local overlay itself (seed-project-bootstrapping.md,
+   project-cortex-directory.md, the seed sections of hermes-cortex/SKILL.md),
+   by pages documenting the shadowing HAZARD (docs/review-receipt-gate.md), and
+   by the guard-file mirror in governance-compliance-reporting (repo-relative by
+   design, since the guard matches staged paths). A raw count cannot separate an
+   intentional overlay reference from a missed runtime one, so it is reported as
+   a count, not as a pass.
+
+4. Adversarial gate (A4 — tests/ level) on the new test file
+
+── tests/test_agents_md_home_path_convention.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 5 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 5 item(s)
+     ✅ Concurrency: 0 item(s)
+   Functions: 5
+     - bare_line_numbers(text)
+     - anchored_line_numbers(text)
+     - test_repo_agents_md_has_no_bare_hermes_cortex()
+     - test_repo_agents_md_still_names_the_runtime_dir()
+     - test_deployed_agents_md_copy_when_present_is_also_clean()
+   Fuzz inputs generated: 18
+
+📊 Summary: 1 file(s), 20 finding(s)
+   🟡 Medium: 2
+   ⚪ Info: 18
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+   A4 rc=0
+
+5. agents-doc-audit.py --repo (AGENTS.md mandatory sections, hook mode)
+{"status": "ok", "agents_path": "~/hermes-cortex/AGENTS.md", "exit_code": 0}
+   doc-audit rc=0
+
+6. Deployed copy check — the file agents actually load
+   diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md rc=0  (0 = identical)
+   deployed size: 16834 bytes  (AGENTS.md WARN >15K, FAIL >20K)
+
+--------------------------------------------------------------
+SUMMARY (each number is the exit code / count printed above, measured in this run)
+  1. BEFORE (pinned c161e75c)            rc=1
+  2. AFTER  (live checkout)              rc=0
+  3. AGENTS.md bare refs                 (see section 3; residual disclosed, not scored as pass)
+  4. A4 adversarial gate                 rc=0   (3 = could not verify)
+  5. agents-doc-audit --repo             rc=0   (3 = could not verify)
+  6. deployed == repo AGENTS.md          rc=0  (3 = could not verify)
+--------------------------------------------------------------
