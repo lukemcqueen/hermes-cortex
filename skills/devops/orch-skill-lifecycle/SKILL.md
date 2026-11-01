@@ -489,6 +489,8 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   skill the repo already carries. Before treating a name as a consolidation candidate, check
   whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
   proposals — and if the content is already committed, there is nothing to merge.
+- **The commit-time ritual gate enumerates always-skills ONE refusal per attempt (2026-11-02)** → the pre-commit reflexion gate refuses `git commit` with NOT-LOADED, one skill per try: this run needed `reflexion-check`, then `survey-before-action`, then `prove-before-create`, then `agent-contract` — 4 blocked commits before the 5th landed. Preload the whole set via `skill_view` BEFORE the first commit attempt of any session that will touch the cortex repo; do not burn a round trip per name.
+- **The parity "absent from repo" class (131 never-committed) is upstream Hermes-bundle references, not fleet work (2026-11-02)** → baoyu-comic/art-styles, pixel-art, agent-health-monitoring and hermes-cortex-skill reference files deploy with the Hermes bundle (`hermes update`), never via cortex-update.sh, so the cortex repo does not own them. Do not "fix" the parity FAIL by bulk-committing them — that re-imports upstream bundle content into the fleet repo. Pass bar stays the doctor's own content-based Skill drift check: stranded-in-place = 0; the parity checker's FAIL on the absent class is expected, chronic, and correct.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **The collector walks INTO `skills/.archive/` — retired skills arrive as live deltas (2026-10-28)** →
   `agent-learning-collector._get_skill_delta()` enumerates with
