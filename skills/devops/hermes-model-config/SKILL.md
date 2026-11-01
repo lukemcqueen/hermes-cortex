@@ -83,6 +83,43 @@ warning, cron model overrides, model.default regressions after `hermes update`.
    column; `billing_provider` is the provider.
 3. Re-check the cron overrides still pin the cron-only model where intended.
 
+## Provider latency / "why is it slow, what should we switch to" triage
+
+When the complaint is model SLOWNESS or a request for better models (not a
+wrong-model regression), separate the THREE layers before concluding anything:
+
+1. **Platform health** — check the provider's status page first.
+   OpenRouter: `https://status.openrouter.ai/` (Datadog). "All Systems
+   Operational" + no incidents in the recent window means the platform is not
+   the failure; per-endpoint load on the specific model's provider is then the
+   prime suspect. Status pages cover gateway + chat completions, not per-model
+   hosts.
+2. **Network latency to the gateway** — BOTH the platform and your config could
+   be fine while the box is far or congested.
+   ```bash
+   curl -s -o /dev/null -w "ttfb=%{time_starttransfer}s total=%{time_total}s http=%{http_code}\n" \
+     --max-time 60 https://openrouter.ai/api/v1/models
+   ```
+   A TTFB around 60–100ms is normal for OpenRouter from a home/cloud box;
+   that rules out a routing problem and isolates model-side throughput.
+3. **Model-side comparison** — for prices/context across candidates, hit the
+   public model catalog (no auth needed):
+   `curl -s https://openrouter.ai/api/v1/models` → `jq '.data[] | select(.id=="<id>") | [.id, (.context_length|tostring), .pricing.prompt, .pricing.completion]'`.
+   ⚠️ **The catalog does NOT expose throughput/latency for these models** —
+   `top_provider.throughput` / `.latency` come back null for many ids, so you
+   CANNOT rank candidates by measured speed from that feed. Real per-token
+   latency needs an AUTHENTICATED probe against the live endpoint; do not
+author a "switch to X it's faster" claim from the catalog alone.
+
+**Measuring live latency requires the API key — and it is NOT in config.yaml.**
+`~/.hermes/config.yaml` carries `provider: openrouter` + `base_url` but
+references the key only as the env var `OPENROUTER_API_KEY` in a comment; it is
+not inline and not in the gateway's systemd env file. The actual key lives in
+`~/.hermes/auth.json` (Hermes auth store). Reading a credential file to fire
+live probes is a consent-gated action — ask the operator before pulling it, and
+report the status/network/catalog findings (all unauth'd) while that's pending
+decision.
+
 ## Deprecated .env settings warning
 
 - The runtime warning comes from `warn_deprecated_cwd_env_vars`
