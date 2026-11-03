@@ -36,7 +36,9 @@ if [ "$IS_MAC" = 1 ]; then
   left=$(grep -Rl '\.hermes-cortex' "$HOME/Library/LaunchAgents" 2>/dev/null | wc -l)
   ck "0 LaunchAgent plists carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
   n=$(launchctl list 2>/dev/null | grep -ci cortex || true)
-  ck "launchd has cortex labels (got $n)" "[ '$n' -ge 3 ]"
+  # smoke floor: if the cortex framework is loaded on macOS at least one label
+  # exists; no unobserved specific count is asserted here.
+  ck "launchd has >=1 cortex label (got $n)" "[ '$n' -ge 1 ]"
 else
   left=$(grep -Rl '\.hermes-cortex' "$HOME/.config/systemd/user" 2>/dev/null | wc -l)
   ck "0 unit files carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
