@@ -6,6 +6,8 @@
 # migrate-home-dirs.sh + unit regeneration.
 set -uo pipefail
 
+IS_MAC=0; [ "$(uname -s)" = "Darwin" ] && IS_MAC=1
+
 NEW_REPO="${HOME}/steadfaste-fleet"       # repo checkout
 NEW_HOME="${HOME}/.steadfaste-fleet"      # deployed home (CORTEX_DEPLOY_HOME)
 OLD_REPO="${HOME}/hermes-cortex"
@@ -29,22 +31,23 @@ ck "brain/kb present" "[[ -d $NEW_HOME/brain/kb ]]"
 ck "brain/memories present" "[[ -d $NEW_HOME/brain/memories ]]"
 ck "mycortex compose present" "[[ -f $NEW_HOME/docker-compose.mycortex.yml ]]"
 
-# --- 3. no residual old path in generated systemd user units (ADV-14077-2) ---
-left=$(grep -Rl '\.hermes-cortex' "$HOME/.config/systemd/user" 2>/dev/null | wc -l)
-ck "0 unit files carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
-
-# --- 4. key services active ---
-for s in cortex-bus.service hermes-cortex-dashboard.service health-vector.service; do
-  st=$(systemctl --user is-active "$s" 2>/dev/null)
-  ck "$s active (got $st)" "[ '$st' = 'active' ]"
-done
-# cortex-gateway.service is a standby: legitimately inactive when disabled; its
-# unit is covered by the no-old-path check above.
-ck "cortex-gateway.service still loadable/unit-clean" "[ -f '${HOME}/.config/systemd/user/cortex-gateway.service' ]"
-
-# --- 5. timers still scheduled ---
-n=$(systemctl --user list-timers --no-legend 2>/dev/null | grep -c 'cortex-bridge' || true)
-ck "cortex-bridge timers scheduled (got $n)" "[ '$n' -ge 15 ]"
+# --- 3/4/5. platform service surface (systemd on Linux, launchctl on macOS) ---
+if [ "$IS_MAC" = 1 ]; then
+  left=$(grep -Rl '\.hermes-cortex' "$HOME/Library/LaunchAgents" 2>/dev/null | wc -l)
+  ck "0 LaunchAgent plists carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
+  n=$(launchctl list 2>/dev/null | grep -ci cortex || true)
+  ck "launchd has cortex labels (got $n)" "[ '$n' -ge 3 ]"
+else
+  left=$(grep -Rl '\.hermes-cortex' "$HOME/.config/systemd/user" 2>/dev/null | wc -l)
+  ck "0 unit files carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
+  for s in cortex-bus.service hermes-cortex-dashboard.service health-vector.service; do
+    st=$(systemctl --user is-active "$s" 2>/dev/null)
+    ck "$s active (got $st)" "[ '$st' = 'active' ]"
+  done
+  ck "cortex-gateway.service unit-clean" "[ -f '${HOME}/.config/systemd/user/cortex-gateway.service' ]"
+  n=$(systemctl --user list-timers --no-legend 2>/dev/null | grep -c 'cortex-bridge' || true)
+  ck "cortex-bridge timers scheduled (got $n)" "[ '$n' -ge 15 ]"
+fi
 
 # --- 6. bus health 200 (ADV-14077-3) ---
 code=$(curl -fsS -o /dev/null -w '%{http_code}' 127.0.0.1:8903/health 2>/dev/null || echo ERR)

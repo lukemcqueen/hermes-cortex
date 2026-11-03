@@ -6,11 +6,12 @@
 # steadfaste-fleet target and immediately lays an old-path -> new-path
 # transition symlink.
 #
-# Safety (set -euo pipefail): preflights target absence (no nesting via mv -T),
-# refuses to run inside a target, treats an already-symlinked source or target
-# as already-handled, and rolls BACK a failed `ln` so a failure never leaves the
-# old path missing. Idempotent + re-runnable: any already-migrated pair is a
-# no-op.
+# Safety (set -euo pipefail): preflights target absence so a POSIX `mv` (no
+# -T) can never nest the source, refuses to run inside a target, treats an
+# already-symlinked source or target as already-handled, and rolls BACK a
+# failed `ln` so a failure never leaves the old path missing. Idempotent +
+# re-runnable: any already-migrated pair is a no-op. POSIX-ish on purpose
+# (no GNU `mv -T`/`--`) so it runs on BOTH Linux and macOS BSD.
 set -euo pipefail
 
 PAIRS=(
@@ -52,13 +53,14 @@ for pair in "${PAIRS[@]}"; do
   # a leftover symlink at the target must not cause mv to nest the source
   if [ -L "$tgt" ]; then
     echo "migrate-home-dirs: remove stale target symlink $tgt"
-    rm -- "$tgt"
+    rm "$tgt"
   fi
   [ -e "$tgt" ] && fail "target $tgt already exists as a real dir; refusing to nest"
 
-  mv -T -- "$src" "$tgt" || fail "mv failed for $src -> $tgt"
-  if ! ln -s -- "$tgt" "$src"; then
-    if mv -T -- "$tgt" "$src" 2>/dev/null; then
+  # target is absent here, so a POSIX `mv src tgt` renames (never nests)
+  mv "$src" "$tgt" || fail "mv failed for $src -> $tgt"
+  if ! ln -s "$tgt" "$src"; then
+    if mv "$tgt" "$src" 2>/dev/null; then
       fail "ln -s failed for $src; rename rolled back"
     else
       fail "ln -s failed for $src AND rollback mv failed (target remains at $tgt); resolve manually"
