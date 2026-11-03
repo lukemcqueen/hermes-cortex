@@ -40,9 +40,11 @@ TARGET_REPO = HOME / "hermes-cortex"
 
 def is_canonical_remote(url: str) -> bool:
     """Accept the canonical repo under either its legacy name (hermes-cortex) or its
-    renamed name (steadfaste-fleet), on github.com, owner-agnostic — but ALWAYS reject
-    the known-dead fleet-operator org (pre-2026-08-24 rewrite; the original guard was
-    corrected away from it). 2026-11-03 repo rename."""
+    renamed name (steadfaste-fleet) on github.com, owner-agnostic. The prior guard
+    compared against an exact owner URL that never named fleet-operator; being
+    owner-agnostic would otherwise accept the dead fleet-operator org (pre-2026-08-24
+    owner; its URL 404s), so reject it explicitly to keep the prior exact-match scope.
+    2026-11-03 repo rename."""
     c = canonical_remote(url)
     return (c.startswith("https://github.com/")
             and "/fleet-operator/" not in c
