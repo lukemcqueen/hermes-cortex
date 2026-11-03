@@ -132,7 +132,7 @@ else
   info "Downloading from GitHub…"
   TMP_DIR=$(mktemp -d)
   curl -fsSL "https://github.com/lukemcqueen/steadfaste-fleet/archive/refs/heads/main.tar.gz" | \
-    tar -xz -C "$TMP_DIR" --strip-components=3 "hermes-cortex-main/core/governance/" 2>/dev/null || {
+    tar -xz -C "$TMP_DIR" --strip-components=3 "steadfaste-fleet-main/core/governance/" 2>/dev/null || {
     fail "Download failed. Check internet or mirror."
     rm -rf "$TMP_DIR"
     info "Restoring from backup…"
