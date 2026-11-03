@@ -3,52 +3,56 @@
 #
 # Hermetic: runs the script against THROWAWAY dirs under a temp HOME via the
 # `export HOME` env override — touches no real home. Covers the happy path
-# (rename + symlink), idempotency (re-run no-ops), the unexpected-symlink guard
-# (src pointing elsewhere must fail + name the target), the cwd-inside-source
-# guard, and the missing-source no-op. Run directly:  bash tests/test_migrate_home_dirs.sh
+# (move, not copy; correct symlink targets), idempotency (re-run no-op), the
+# unexpected-symlink guard (src->elsewhere must FAIL + name the target), the
+# cwd-inside-source guard, and the missing-source no-op. Every run captures and
+# asserts its exit code (errexit is OFF here, so a failing script cannot abort
+# the harness). Run directly:  bash tests/test_migrate_home_dirs.sh
 set -uo pipefail
 
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/ops/scripts/manage/migrate-home-dirs.sh"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 fails=0
 check(){ if eval "$2"; then echo "PASS: $1"; else echo "FAIL: $1"; fails=$((fails + 1)); fi; }
-# the check condition string is double-quoted at the call site, so $VARS expand
-# before eval; the inner single quotes are cosmetic and kept for clarity.
 
-# 1. happy path
-H="$TMP/h1"
+# 1. happy path: move (not copy) + correct symlink targets + content preserved
+H="$TMP/h1"; rc=0
 ( export HOME="$H"; mkdir -p "$HOME/hermes-cortex/sub" "$HOME/.hermes-cortex/brain"
   echo m > "$HOME/hermes-cortex/marker"; echo y > "$HOME/.hermes-cortex/brain/a"
-  cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ) || true
-check "happy path migrates both dirs" "[ -d '$H/steadfaste-fleet' ] && [ -d '$H/.steadfaste-fleet' ]"
-check "happy path lays both symlinks" "[ -L '$H/hermes-cortex' ] && [ -L '$H/.hermes-cortex' ]"
-check "content preserved" "[ -f '$H/steadfaste-fleet/marker' ] && [ -f '$H/.steadfaste-fleet/brain/a' ]"
+  cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ); rc=$?
+check "happy migrate exits 0 (rc=$rc)" "[ '$rc' = '0' ]"
+check "old paths are symlinks (moved, not copied)" "[ -L '$H/hermes-cortex' ] && [ -L '$H/.hermes-cortex' ]"
+check "symlink targets resolve to new dirs" \
+  "[ \"\$(readlink '$H/hermes-cortex')\" = '$H/steadfaste-fleet' ] && [ \"\$(readlink '$H/.hermes-cortex')\" = '$H/.steadfaste-fleet' ]"
+check "new dirs exist" "[ -d '$H/steadfaste-fleet' ] && [ -d '$H/.steadfaste-fleet' ]"
+check "content preserved (reachable through the symlink)" "[ -f '$H/hermes-cortex/marker' ] && [ -f '$H/.hermes-cortex/brain/a' ]"
 
-# 2. idempotency (same fake home, re-run no-ops)
-( export HOME="$H"; cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ) || true
-check "idempotent re-run leaves symlinks + dirs intact" "[ -L '$H/hermes-cortex' ] && [ -d '$H/steadfaste-fleet' ]"
+# 2. idempotency: same fake home, re-run is a clean no-op
+rc=0
+( export HOME="$H"; cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ); rc=$?
+check "idempotent re-run exits 0 (rc=$rc)" "[ '$rc' = '0' ]"
+check "re-run left symlinks + new dirs intact" "[ -L '$H/hermes-cortex' ] && [ -d '$H/steadfaste-fleet' ]"
 
-# 3. unexpected-symlink guard: ONE run; capture STDOUT/STDERR and the exit code
-#    together so the failure that names the target is the same failure whose rc
-#    we assert non-zero.
-H="$TMP/h2"
+# 3. unexpected-symlink guard: ONE run; the exit code and the message come from
+#    the SAME invocation.
+H="$TMP/h2"; rc=0
 ( export HOME="$H"; mkdir -p "$HOME/elsewhere"
   ln -s "$HOME/elsewhere" "$HOME/hermes-cortex"
-  cd "$HOME"; bash "$SCRIPT" >"$TMP/out2" 2>&1
-  echo $? > "$TMP/rc2" ) || true
-rc2=$(cat "$TMP/rc2")
-check "unexpected-symlink guard exits non-zero (rc=$rc2)" "[ '$rc2' != '0' ]"
+  cd "$HOME"; bash "$SCRIPT" >"$TMP/out2" 2>&1 ); rc=$?
+check "unexpected-symlink guard exits non-zero (rc=$rc)" "[ '$rc' != '0' ]"
 check "unexpected-symlink message names the target" "grep -q 'symlink to' '$TMP/out2'"
 
-# 4. cwd-inside-source guard refuses
-H="$TMP/h3"
+# 4. cwd-inside-source guard refuses with a non-zero exit
+H="$TMP/h3"; rc=0
 ( export HOME="$H"; mkdir -p "$HOME/hermes-cortex"
-  cd "$HOME/hermes-cortex"; bash "$SCRIPT" >"$TMP/out3" 2>&1 ) || true
-check "cwd-inside-source refused" "grep -q 'stable workdir' '$TMP/out3'"
+  cd "$HOME/hermes-cortex"; bash "$SCRIPT" >"$TMP/out3" 2>&1 ); rc=$?
+check "cwd-inside-source exits non-zero (rc=$rc)" "[ '$rc' != '0' ]"
+check "cwd-inside-source message names the remedy" "grep -q 'stable workdir' '$TMP/out3'"
 
-# 5. missing source is a no-op
-H="$TMP/h4"
-( export HOME="$H"; cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ) || true
-check "missing source no-ops cleanly" "[ ! -e '$H/steadfaste-fleet' ]"
+# 5. missing source is a clean no-op (exit 0, no new dir)
+H="$TMP/h4"; rc=0
+( export HOME="$H"; cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ); rc=$?
+check "missing source exits 0 (rc=$rc)" "[ '$rc' = '0' ]"
+check "missing source creates nothing" "[ ! -e '$H/steadfaste-fleet' ]"
 
 if [ "$fails" -eq 0 ]; then echo "ALL PASS"; exit 0; else echo "FAILURES: $fails"; exit 1; fi
