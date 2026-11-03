@@ -1,9 +1,9 @@
 === task-db UUID prefix/substring support — evidence (cycle 14058) ===
-captured-at: 58d99cb7  (2026-11-03T10:51:47+09:00)
+captured-at: 21b173fd  (2026-11-03T10:56:42+09:00)
 
 
 ### Repo identity
-58d99cb7 fix(task-db): accept a UUID prefix/substring for every task-id argument
+21b173fd evidence(task-db): captured UUID-prefix change proof (cycle 14058)
 
 ### Interpreter: pytest resolver
 PY=/home/esther/.hermes-cortex/venv/bin/python3
@@ -18,7 +18,7 @@ collected 100 items / 93 deselected / 7 selected
 
 tests/test_task_db_unit.py .......                                       [100%]
 
-======================= 7 passed, 93 deselected in 0.16s =======================
+======================= 7 passed, 93 deselected in 0.15s =======================
 rc=0
 
 ### Unit tests: whole test_task_db_unit.py
@@ -32,7 +32,7 @@ collected 100 items
 tests/test_task_db_unit.py ............................................. [ 45%]
 .......................................................                  [100%]
 
-============================= 100 passed in 1.54s ==============================
+============================= 100 passed in 1.40s ==============================
 rc=0
 
 ### Adversarial gate: task-db.py (A4)
@@ -93,16 +93,13 @@ ERROR: no task UUID starts with '0000abcd' (RLS-visible)
 rc=0
 
 ### Live proof 3: task_add --parent <8-char prefix> lands under the story (mocked-free, real write), then cleanup
-✅ Task added: 4875ab77... — ESTHER UUID-PREFIX PROOF slice under story c579ef95 (prefix-parent test)
-proof slice id: 4875ab77-67a1-402a-b3ad-99e65e59e49d
-✅ Task 4875ab77... → cancelled (reason=prefix-parent live proof cleanup)
+✅ Task added: c749bf6c... — ESTHER UUID-PREFIX PROOF slice under story c579ef95 (prefix-parent test)
+proof slice id: c749bf6c-5246-4ebc-8ea8-00318905b71d
+✅ Task c749bf6c... → cancelled (reason=prefix-parent live proof cleanup)
+update rc=0
 
-DELETE 1
-(1 row)
-
-
-### cleanup confirmation: open proof rows remaining (must be 0)
+### Live proof 4: no open (uncancelled) proof rows remain
      0
 (1 row)
 
-rc=0
+count rc=0

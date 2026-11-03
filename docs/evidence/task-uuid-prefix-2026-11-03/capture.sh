@@ -47,8 +47,17 @@ echo "rc=$?"
 
 say "Live proof 3: task_add --parent <8-char prefix> lands under the story (mocked-free, real write), then cleanup"
 python3 ops/scripts/manage/task-db.py add "ESTHER UUID-PREFIX PROOF slice under story c579ef95 (prefix-parent test)" --parent c579ef95 --kind slice --scope personal --repo ALL --no-notify 2>&1 | head -2
-SLICE_ID=$(python3 ops/scripts/manage/task-db.py list --parent c579ef95-39a8-46ad-908d-d799b579e6ae --repo ALL 2>/dev/null | grep "UUID-PREFIX PROOF" | head -1 | awk '{print $1}')
+SLICE_ID=$(python3 ops/scripts/manage/task-db.py list --parent c579ef95-39a8-46ad-908d-d799b579e6ae --repo ALL 2>&1 | grep "UUID-PREFIX PROOF" | head -1 | awk '{print $1}')
 echo "proof slice id: $SLICE_ID"
-python3 ops/scripts/manage/task-db.py update "${SLICE_ID}" --status cancelled --reason "prefix-parent live proof cleanup" --no-notify 2>&1 | head -1
-docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -c "DELETE FROM tasks.tasks WHERE id='${SLICE_ID}' RETURNING id;" 2>&1 | tail -2
-docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -F'||' -c "SELECT count(*) FROM tasks.tasks WHERE content LIKE '%UUID-PREFIX PROOF%';" 2>&1 | tail -2
+if [ -z "$SLICE_ID" ]; then
+  echo "CLEANUP: could not resolve proof slice id — refusing to guess a target"
+else
+  python3 ops/scripts/manage/task-db.py update "$SLICE_ID" --status cancelled --reason "prefix-parent live proof cleanup" --no-notify 2>&1 | head -1
+  upd_rc=$?
+fi
+echo "update rc=$upd_rc"
+
+say "Live proof 4: no open (uncancelled) proof rows remain"
+docker exec -i mycortex-postgres psql -U mycortex_reader_esther -d mycortex -F'||' \
+  -c "SELECT count(*) FROM tasks.tasks WHERE content LIKE '%UUID-PREFIX PROOF%' AND status <> 'cancelled';" 2>&1 | tail -3
+echo "count rc=$?"
