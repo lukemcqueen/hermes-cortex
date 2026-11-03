@@ -49,11 +49,14 @@ say "Live proof 3: task_add --parent <8-char prefix> lands under the story (mock
 python3 ops/scripts/manage/task-db.py add "ESTHER UUID-PREFIX PROOF slice under story c579ef95 (prefix-parent test)" --parent c579ef95 --kind slice --scope personal --repo ALL --no-notify 2>&1 | head -2
 SLICE_ID=$(python3 ops/scripts/manage/task-db.py list --parent c579ef95-39a8-46ad-908d-d799b579e6ae --repo ALL 2>&1 | grep "UUID-PREFIX PROOF" | head -1 | awk '{print $1}')
 echo "proof slice id: $SLICE_ID"
+upd_rc=1   # non-zero unless the cancel provably succeeds
 if [ -z "$SLICE_ID" ]; then
   echo "CLEANUP: could not resolve proof slice id — refusing to guess a target"
 else
-  python3 ops/scripts/manage/task-db.py update "$SLICE_ID" --status cancelled --reason "prefix-parent live proof cleanup" --no-notify 2>&1 | head -1
+  python3 ops/scripts/manage/task-db.py update "$SLICE_ID" --status cancelled --reason "prefix-parent live proof cleanup" --no-notify >/tmp/task-uuid-proof-update.out 2>&1
   upd_rc=$?
+  head -1 /tmp/task-uuid-proof-update.out
+  rm -f /tmp/task-uuid-proof-update.out
 fi
 echo "update rc=$upd_rc"
 
