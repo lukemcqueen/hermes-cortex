@@ -1,0 +1,108 @@
+=== task-db UUID prefix/substring support — evidence (cycle 14058) ===
+captured-at: 58d99cb7  (2026-11-03T10:51:47+09:00)
+
+
+### Repo identity
+58d99cb7 fix(task-db): accept a UUID prefix/substring for every task-id argument
+
+### Interpreter: pytest resolver
+PY=/home/esther/.hermes-cortex/venv/bin/python3
+
+### Unit tests: new UUID-resolution tests (7)
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 100 items / 93 deselected / 7 selected
+
+tests/test_task_db_unit.py .......                                       [100%]
+
+======================= 7 passed, 93 deselected in 0.16s =======================
+rc=0
+
+### Unit tests: whole test_task_db_unit.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/esther/hermes-cortex
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collected 100 items
+
+tests/test_task_db_unit.py ............................................. [ 45%]
+.......................................................                  [100%]
+
+============================= 100 passed in 1.54s ==============================
+rc=0
+
+### Adversarial gate: task-db.py (A4)
+
+── ops/scripts/manage/task-db.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 96 item(s)
+     ⚠️ State: 39 item(s)
+     ⚠️ Dependencies: 16 item(s)
+     ⚠️ Concurrency: 1 item(s)
+   Functions: 15
+     - _notify_import()
+     - _int(v)
+     - _null(v)
+     - _tags(v)
+     - cmd_summary(story_id)
+     ... and 10 more
+   Fuzz inputs generated: 187
+
+📊 Summary: 1 file(s), 27 finding(s)
+   🟡 Medium: 4
+   🔵 Low: 3
+   ⚪ Info: 20
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+### Adversarial gate: task-mcp.py (A4)
+
+── mcp-servers/task-mcp.py ──
+   Level: A4
+   Attack Surface:
+     ⚠️ Inputs: 21 item(s)
+     ⚠️ State: 22 item(s)
+     ⚠️ Dependencies: 15 item(s)
+     ⚠️ Concurrency: 5 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 1 finding(s)
+   🟡 Medium: 1
+
+🟡 Medium findings — fix before shipping.
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+### Live proof 1: summary with FULL uuid vs 8-char PREFIX (read-only)
+📚 Story c579ef95... — STORY: Fleet cost under $10/day avg + halve review queue (HC gaps party 2026-08-21 roadmap)
+   status=pending  priority=3  scope=fleet  by=esther
+📚 Story c579ef95... — STORY: Fleet cost under $10/day avg + halve review queue (HC gaps party 2026-08-21 roadmap)
+   status=pending  priority=3  scope=fleet  by=esther
+
+### Live proof 2: no-match prefix fails cleanly
+ERROR: no task UUID starts with '0000abcd' (RLS-visible)
+rc=0
+
+### Live proof 3: task_add --parent <8-char prefix> lands under the story (mocked-free, real write), then cleanup
+✅ Task added: 4875ab77... — ESTHER UUID-PREFIX PROOF slice under story c579ef95 (prefix-parent test)
+proof slice id: 4875ab77-67a1-402a-b3ad-99e65e59e49d
+✅ Task 4875ab77... → cancelled (reason=prefix-parent live proof cleanup)
+
+DELETE 1
+(1 row)
+
+
+### cleanup confirmation: open proof rows remaining (must be 0)
+     0
+(1 row)
+
+rc=0
