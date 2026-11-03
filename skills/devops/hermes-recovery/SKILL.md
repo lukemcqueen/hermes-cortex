@@ -177,7 +177,7 @@ gh auth login
 After auth is set up, clone the project repos (see [github-repo-management](skill:github-repo-management)):
 
 ```bash
-git clone https://github.com/fleet-operator/hermes-cortex.git
+git clone https://github.com/lukemcqueen/steadfaste-fleet.git
 # ~/private-data/ is local only — restore from backup
 ```
 
@@ -473,7 +473,7 @@ After recovery, run through this:
 - [ ] `hermes config check` passes
 - [ ] `.env` has real API keys (not `***` templates)
 - [ ] `ssh -T git@github.com` authenticates
-- [ ] `git ls-remote https://github.com/fleet-operator/hermes-cortex.git` works
+- [ ] `git ls-remote https://github.com/lukemcqueen/steadfaste-fleet.git` works
 - [ ] `~/.brain/` has user directories (moses, luke, shared, etc.)
 - [ ] `~/.legacy-brain/brain.pglite` exists
 - [ ] `du -sh ~/.hermes/` matches expected size from backup

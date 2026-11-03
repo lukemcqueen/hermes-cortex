@@ -34,7 +34,7 @@ Hermes Agent                             Hermes gateway (:8905)
 ## What You Need Before Starting
 
 - **Hermes Agent** installed and working
-- **hermes-cortex repo** cloned: `git clone https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex`
+- **hermes-cortex repo** cloned: `git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex`
 - **A Telegram chat** (or another delivery channel) where your cron output can land
 
 ---

@@ -35,7 +35,7 @@ echo "$PATH" | tr ':' '\n' | grep -q "${HOME}/.local/bin"
 
 ```bash
 # 1. Clone
-git clone https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
 
 # 2. Run setup (detects macOS, suggests brew)
 bash ~/hermes-cortex/core/governance/setup.sh

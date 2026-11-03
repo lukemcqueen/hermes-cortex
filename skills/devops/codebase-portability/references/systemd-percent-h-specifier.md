@@ -56,7 +56,7 @@ From the public Hermes Cortex repo (`ops/scripts/com.hermes.health-server.servic
 ```ini
 [Unit]
 Description=Hermes Cortex Health Server — self-monitoring API
-Documentation=https://github.com/fleet-operator/hermes-cortex
+Documentation=https://github.com/lukemcqueen/steadfaste-fleet
 After=network.target
 
 [Service]

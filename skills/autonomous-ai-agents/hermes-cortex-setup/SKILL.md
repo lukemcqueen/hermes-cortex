@@ -67,7 +67,7 @@ echo "Python3.12: $(python3.12 --version 2>/dev/null || echo 'MISSING')"
 ### 0.5. Clone the Repo (if not already cloned)
 
 ```bash
-git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
 ```
 
 **Pitfall — Installer script path bug:** The `install.sh` script references scripts at `$(_scripts)/install-ollama.sh` but the actual file is at `$(_scripts)/install/install-ollama.sh` (inside an `install/` subdirectory). Running `install.sh` directly will fail on step 1 with a "No such file or directory" error. Fix: run the individual install scripts manually rather than the monolithic installer, or symlink the paths.

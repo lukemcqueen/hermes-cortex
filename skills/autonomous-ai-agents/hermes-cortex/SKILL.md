@@ -41,7 +41,7 @@ uname -s # Linux or Darwin
 The installer lives at `ops/install/install.sh` (moved from repo root in v2.0.0):
 
 ```bash
-git clone --depth 1 https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
 cd ~/hermes-cortex
 bash ops/install/install.sh
 

@@ -21,8 +21,8 @@ There is **no private companion repository** and **no second remote**:
 
 ```bash
 $ git remote -v
-origin  https://github.com/lukemcqueen/hermes-cortex.git (fetch)
-origin  https://github.com/lukemcqueen/hermes-cortex.git (push)
+origin  https://github.com/lukemcqueen/steadfaste-fleet.git (fetch)
+origin  https://github.com/lukemcqueen/steadfaste-fleet.git (push)
 ```
 
 Branches are `main` plus topic branches (e.g. `session/gov-isolation`). There are
