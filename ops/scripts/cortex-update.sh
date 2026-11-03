@@ -136,9 +136,9 @@ if [[ "$REPO_DIR" == "/" ]]; then
     REPO_DIR="$CORTEX_REPO"
   else
     for candidate in \
-      "$HOME/hermes-cortex" \
-      "$HOME/hermes-cortex" \
-      "$HOME/git/hermes-cortex"; do
+      "$HOME/steadfaste-fleet" \
+      "$HOME/steadfaste-fleet" \
+      "$HOME/git/steadfaste-fleet"; do
       if [[ -f "$candidate/AGENTS.md" ]]; then
         REPO_DIR="$candidate"
         break
@@ -147,12 +147,12 @@ if [[ "$REPO_DIR" == "/" ]]; then
   fi
 fi
 # ── Cortex environment — single source of truth ──────────────
-# ~/hermes-cortex/.env is the gitignored per-machine config.
+# ~/steadfaste-fleet/.env is the gitignored per-machine config.
 # ⚠ ~/.hermes/.env is Hermes Agent's own config — never write to it.
 # Migrate the legacy bus conf into the canonical env FIRST (idempotent).
-# consolidate-env.sh seeds/migrates the canonical ~/hermes-cortex/.env and
-# creates the sanctioned back-compat symlink ~/.hermes-cortex/.env → canonical,
-# retiring the old cortex-bus.conf name. Every script reads ~/hermes-cortex/.env
+# consolidate-env.sh seeds/migrates the canonical ~/steadfaste-fleet/.env and
+# creates the sanctioned back-compat symlink ~/.steadfaste-fleet/.env → canonical,
+# retiring the old cortex-bus.conf name. Every script reads ~/steadfaste-fleet/.env
 # since the 2026-10 refactor, so a legacy host must be consolidated before
 # anything reads the env. Uses $HOME + bash only — identical on Linux and macOS.
 if [[ -f "${REPO_DIR}/ops/scripts/manage/consolidate-env.sh" ]]; then
@@ -169,7 +169,7 @@ if [[ -f "${REPO_DIR}/.env" ]]; then
 fi
 
 # ── Clean up stale files from old env architecture ───────────
-for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/hermes-cortex.env" "${REPO_DIR}/ops/install/deploy/hermes-services.env" "${REPO_DIR}/ops/install/deploy/nginx/hermes-services.env"; do
+for stale in "${HOME}/.hermes/models.env" "${HOME}/.hermes/steadfaste-fleet.env" "${REPO_DIR}/ops/install/deploy/hermes-services.env" "${REPO_DIR}/ops/install/deploy/nginx/hermes-services.env"; do
   if [[ -f "$stale" ]]; then
     rm -f "$stale"
     echo "  → Removed stale env file: ${stale}"
@@ -180,7 +180,7 @@ done
 if [[ -f "${HOME}/.hermes/.env" ]]; then
   set -a; source "${HOME}/.hermes/.env"; set +a
 fi
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}"
 
 # ── Deploy-in-progress marker ───────────────────────────────────────────
 # This run unlocks the enforcement files early and relocks them at the END, so
@@ -361,7 +361,7 @@ _write_deploy_manifest() {
   return 0
 }
 
-# Scripts → ~/.hermes-cortex/scripts/
+# Scripts → ~/.steadfaste-fleet/scripts/
 register "ops/scripts/health/agent-system-alert-watchdog.py"   "${CORTEX_DEPLOY_HOME}/scripts/agent-system-alert-watchdog.py"
 register "ops/scripts/health/heartbeat.py"               "${CORTEX_DEPLOY_HOME}/scripts/heartbeat.py"
 register "ops/scripts/sustainability/verify_briefing.py"  "${CORTEX_DEPLOY_HOME}/scripts/manage/verify_briefing.py"
@@ -417,7 +417,7 @@ register "ops/scripts/manage/gateway-model-list.py"      "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/verify-orch-skill-lifecycle.sh"      "${CORTEX_DEPLOY_HOME}/scripts/verify-orch-skill-lifecycle.sh"
 register "ops/scripts/manage/test-verify-orch-skill-lifecycle.sh" "${CORTEX_DEPLOY_HOME}/scripts/test-verify-orch-skill-lifecycle.sh"
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
-# own ~/.hermes-cortex/venv without anyone reading the source to work out what belongs there.
+# own ~/.steadfaste-fleet/venv without anyone reading the source to work out what belongs there.
 register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
 # Skills ownership + publication (cycle 13491). Cortex OWNS the skill library and the fleet
 # is moving off the Hermes agent, so the deploy tree must be the REAL one and the harness
@@ -580,7 +580,7 @@ register "ops/scripts/cron_failure_state.py"       "${CORTEX_DEPLOY_HOME}/script
 register "ops/scripts/install/seed-project.sh"           "${CORTEX_DEPLOY_HOME}/scripts/seed-project.sh"
 register "ops/scripts/install/merge-agents-md.py"      "${CORTEX_DEPLOY_HOME}/scripts/merge-agents-md.py"
 register "ops/scripts/manage/agent-hermes-update.sh"            "${CORTEX_DEPLOY_HOME}/scripts/agent-hermes-update.sh"
-register "ops/scripts/manage/agent-hermes-cortex-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-hermes-cortex-sync.sh"
+register "ops/scripts/manage/agent-steadfaste-fleet-sync.sh"      "${CORTEX_DEPLOY_HOME}/scripts/agent-steadfaste-fleet-sync.sh"
 register "ops/scripts/manage/update-session-state.sh"    "${CORTEX_DEPLOY_HOME}/scripts/update-session-state.sh"
 register "ops/scripts/manage/fleet-audit.py"             "${CORTEX_DEPLOY_HOME}/scripts/fleet-audit.py"
 register "ops/scripts/manage/task-queue-evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/task-queue-evidence.py"
@@ -604,7 +604,7 @@ register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}
 # by a conflict leaves the repo STOPPED MID-REBASE, refusing every commit and push on the host
 # until someone cleans it up by hand; that helper aborts the stopped rebase so the failure is
 # inert. This line only puts the file on the host. Its two consumers are
-# ops/scripts/manage/agent-hermes-cortex-sync.sh and ops/scripts/agent/agent-ip-submission.sh
+# ops/scripts/manage/agent-steadfaste-fleet-sync.sh and ops/scripts/agent/agent-ip-submission.sh
 # (both `source` it before their pull failure paths) — both are blobs of this same push range and
 # are reviewed in their own windows.
 register "ops/scripts/lib/git-stalled-rebase.sh"           "${CORTEX_DEPLOY_HOME}/scripts/lib/git-stalled-rebase.sh"
@@ -750,7 +750,7 @@ register "ops/scripts/manage/loop-gov-mcp.sh"            "${CORTEX_DEPLOY_HOME}/
 register "ops/scripts/manage/reviewer-agent-pi.sh"       "${CORTEX_DEPLOY_HOME}/scripts/reviewer-agent-pi.sh"
 # P1-A hardening (2026-07-31): the enforcement MCP server itself must run
 # from the IMMUTABLE deployed copy, not the user-writable repo working tree
-# (config.yaml previously booted it from ~/hermes-cortex/mcp-servers/ — an
+# (config.yaml previously booted it from ~/steadfaste-fleet/mcp-servers/ — an
 # agent could edit that file and silently disable begin_change enforcement).
 # Register the real server to the tools/ path the lock helper protects.
 register "mcp-servers/loop-gov-mcp.py"            "${CORTEX_DEPLOY_HOME}/tools/loop-governance/loop-gov-mcp.py"
@@ -896,13 +896,13 @@ register "ops/scripts/cortex_gateway/restarts.py"   "${CORTEX_DEPLOY_HOME}/scrip
 # backends[].commands, and run with the stock python3 — stdlib only.
 register "ops/scripts/cortex_gateway/pi_control.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pi_control.py"
 # Re-runnable acceptance check for /new, deployed so it can be re-run ON the host:
-#   python3 ~/.hermes-cortex/scripts/cortex_gateway/new_command_evidence.py
+#   python3 ~/.steadfaste-fleet/scripts/cortex_gateway/new_command_evidence.py
 # The runner .sh beside it is repo-only (like run-cutover-evidence.sh) — a .sh cannot
 # go in the cortex_gateway register, whose entries must be the .py modules.
 register "ops/scripts/cortex_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/new_command_evidence.py"
 # Re-runnable acceptance check for /model, /compact, /new and /restart (/help, /status
 # too) against a LIVE agent, on the deployed tree:
-#   python3 ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py
+#   python3 ~/.steadfaste-fleet/scripts/cortex_gateway/slash_parity_evidence.py
 register "ops/scripts/cortex_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/slash_parity_evidence.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
@@ -948,7 +948,7 @@ register "ops/install/harnesses/generate-harnesses.py"     "${CORTEX_DEPLOY_HOME
 register "ops/install/harnesses/pi/extensions/cortex-context.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-context.ts"
 # The pi NATIVE-WRITE gate (2026-10-14, titus): pi's own read/bash/edit/write never
 # cross the Hermes enforcer plugin, and the commit hook's lock check is scoped to
-# hermes-cortex only — so in a PROJECT repo a pi session had no lock gate at write
+# steadfaste-fleet only — so in a PROJECT repo a pi session had no lock gate at write
 # OR commit time. This extension blocks a write-capable native tool call when no
 # lock covers the session's repo, asking the SHARED predicate
 # (loop-gov.py check_repo_lock) rather than parsing lock files itself.
@@ -958,7 +958,7 @@ register "ops/install/harnesses/pi/IMPLEMENT.md"           "${CORTEX_DEPLOY_HOME
 register "ops/install/harnesses/README.md"                 "${CORTEX_DEPLOY_HOME}/harnesses/README.md"
 register "ops/scripts/manage/mycortex-parity.py"      "${CORTEX_DEPLOY_HOME}/scripts/mycortex-parity.py"
 register "ops/scripts/manage/mycortex"                "${CORTEX_DEPLOY_HOME}/scripts/mycortex"
-# mycortex-postgres compose (dedicated hermes-cortex-owned Postgres, NOT langfuse)
+# mycortex-postgres compose (dedicated steadfaste-fleet-owned Postgres, NOT langfuse)
 register "ops/install/deploy/docker-compose.mycortex.yml" "${CORTEX_DEPLOY_HOME}/docker-compose.mycortex.yml"
 # agent-mycortex-sync cron wrapper — per-host sync (design D4: NOT orchestrator-only)
 register "ops/scripts/manage/agent-mycortex-sync.sh"  "${CORTEX_DEPLOY_HOME}/scripts/agent-mycortex-sync.sh"
@@ -994,7 +994,7 @@ register "ops/scripts/manage/agent-session-correction-scan.py" "${CORTEX_DEPLOY_
 # Shared bus library for fleet scripts
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
 # The bus core: bot_locks.py (used by the gateway AND msg-gateway) loads the bus core from
-# ~/.hermes-cortex/queue.py, so this destination is load-bearing, not cosmetic. Without it the
+# ~/.steadfaste-fleet/queue.py, so this destination is load-bearing, not cosmetic. Without it the
 # deployed gateway dies at startup with "cortex_bus queue.py not found (bus core missing)".
 register "core/cortex_bus/queue.py" "${CORTEX_DEPLOY_HOME}/queue.py"
 register "ops/scripts/lib/bus_outbox.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/bus_outbox.py"
@@ -1133,11 +1133,11 @@ restart_dashboard() {
     info "  Restarting Cortex Dashboard…"
     launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>/dev/null || true
     launchctl load "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>&1 | sed 's/^/    /'
-  elif [[ -f "/etc/systemd/system/hermes-cortex-dashboard.service" ]] || \
-       [[ -f "${HOME}/.config/systemd/user/hermes-cortex-dashboard.service" ]]; then
+  elif [[ -f "/etc/systemd/system/steadfaste-fleet-dashboard.service" ]] || \
+       [[ -f "${HOME}/.config/systemd/user/steadfaste-fleet-dashboard.service" ]]; then
     systemctl daemon-reload 2>/dev/null || true
     systemctl --user daemon-reload 2>/dev/null || true
-    SERVICE_CTL restart hermes-cortex-dashboard 2>&1 | sed 's/^/    /'
+    SERVICE_CTL restart steadfaste-fleet-dashboard 2>&1 | sed 's/^/    /'
   fi
 }
 # restart_agent_inbox — removed; use restart_cortex_bus instead
@@ -1436,7 +1436,7 @@ clean_stale_deploys() {
     "agent-nginx-threat-pipeline.sh"
     # Local-only no_agent cron scripts — NOT in repo, created per-host.
     # Must survive clean_stale_deploys; the cron scheduler resolves them
-    # through the ~/.hermes/scripts → ~/.hermes-cortex/scripts symlink.
+    # through the ~/.hermes/scripts → ~/.steadfaste-fleet/scripts symlink.
     # (2026-08-02: these were being deleted every deploy, which the doctor's
     # check_scripts correctly surfaced once the runtime path was unified.)
     "agent-daily-bible-reading.py"
@@ -1599,7 +1599,7 @@ is_skill_stub() {
 # engine — only copies files whose checksums differ from installed versions.
 # Syncs from TWO locations:
 #   1. $REPO_DIR/skills/              — canonical global skills (categorized)
-#   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
+#   2. $REPO_DIR/.steadfaste-fleet/skills/ — project-level overrides (flat)
 sync_skills() {
   local skill_dest="${CORTEX_DEPLOY_HOME}/skills"
   local synced=0 skipped=0 removed=0 preserved=0
@@ -1713,17 +1713,17 @@ sync_skills() {
     done < <(find "$root_skills" -name "SKILL.md" -type f -print0)
   fi
 
-  # ── Pass 2: Project-level overrides (.hermes-cortex/skills/) ──
+  # ── Pass 2: Project-level overrides (.steadfaste-fleet/skills/) ──
   # This overlay is for CONSUMER projects only. Inside the Cortex repo itself
-  # it shadowed the runtime directory name (~/.hermes-cortex) and made a stray
+  # it shadowed the runtime directory name (~/.steadfaste-fleet) and made a stray
   # governance marker indistinguishable from legitimate repo state. The Cortex
   # repo is identified by carrying the loop-gov MCP server.
-  local override_skills="${REPO_DIR}/.hermes-cortex/skills"
+  local override_skills="${REPO_DIR}/.steadfaste-fleet/skills"
   # Identity test: the Cortex repo carries BOTH its loop-gov MCP server and this
   # script. A CONSUMER project carries neither, so this cannot misfire on a
   # project that merely happens to have an mcp-servers/ dir. Two files, not one:
   # a single-file test is a heuristic that could wrongly disable a consumer's
-  # legitimate .hermes-cortex/skills/ overlay.
+  # legitimate .steadfaste-fleet/skills/ overlay.
   if [[ -f "${REPO_DIR}/mcp-servers/loop-gov-mcp.py" && -f "${REPO_DIR}/ops/scripts/cortex-update.sh" ]]; then
     override_skills="/nonexistent-cortex-repo-overlay"
   fi
@@ -1788,9 +1788,9 @@ sync_skills() {
 
   # ── Pass 3: Clean up stale deployed skills ──
   # Always runs — NOT gated behind the overrides dir (a machine without
-  # .hermes-cortex/skills/ overrides must still prune stale deployed
+  # .steadfaste-fleet/skills/ overrides must still prune stale deployed
   # skills; the old early-return made Pass 3 dead code on every host).
-  # NOTE: skill_dest may be a symlink (e.g. ~/.hermes-cortex/skills →
+  # NOTE: skill_dest may be a symlink (e.g. ~/.steadfaste-fleet/skills →
   # ~/.hermes/skills) — use find -L so GNU find traverses it; without -L
   # the find returns nothing and stale skill dirs (renamed categories,
   # deleted skills) linger forever.
@@ -2188,7 +2188,7 @@ deploy_system_scripts() {
 
   # Remove old local copies — canonical version is now in /usr/local/sbin/
   local home_link="${CORTEX_DEPLOY_HOME}/scripts/install-nginx-full.sh"
-  local agent_link="${CORTEX_HOME}/.hermes-cortex/scripts/install-nginx-full.sh"
+  local agent_link="${CORTEX_HOME}/.steadfaste-fleet/scripts/install-nginx-full.sh"
   [[ -f "$home_link" ]] && rm -f "$home_link"
   [[ -f "$agent_link" ]] && rm -f "$agent_link"
 }
@@ -2598,7 +2598,7 @@ remove_cost_tracking() {
     local _py="" _cand
     for _cand in "${CORTEX_PYTHON:-}" python3 /usr/bin/python3 \
                  "${CORTEX_DEPLOY_HOME}/venv/bin/python" \
-                 "${HOME}/.hermes-cortex/venv/bin/python" \
+                 "${HOME}/.steadfaste-fleet/venv/bin/python" \
                  "${HOME}/.hermes/hermes-agent/venv/bin/python"; do
       [[ -n "$_cand" ]] || continue
       command -v "$_cand" >/dev/null 2>&1 || continue
@@ -3054,7 +3054,7 @@ main() {
   [[ -f "$os_config" ]] && source "$os_config" 2>/dev/null || true
 
   # ── Agent identity (git authorship) ──
-  # Read/provision ~/.hermes-cortex/agent.env (per-host, gitignored) and set
+  # Read/provision ~/.steadfaste-fleet/agent.env (per-host, gitignored) and set
   # the repo's git identity so commits carry the agent's name, not the shared
   # account's. Non-orch hosts must have agent.env provisioned (the hostname→
   # agent mapping is infrastructure and stays out of the public repo).
@@ -3063,7 +3063,7 @@ main() {
   if ! ensure_agent_identity; then
     error "Agent identity not provisioned — cannot set git authorship."
     error "Set AGENT_NAME=<your-agent> in the environment, or create:"
-    error "  ${HOME}/.hermes-cortex/agent.env  (AGENT_NAME=<your-agent>)"
+    error "  ${HOME}/.steadfaste-fleet/agent.env  (AGENT_NAME=<your-agent>)"
     exit 1
   fi
   git config user.name  "$(git_author_name)"  2>/dev/null || true
@@ -3076,8 +3076,8 @@ main() {
   # and put a 3.14 tools python ahead of /usr/bin. The declaration lives in the same per-host
   # agent.env as the identity, and an operator's value is NEVER overwritten — a host may
   # legitimately point elsewhere (a different venv, a Homebrew python on macOS).
-  _agent_env="${HOME}/.hermes-cortex/agent.env"
-  _declared_default="${HOME}/.hermes-cortex/venv/bin/python3"
+  _agent_env="${HOME}/.steadfaste-fleet/agent.env"
+  _declared_default="${HOME}/.steadfaste-fleet/venv/bin/python3"
   if [[ -f "$_agent_env" ]] && grep -q '^CORTEX_PYTHON=' "$_agent_env" 2>/dev/null; then
     info "Fleet interpreter: $(grep -E '^CORTEX_PYTHON=' "$_agent_env" | head -1 | cut -d= -f2-) (declared in agent.env)"
   elif [[ -f "$_agent_env" ]]; then
@@ -3094,7 +3094,7 @@ main() {
   # Verify we're in the repo
   if [[ ! -d "${REPO_DIR}/.git" ]]; then
     error "Not a git repository: ${REPO_DIR}"
-    echo "  Set REPO_DIR=<path> or run from the hermes-cortex repo directory."
+    echo "  Set REPO_DIR=<path> or run from the steadfaste-fleet repo directory."
     exit 1
   fi
 
@@ -3219,7 +3219,7 @@ main() {
         cp "$local_agents" "${local_agents}.local"
         warn "AGENTS.md has local-only content not in repo source"
         warn "  → Local copy saved to ~/.hermes/AGENTS.md.local"
-        warn "  → Check: diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md"
+        warn "  → Check: diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md"
         while IFS= read -r line; do
           warn "    + ${line:0:80}"
         done <<< "$local_only_lines"
@@ -3358,7 +3358,7 @@ main() {
   fi
 
   # ── The fleet venv must EXIST and be able to RUN what we point at it ──
-  # ~/.hermes-cortex/venv is the interpreter the MCP-server registrations below use, and it
+  # ~/.steadfaste-fleet/venv is the interpreter the MCP-server registrations below use, and it
   # is a UV venv (no pip binary). A venv EXISTING proves nothing about what is inside it
   # (2026-10-08: it held only psycopg, so any server registered against it could not start,
   # and the daily regression gate failed every day on PyYAML).
@@ -3369,7 +3369,7 @@ main() {
   # directory": the venv was never there, and the deploy that should have said so said
   # nothing. Both branches now defer (fail closed): a host that cannot run its MCP servers or
   # its governance must not report a clean update.
-  _fleet_venv_dir="${HOME}/.hermes-cortex/venv"
+  _fleet_venv_dir="${HOME}/.steadfaste-fleet/venv"
   _fleet_venv="${_fleet_venv_dir}/bin/python3"
   _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
   # CREATE it when absent (2026-10-13): nothing in this repo created that venv, so a host
@@ -3429,8 +3429,8 @@ main() {
     if hermes mcp list 2>/dev/null | grep -q "tasks"; then
       : # already registered
     else
-      local mcp_venv="${HOME}/.hermes-cortex/venv/bin/python3"
-      local mcp_server="${HOME}/hermes-cortex/mcp-servers/task-mcp.py"
+      local mcp_venv="${HOME}/.steadfaste-fleet/venv/bin/python3"
+      local mcp_server="${HOME}/steadfaste-fleet/mcp-servers/task-mcp.py"
       if [[ -x "$mcp_venv" && -f "$mcp_server" ]]; then
         info "Registering tasks MCP server…"
         if hermes mcp add tasks --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
@@ -3558,7 +3558,7 @@ main() {
   echo "$new_commit" > "$LAST_COMMIT_FILE"
   info "State saved: ${new_commit:0:8}"
 
-  # Ensure ~/.hermes/scripts/ points to ~/.hermes-cortex/scripts/
+  # Ensure ~/.hermes/scripts/ points to ~/.steadfaste-fleet/scripts/
   # (cron security guard resolves this directory and checks script
   # paths against it — a directory-level symlink means both sides
   # of the check land in the same tree, no core agent patch needed)
@@ -3576,7 +3576,7 @@ main() {
     if [ -z "$_UNIQUE" ]; then
       rm -rf "$_HERMES_AGENT_SCRIPTS"
       ln -sf "$_CORTEX_DEPLOY_SCRIPTS" "$_HERMES_AGENT_SCRIPTS"
-      info "Linked ~/.hermes-cortex/scripts/ (directory symlink)"
+      info "Linked ~/.steadfaste-fleet/scripts/ (directory symlink)"
     else
       warn "~/.hermes/scripts/ has unique files: $_UNIQUE — not replacing"
     fi
@@ -3613,17 +3613,17 @@ main() {
   clean_stale_deploys
 
   # ── Migrate: legacy private repos to ~/private-data/ ──
-  if [[ -d "$HOME/hermes-cortex-private" ]]; then
-    if [[ -d "$HOME/hermes-cortex-private/.git" ]]; then
-      info "Legacy private repo detected: ~/hermes-cortex-private"
+  if [[ -d "$HOME/steadfaste-fleet-private" ]]; then
+    if [[ -d "$HOME/steadfaste-fleet-private/.git" ]]; then
+      info "Legacy private repo detected: ~/steadfaste-fleet-private"
       info "  → Moving personal data to ~/private-data/ (no git)"
       warn "  Content (decisions, bible, references, lessons, messages) stays local."
       warn "  To migrate automatically, run:"
-      warn "    mv ~/hermes-cortex-private ~/private-data"
+      warn "    mv ~/steadfaste-fleet-private ~/private-data"
       warn "    rm -rf ~/private-data/.git"
       warn "  Or manually copy what you need and remove the repo."
     else
-      info "~/hermes-cortex-private already migrated (no .git)"
+      info "~/steadfaste-fleet-private already migrated (no .git)"
     fi
   fi
   if [[ -d "$HOME/agent-inbox-private" ]]; then
@@ -3715,11 +3715,11 @@ main() {
   # change in the manifest reaches live jobs automatically on every update.
   # (Output captured to a var first — piping python to grep -q under
   # set -euo pipefail can SIGPIPE-abort the deploy on large output.)
-  if command -v hermes &>/dev/null && [[ -f "${REPO_DIR:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml" ]]; then
+  if command -v hermes &>/dev/null && [[ -f "${REPO_DIR:-$HOME/steadfaste-fleet}/ops/install/cron-manifest.yaml" ]]; then
     local _manifest_out _manifest_script
-    _manifest_script="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/scripts/manage/cron_manifest.py"
+    _manifest_script="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}/scripts/manage/cron_manifest.py"
     if [[ ! -f "$_manifest_script" ]]; then
-      _manifest_script="${REPO_DIR:-$HOME/hermes-cortex}/ops/scripts/manage/cron_manifest.py"
+      _manifest_script="${REPO_DIR:-$HOME/steadfaste-fleet}/ops/scripts/manage/cron_manifest.py"
     fi
     _manifest_out="$(python3 "$_manifest_script" --repair 2>/dev/null || true)"
     if [[ "$_manifest_out" == *$'\n'UPDATED* || "$_manifest_out" == *$'\n'CREATED* || "$_manifest_out" == UPDATED* || "$_manifest_out" == CREATED* ]]; then
@@ -3741,7 +3741,7 @@ main() {
     # gateway process (the drop-in being replaced exports the OLD value,
     # so `:-default` in the installer would re-apply it forever). Only
     # unset when the per-machine override is NOT declared in
-    # ~/hermes-cortex/.env (sourced above) — an explicit line survives.
+    # ~/steadfaste-fleet/.env (sourced above) — an explicit line survives.
     if ! grep -q '^HERMES_CRON_TIMEOUT=' "${REPO_DIR}/.env" 2>/dev/null; then
       unset HERMES_CRON_TIMEOUT
     fi

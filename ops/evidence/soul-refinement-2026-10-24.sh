@@ -18,8 +18,8 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO" || exit 2
 
 OUT="${OUT:-$REPO/docs/evidence/soul-refinement-2026-10-24.txt}"
-DEPLOYED="${DEPLOYED:-$HOME/.hermes-cortex/skills/devops/fleet-commands/SKILL.md}"
-BACKUP="${BACKUP:-$HOME/.hermes-cortex/state/deploy-backups/SKILL.md.20261024_232131.bak}"
+DEPLOYED="${DEPLOYED:-$HOME/.steadfaste-fleet/skills/devops/fleet-commands/SKILL.md}"
+BACKUP="${BACKUP:-$HOME/.steadfaste-fleet/state/deploy-backups/SKILL.md.20261024_232131.bak}"
 STRAY="docs/evidence/weekly-dream-content-2026-10-24.md.tmp"
 
 # The pass's OWN resolved mining window, frozen at the moment the pass resolved

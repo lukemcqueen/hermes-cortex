@@ -752,7 +752,7 @@ def test_add_defaults_project_scope_source():
     #          priority, due, tags, source, session_id, parent, kind, corr]
     # (`status` became a bound param on 2026-10-19 when both writers started
     # sharing UPSERT_SQL; p_depends_on is the literal NULL in that SQL.)
-    assert params[4] == "hermes-cortex"
+    assert params[4] == "steadfaste-fleet"
     assert params[7] == "personal"
     assert params[8] == "pending"
     assert params[12] == "manual"
@@ -805,7 +805,7 @@ def _add_write_params(seen):
 
 def test_add_child_inherits_parent_story_project():
     """[queue/2] root cause: a slice minted with --parent but no --project must
-    land in the PARENT story's project, not the 'hermes-cortex' default (which
+    land in the PARENT story's project, not the 'steadfaste-fleet' default (which
     put 7 kaesa slices in the orchestrator's project, corrected 2026-10-16)."""
     seen = _add_child(parent_project="kaesa-90day")
     assert any("SELECT project FROM tasks.tasks" in s for s, _ in seen), \
@@ -818,7 +818,7 @@ def test_add_child_keeps_default_when_parent_project_unavailable():
     must never invent a project."""
     seen = _add_child(parent_project="")
     assert any("SELECT project FROM tasks.tasks" in s for s, _ in seen)
-    assert _add_write_params(seen)[4] == "hermes-cortex"
+    assert _add_write_params(seen)[4] == "steadfaste-fleet"
 
 
 def test_add_explicit_project_beats_parent_inheritance():
@@ -833,7 +833,7 @@ def test_add_parentless_keeps_default_without_probe():
     """The default still applies to parentless rows, and no probe is issued."""
     seen = _add_child(parent=None)
     assert not any("SELECT project FROM tasks.tasks" in s for s, _ in seen)
-    assert _add_write_params(seen)[4] == "hermes-cortex"
+    assert _add_write_params(seen)[4] == "steadfaste-fleet"
 
 
 def test_priority_bounds():
@@ -996,7 +996,7 @@ def test_restore_repo_read_casts_the_uuid_array():
 
 def _restore_row(**over):
     row = {"id": RESTORE_ID, "content": "c", "agent_name": "the-agent",
-           "project": "hermes-cortex", "scope": "personal", "status": "pending",
+           "project": "steadfaste-fleet", "scope": "personal", "status": "pending",
            "priority": 1, "source": "manual"}
     row.update(over)
     return row
@@ -1014,9 +1014,9 @@ def _upsert_params(mock_psql):
 
 def test_restore_writes_an_explicit_repo(tmp_path):
     out, _err, exc, mock_psql = _restore(
-        tmp_path, _restore_row(repo="hermes-cortex"), _meta_line())
+        tmp_path, _restore_row(repo="steadfaste-fleet"), _meta_line())
     assert exc is None, out
-    assert _upsert_params(mock_psql)[5] == "hermes-cortex", \
+    assert _upsert_params(mock_psql)[5] == "steadfaste-fleet", \
         "an explicit repo key must be written (this is the retag surface)"
     assert "1 changed" in out
 
@@ -1330,7 +1330,7 @@ def test_add_passes_the_plan_as_the_last_argument():
     with patch.object(task_db, "psql", return_value="") as mock_psql, \
          patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
         out, err, exc = _run_stdin_capture(
-            task_db.cmd_add, "a slice", "esther", 2, "hermes-cortex",
+            task_db.cmd_add, "a slice", "esther", 2, "steadfaste-fleet",
             "testrepo", None, "personal", None, None, [], "manual", None,
             "slice", True, None, None, None, plan="do the thing")
     assert exc is None, err
@@ -1409,7 +1409,7 @@ def test_add_parent_prefix_resolves_to_full_id():
                       side_effect=[f"{FULL_UUID}\n", ""]) as mock_psql, \
          patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
         out, err, exc = _run_stdin_capture(
-            task_db.cmd_add, "a slice", "esther", 2, "hermes-cortex",
+            task_db.cmd_add, "a slice", "esther", 2, "steadfaste-fleet",
             None, None, "personal", None, None, [], "manual",
             PREFIX, "slice", True, None, None, None)
     assert exc is None, err

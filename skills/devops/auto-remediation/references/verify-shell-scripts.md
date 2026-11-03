@@ -12,7 +12,7 @@ doesn't apply to shell; use this recipe instead.
 set -euo pipefail
 
 SCRIPT_PATH="$HOME/.hermes/scripts/<script-name>"
-REPO_PATH="$HOME/hermes-cortex/ops/scripts/manage/<script-name>"
+REPO_PATH="$HOME/steadfaste-fleet/ops/scripts/manage/<script-name>"
 PASS=0; FAIL=0
 
 verify() {

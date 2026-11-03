@@ -3,7 +3,7 @@ name: watchdog-alert-design
 description: Fix periodic health watchdogs that alert without flapping.
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:

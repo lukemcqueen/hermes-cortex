@@ -29,7 +29,7 @@ An agent's "memory" across turns is its context window. When context compacts:
 
 ### Component A: Structured Skills State File
 
-Replace `.skills-loaded` with `~/.hermes-cortex/state/skills-state.json`:
+Replace `.skills-loaded` with `~/.steadfaste-fleet/state/skills-state.json`:
 
 ```json
 {

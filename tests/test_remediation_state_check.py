@@ -70,7 +70,7 @@ def test_split_board_check_discriminates(tmp_path, monkeypatch):
     (fake_dir / "task-db.py").write_text("def cmd_list_board():\n    print('pending')\n")
     assert mod.check_split_board_is_deployed().startswith("FAIL")
 
-    real = Path.home() / ".hermes-cortex" / "scripts" / "task-db.py"
+    real = Path.home() / ".steadfaste-fleet" / "scripts" / "task-db.py"
     if not real.is_file():
         return
     (fake_dir / "task-db.py").write_text(real.read_text(encoding="utf-8"))

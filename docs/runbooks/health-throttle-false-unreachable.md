@@ -71,7 +71,7 @@ worker/agent IP to the `geo` map when it joins off-LAN.
 Then apply:
 
 ```bash
-sudo cp ~/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
+sudo cp ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
 

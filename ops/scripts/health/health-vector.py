@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-health-vector.py — Hermes Cortex Agent Health Vector (9-item)
+health-vector.py — Steadfaste Fleet Agent Health Vector (9-item)
 
 Two modes:
   1. Standalone:  python3 health-vector.py        → JSON to stdout
@@ -366,7 +366,7 @@ _MYCORTEX_TTL = 60
 
 def check_mycortex() -> int:
     """mycortex : 1 = healthy, 0 = not installed, -1 = installed but down."""
-    cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
+    cli = os.path.expanduser("~/.steadfaste-fleet/scripts/mycortex")
     if not os.path.exists(cli):
         return 0  # not installed on this system
     now = time.time()

@@ -8,7 +8,7 @@
 #
 #  Reads agent identity from:
 #    1. AGENT_NAME env var (set by Hermes session)
-#    2. ~/.hermes-cortex/agent.env (canonical per-host identity)
+#    2. ~/.steadfaste-fleet/agent.env (canonical per-host identity)
 #    NEVER hostname — a machine name is not an agent identity (Luke
 #    directive 2026-08-14). Missing identity fails loudly.
 #
@@ -20,7 +20,7 @@
 #    hermes cron create name=cortex-bus schedule="0 */2 * * *" \
 #      prompt="Process bus messages..." context_from=<job_id>
 #
-#  Auth: Uses ~/hermes-cortex/.env if present (BASIC auth).
+#  Auth: Uses ~/steadfaste-fleet/.env if present (BASIC auth).
 #  Or set INBOX_AUTH env var to "user:pass".
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -28,12 +28,12 @@ set -euo pipefail
 # ── Resolve agent identity ────────────────────────────────
 AGENT="${AGENT_NAME:-${HERMES_AGENT:-}}"
 
-if [ -z "$AGENT" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
-  AGENT=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')
+if [ -z "$AGENT" ] && [ -f "${HOME}/.steadfaste-fleet/agent.env" ]; then
+  AGENT=$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')
 fi
 
 if [ -z "$AGENT" ]; then
-  echo "ERROR: Cannot determine agent name. Set AGENT_NAME env var or create ~/.hermes-cortex/agent.env (AGENT_NAME=<your-agent>)" >&2
+  echo "ERROR: Cannot determine agent name. Set AGENT_NAME env var or create ~/.steadfaste-fleet/agent.env (AGENT_NAME=<your-agent>)" >&2
   exit 1
 fi
 
@@ -43,11 +43,11 @@ BUS_URL="${CORTEX_BUS_URL:-https://your-domain.com:13004}"
 AUTH=""
 
 # Try loading auth from config file — check new name first, fall back to old
-AUTH_FILE="${HOME}/hermes-cortex/.env"
+AUTH_FILE="${HOME}/steadfaste-fleet/.env"
 if [ ! -f "$AUTH_FILE" ]; then
-  AUTH_FILE="${HOME}/.hermes-cortex/moses-inbox.conf"
+  AUTH_FILE="${HOME}/.steadfaste-fleet/moses-inbox.conf"
   if [ -f "$AUTH_FILE" ]; then
-    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/hermes-cortex/.env" >&2
+    echo "[deprecated] Rename ~/.hermes/moses-inbox.conf → ~/steadfaste-fleet/.env" >&2
   fi
 fi
 if [ -f "$AUTH_FILE" ]; then

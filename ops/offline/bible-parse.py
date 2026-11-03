@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Bible Text Parser
+Steadfaste Fleet — Bible Text Parser
 ──────────────────────────────────
 Converts raw Bible text files (Project Gutenberg, eBible.org, or other
 plain-text formats) into structured JSON for the offline reader.

@@ -53,11 +53,11 @@ def test_orch_peer_direction(backup_mod):
 
 
 def test_cloud_repos_excluded_from_backup(backup_mod, monkeypatch):
-    """Git working trees (hermes-agent checkout, hermes-cortex) live in the
+    """Git working trees (hermes-agent checkout, steadfaste-fleet) live in the
     cloud (GitHub) — they must be excluded from the restic source set."""
     assert backup_mod.REPO_EXCLUDES
     for excl in backup_mod.REPO_EXCLUDES:
-        assert ".hermes" in excl or "hermes-cortex" in excl
+        assert ".hermes" in excl or "steadfaste-fleet" in excl
 
 
 def test_package_manifest_commands_cover_all_families(backup_mod):

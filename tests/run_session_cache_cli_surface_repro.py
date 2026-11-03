@@ -12,7 +12,7 @@ any work:
     session-cache-build build    -> ModuleNotFoundError: No module named 'hermes_models'
 
 The canonical, registered builder is ops/scripts/manage/agent-session_cache.py
-(deployed to ~/.hermes-cortex/scripts/agent-session_cache.py) — the same script
+(deployed to ~/.steadfaste-fleet/scripts/agent-session_cache.py) — the same script
 the agent-session-cache-build cron invokes — and it already carries the
 sys.path fallback for exactly this relocation. It was simply never wired to the
 CLI name.
@@ -108,7 +108,7 @@ def main():
         target = Path(cli).resolve()
         check(
             "live CLI resolves to the canonical builder",
-            target == (Path.home() / ".hermes-cortex/scripts/agent-session_cache.py").resolve()
+            target == (Path.home() / ".steadfaste-fleet/scripts/agent-session_cache.py").resolve()
             or "agent-session_cache.py" in target.name,
             str(target),
         )

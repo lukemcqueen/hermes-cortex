@@ -80,7 +80,7 @@ python3 ops/scripts/manage/soul-merge.py --check   # exit 0 = idempotent
 python3 ops/scripts/manage/cortex-doctor.py --quiet  # HEALTHY
 python3 ops/scripts/agent/agents-doc-audit.py --repo . --json  # missing: []
 bash ops/scripts/secret-leak-detector.sh           # clean
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <f> --level A2 --gate
+python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <f> --level A2 --gate
 ```
 
 ## Push chain for doc changes (pre-push hook)

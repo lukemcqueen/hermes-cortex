@@ -81,7 +81,7 @@ print('PAT2 lines:', [content[:m.start()].count(chr(10))+1 for m in pat2.findite
 ```
 
 Or simply run the A4 gate and confirm 0 findings before commit — the deployed
-gate is the judge: `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <file> --level A4 --gate`.
+gate is the judge: `python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <file> --level A4 --gate`.
 
 Note: the verifier's `--json` output may mix stale/cached findings from prior
 runs (it reported findings against `core/governance/loop_evaluator.py` while

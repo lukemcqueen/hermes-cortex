@@ -11,7 +11,7 @@ single satisfaction metric can never breed the refusal out of the agent.
   - challenged=true  → pushback happened; override_outcome is
     "upheld" | "overridden".
 
-The log lives at ~/.hermes-cortex/data/refusals.jsonl (override with the
+The log lives at ~/.steadfaste-fleet/data/refusals.jsonl (override with the
 REFUSALS_LOG env var or --path).
 
 Usage:
@@ -25,7 +25,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_PATH = Path.home() / ".hermes-cortex" / "data" / "refusals.jsonl"
+DEFAULT_PATH = Path.home() / ".steadfaste-fleet" / "data" / "refusals.jsonl"
 
 
 def log_path() -> Path:

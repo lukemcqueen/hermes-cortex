@@ -1,4 +1,4 @@
-# AXI Principles for Hermes Cortex — Agent-Ergonomic Output
+# AXI Principles for Steadfaste Fleet — Agent-Ergonomic Output
 
 > Distilled from the AXI project (Agent eXperience Interface, by Kun Chen,
 > MIT — the AXI website and the AXI skill in the
@@ -120,7 +120,7 @@ version and exit 0 **fast** (probed constantly; latency is an ergonomics
 property — keep the version in a leaf module so the heavy CLI graph never
 loads for a version probe).
 
-## Hermes Cortex status quo
+## Steadfaste Fleet status quo
 
 | Surface | Already conforms | Gaps |
 |---|---|---|

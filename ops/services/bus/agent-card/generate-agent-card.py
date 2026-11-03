@@ -35,7 +35,7 @@ def generate_card() -> dict:
     agent_name = get_env("AGENT_NAME", "", "CORTEX_AGENT_NAME")
     if not agent_name or agent_name == "unknown":
         print("❌ AGENT_NAME not configured — set AGENT_NAME= (or CORTEX_AGENT_NAME=) "
-              "in the environment / ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env",
+              "in the environment / ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env",
               file=sys.stderr)
         sys.exit(1)
     domain = os.environ.get("CORTEX_DOMAIN", "localhost")
@@ -44,7 +44,7 @@ def generate_card() -> dict:
     # Build a description based on the agent name
     description = os.environ.get(
         "AGENT_DESCRIPTION",
-        f"{agent_name.title()} agent — part of the Hermes Cortex multi-agent fleet."
+        f"{agent_name.title()} agent — part of the Steadfaste Fleet multi-agent fleet."
     )
 
     return {
@@ -52,7 +52,7 @@ def generate_card() -> dict:
         "description": description,
         "url": f"https://{domain}:{port}/bus/agent-card",
         "provider": {
-            "name": "Hermes Cortex",
+            "name": "Steadfaste Fleet",
             "version": "1.0",
         },
         "capabilities": {

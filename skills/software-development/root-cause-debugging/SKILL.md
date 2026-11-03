@@ -2,7 +2,7 @@
 name: root-cause-debugging
 description: "6-phase root cause debugging: feedback loop, reproduce, pattern, hypothesise + instrument, fix, cleanup. Understand bugs before fixing."
 version: 2.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

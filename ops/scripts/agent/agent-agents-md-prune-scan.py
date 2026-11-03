@@ -13,9 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path.home() / "hermes-cortex"
+REPO = Path.home() / "steadfaste-fleet"
 AUDIT_SCRIPT = (
-    Path.home() / ".hermes-cortex" / "scripts" / "agents-doc-audit.py"
+    Path.home() / ".steadfaste-fleet" / "scripts" / "agents-doc-audit.py"
 )
 
 

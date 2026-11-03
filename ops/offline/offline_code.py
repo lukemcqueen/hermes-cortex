@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Offline Code Assistant
+Steadfaste Fleet — Offline Code Assistant
 ───────────────────────────────────────
 Local code snippet RAG: search a curated corpus of algorithms, patterns,
 and API examples, then generate code using Ollama.
@@ -25,8 +25,8 @@ import json, os, re, sys, subprocess, textwrap, time, urllib.error, urllib.reque
 from pathlib import Path
 from typing import Optional
 
-# Ensure ~/.hermes-cortex/scripts/ is on sys.path before importing hermes_paths
-_HERMES_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
+# Ensure ~/.steadfaste-fleet/scripts/ is on sys.path before importing hermes_paths
+_HERMES_SCRIPTS = Path.home() / ".steadfaste-fleet" / "scripts"
 if str(_HERMES_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_HERMES_SCRIPTS))
 

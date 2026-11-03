@@ -34,7 +34,7 @@ import pathlib
 import subprocess
 import sys
 
-DEFAULT_REPO = pathlib.Path.home() / "hermes-cortex"
+DEFAULT_REPO = pathlib.Path.home() / "steadfaste-fleet"
 GATE_REL = pathlib.Path("mcp-servers") / "loop-gov-mcp.py"
 
 

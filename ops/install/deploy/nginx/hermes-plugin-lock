@@ -10,13 +10,13 @@
 #
 #  Operates on:
 #    ~/.hermes/plugins/governance-enforcer/__init__.py
-#    ~/.hermes-cortex/scripts/pre-commit-score
-#    ~/.hermes-cortex/scripts/pre-push-pull
-#    ~/.hermes-cortex/scripts/post-commit-audit
-#    ~/.hermes-cortex/scripts/post-push-audit
-#    ~/.hermes-cortex/hooks/post-merge
-#    ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-#    ~/.hermes-cortex/hooks/                    (directory — symlink guard)
+#    ~/.steadfaste-fleet/scripts/pre-commit-score
+#    ~/.steadfaste-fleet/scripts/pre-push-pull
+#    ~/.steadfaste-fleet/scripts/post-commit-audit
+#    ~/.steadfaste-fleet/scripts/post-push-audit
+#    ~/.steadfaste-fleet/hooks/post-merge
+#    ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py
+#    ~/.steadfaste-fleet/hooks/                    (directory — symlink guard)
 #    /usr/local/sbin/hermes-plugin-lock         (self-protection)
 #
 #  Paths are hardcoded and validated — no argument injection.
@@ -48,7 +48,7 @@
 #  ── Audit ──────────────────────────────────────────────────
 #  Every unlock/update attempt (accepted OR refused) is appended to
 #  /var/log/hermes-enforcement.log (Linux; root-owned, append-only
-#  chattr +a) or ~/.hermes-cortex/state/enforcement-audit.log (macOS).
+#  chattr +a) or ~/.steadfaste-fleet/state/enforcement-audit.log (macOS).
 #  governance-auditor.py surfaces unauthorized attempts.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -69,31 +69,31 @@ REAL_HOME="${REAL_HOME:-$HOME}"
 
 TARGETS=(
   "${REAL_HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-  "${REAL_HOME}/.hermes-cortex/scripts/pre-commit-score"
-  "${REAL_HOME}/.hermes-cortex/scripts/pre-push-pull"
-  "${REAL_HOME}/.hermes-cortex/scripts/post-commit-audit"
-  "${REAL_HOME}/.hermes-cortex/scripts/post-push-audit"
+  "${REAL_HOME}/.steadfaste-fleet/scripts/pre-commit-score"
+  "${REAL_HOME}/.steadfaste-fleet/scripts/pre-push-pull"
+  "${REAL_HOME}/.steadfaste-fleet/scripts/post-commit-audit"
+  "${REAL_HOME}/.steadfaste-fleet/scripts/post-push-audit"
   # hooks/post-merge: immutable (chattr +i) but NOT 444 — git ignores
   # non-executable hooks. Deployed 700 (owner-only, least privilege) via
   # cortex-update.sh chmod after register, then locked +i so it can't be
   # swapped/tampered, while staying executable. The chmod-444 loop in
   # cortex-update.sh must NOT include post-merge (2026-08-03, Titus ISSUE-2).
-  "${REAL_HOME}/.hermes-cortex/hooks/post-merge"
-  "${REAL_HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+  "${REAL_HOME}/.steadfaste-fleet/hooks/post-merge"
+  "${REAL_HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
   # hooks DIRECTORY itself — chattr +i on the dir prevents symlink swaps
   # (hooks/pre-commit is a symlink; without dir immutability an attacker
   # can rm the symlink and re-point it at an arbitrary script)
-  "${REAL_HOME}/.hermes-cortex/hooks"
+  "${REAL_HOME}/.steadfaste-fleet/hooks"
 )
 
 # ── Self-protection: the binary itself ────────────────────
-# Deployed to ~/.hermes-cortex/scripts/ (user-owned, chflags/chattr works
+# Deployed to ~/.steadfaste-fleet/scripts/ (user-owned, chflags/chattr works
 # without sudo on macOS; chattr needs root on Linux)
 if [[ "$_os" == "Darwin" ]]; then
   TARGETS+=("/usr/local/bin/hermes-plugin-lock")
-  TARGETS+=("${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock")
+  TARGETS+=("${REAL_HOME}/.steadfaste-fleet/scripts/hermes-plugin-lock")
 else
-  TARGETS+=("${REAL_HOME}/.hermes-cortex/scripts/hermes-plugin-lock")
+  TARGETS+=("${REAL_HOME}/.steadfaste-fleet/scripts/hermes-plugin-lock")
 fi
 
 _lock_file() {
@@ -124,9 +124,9 @@ _unlock_file() {
 #   First use creates it (helper runs as root via NOPASSWD sudo) and
 #   sets chattr +a so even the moses account can't truncate/rotate it
 #   (only root-owned chattr -a can).
-# macOS: ~/.hermes-cortex/state/enforcement-audit.log (no root here).
+# macOS: ~/.steadfaste-fleet/state/enforcement-audit.log (no root here).
 AUDIT_LOG="/var/log/hermes-enforcement.log"
-[[ "$_os" == "Darwin" ]] && AUDIT_LOG="${REAL_HOME}/.hermes-cortex/state/enforcement-audit.log"
+[[ "$_os" == "Darwin" ]] && AUDIT_LOG="${REAL_HOME}/.steadfaste-fleet/state/enforcement-audit.log"
 
 _audit() {
   # args: action result channel exit_code
@@ -164,7 +164,7 @@ _require_sanctioned_caller() {
   _audit "$action" "REFUSED" "${token:-no-token}" 1
   echo "⛔ REFUSED: the enforcement chain may only be updated via the sanctioned path." >&2
   echo "  1. Run the sanctioned update (allowed for every agent):" >&2
-  echo "       bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
+  echo "       bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
   echo "     It deploys, relocks, and verifies automatically." >&2
   echo "  2. Or send an inbox PROPOSAL to Moses/Esther to ship the change fleet-wide." >&2
   echo "  This attempt was logged. (token=${token:-none})" >&2
@@ -175,13 +175,13 @@ case "${1:-help}" in
   update)
     _require_sanctioned_caller "update" "${2:-}" || exit 1
     _this_script="$0"
-    _repo_source="${REAL_HOME}/hermes-cortex/ops/install/deploy/nginx/hermes-plugin-lock"
+    _repo_source="${REAL_HOME}/steadfaste-fleet/ops/install/deploy/nginx/hermes-plugin-lock"
     if [[ -f "$_repo_source" ]]; then
       # P1-A hardening: only deploy from COMMITTED repo source. The working
       # tree is user-writable — allowing `update` from an edited copy would
       # be root code execution (edit the helper, then sudo update). Compare
       # working tree against HEAD; refuse on any diff.
-      if ! git -C "${REAL_HOME}/hermes-cortex" diff --quiet HEAD -- \
+      if ! git -C "${REAL_HOME}/steadfaste-fleet" diff --quiet HEAD -- \
           ops/install/deploy/nginx/hermes-plugin-lock 2>/dev/null; then
         echo "⛔ REFUSED: repo source has UNCOMMITTED changes." >&2
         echo "   Commit (or revert) ops/install/deploy/nginx/hermes-plugin-lock" >&2

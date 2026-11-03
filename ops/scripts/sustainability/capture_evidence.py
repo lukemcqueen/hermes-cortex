@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 OUT = os.path.expanduser("~/.hermes/cron/output")
 CHECKER = os.path.expanduser(
-    "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py")
+    "~/steadfaste-fleet/ops/scripts/sustainability/verify_briefing.py")
 
 
 def _relpath(path):

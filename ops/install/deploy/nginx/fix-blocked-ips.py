@@ -12,7 +12,7 @@ handle the deploy themselves):
   python3 /path/to/fix-blocked-ips.py
 
 Install sudoers rule:
-  echo '$USER ALL=(root) NOPASSWD: $HOME/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py' | \
+  echo '$USER ALL=(root) NOPASSWD: $HOME/steadfaste-fleet/ops/install/deploy/nginx/fix-blocked-ips.py' | \
     sudo tee /etc/sudoers.d/moses
 """
 import os
@@ -148,7 +148,7 @@ def is_valid_public_ip(s: str) -> bool:
 
 
 def repo_dir(repo_arg: str | None = None) -> str:
-    """Detect the hermes-cortex repo directory.
+    """Detect the steadfaste-fleet repo directory.
 
     Resolution order (first match wins):
       1. --repo <path> argv (the deploy wrapper passes the repo root
@@ -158,7 +158,7 @@ def repo_dir(repo_arg: str | None = None) -> str:
       2. CORTEX_REPO env var (direct invocation).
       3. Walk up from script location until we find .git (works when
          running from the repo working tree at any depth).
-      4. $HOME/hermes-cortex (direct run as the owning user).
+      4. $HOME/steadfaste-fleet (direct run as the owning user).
     """
     for candidate in (repo_arg, os.environ.get("CORTEX_REPO")):
         if candidate and os.path.isdir(os.path.join(candidate, ".git")):
@@ -173,9 +173,9 @@ def repo_dir(repo_arg: str | None = None) -> str:
         if parent == current:
             break  # hit filesystem root
         current = parent
-    # Fallback: try ~/hermes-cortex
+    # Fallback: try ~/steadfaste-fleet
     home = os.environ.get("HOME") or os.path.expanduser("~")
-    candidate2 = os.path.join(home, "hermes-cortex")
+    candidate2 = os.path.join(home, "steadfaste-fleet")
     if os.path.isdir(candidate2):
         return candidate2
     return script_dir

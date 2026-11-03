@@ -53,7 +53,7 @@ and a merged skill serves better than two overlapping ones.
    WARN naming the rules it skipped (name charset, YAML parse, duplicate keys). Read that warning
    before trusting a bare `Skills loadable ✅`: it is a weaker result, not a clean one. Repair the
    interpreter (`fix-cortex-venv.py`) and re-run, or invoke the doctor under `CORTEX_PYTHON`/
-   `~/.hermes-cortex/venv/bin/python3`, so the full rule set is actually applied.
+   `~/.steadfaste-fleet/venv/bin/python3`, so the full rule set is actually applied.
    **But the durable fix lives in the CHECKER, not in the invocation.** Advice that says "invoke this
    under the right interpreter" depends on every caller remembering, and the caller that forgets is
    the one that gets a false green. A check should resolve its OWN interpreter — an explicit override
@@ -96,7 +96,7 @@ and a merged skill serves better than two overlapping ones.
 6. **The REPO is the source of truth — a curatorial edit made on the DEPLOYED
    copy is STRANDED, not shipped.** `skill_manage` writes the DEPLOYED copy
    (`~/.hermes/skills/<...>`), while the fleet receives only
-   `hermes-cortex/skills/<category>/<name>/`. A deploy then either overwrites
+   `steadfaste-fleet/skills/<category>/<name>/`. A deploy then either overwrites
    that copy or — where the drift guardrail is in force — SKIPS it; either way
    the lesson reaches no other host, and the doctor reports it as skill drift
    (*"Deployed copy is newer than repo source"*). The doctor names it: *"Deployed copy is

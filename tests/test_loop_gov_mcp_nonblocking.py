@@ -30,7 +30,7 @@ Pinned here:
      probe is measuring nothing
   B. the reviewer timeout is clamped BELOW the client ceiling, and BOTH
      reviewer backends actually resolve their timeout through it
-  C. the shared in-repo secondary marker (.hermes-cortex/.governance-lock, a
+  C. the shared in-repo secondary marker (.steadfaste-fleet/.governance-lock, a
      SINGLE fixed path for the whole repo) is only removed by its OWNER --
      otherwise session A's close unmarks session B's still-live lock
 
@@ -73,10 +73,10 @@ def _sandbox() -> Path:
     home = Path(tempfile.mkdtemp(prefix="loop-gov-nonblocking-"))
     mcp.HOME = home
     mcp.SESSION_FILE = home / ".hermes" / "session.id"
-    mcp.LOOP_DB = home / ".hermes-cortex" / "data" / "loop-governance.db"
-    mcp.CONFIG_PATH = home / ".hermes-cortex" / "data" / "loop-governance-config.json"
-    mcp.CACHE_DB = home / ".hermes-cortex" / "data" / "session-embeddings.db"
-    mcp.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    mcp.LOOP_DB = home / ".steadfaste-fleet" / "data" / "loop-governance.db"
+    mcp.CONFIG_PATH = home / ".steadfaste-fleet" / "data" / "loop-governance-config.json"
+    mcp.CACHE_DB = home / ".steadfaste-fleet" / "data" / "session-embeddings.db"
+    mcp.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     mcp.FORCE_AUDIT_PATH = mcp.GOVERNANCE_STATE_DIR / "force-acquire-audit.json"
     mcp.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
     mcp._require_dogfood = lambda: None
@@ -271,9 +271,9 @@ def _lock_state(sid: str) -> dict:
 def test_a_lock_write_does_not_touch_the_governed_repo():
     """A lock write must leave the governed repo untouched.
 
-    The repo-local `.hermes-cortex/.governance-lock` marker was removed ON PURPOSE:
+    The repo-local `.steadfaste-fleet/.governance-lock` marker was removed ON PURPOSE:
     inside a governed repo the name shadows the RUNTIME directory
-    `~/.hermes-cortex`, so repo-local governance state was indistinguishable from
+    `~/.steadfaste-fleet`, so repo-local governance state was indistinguishable from
     legitimate state and made the repo a consumer of the deploy it is the source
     of. cortex-doctor now FAILS when that directory is present for any reason.
 
@@ -290,9 +290,9 @@ def test_a_lock_write_does_not_touch_the_governed_repo():
 
     mcp._write_lock(_lock_state("A"), {"session_id": "A"})
     mcp._write_lock(_lock_state("B"), {"session_id": "B"})
-    assert not (repo / ".hermes-cortex").exists(), (
+    assert not (repo / ".steadfaste-fleet").exists(), (
         "a lock write created repo-local governance state -- the name shadows the "
-        "runtime ~/.hermes-cortex directory, and cortex-doctor fails on its presence"
+        "runtime ~/.steadfaste-fleet directory, and cortex-doctor fails on its presence"
     )
 
     # Each session still holds its OWN lock, and a peer's release cannot touch it.
@@ -306,7 +306,7 @@ def test_a_lock_write_does_not_touch_the_governed_repo():
 
     mcp._release_lock({"session_id": "B"})
     assert not b_lock.exists(), "B could not release its own lock"
-    assert not (repo / ".hermes-cortex").exists(), "a release wrote repo-local state"
+    assert not (repo / ".steadfaste-fleet").exists(), "a release wrote repo-local state"
 
 
 def test_a_session_can_close_its_own_lock_while_another_holds_one():

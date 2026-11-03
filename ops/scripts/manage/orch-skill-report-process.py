@@ -30,8 +30,8 @@ CORTEX_BUS_TOKEN = os.environ.get("CORTEX_BUS_TOKEN", "")
 
 # Try reading from .env if env vars not set
 if not CORTEX_BUS_TOKEN:
-    for conf in [Path.home() / "hermes-cortex" / ".env",
-                 Path.home() / "hermes-cortex" / ".env",
+    for conf in [Path.home() / "steadfaste-fleet" / ".env",
+                 Path.home() / "steadfaste-fleet" / ".env",
                  Path.home() / ".hermes" / ".env"]:
         if conf.exists():
             try:
@@ -51,7 +51,7 @@ if not CORTEX_BUS_TOKEN:
             break
 
 BUS_URL = CORTEX_BUS_URL.rstrip("/")
-STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state"
+STATE_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state"
 PROCESSED_MARKER = STATE_DIR / "last-skill-report-processed.txt"
 QUEUE = "inbox_orchestrator"
 
@@ -96,13 +96,13 @@ def read_staged_reports() -> list[dict]:
     """Read Skill Reports staged by the agent-message-handler.
 
     Since 2026-08-14 the handler stages Skill Report parts to
-    ~/.hermes-cortex/state/skill-reports/ (mirroring Learning Reports) and
+    ~/.steadfaste-fleet/state/skill-reports/ (mirroring Learning Reports) and
     early-archives the bus message — the live queue is no longer a reliable
     source (the handler consumed esther's 41-part report as "Unknown subject"
     before this branch existed). The staged files are the authoritative input:
     each is "<agent>-<ts>-partXofY.md" (or "<agent>-<ts>.md" for single-part).
     """
-    state_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-reports"
+    state_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "skill-reports"
     reports = []
     if not state_dir.is_dir():
         return reports

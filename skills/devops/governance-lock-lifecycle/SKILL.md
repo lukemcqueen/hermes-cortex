@@ -3,7 +3,7 @@ name: governance-lock-lifecycle
 version: 1.1.0
 category: devops
 description: "Use when blocked after cortex update or end_change rejects."
-author: Hermes Cortex curator
+author: Steadfaste Fleet curator
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -346,7 +346,7 @@ server (or any server the enforcer injects into) without updating those matchers
 injection: the server falls back to its own derivation (env/per-repo file) and mints locks under a
 different id than the enforcer expects. Signature: a fresh `begin_change` reports success and a lock
 FILE exists, yet every write-class tool still refuses with GOVERNANCE LOCK REQUIRED. Diagnose by
-comparing `~/.hermes-cortex/state/.hermes-session-current.id` (the enforcer's canonical id) with
+comparing `~/.steadfaste-fleet/state/.hermes-session-current.id` (the enforcer's canonical id) with
 the lock file the fresh begin_change just wrote — different ids, and the enforcer can never see
 that lock. The CLI with an explicit session_id is the recovery: drive
 `python3 ops/scripts/loop-gov.py begin_change '{"session_id": "<id from .hermes-session-current.id>", …}'`

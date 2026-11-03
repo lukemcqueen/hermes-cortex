@@ -26,7 +26,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_MYCORTEX_CLI = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+_MYCORTEX_CLI = Path.home() / ".steadfaste-fleet" / "scripts" / "mycortex"
 _SEARCH_TIMEOUT = 30
 _DEFAULT_LIMIT = 8
 
@@ -81,7 +81,7 @@ _HELP_TEXT = """/brain — Search your mycortex knowledge brain
 
 **Examples:**
  /brain what's on my mind?
- /brain hermes-cortex search patterns
+ /brain steadfaste-fleet search patterns
 
 Results cite source + path + score. Content is shown as data only."""
 
@@ -170,4 +170,4 @@ def register(ctx) -> None:
         description="Query your mycortex knowledge brain ([source] <query>)",
         args_hint="[source] <query>",
     )
-    logger.info("Registered /brain and /mycortex slash commands — Hermes Cortex")
+    logger.info("Registered /brain and /mycortex slash commands — Steadfaste Fleet")

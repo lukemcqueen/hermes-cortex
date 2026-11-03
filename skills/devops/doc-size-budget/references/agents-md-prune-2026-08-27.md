@@ -57,14 +57,14 @@ m = _extract_agents_markers(Path('AGENTS.md'))
 print(len(m), sorted(m))"        # 32 markers, all contract markers present
 python3 ops/scripts/agent/agents-doc-audit.py --repo . --json   # exit 0, missing_sections []
 python3 ops/scripts/manage/cortex-doctor.py --quiet             # AGENTS.md sync PASS
-diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md              # IDENTICAL (deployed == repo)
+diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md              # IDENTICAL (deployed == repo)
 ```
 
 ## Skill-drift lesson (bite #4 — surfaced by the same deploy)
 
 `skill_manage` patches write to the DEPLOYED copy
-(`~/.hermes-cortex/skills/<cat>/<name>/`); the repo source
-(`~/hermes-cortex/skills/...`) is the fleet truth and LAGS. cortex-update
+(`~/.steadfaste-fleet/skills/<cat>/<name>/`); the repo source
+(`~/steadfaste-fleet/skills/...`) is the fleet truth and LAGS. cortex-update
 then warns `SKILL DRIFT: deployed copy is newer than repo source`. After
 any skill_manage patch, `cp` the deployed SKILL.md back to the repo source
 and commit — otherwise the lesson never reaches the fleet.

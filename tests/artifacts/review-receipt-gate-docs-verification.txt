@@ -5,7 +5,7 @@ deployed tree matches" while its own doctor output said FAILING — because the
 commit was made AFTER the deploy, leaving HEAD ahead of the deployed tree. The
 review was right. Deployed first this time, then captured.
 
-$ bash ~/.hermes-cortex/scripts/cortex-update.sh      # deploy exit=0
+$ bash ~/.steadfaste-fleet/scripts/cortex-update.sh      # deploy exit=0
 $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Deploy sync — deployed commit matches HEAD
   ✅ Skill drift — 386 skills in sync, 126 Hermes defaults skipped
@@ -41,7 +41,7 @@ PASS  writer emits a receipt when given args: got=1 want=1
 PASS  receipt is bound to HEAD: got='cba8aeafe4cb3682aa36527b6c400e4ad58219c3' want='cba8aeafe4cb3682aa36527b6c400e4ad58219c3'
 PASS  receipt records a base: got=True want=True
 PASS  receipt verdict is CLEAN: got='CLEAN' want='CLEAN'
-PASS  receipt carries the repo slug: got='hermes-cortex' want='hermes-cortex'
+PASS  receipt carries the repo slug: got='steadfaste-fleet' want='steadfaste-fleet'
 
 RESULT: ALL PASS - the writer resolves the lock and emits a bound receipt
 exit=0

@@ -17,7 +17,7 @@ Usage::
     result = engine.evaluate(PolicyContext(tool="write_file", agent="titus"))
     # → PolicyResult(effect=PolicyEffect.ALLOW, rule="default:lock-required")
 
-See: docs/research/enterprise-grade-hermes-cortex.md § "Generalize governance"
+See: docs/research/enterprise-grade-steadfaste-fleet.md § "Generalize governance"
 """
 
 from __future__ import annotations

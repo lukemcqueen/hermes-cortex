@@ -8,7 +8,7 @@ Layer | What | How to verify
 ------|------|-------------
 **1. Plugin** | Blocks Hermes write tools without lock | `hermes plugins list \| grep governance` → enabled
 **2. MCP Server** | Provides begin_change/end_change tools | `hermes mcp list` → loop-governance with 10 tools
-**3. Git Hooks** | Auto-scores every commit | `git config --global core.hooksPath` → ~/.hermes-cortex/hooks
+**3. Git Hooks** | Auto-scores every commit | `git config --global core.hooksPath` → ~/.steadfaste-fleet/hooks
 
 ## Common Pitfalls Found In Production
 
@@ -20,15 +20,15 @@ The pre-commit hook may hardcode a different DB path than what setup creates.
 
 **Check:**
 ```bash
-grep 'DB_PATH' ~/.hermes-cortex/hooks/pre-commit
-# Expected: DB_PATH="$HOME/.hermes-cortex/data/loop-governance.db"
+grep 'DB_PATH' ~/.steadfaste-fleet/hooks/pre-commit
+# Expected: DB_PATH="$HOME/.steadfaste-fleet/data/loop-governance.db"
 # Wrong:    DB_PATH="$HOME/.hermes/data/loop-governance.db"
 ```
 
 **Fix:** Patch the hook's `DB_PATH` to match where the actual DB lives:
 ```bash
 # Expected DB location
-ls -la ~/.hermes-cortex/data/loop-governance.db
+ls -la ~/.steadfaste-fleet/data/loop-governance.db
 ```
 
 ### Session Cache Path Mismatch
@@ -38,14 +38,14 @@ The `agent-session_cache.py` script may look for data in wrong locations.
 **Symptom:** `session-cache-build build` reports 0 new embeddings even though sessions/cycles/skills exist.
 
 **Root causes found in production:**
-1. `SKILLS_DIR` pointed to `~/.hermes-cortex/skills/software-development/` but actual skills are at `~/.hermes/skills/`
+1. `SKILLS_DIR` pointed to `~/.steadfaste-fleet/skills/software-development/` but actual skills are at `~/.hermes/skills/`
 2. Session reader expected `.md` files but sessions are in `~/.hermes/sessions/sessions.json` (JSON format)
 3. `embed_loop_db()` queried nonexistent columns `code_or_spec`, `output_text` — actual columns are `outcome_note`, `decision`
 
 **Check:**
 ```bash
-grep -E 'SESSION_DIR|SKILLS_DIR|SESSION_JSON' ~/.hermes-cortex/scripts/agent-session_cache.py
-grep -E 'SELECT.*FROM' ~/.hermes-cortex/scripts/agent-session_cache.py
+grep -E 'SESSION_DIR|SKILLS_DIR|SESSION_JSON' ~/.steadfaste-fleet/scripts/agent-session_cache.py
+grep -E 'SELECT.*FROM' ~/.steadfaste-fleet/scripts/agent-session_cache.py
 ```
 
 **Fix:** Patch the paths and column names to match your actual deployment.
@@ -54,14 +54,14 @@ grep -E 'SELECT.*FROM' ~/.hermes-cortex/scripts/agent-session_cache.py
 
 **Check:**
 ```bash
-ls -la ~/.hermes-cortex/data/session-embeddings.db
+ls -la ~/.steadfaste-fleet/data/session-embeddings.db
 ```
 
 If missing, build it:
 ```bash
 session-cache-build build
 # or, explicitly against the canonical builder:
-python3 ~/.hermes-cortex/scripts/agent-session_cache.py build
+python3 ~/.steadfaste-fleet/scripts/agent-session_cache.py build
 ```
 
 Expected output: some number of session, cycle, and skill embeddings
@@ -96,7 +96,7 @@ journalctl --user -u hermes --since "5 minutes ago" | grep -i "mcp\|loop-gov\|er
 
 Pre-commit and pre-push hooks must be executable:
 ```bash
-ls -la ~/.hermes-cortex/hooks/{pre-commit,pre-push}
+ls -la ~/.steadfaste-fleet/hooks/{pre-commit,pre-push}
 # Expected: -rwx... (at least 755)
 ```
 
@@ -111,14 +111,14 @@ hermes mcp list | grep loop-governance
 
 echo "=== Hooks ==="
 git config --global core.hooksPath
-ls -la ~/.hermes-cortex/hooks/pre-commit
+ls -la ~/.steadfaste-fleet/hooks/pre-commit
 
 echo "=== DB ==="
-ls -lh ~/.hermes-cortex/data/loop-governance.db
-python3 -c "import sqlite3; print(sqlite3.connect('$HOME/.hermes-cortex/data/loop-governance.db').execute('SELECT COUNT(*) FROM loop_cycles').fetchone()[0], 'cycles')"
+ls -lh ~/.steadfaste-fleet/data/loop-governance.db
+python3 -c "import sqlite3; print(sqlite3.connect('$HOME/.steadfaste-fleet/data/loop-governance.db').execute('SELECT COUNT(*) FROM loop_cycles').fetchone()[0], 'cycles')"
 
 echo "=== Cache ==="
-ls -lh ~/.hermes-cortex/data/session-embeddings.db 2>/dev/null || echo "Cache not built"
+ls -lh ~/.steadfaste-fleet/data/session-embeddings.db 2>/dev/null || echo "Cache not built"
 
 echo "=== Tools ==="
 for t in score-cycle loop-feedback auto-apply loop-config session-cache-build skill-miner; do
@@ -126,5 +126,5 @@ for t in score-cycle loop-feedback auto-apply loop-config session-cache-build sk
 done
 
 echo "=== Locks ==="
-ls ~/.hermes-cortex/state/.governance-*.json 2>/dev/null || echo "No active locks"
+ls ~/.steadfaste-fleet/state/.governance-*.json 2>/dev/null || echo "No active locks"
 ```

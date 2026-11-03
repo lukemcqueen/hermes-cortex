@@ -3,7 +3,7 @@ name: session-manager
 description: "Session management skill — checkpoint/restore, context compression, progress tracking, and recovery for maintaining continuity across agent sessions."
 version: 1.1.0
 category: software-development
-source: hermes-cortex
+source: steadfaste-fleet
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -76,7 +76,7 @@ re-derives a plan that has already been superseded, which reads exactly like fre
 
 Write a checkpoint to one of these locations (prefer first):
 
-1. **`~/.hermes-cortex/sessions/current.md`** (the runtime session dir) — for ongoing work; a shared repo may keep its own repo-local `.hermes-cortex/sessions/current.md` overlay instead. Update the Session Notes section.
+1. **`~/.steadfaste-fleet/sessions/current.md`** (the runtime session dir) — for ongoing work; a shared repo may keep its own repo-local `.steadfaste-fleet/sessions/current.md` overlay instead. Update the Session Notes section.
 2. A dedicated `session-checkpoint-{timestamp}.md` file — for private or long-running work.
 3. The session's working MEMORY.md — for quick inline saves.
 

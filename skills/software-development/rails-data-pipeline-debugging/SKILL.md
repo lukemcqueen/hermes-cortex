@@ -2,7 +2,7 @@
 name: rails-data-pipeline-debugging
 description: "Debugging data transformation bugs in legacy Rails apps — tracing heuristic text-splitting, internationalisation helpers, and CPLEX/CSV import pipelines."
 version: 1.2.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [macos, linux]
 metadata:

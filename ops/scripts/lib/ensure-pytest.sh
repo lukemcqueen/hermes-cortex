@@ -10,7 +10,7 @@
 # caller — the harness, a doctor check, a peer host's setup — runs the same three things:
 #
 #   1. the DECLARED dependency set  ops/install/requirements.txt      (pytest>=7.0 is declared there)
-#   2. the canonical fleet venv     ~/.hermes-cortex/venv             (the venv cortex-update.sh
+#   2. the canonical fleet venv     ~/.steadfaste-fleet/venv             (the venv cortex-update.sh
 #                                                                      registers every MCP server against)
 #   3. the SUPPLY-CHAIN age gate    ops/scripts/health/check-package-age.py
 #
@@ -29,7 +29,7 @@
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-VENV="${PYTEST_VENV:-${HOME}/.hermes-cortex/venv}"
+VENV="${PYTEST_VENV:-${HOME}/.steadfaste-fleet/venv}"
 PY="${VENV}/bin/python3"
 AGE_CHECK="${REPO}/ops/scripts/health/check-package-age.py"
 VENV_FIX="${REPO}/ops/scripts/manage/fix-cortex-venv.py"

@@ -30,7 +30,7 @@ fi
 # scheduler. 570s leaves headroom under the 600s gateway cron limit.
 #
 # Resolve an interpreter that can actually IMPORT PyYAML. Testing a PATH is not a test:
-# ~/.hermes-cortex/venv/bin/python3 EXISTS on this host but imports no yaml, so this
+# ~/.steadfaste-fleet/venv/bin/python3 EXISTS on this host but imports no yaml, so this
 # gate's previous guard (`if [[ ! -x $PY ]]`) never fired, the eval harness ran under a
 # PyYAML-less python, and the gate failed EVERY DAY with "PyYAML is not installed —
 # cannot parse eval definitions". A comment claiming "the cortex venv has PyYAML" is not

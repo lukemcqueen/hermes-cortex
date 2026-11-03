@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Offline Prep Script
+#  Steadfaste Fleet — Offline Prep Script
 #  Downloads ZIM content, seeds web-cache, sets up kiwix-serve
 #
 #  Usage:
@@ -22,9 +22,9 @@ set -euo pipefail
 HOME="${HOME:-$(echo ~)}"
 ZIM_DIR="$HOME/offline/zim"
 LIBRARY_FILE="$HOME/offline/kiwix-library.xml"
-KIWIX_COMPOSE="$HOME/hermes-cortex/ops/offline/kiwix-docker-compose.yml"
-KIWIX_COMPOSE_INSTALLED="$HOME/.hermes-cortex/offline/kiwix-docker-compose.yml"
-CACHE_SCRIPT="$HOME/.hermes-cortex/web-cache/web_cache.py"
+KIWIX_COMPOSE="$HOME/steadfaste-fleet/ops/offline/kiwix-docker-compose.yml"
+KIWIX_COMPOSE_INSTALLED="$HOME/.steadfaste-fleet/offline/kiwix-docker-compose.yml"
+CACHE_SCRIPT="$HOME/.steadfaste-fleet/web-cache/web_cache.py"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -129,7 +129,7 @@ download_zim() {
 
 generate_library() {
     header "GENERATING KIWIX LIBRARY"
-    python3 "$HOME/hermes-cortex/ops/offline/offline_knowledge.py" generate-library
+    python3 "$HOME/steadfaste-fleet/ops/offline/offline_knowledge.py" generate-library
     info "Library file ready: $LIBRARY_FILE"
 }
 
@@ -254,7 +254,7 @@ print_summary() {
     printf "\n"
     printf "  📂  ZIM directory:   %s\n" "$ZIM_DIR"
     printf "  🌐  kiwix-serve:     http://localhost:8080\n"
-    printf "  📦  web_cache:       %s\n" "$HOME/.hermes-cortex/web-cache/cache.db"
+    printf "  📦  web_cache:       %s\n" "$HOME/.steadfaste-fleet/web-cache/cache.db"
     if [[ -d "$HOME/offline/bible" ]] && [[ "$(ls -A "$HOME/offline/bible" 2>/dev/null)" ]]; then
         local bible_count=$(find "$HOME/offline/bible" -name "*.txt" 2>/dev/null | wc -l)
         printf "  📖  Bible texts:    %d translations in ~/offline/bible/\n" "$bible_count"
@@ -281,7 +281,7 @@ print_summary() {
 main() {
     echo ""
     echo "  ╔═══════════════════════════════════════════╗"
-    echo "  ║   Hermes Cortex — Offline Prep Tool       ║"
+    echo "  ║   Steadfaste Fleet — Offline Prep Tool       ║"
     echo "  ║   Download knowledge for offline use       ║"
     echo "  ╚═══════════════════════════════════════════╝"
     echo ""
@@ -371,7 +371,7 @@ main() {
     # Download Bible content (if requested)
     if [[ $include_bible -eq 1 ]]; then
         header "DOWNLOADING BIBLE CONTENT"
-        local bible_script="$HOME/hermes-cortex/ops/offline/prep-bible.sh"
+        local bible_script="$HOME/steadfaste-fleet/ops/offline/prep-bible.sh"
         if [[ -f "$bible_script" ]]; then
             info "Downloading major language Bible translations…"
             bash "$bible_script" --langs=major 2>&1 || warn "Bible download had some failures"
@@ -383,7 +383,7 @@ main() {
     # Download hymn content (if requested)
     if [[ $include_hymns -eq 1 ]]; then
         header "DOWNLOADING HYMNS"
-        local hymn_script="$HOME/hermes-cortex/ops/offline/prep-hymns.sh"
+        local hymn_script="$HOME/steadfaste-fleet/ops/offline/prep-hymns.sh"
         if [[ -f "$hymn_script" ]]; then
             info "Downloading public domain hymns from Open Hymnal Project…"
             bash "$hymn_script" 2>&1 || warn "Hymn download had some failures"

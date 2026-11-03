@@ -67,7 +67,7 @@ def temp_state_dir():
         enforcer.GOVERNANCE_STATE_DIR = Path(tmp)
         # Isolate the repo-located secondary marker too (Phase 3 of
         # _has_governance_lock). begin_change writes
-        # <repo>/.hermes-cortex/.governance-lock alongside the primary lock;
+        # <repo>/.steadfaste-fleet/.governance-lock alongside the primary lock;
         # without redirecting this, the suite fails whenever a real governance
         # session holds a lock (test_corrupted/test_deleted_lock_file_returns_false
         # — observed 2026-08-08 during orch-skill-lifecycle verification).
@@ -240,15 +240,15 @@ class TestReadonlyTerminalCommand:
     @pytest.mark.parametrize("cmd", [
         # Navigate-then-read is the normal shape of an inspection, and nothing
         # here writes: `cd` mutates only the shell's own cwd.
-        "cd /srv/hermes-cortex && git log --oneline -3",
-        "cd /srv/hermes-cortex; ls -1 docs | head",
+        "cd /srv/steadfaste-fleet && git log --oneline -3",
+        "cd /srv/steadfaste-fleet; ls -1 docs | head",
         "cd /tmp && ls",
         # Progress banners around a read: `echo`/`printf` write to stdout only —
         # a redirect is a forbidden metacharacter and stays write-class.
         'echo "== sizes ==" && wc -l file',
         "printf '%s\\n' '== head =='; head -3 file",
         # git's own read-only modifiers.
-        "git -C /srv/hermes-cortex status --short",
+        "git -C /srv/steadfaste-fleet status --short",
         "git --no-pager log --oneline -1 origin/main",
         # Pure predicates and tool lookup.
         "test -f /etc/hosts && echo yes",
@@ -268,7 +268,7 @@ class TestReadonlyTerminalCommand:
         "command git commit -m x",
         "command rm -f x",
         # git modifiers only preserve read-only subcommands.
-        "git -C /srv/hermes-cortex push origin main",
+        "git -C /srv/steadfaste-fleet push origin main",
         "git --no-pager commit -m x",
         "test -f /etc/hosts && cp a b",
         # A write appended after a read-only segment stays write-class.
@@ -565,7 +565,7 @@ class TestPreToolCallHook:
 # ═════════════════════════════════════════════════════════════════════════════
 # SKILLS-LOADED MARKER — per-session files (multi-session race fix, 2026-08-01)
 # ═════════════════════════════════════════════════════════════════════════════
-# Regression: the old design used ONE shared ~/.hermes-cortex/state/.skills-loaded
+# Regression: the old design used ONE shared ~/.steadfaste-fleet/state/.skills-loaded
 # file. Concurrent sessions (telegram + cli 1 + cli 2 on one server) each loaded
 # skills and overwrote that single file with their own session ID, blocking the
 # other sessions' write tools mid-task. Per-session marker files
@@ -997,7 +997,7 @@ class TestDomainSkillGate:
         """Interactive session writing .md without documentation-auditing → block."""
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/design/new.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/design/new.md"},
             "20260807_091220_6e0c506a",  # date-format interactive session
         )
         assert result is not None
@@ -1009,7 +1009,7 @@ class TestDomainSkillGate:
         enforcer._session_skills_loaded.setdefault("20260807_091220_6e0c506a", set()).add("documentation-auditing")
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/design/new.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/design/new.md"},
             "20260807_091220_6e0c506a",
         )
         assert result is None
@@ -1022,7 +1022,7 @@ class TestDomainSkillGate:
         enforcer._session_skills_loaded.setdefault("sess_A", set()).add("documentation-auditing")
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/new.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/new.md"},
             "sess_B",
         )
         assert result is not None
@@ -1033,12 +1033,12 @@ class TestDomainSkillGate:
         """Repeat offense per session → BLOCK with escalation message."""
         enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/a.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/a.md"},
             "20260807_091220_6e0c506a",
         )
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/b.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/b.md"},
             "20260807_091220_6e0c506a",
         )
         assert result is not None
@@ -1095,7 +1095,7 @@ class TestDomainSkillGate:
         """Missing session id → treated as interactive → gate enforced."""
         result = enforcer._check_domain_skill_gate(
             "write_file",
-            {"path": f"{_HOME}/hermes-cortex/docs/x.md"},
+            {"path": f"{_HOME}/steadfaste-fleet/docs/x.md"},
             "",
         )
         assert result is not None

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task DB — persistent cross-session task storage for Hermes Cortex agents.
+Task DB — persistent cross-session task storage for Steadfaste Fleet agents.
 
 Enterprise task/workflow engine (party-reviewed design, 2026-08-06):
 docs/design/task-workflow.md. Replaces the old bus.todos todo-db.py.
@@ -270,14 +270,14 @@ def _resolve_uuid(value: str) -> str:
 def _env_agent_name() -> str:
     """Read AGENT_NAME from the canonical .env agent-identity files.
 
-    Order: ~/.hermes-cortex/agent.env (per-host, gitignored) →
-    ~/hermes-cortex/.env (consolidated env). Falls back to "".
+    Order: ~/.steadfaste-fleet/agent.env (per-host, gitignored) →
+    ~/steadfaste-fleet/.env (consolidated env). Falls back to "".
     Never uses whoami/hostname as identity — the .env variable is the
     source of truth for the agent's identity (Luke directive 2026-08-10).
     """
     for path in (
-        Path.home() / ".hermes-cortex" / "agent.env",
-        Path.home() / "hermes-cortex" / ".env",
+        Path.home() / ".steadfaste-fleet" / "agent.env",
+        Path.home() / "steadfaste-fleet" / ".env",
     ):
         try:
             if path.is_file():
@@ -305,7 +305,7 @@ def resolve_profile() -> str:
                or _env_agent_name())
     if not profile:
         print("ERROR: cannot resolve agent identity — set AGENT_NAME in "
-              "~/.hermes-cortex/agent.env or export HERMES_PROFILE/AGENT_NAME",
+              "~/.steadfaste-fleet/agent.env or export HERMES_PROFILE/AGENT_NAME",
               file=sys.stderr)
         sys.exit(1)
     return profile
@@ -472,7 +472,7 @@ def _notify_import():
     # repo layout: ops/scripts/manage/task-db.py → ops/scripts on sys.path
     here = Path(__file__).resolve().parent
     for cand in (here.parent, here.parent.parent / "scripts",
-                 Path.home() / ".hermes-cortex" / "scripts"):
+                 Path.home() / ".steadfaste-fleet" / "scripts"):
         if str(cand) not in sys.path:
             sys.path.insert(0, str(cand))
     try:
@@ -729,7 +729,7 @@ def cmd_summary(story_id: str):
 def _parent_project(parent_id: str) -> str | None:
     """The parent STORY's project — for `--project` inheritance ([queue/2]).
 
-    `cmd_add` used to hardcode the 'hermes-cortex' default for ANY add that
+    `cmd_add` used to hardcode the 'steadfaste-fleet' default for ANY add that
     omitted `--project`, so a slice minted with `--parent <story>` landed in
     the orchestrator's own project even when its story belonged to another one
     (root cause of the mis-projection class; 7 such rows corrected 2026-10-16,
@@ -774,7 +774,7 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
 
     PROJECT INHERITANCE (2026-10-20, [queue/2]): when `--parent <story-id>` is
     given and `--project` is omitted, the new row inherits the PARENT row's
-    project instead of the hardcoded 'hermes-cortex' default. The default is
+    project instead of the hardcoded 'steadfaste-fleet' default. The default is
     kept only for parentless rows (and as the fallback when the parent is not
     visible or carries no project). An explicit `--project` always wins.
     """
@@ -838,7 +838,7 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
                   file=sys.stderr)
     psql(
         UPSERT_SQL,
-        [new_id, content, agent, assignee, project or "hermes-cortex",
+        [new_id, content, agent, assignee, project or "steadfaste-fleet",
          repo, target, effective_scope, "pending", priority, due or None,
          tags or None, source or "manual", session_id or None,
          parent, kind, correlation_id, plan],
@@ -1559,7 +1559,7 @@ def cmd_restore(json_file: str, include_inbox: bool = False):
         psql(
             UPSERT_SQL,
             [item["id"], item["content"], item.get("agent_name", PROFILE),
-             vals["assignee"], item.get("project", "hermes-cortex"),
+             vals["assignee"], item.get("project", "steadfaste-fleet"),
              vals["repo"], vals["target"], item.get("scope", "personal"), status,
              item.get("priority", 0), vals["due"], vals["tags"],
              item.get("source", "session"), item.get("session_id"),
@@ -1606,7 +1606,7 @@ def cmd_prune(older_than: str):
 def _deploy_home() -> Path:
     """The DEPLOYED tree's root — what cortex-update.sh syncs into."""
     return Path(os.environ.get("CORTEX_DEPLOY_HOME")
-                or (Path.home() / ".hermes-cortex"))
+                or (Path.home() / ".steadfaste-fleet"))
 
 
 def _repo_checkout() -> Path:
@@ -1614,7 +1614,7 @@ def _repo_checkout() -> Path:
     path: `Path(os.environ.get("CORTEX_REPO", ""))` is the relative path
     'ops/...' and resolves against the process's cwd (backlog 72b2c69b)."""
     return Path(os.environ.get("CORTEX_REPO")
-                or (Path.home() / "hermes-cortex"))
+                or (Path.home() / "steadfaste-fleet"))
 
 
 def _migrate_candidates() -> list[Path]:

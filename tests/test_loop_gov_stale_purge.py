@@ -2,7 +2,7 @@
 time-only/naive heartbeats and resolve the orphaned PENDING cycles.
 
 Repro (2026-09-17, Titus / luke@macOS): live lock files in
-~/.hermes-cortex/state/, some of them orphans whose owning processes were
+~/.steadfaste-fleet/state/, some of them orphans whose owning processes were
 gone. Lock 163455 carried a time-only heartbeat (e.g. "09:12:00Z") —
 datetime.fromisoformat raises ValueError on it, the old _is_lock_stale
 caught it and returned False ("never stale"), so the lock was never purged

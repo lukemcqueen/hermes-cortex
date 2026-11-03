@@ -18,13 +18,13 @@ from datetime import datetime, timedelta, timezone
 from hermes_tz import get_timezone
 from pathlib import Path
 
-sys.path.insert(0, os.path.expanduser("~/hermes-cortex/core"))
+sys.path.insert(0, os.path.expanduser("~/steadfaste-fleet/core"))
 
 # ── DB connection ──────────────────────────────────────────────────
 
 def _load_env():
-    """Load CORTEX_BUS_PG_* from ~/hermes-cortex/.env into os.environ."""
-    env_path = Path(os.path.expanduser("~/hermes-cortex/.env"))
+    """Load CORTEX_BUS_PG_* from ~/steadfaste-fleet/.env into os.environ."""
+    env_path = Path(os.path.expanduser("~/steadfaste-fleet/.env"))
     if env_path.exists():
         for line in env_path.read_text().splitlines():
             line = line.strip()

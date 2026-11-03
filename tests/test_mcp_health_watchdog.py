@@ -177,7 +177,7 @@ def load_wd(tmp: Path):
     # Point HOME at the fixture tree and give it a healthy probe stub, so the
     # client-side skew check stays silent (and never probes the real interpreters).
     wd.HOME = tmp / "home"
-    probe_dir = wd.HOME / "hermes-cortex/skills/devops/mcp-health-monitoring/scripts"
+    probe_dir = wd.HOME / "steadfaste-fleet/skills/devops/mcp-health-monitoring/scripts"
     probe_dir.mkdir(parents=True, exist_ok=True)
     probe = probe_dir / "otel-version-skew-probe.py"
     if not probe.exists():
@@ -378,7 +378,7 @@ def main() -> int:
         # --- S: client-side otel skew — every server HEALTHY, runtime broken ---
         # The class the server probes cannot see: tools/call still fails on every call.
         skew_home = tmp / "skew-home"
-        skew_probe = skew_home / "hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
+        skew_probe = skew_home / "steadfaste-fleet/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py"
         skew_probe.parent.mkdir(parents=True, exist_ok=True)
         skew_python = skew_home / ".hermes/hermes-agent/venv/bin/python3"
         skew_python.parent.mkdir(parents=True, exist_ok=True)

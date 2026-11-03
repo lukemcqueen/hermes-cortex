@@ -58,7 +58,7 @@ re-runnable guard for this is
 
 ```
 cortex-context: connected, 12 tools (direct, global)
-  $HOME/.hermes/hermes-agent/venv/bin/python3 $HOME/.hermes-cortex/scripts/cortex-context-mcp.py
+  $HOME/.hermes/hermes-agent/venv/bin/python3 $HOME/.steadfaste-fleet/scripts/cortex-context-mcp.py
   tools: mem_profile, mem_search, mem_context, mem_conclude, session_checkpoint, session_restore, session_list, session_search, session_note, session_close, session_tool_event, session_loaded_skill
 ```
 

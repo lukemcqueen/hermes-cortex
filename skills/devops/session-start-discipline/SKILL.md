@@ -14,7 +14,7 @@ related_skills:
 
 This skill was merged into `task-start` on 2026-08-20. **Do not follow the
 old 9-skill sequence** — the always-section is now 7 skills and todo
-restore uses `~/.hermes-cortex/scripts/task-db.py pending` (there is no
+restore uses `~/.steadfaste-fleet/scripts/task-db.py pending` (there is no
 `todo-db.py`).
 
 ## What to do instead
@@ -24,7 +24,7 @@ restore uses `~/.hermes-cortex/scripts/task-db.py pending` (there is no
    classify (agent-flow) → restore todos via `task-db.py pending` →
    survey → work.
 2. Marker mechanics (never `touch` the per-session marker at
-   `~/.hermes-cortex/state/skills-loaded/<session-id>`; a serial extra
+   `~/.steadfaste-fleet/state/skills-loaded/<session-id>`; a serial extra
    `skill_view()` re-triggers auto-create if writes are blocked) are
    documented in task-start under "Marker mechanics" and
    "Known Gaps & Recovery".

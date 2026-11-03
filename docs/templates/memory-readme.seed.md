@@ -1,4 +1,4 @@
-<!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
+<!-- Part of Steadfaste Fleet. See docs/SECURITY.md for privacy. -->
 
 # Memory Scoring Rubric (compact)
 

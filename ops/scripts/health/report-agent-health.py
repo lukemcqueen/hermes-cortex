@@ -14,7 +14,7 @@ Reads dashboard health at http://127.0.0.1:8901/api/health
 and POSTs the structured result to Moses's agent inbox for
 dashboard consumption.
 
-Configuration (env vars or ~/hermes-cortex/.env):
+Configuration (env vars or ~/steadfaste-fleet/.env):
   CORTEX_BUS_FALLBACK_URL     — Moses inbox MCP endpoint (POST via internal API)
   CORTEX_BUS_FALLBACK_AUTH    — "user:pass" for Basic Auth
   AGENT_NAME           — name to report as (required; never hostname)
@@ -43,7 +43,7 @@ from typing import Optional
 HOME = Path.home()
 CONFIG_FILE = HOME / ".hermes" / ".env"
 HEALTH_LOCAL = 'http://127.0.0.1:8901/api/health'
-STATE_FILE = HOME / ".hermes-cortex" / "state" / "agent-health-push-state.json"
+STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "agent-health-push-state.json"
 TIMEOUT = 15
 
 # ── Config ────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ if not inbox_url:
 # identity (Luke directive 2026-08-14). Fail loudly when unset.
 if not agent_name:
     try:
-        agent_env = HOME / ".hermes-cortex" / "agent.env"
+        agent_env = HOME / ".steadfaste-fleet" / "agent.env"
         if agent_env.exists():
             for line in agent_env.read_text().splitlines():
                 line = line.strip()
@@ -103,7 +103,7 @@ if not agent_name:
         pass
 if not agent_name or agent_name == "unknown":
     print("ERROR: AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 

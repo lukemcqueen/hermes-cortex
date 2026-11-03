@@ -17,8 +17,8 @@
 # Usage: bash run-cutover-evidence.sh [output-file]
 set -uo pipefail
 
-REPO="${REPO:-$HOME/hermes-cortex}"
-DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+REPO="${REPO:-$HOME/steadfaste-fleet}"
+DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 OUT="${1:-$REPO/docs/evidence/gateway-cutover-evidence.md}"
 GUARD="$DEPLOY/scripts/cortex_gateway/guard_distinct_token.py"
 PROD_CONFIG="$DEPLOY/gateway.yaml"
@@ -79,8 +79,8 @@ if command -v systemctl >/dev/null 2>&1 && [[ -d "$HOME/.config/systemd/user" ]]
 Description=THROWAWAY probe — the live-token guard must fail this unit
 [Service]
 Type=oneshot
-EnvironmentFile=-%h/hermes-cortex/.env
-ExecStartPre=/usr/bin/python3 %h/.hermes-cortex/scripts/cortex_gateway/guard_distinct_token.py %h/.hermes-cortex/gateway.yaml
+EnvironmentFile=-%h/steadfaste-fleet/.env
+ExecStartPre=/usr/bin/python3 %h/.steadfaste-fleet/scripts/cortex_gateway/guard_distinct_token.py %h/.steadfaste-fleet/gateway.yaml
 ExecStart=/bin/true
 PROBE
   systemctl --user daemon-reload >/dev/null 2>&1

@@ -85,7 +85,7 @@ def test_a_busy_lock_is_not_stale_and_says_so_on_the_file(tmp_path, monkeypatch)
     state = {
         "session_id": "test-session",
         "repo_path": str(REPO),
-        "repo_slug": "hermes-cortex",
+        "repo_slug": "steadfaste-fleet",
         "agent": _git_author(REPO),
         "started_at": "2020-01-01T00:00:00Z",
         "heartbeat_at": "2020-01-01T00:00:00Z",

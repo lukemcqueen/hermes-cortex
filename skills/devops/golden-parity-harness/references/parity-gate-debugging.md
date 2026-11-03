@@ -25,7 +25,7 @@ for q in g['queries']:
 ```
 
 **Trap:** MO-* queries target a *different repo* (the moses brain, e.g.
-`~/brain/moses/`), NOT the hermes-cortex checkout. Resolve existence
+`~/brain/moses/`), NOT the steadfaste-fleet checkout. Resolve existence
 against the source's `local_path` from `mycortex sources list --json`, not the
 cwd. A false "GONE" here misdirects into golden-set re-baselining when the real
 bug is elsewhere.

@@ -111,7 +111,7 @@ def test_dry_run_reports_the_real_range_and_changes_nothing(db):
 
 def test_apply_archives_and_deletes_only_the_old_rows(db, tmp_path, monkeypatch):
     path, old, new = db
-    # Point the archive at tmp_path so the test never writes into ~/.hermes-cortex/data.
+    # Point the archive at tmp_path so the test never writes into ~/.steadfaste-fleet/data.
     monkeypatch.setenv("HOME", str(tmp_path))
     r = _run(path, "--apply")
     assert r.returncode == 0, r.stderr
@@ -178,7 +178,7 @@ def test_archive_json_holds_the_full_rows(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     r = _run(path, "--apply")
     assert r.returncode == 0, r.stderr
-    archives = list((tmp_path / ".hermes-cortex" / "data").glob("loop-cycles-archive-*.json"))
+    archives = list((tmp_path / ".steadfaste-fleet" / "data").glob("loop-cycles-archive-*.json"))
     assert len(archives) == 1, f"expected one archive, found {archives}"
     payload = json.loads(archives[0].read_text())
     assert len(payload) == 3

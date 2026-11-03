@@ -8,11 +8,11 @@ no_agent watchdog pattern:
 Polls every agent's health endpoint every 5 min, tracks active workflows
 via the Agent Bus, detects stalled steps (>5 min running).
 
-State tracked in ~/.hermes-cortex/state/fleet-state.json for change detection.
-Structured dashboard data in ~/.hermes-cortex/state/fleet-data.json.
+State tracked in ~/.steadfaste-fleet/state/fleet-state.json for change detection.
+Structured dashboard data in ~/.steadfaste-fleet/state/fleet-data.json.
 
 Setup:
-  Add agents to ~/.hermes-cortex/state/agent-registry.json:
+  Add agents to ~/.steadfaste-fleet/state/agent-registry.json:
     {"agents": {"gisu": {"name": "Gisu", "health_url": "https://..."}, ...}}
   If registry missing, polls localhost:8905 as fallback.
 """
@@ -46,12 +46,12 @@ except ImportError:
 
 
 HOME = Path.home()
-STATE_FILE = HOME / ".hermes-cortex" / "state" / "fleet-state.json"
-DASHBOARD_FILE = HOME / ".hermes-cortex" / "state" / "fleet-data.json"
-REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
-REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
-REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
-CORTEX_ENV = HOME / "hermes-cortex" / ".env"
+STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "fleet-state.json"
+DASHBOARD_FILE = HOME / ".steadfaste-fleet" / "state" / "fleet-data.json"
+REGISTRY_PATH = HOME / ".steadfaste-fleet" / "state" / "agent-registry.json"
+REGISTRY_TEMPLATE = HOME / "steadfaste-fleet" / "ops" / "install" / "deploy" / "agent-registry.template.json"
+REGISTRY_LOCAL = HOME / ".steadfaste-fleet" / "state" / "agent-registry.local.json"
+CORTEX_ENV = HOME / "steadfaste-fleet" / ".env"
 INBOX_DIR = HOME / ".hermes" / "inbox"
 TIMEOUT = 10
 

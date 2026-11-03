@@ -13,7 +13,7 @@ that never wrote one. So the harness calls this at a boundary (turn end, before
 a long step, on stop) and the model is never the only trigger.
 
 Call it from a harness hook, e.g.:
-    pi ... --on-stop  "python3 ~/hermes-cortex/ops/scripts/session-autocheckpoint.py --notes 'stopped'"
+    pi ... --on-stop  "python3 ~/steadfaste-fleet/ops/scripts/session-autocheckpoint.py --notes 'stopped'"
     claude ... hooks: [Stop: session-autocheckpoint.py]
 
 Usage:
@@ -43,9 +43,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-_REPO = Path.home() / "hermes-cortex"
+_REPO = Path.home() / "steadfaste-fleet"
 _STORE_PY = _REPO / "ops" / "services" / "mycortex-mem" / "store.py"
-_STATE = Path.home() / ".hermes-cortex" / "state" / "session-autocheckpoint.json"
+_STATE = Path.home() / ".steadfaste-fleet" / "state" / "session-autocheckpoint.json"
 
 
 def _load_store():

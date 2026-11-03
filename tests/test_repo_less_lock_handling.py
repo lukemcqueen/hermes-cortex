@@ -169,7 +169,7 @@ def test_a_lock_for_a_DIFFERENT_repo_does_not_authorise_this_one(tmp_path):
     Phase 1 (exact filename) asked only whether the lock named ANY repo —
     `_lock_names_a_repo(state)` — and returned True on that alone. So a lock that named a
     DIFFERENT repository authorised writes here. Measured on this host 2026-10-22: a lock
-    recorded repo_slug=hermes-agent while the session was working in hermes-cortex, and the
+    recorded repo_slug=hermes-agent while the session was working in steadfaste-fleet, and the
     write was allowed. Phase 2 in the same function already refuses this; Phase 1 must too —
     enforcement-change-safety Rule 29: match on IDENTITY (the resolved path), never a name.
     """

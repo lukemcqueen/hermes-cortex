@@ -52,7 +52,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 6. **P1 — doctor remediation hints teach the refused command:** checks.py ~L1617-1625 (`cp
    pre-commit-score → hooks/pre-commit`) and ~L1528-1532 (`rm -rf + ln -sf` enforcer symlink) fail
    against `chattr +i` files even WITHOUT the gate. Re-point all to
-   `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --force-all`. The `Immutable` (lsattr) and
+   `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --force-all`. The `Immutable` (lsattr) and
    `Plugin lock helper` (`sudo -n … status`, bare path) checks are unaffected by gating.
 
 7. **P1 — docs/skills teach the refused command:** `governance-plugin-implementation.md` and
@@ -66,7 +66,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
   and excludes `.hermes*` dirs.
 - Only callers of `hermes-plugin-lock` in the whole repo: cortex-update.sh, pre-commit-score
   (DOGFOOD), cortex_doctor/checks.py, and docs/skills. Blast radius = exactly the intended surface.
-- `agent-hermes-cortex-sync.sh` pulls the repo but does NOT run cortex-update (no gate impact).
+- `agent-steadfaste-fleet-sync.sh` pulls the repo but does NOT run cortex-update (no gate impact).
 
 ## QA test matrix required before shipping
 
@@ -89,7 +89,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 - sudoers: `env_reset, secure_path, use_pty, pwfeedback`; `(ALL : ALL) ALL` for moses (full sudo —
   gate is an accident-prevention interlock here, not a security boundary); command-specific
   `(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock` — NO SETENV: tag.
-- `/usr/local/sbin/hermes-plugin-lock`, `~/.hermes-cortex/scripts/hermes-plugin-lock`, enforcer
+- `/usr/local/sbin/hermes-plugin-lock`, `~/.steadfaste-fleet/scripts/hermes-plugin-lock`, enforcer
   `__init__.py`, `pre-commit-score`, `loop-gov-mcp.py` all `chattr +i`.
 - Gate behavior live-tested with the repo copy: `AGENT_ID=worker` → REFUSED (exit 1); ambient
   `AGENT_ID=moses` → gate passed; `status`/`lock` ungated.

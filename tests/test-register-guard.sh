@@ -35,18 +35,18 @@ check() { # expect desc dest
 }
 
 # Must REFUSE (Hermes-owned user data)
-check refused "memory seed → cortex memories dir"      "${HOME}/.hermes-cortex/memories/MEMORY.md"
-check refused "user seed → cortex memories dir"        "${HOME}/.hermes-cortex/memories/USER.md"
+check refused "memory seed → cortex memories dir"      "${HOME}/.steadfaste-fleet/memories/MEMORY.md"
+check refused "user seed → cortex memories dir"        "${HOME}/.steadfaste-fleet/memories/USER.md"
 check refused "direct hermes home file"                "${HOME}/.hermes/SOUL.md"
 check refused "nested hermes home path"                "${HOME}/.hermes/profiles/foo/memories/MEMORY.md"
 
 # Must PASS (legit deploy destinations)
-check ok "cortex scripts dest"        "${HOME}/.hermes-cortex/scripts/foo.sh"
-check ok "cortex memory README (singular, cortex-owned)" "${HOME}/.hermes-cortex/memory/README.md"
+check ok "cortex scripts dest"        "${HOME}/.steadfaste-fleet/scripts/foo.sh"
+check ok "cortex memory README (singular, cortex-owned)" "${HOME}/.steadfaste-fleet/memory/README.md"
 check ok "langfuse compose"           "${HOME}/langfuse/docker-compose.yml"
 check ok "macOS launch agent"         "${HOME}/Library/LaunchAgents/com.hermes.cortex-bus.plist"
-check ok "systemd user unit"          "${HOME}/.config/systemd/user/hermes-cortex-dashboard.service"
-check ok "dashboard static"           "${HOME}/.hermes-cortex/dashboard/static/index.html"
+check ok "systemd user unit"          "${HOME}/.config/systemd/user/steadfaste-fleet-dashboard.service"
+check ok "dashboard static"           "${HOME}/.steadfaste-fleet/dashboard/static/index.html"
 check ok "home-relative non-hermes"   "${HOME}/some-other-dir/file.txt"
 
 echo ""

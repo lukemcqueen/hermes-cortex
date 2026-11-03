@@ -43,7 +43,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-GOV_DIR = Path.home() / ".hermes-cortex" / "state"
+GOV_DIR = Path.home() / ".steadfaste-fleet" / "state"
 DEFAULT_SKILL = "reflexion-check"
 
 # The cron store this host runs its jobs from. Read ONLY to diagnose a refusal
@@ -148,12 +148,12 @@ def load_store_module():
     """Resolve HC's store module.
 
     Search order: `$repo/ops/services/mycortex-mem/store.py` (repo root derived from
-    this file's location), then `~/.hermes-cortex/services/mycortex-mem/store.py`.
+    this file's location), then `~/.steadfaste-fleet/services/mycortex-mem/store.py`.
     Returns the module, or None when neither exists.
     """
     here = Path(__file__).resolve()
     for c in (here.parents[2] / "ops" / "services" / "mycortex-mem" / "store.py",
-              Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py"):
+              Path.home() / ".steadfaste-fleet" / "services" / "mycortex-mem" / "store.py"):
         if c.is_file():
             return _import_module(c)
     return None
@@ -171,7 +171,7 @@ def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
     mod = load_store_module()
     if mod is None:
         return EXIT_STORE_UNREACHABLE, (
-            "HC store module not found at ~/.hermes-cortex/services/mycortex-mem/store.py "
+            "HC store module not found at ~/.steadfaste-fleet/services/mycortex-mem/store.py "
             "— run cortex-update.sh")
     try:
         store = mod.Store()

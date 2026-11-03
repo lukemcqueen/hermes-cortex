@@ -7,7 +7,7 @@ reports -1 on a fleet host. Two sources feed that flag:
   1. jobs.json — an enabled job with last_status == "error" (server agents
      running health-vector.py read this directly).
   2. health-push-errors.log — the health-vector-push.sh check flags -1 when
-     ~/.hermes-cortex/logs/health-push-errors.log is non-empty (client
+     ~/.steadfaste-fleet/logs/health-push-errors.log is non-empty (client
      agents: joseph, kustos, gisu, titus). NOTE: pre-2026-08-12 the check had
      no recency bound, so one historical push failure poisoned the flag
      forever; fixed to require a modification within the last 6h.
@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 JOBS_FILE = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))) / "cron" / "jobs.json"
-PUSH_LOG = Path(os.path.expanduser("~/.hermes-cortex/logs/health-push-errors.log"))
+PUSH_LOG = Path(os.path.expanduser("~/.steadfaste-fleet/logs/health-push-errors.log"))
 RECENT_MINUTES = 360  # match health-vector-push.sh recency bound (6h)
 
 

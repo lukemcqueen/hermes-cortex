@@ -16,7 +16,7 @@ crons promote a SUBSET of dream output into durable personal tasks:
 
 Tasks are created as scope=personal on THIS host (honest semantics — the
 fleet transport is a roadmap item; see docs/design/task-workflow.md §3).
-project/repo are tagged `hermes-cortex`, source=`dream`, so dream-derived
+project/repo are tagged `steadfaste-fleet`, source=`dream`, so dream-derived
 tasks are queryable and attributable.
 
 Enforcement lives HERE (caps, dedup, tenant-scoping), not in the cron
@@ -46,12 +46,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-TASK_DB = Path.home() / ".hermes-cortex" / "scripts" / "task-db.py"
+TASK_DB = Path.home() / ".steadfaste-fleet" / "scripts" / "task-db.py"
 if not TASK_DB.exists():
     # repo fallback for direct invocation
-    TASK_DB = Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "task-db.py"
+    TASK_DB = Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "task-db.py"
 
-TAG_ARGS = ["--project", "hermes-cortex", "--repo", "hermes-cortex",
+TAG_ARGS = ["--project", "steadfaste-fleet", "--repo", "steadfaste-fleet",
             "--scope", "personal", "--source", "dream"]
 
 

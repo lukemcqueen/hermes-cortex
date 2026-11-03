@@ -82,7 +82,7 @@ def test_real_manifest_parses_identically_with_both_loaders(enforcer, monkeypatc
     """The deployed manifest every host actually reads, both loaders, equal result."""
     pytest.importorskip("yaml")
     pytest.importorskip("ruamel.yaml")
-    manifest_path = Path.home() / ".hermes-cortex" / "skills.yaml"
+    manifest_path = Path.home() / ".steadfaste-fleet" / "skills.yaml"
     if not manifest_path.exists():
         pytest.skip(f"no deployed manifest at {manifest_path}")
 
@@ -147,7 +147,7 @@ def test_stdlib_reader_matches_pyyaml_on_the_real_manifest(enforcer, monkeypatch
     """The dependency-free path must agree with a real YAML parse of the manifest
     every host actually reads — not merely avoid crashing."""
     pytest.importorskip("yaml")
-    manifest_path = Path.home() / ".hermes-cortex" / "skills.yaml"
+    manifest_path = Path.home() / ".steadfaste-fleet" / "skills.yaml"
     if not manifest_path.exists():
         pytest.skip(f"no deployed manifest at {manifest_path}")
 
@@ -165,13 +165,13 @@ def test_cron_bootstrap_satisfies_gate_1_without_any_yaml_library(enforcer, monk
     """The whole point, end to end: a cron session on a YAML-less runtime must
     still get its skills marker when the always-skills exist on disk, so gate 1
     passes for a job whose toolset has no skill tool."""
-    real_manifest = Path.home() / ".hermes-cortex" / "skills.yaml"
+    real_manifest = Path.home() / ".steadfaste-fleet" / "skills.yaml"
     if not real_manifest.exists():
         pytest.skip(f"no deployed manifest at {real_manifest}")
 
     home = tmp_path / "home"
-    (home / ".hermes-cortex").mkdir(parents=True)
-    (home / ".hermes-cortex" / "skills.yaml").write_text(real_manifest.read_text())
+    (home / ".steadfaste-fleet").mkdir(parents=True)
+    (home / ".steadfaste-fleet" / "skills.yaml").write_text(real_manifest.read_text())
     for name in enforcer._REQUIRED_SKILLS:
         d = home / ".hermes" / "skills" / "devops" / name
         d.mkdir(parents=True)
@@ -182,7 +182,7 @@ def test_cron_bootstrap_satisfies_gate_1_without_any_yaml_library(enforcer, monk
     # repoint it or the marker lands in the LIVE state dir (the module documents
     # this seam on _skills_marker_dir).
     monkeypatch.setattr(enforcer, "GOVERNANCE_STATE_DIR",
-                        home / ".hermes-cortex" / "state")
+                        home / ".steadfaste-fleet" / "state")
     _block_all_yaml_libraries(monkeypatch)
     session_id = "cron_probe000000_bootstrap"
 
@@ -194,13 +194,13 @@ def test_cron_bootstrap_satisfies_gate_1_without_any_yaml_library(enforcer, monk
 def test_cron_bootstrap_still_fails_closed_when_a_skill_is_missing_on_disk(
         enforcer, monkeypatch, tmp_path):
     """The fallback must not widen the gate: a missing SKILL.md still blocks."""
-    real_manifest = Path.home() / ".hermes-cortex" / "skills.yaml"
+    real_manifest = Path.home() / ".steadfaste-fleet" / "skills.yaml"
     if not real_manifest.exists():
         pytest.skip(f"no deployed manifest at {real_manifest}")
 
     home = tmp_path / "home"
-    (home / ".hermes-cortex").mkdir(parents=True)
-    (home / ".hermes-cortex" / "skills.yaml").write_text(real_manifest.read_text())
+    (home / ".steadfaste-fleet").mkdir(parents=True)
+    (home / ".steadfaste-fleet" / "skills.yaml").write_text(real_manifest.read_text())
     for name in sorted(enforcer._REQUIRED_SKILLS)[:-1]:  # one skill absent
         d = home / ".hermes" / "skills" / "devops" / name
         d.mkdir(parents=True)
@@ -208,7 +208,7 @@ def test_cron_bootstrap_still_fails_closed_when_a_skill_is_missing_on_disk(
 
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(enforcer, "GOVERNANCE_STATE_DIR",
-                        home / ".hermes-cortex" / "state")
+                        home / ".steadfaste-fleet" / "state")
     _block_all_yaml_libraries(monkeypatch)
 
     assert enforcer._bootstrap_cron_skills("cron_probe000000_missing") is False

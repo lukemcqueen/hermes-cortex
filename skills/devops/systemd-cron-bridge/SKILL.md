@@ -3,7 +3,7 @@ name: systemd-cron-bridge
 version: 1.0.0
 category: devops
 description: "Use when hosting no_agent crons on systemd timers."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:

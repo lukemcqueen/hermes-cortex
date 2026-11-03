@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Hermes Cortex Dashboard
+name: Steadfaste Fleet Dashboard
 description: >-
   Dark-mode-first agent observability dashboard. Engineering precision meets
   data clarity — a Linear-inspired design system for monitoring LLM agents,
@@ -131,7 +131,7 @@ components:
   buttonSubtleHover:
     backgroundColor: "rgba(255,255,255,0.06)"
 ---
-# Hermes Cortex Dashboard · Design System
+# Steadfaste Fleet Dashboard · Design System
 
 ## Overview
 

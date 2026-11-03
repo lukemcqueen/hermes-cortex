@@ -1,4 +1,4 @@
-# Pipeline Reference — Hermes Cortex
+# Pipeline Reference — Steadfaste Fleet
 
 Four growth pipelines that drive continuous system improvement.
 
@@ -20,8 +20,8 @@ Preserves active working context across agent sessions.
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Write | `update-session-state.sh` | Every 2h | ✗ | `~/.hermes-cortex/sessions/` (consumer projects use their own repo-local overlay) |
-| Archive | `hermes-cortex-session-state` (cron) | Every 2h | ✗ | Archived sessions |
+| Write | `update-session-state.sh` | Every 2h | ✗ | `~/.steadfaste-fleet/sessions/` (consumer projects use their own repo-local overlay) |
+| Archive | `steadfaste-fleet-session-state` (cron) | Every 2h | ✗ | Archived sessions |
 
 **Closed loop:** Non-negotiable for context continuity.
 
@@ -69,7 +69,7 @@ The corpus is **self-improving** — agents contribute back when they find missi
 
 | Step | Tool | Schedule | LLM? | Output |
 |------|------|----------|------|--------|
-| Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.hermes-cortex/offline/code-corpus/` |
+| Deploy | `cortex-update.sh` (sync_code_corpus) | On each deploy | ✗ | `.md` files synced to `~/.steadfaste-fleet/offline/code-corpus/` |
 | Index | `agent-offline-code-index` (cron) | Weekly Sun 05:00 | ✗ | Vector index refreshed (nomic-embed-text:v1.5) |
 | Learn | `offline_code learn` | On demand (when web_search fills a gap) | ✗ | New `.md` snippet created in code-corpus |
 
@@ -172,7 +172,7 @@ On Monday: runs a deep evaluation pass (full dedup, staleness detection, cross-f
 
 > **Merged from `docs/agent-learning-submissions.md` on 2026-10-20.** These two documents covered two halves of one topic; the section below is the half that lived in `docs/agent-learning-submissions.md`. That source path is preserved in git history and recorded in [`docs/older/README.md`](older/README.md) — no content was dropped in the merge.
 
-Any Hermes Cortex agent can submit ad-hoc learnings to the orchestrator
+Any Steadfaste Fleet agent can submit ad-hoc learnings to the orchestrator
 (Moses) at any time. No need to wait for the 6h automated collection cycle.
 
 ### Quick Start
@@ -238,7 +238,7 @@ Type defaults to `discovery`.
 Don't want to wait 6h? Run the collector immediately:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agent-learning-collector.py --force
+python3 ~/.steadfaste-fleet/scripts/agent-learning-collector.py --force
 ```
 
 This collects pending learnings + skills + lessons and sends the report

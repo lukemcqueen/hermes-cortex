@@ -1,5 +1,5 @@
 """
-Hermes Cortex Agent Bus Server — PGMQ Backend on Postgres
+Steadfaste Fleet Agent Bus Server — PGMQ Backend on Postgres
 
 FastAPI server that provides a REST API for the Postgres-native message queue.
 All operations authenticated via Bearer tokens, authorized via permission model.
@@ -33,7 +33,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 # ── Add src to path for cortex_bus imports ──
-SRC_DIR = Path.home() / "hermes-cortex" / "core"
+SRC_DIR = Path.home() / "steadfaste-fleet" / "core"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -51,7 +51,7 @@ _rate_limiter = RateLimiter()
 from cortex_bus.workflow.human_gate import get_pending_hil, process_hil_response
 from cortex_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
 
-app = FastAPI(title="Hermes Cortex Agent Bus")
+app = FastAPI(title="Steadfaste Fleet Agent Bus")
 
 # ── Auth dependency ──────────────────────────────────────────
 
@@ -655,9 +655,9 @@ async def health():
 async def agent_card():
     """Agent discovery card (public, no auth)."""
     return {
-        "name": "hermes-cortex-bus",
+        "name": "steadfaste-fleet-bus",
         "version": "2.0.0",
-        "description": "Hermes Cortex Agent Bus — PGMQ message queue + workflow engine",
+        "description": "Steadfaste Fleet Agent Bus — PGMQ message queue + workflow engine",
         "capabilities": [
             "pgmq_messaging",
             "workflow_dispatch",
@@ -747,7 +747,7 @@ DASHBOARD_HTML = r"""
 <tbody id="queue-table"></tbody>
 </table>
 
-<div class="footer">Hermes Cortex Agent Bus &mdash; real-time queue monitoring</div>
+<div class="footer">Steadfaste Fleet Agent Bus &mdash; real-time queue monitoring</div>
 
 <h2>Workflows <span id="wf-subtitle" style="font-weight:normal;font-size:12px;color:#484f58"></span></h2>
 <table>

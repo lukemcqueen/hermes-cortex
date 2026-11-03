@@ -20,7 +20,7 @@ PORT = int(os.environ.get("CORTEX_DASHBOARD_PORT", "8901"))
 
 # ── Langfuse credentials ──────────────────────────────────────────────
 pk = sk = None
-# Try ~/langfuse/.env first, then ~/hermes-cortex/.env as fallback
+# Try ~/langfuse/.env first, then ~/steadfaste-fleet/.env as fallback
 for _env_candidate in [LANGFUSE_ENV, HERMES_HOME / ".env"]:
     if _env_candidate.exists():
         with open(_env_candidate) as f:
@@ -94,7 +94,7 @@ def _lf(path, timeout=30):
             path = f"{path}{sep}fromTimestamp={from_ts}"
         req = Request(f"{LANGFUSE_HOST}/api/public{path}")
         req.add_header("Authorization", f"Basic {LANGFUSE_AUTH}")
-        req.add_header("User-Agent", "Hermes-Cortex-Dashboard/2.0")
+        req.add_header("User-Agent", "Steadfaste-Fleet-Dashboard/2.0")
         with urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
     except Exception as e:
@@ -1115,7 +1115,7 @@ def api_system():
 
 # ── Agent Health ──────────────────────────────────────────────
 
-AGENT_HEALTH_FILE = Path.home() / ".hermes-cortex" / "state" / "agent-health-data.json"
+AGENT_HEALTH_FILE = Path.home() / ".steadfaste-fleet" / "state" / "agent-health-data.json"
 
 @app.route("/api/agents")
 @_cached("agents", ttl=10)

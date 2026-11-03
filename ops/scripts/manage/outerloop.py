@@ -12,7 +12,7 @@ Commands:
     outerloop ledger list                           List all ledger entries
     outerloop evidence list                         List all evidence packages
 
-Data: ~/.hermes-cortex/state/outerloop.db (SQLite)
+Data: ~/.steadfaste-fleet/state/outerloop.db (SQLite)
 
 Exit codes:
     0 — Success
@@ -31,10 +31,10 @@ from pathlib import Path
 # ── Config ──────────────────────────────────────────────────────
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 DB_PATH = STATE_DIR / "outerloop.db"
 REGISTRY_PATH = STATE_DIR / "agent-registry.json"
-CORTEX_REPO = HOME / "hermes-cortex"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 
 
 def _resolve_agent_name() -> str:
@@ -43,7 +43,7 @@ def _resolve_agent_name() -> str:
     account name (Luke directive 2026-08-14)."""
     name = os.environ.get("AGENT_NAME", "").strip()
     if not name:
-        for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+        for _idf in (HOME / ".steadfaste-fleet" / "agent.env", HOME / "steadfaste-fleet" / ".env"):
             try:
                 if _idf.is_file():
                     for _line in _idf.read_text().splitlines():
@@ -57,7 +57,7 @@ def _resolve_agent_name() -> str:
                 continue
     if not name or name == "unknown":
         print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-              "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+              "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
               file=sys.stderr)
         sys.exit(1)
     return name
@@ -118,7 +118,7 @@ def get_db() -> sqlite3.Connection:
 
 def collect_evidence_from_gov_cycles(run_id: str) -> dict:
     """Collect evidence from loop-governance DB cycles matching the run_id."""
-    gov_db = HOME / ".hermes-cortex" / "state" / "governance.db"
+    gov_db = HOME / ".steadfaste-fleet" / "state" / "governance.db"
     evidence = {
         "gov_cycles": [],
         "gov_scores": [],

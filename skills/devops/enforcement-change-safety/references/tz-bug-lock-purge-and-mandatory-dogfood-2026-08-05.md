@@ -47,7 +47,7 @@ only the bash `date -d` path had the bug.
 ## Mandatory dogfood in the pre-push gate
 
 **Luke: "make dogfood MANDATORY — I thought you did already."** The pre-push
-hook (hermes-cortex repo + orchestrator host only) runs the FULL dogfood
+hook (steadfaste-fleet repo + orchestrator host only) runs the FULL dogfood
 cycle itself when the push touches any non-doc file:
 
 ```bash
@@ -61,7 +61,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_F
     esac
   done <<< "$CHANGED_FILES"
   if [[ "$_DOGFOOD_RELEVANT" -eq 1 ]]; then
-    bash "${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh" --quiet ...
+    bash "${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh" --quiet ...
     [[ $_DOGFOOD_RC -ne 0 ]] && exit 1    # block the push on dogfood FAIL
   fi
 fi
@@ -74,7 +74,7 @@ fi
    slipped past the list).
 2. "and outside of hermes cortex... for non hc repos" → **WRONG reading by
    Esther**; Luke corrected: "dogfooding is really just REDEPLOYMENT of hc,
-   so it's irrelevant to other repos" → **hermes-cortex repo ONLY**. A
+   so it's irrelevant to other repos" → **steadfaste-fleet repo ONLY**. A
    non-HC push redeploys nothing; it must never run the HC dogfood.
 3. Keep the orchestrator-only scope from earlier.
 
@@ -86,7 +86,7 @@ itself. Fix in `cortex-dogfood.sh`:
 
 ```bash
 # Capture BEFORE deploy (deploy will purge/restart the lock state)
-for _lf in "${HOME}/.hermes-cortex/state"/.governance-*.json; do
+for _lf in "${HOME}/.steadfaste-fleet/state"/.governance-*.json; do
   [[ -f "$_lf" ]] || continue
   DOGFOOD_OWN_TASK=$(python3 -c "import json;print(json.load(open('$_lf')).get('task_id',''))" ...)
   [[ -n "$DOGFOOD_OWN_TASK" ]] && break

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Multi-OS Ollama Installer
+#  Steadfaste Fleet — Multi-OS Ollama Installer
 #  Called by install.sh. Handles installation and service setup
 #  for Ollama + embedding model on any supported OS.
 # ─────────────────────────────────────────────────────────────
@@ -117,8 +117,8 @@ wait_for_ollama() {
 
 pull_embedding_model() {
   # Source model config for EMBEDDING_MODEL (survives cortex-update.sh)
-  # Priority: ~/.hermes/hermes-cortex.env > ~/.hermes/models.env
-  local unified_env="${HOME}/.hermes/hermes-cortex.env"
+  # Priority: ~/.hermes/steadfaste-fleet.env > ~/.hermes/models.env
+  local unified_env="${HOME}/.hermes/steadfaste-fleet.env"
   [ -f "$unified_env" ] && source "$unified_env" 2>/dev/null || true
   local models_env="${HOME}/.hermes/models.env"
   [ -f "$models_env" ] && source "$models_env" 2>/dev/null || true

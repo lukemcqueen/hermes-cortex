@@ -16,8 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
 SERVICE_NAME="com.hermes.agent-learning-sender"
-UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/send-agent-learning.sh"
-STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state"
+UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/send-agent-learning.sh"
+STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state"
 mkdir -p "$STATE_DIR"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; RESET='\033[0m'
@@ -28,7 +28,7 @@ error() { printf "${RED}✗${RESET} %s\\n" "$*"; }
 install_cron() {
   if [[ ! -f "$UPDATE_SCRIPT" ]]; then
     error "send-agent-learning.sh not found at ${UPDATE_SCRIPT}"
-    error "Install Hermes Cortex first, then run this script."
+    error "Install Steadfaste Fleet first, then run this script."
     return 1
   fi
 

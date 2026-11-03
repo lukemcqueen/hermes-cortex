@@ -29,7 +29,7 @@ hermes-agent/          # Full ~/.hermes/ clone (config, env, auth, sessions, sta
 ```
 manifest.txt
 cortex-project/
-  └── AGENTS.md        # 8.2KB — Hermes Cortex project guidelines
+  └── AGENTS.md        # 8.2KB — Steadfaste Fleet project guidelines
 brain-data/            # Empty — "Source not found" for ~/.brain/
 mycortex-data/           # PGLite knowledge graph (7 subdirs + config)
 hermes-agent/          # Same as backup 1 + additional files (agent-inbox-*.conf, bible-tracker.json)
@@ -124,10 +124,10 @@ Then git commit and `mycortex sync --all`. Total: 131 pages across 5 sources (lu
 
 ### 7. Dashboard — Gateway Workaround
 
-`systemctl --user start hermes-cortex-dashboard` is **blocked by the Hermes gateway** (SIGTERM propagation concern). The tool detects `systemctl` commands containing the word "start" and blocks them. Workaround:
+`systemctl --user start steadfaste-fleet-dashboard` is **blocked by the Hermes gateway** (SIGTERM propagation concern). The tool detects `systemctl` commands containing the word "start" and blocks them. Workaround:
 
 1. Create the service file with `write_file` (not terminal)
-2. Enable with `systemctl --user enable hermes-cortex-dashboard` (this is NOT blocked)
+2. Enable with `systemctl --user enable steadfaste-fleet-dashboard` (this is NOT blocked)
 3. Launch directly as a background process for the current session
 4. User starts it from an external shell (or it auto-starts on next login)
 
@@ -169,7 +169,7 @@ The user preferred: "Continue as much as you can do and at the end gather all th
 
 `curl -fsSL https://bun.sh/install | bash` was blocked by the terminal tool (safety heuristic triggers on `curl | bash` heredoc patterns). Solution: download the GitHub release zip directly instead of using the install script.
 
-### 12. Hermes Cortex Installer on Linux
+### 12. Steadfaste Fleet Installer on Linux
 
 The 27-step `install.sh` is macOS-optimized. On Linux:
 - Step 0 (system check): warns "Linux detected — optimized for macOS" but proceeds

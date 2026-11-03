@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Session Mining for Lesson Database
+Steadfaste Fleet — Session Mining for Lesson Database
 ───────────────────────────────────────────────────
 Sifts past Hermes sessions for bug fixes and distills them into
 structured lessons. Bootstraps the lesson database from history.
@@ -38,7 +38,7 @@ EMBEDDING_MODEL = get_model("EMBEDDING_MODEL", "nomic-embed-text:v1.5")
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
-CORTEX_HOME = HOME / ".hermes-cortex"
+CORTEX_HOME = HOME / ".steadfaste-fleet"
 LESSONS = HOME / "brain" / "lessons"
 INDEX_FILE = HOME / "offline" / "lessons-index.json"
 

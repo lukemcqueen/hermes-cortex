@@ -27,7 +27,7 @@ PUSH_HOOK_SOURCE="${SCRIPT_DIR}/pre-push-pull"
 PUSH_HOOK_NAME="pre-push"
 AUTO_SCAN_DIRS=(
   "$HOME/Developer"
-  "$HOME/hermes-cortex"
+  "$HOME/steadfaste-fleet"
   "$HOME/Sites"
 )
 
@@ -57,7 +57,7 @@ parse_args "$@"
 # Verify hook source exists
 if [[ ! -f "$HOOK_SOURCE" ]]; then
   # Try relative to repo root
-  HOOK_SOURCE="${HOME}/hermes-cortex/ops/scripts/pre-commit-score"
+  HOOK_SOURCE="${HOME}/steadfaste-fleet/ops/scripts/pre-commit-score"
 fi
 if [[ ! -f "$HOOK_SOURCE" ]]; then
   error "Hook template not found at pre-commit-score"

@@ -2,7 +2,7 @@
 
 This reference documents the full deployment, config, and troubleshooting for
 the self-hosted Langfuse stack used with Hermes Agent. The canonical compose
-file and XML configs live in `hermes-cortex/deploy/`.
+file and XML configs live in `steadfaste-fleet/deploy/`.
 
 ## File Structure
 

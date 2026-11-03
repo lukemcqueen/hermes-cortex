@@ -17,8 +17,8 @@ from datetime import datetime, timezone
 
 # Add repo core dir to path (cortex_bus package lives in <repo>/core).
 # Works from repo layout (ops/scripts/orch-bus/) and deployed layout
-# (~/.hermes-cortex/scripts/) since the repo is at ~/hermes-cortex.
-_REPO_CORE = os.path.expanduser("~/hermes-cortex/core")
+# (~/.steadfaste-fleet/scripts/) since the repo is at ~/steadfaste-fleet.
+_REPO_CORE = os.path.expanduser("~/steadfaste-fleet/core")
 if os.path.isdir(_REPO_CORE):
     sys.path.insert(0, _REPO_CORE)
 else:

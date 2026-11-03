@@ -6,7 +6,7 @@
 > ⚠️ **You do NOT install the bus MCP client.** The `cortex-bus` MCP server
 > (`inbox_send`/`inbox_read` tools) is **orchestrator-only** (Moses, Esther) —
 > the doctor WARNS if you add it to `config.yaml`. Your only bus access is the
-> HTTP client: `~/hermes-cortex/.env` + `contact-orchestrator.sh`.
+> HTTP client: `~/steadfaste-fleet/.env` + `contact-orchestrator.sh`.
 >
 > 📄 **Connected, and now working?** See
 > [`agent-session-lifecycle.md`](agent-session-lifecycle.md) for what a normal
@@ -34,7 +34,7 @@ Hermes Agent                             Hermes gateway (:8905)
 ## What You Need Before Starting
 
 - **Hermes Agent** installed and working
-- **hermes-cortex repo** cloned: `git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex`
+- **steadfaste-fleet repo** cloned: `git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet`
 - **A Telegram chat** (or another delivery channel) where your cron output can land
 
 ---
@@ -50,7 +50,7 @@ Contact Moses (or have the human ask him) with subject:
 Once you have credentials in place you can use `contact-orchestrator.sh`, but for the
 first contact use your human or the bus URL/curl directly (see the contact
 protocol in the private repo:
-`hermes-cortex-private/docs/contact-protocol-how-to-reach-orchestrator.md`).
+`steadfaste-fleet-private/docs/contact-protocol-how-to-reach-orchestrator.md`).
 
 Moses will:
 1. Create an htpasswd entry for you on the nginx gateway
@@ -80,7 +80,7 @@ to receive fleet updates, and what you use to message the orchestrator.
 
 ## Step 3 — Create Your Bus Config (HTTP client)
 
-Create `~/hermes-cortex/.env`:
+Create `~/steadfaste-fleet/.env`:
 
 ```ini
 CORTEX_BUS_URL="https://example.com:13004"
@@ -91,7 +91,7 @@ AGENT_NAME="titus"
 Then lock it down:
 
 ```bash
-chmod 600 ~/hermes-cortex/.env
+chmod 600 ~/steadfaste-fleet/.env
 ```
 
 > The HTTP client (`contact-orchestrator.sh`, `lib.cortex_bus`, `agent-message-handler`)
@@ -144,7 +144,7 @@ cronjob action=create schedule="*/5 * * * *" \
 > ⚠ Do NOT create a cron named `process-mcp-agent-inbox-messages` or any cron
 > that calls `inbox-watch`/`inbox_read` MCP tools — those are orchestrator-only
 > and will fail without the MCP client. See the bus role matrix (canonical
-> "who has what") in the private repo (`hermes-cortex-private/docs/bus-architecture.md`).
+> "who has what") in the private repo (`steadfaste-fleet-private/docs/bus-architecture.md`).
 
 ---
 
@@ -175,14 +175,14 @@ After setup, your agent pushes these metrics every 5 minutes:
 ### Option A: Bash (simple, no Python deps)
 
 The repo ships a standalone bash script at
-`~/hermes-cortex/ops/scripts/manage/push-metrics.sh` that collects system
+`~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh` that collects system
 metrics and POSTs them in Prometheus text format.
 
 Set it up as a `no_agent` cron (zero LLM token cost):
 
 ```bash
 # Copy the script to the cron runtime directory
-cp ~/hermes-cortex/ops/scripts/manage/push-metrics.sh ~/.hermes/scripts/
+cp ~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh ~/.hermes/scripts/
 
 # ⚡ Create the cron (replace URL with your VictoriaMetrics server)
 VICTORIA_URL="http://your-central-server:8428/api/v1/import/prometheus"
@@ -208,7 +208,7 @@ Verify metrics are flowing:
 
 ```bash
 # Push once manually (dry run without cron)
-AGENT_NAME="titus" bash ~/hermes-cortex/ops/scripts/manage/push-metrics.sh
+AGENT_NAME="titus" bash ~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh
 
 # ⚡ Ask Moses to check (or query VictoriaMetrics directly if you have access):
 curl -s "http://<victoria-host>:8428/api/v1/query" \
@@ -303,7 +303,7 @@ who you are, what you do, and how you operate.
 Copy the template:
 
 ```bash
-cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
+cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md
 # Or create it from scratch
 ```
 
@@ -406,7 +406,7 @@ and check one of:
 
 2. **Agent health data** (Moses can check):
    ```bash
-   python3 -c "import json;d=json.load(open('~/.hermes-cortex/state/inbox-health-state.json'));print(d.get('titus'))"
+   python3 -c "import json;d=json.load(open('~/.steadfaste-fleet/state/inbox-health-state.json'));print(d.get('titus'))"
    ```
    A dict with `vector` + `ts` means your latest ping was drained and recorded.
 
@@ -479,7 +479,7 @@ and the most recent check matter.
 
 This step happens **on Moses's machine**, not yours. Moses will:
 
-1. Add you to `~/.hermes-cortex/state/agent-registry.json`:
+1. Add you to `~/.steadfaste-fleet/state/agent-registry.json`:
 
 ```json
 "titus": {
@@ -521,7 +521,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | Symptom | Likely cause |
 |---------|-------------|
 | `inbox_read` returns empty but you know messages exist | Your poll cron hasn't run yet. Wait for the next tick or run it manually: `cronjob action=run job_id=<id>` |
-| `inbox_send` returns 401 | Wrong credentials in `~/hermes-cortex/.env`. Double-check with Moses. |
+| `inbox_send` returns 401 | Wrong credentials in `~/steadfaste-fleet/.env`. Double-check with Moses. |
 | `inbox_send` returns connection refused | Moses's nginx is down. Check with the human. |
 | Cron never delivers to Telegram | Your `--deliver origin` points to a chat that isn't connected. Check `hermes` settings. |
 | You don't see your own SOUL.md | Only Moses has access. Your SOUL.md lives at `~/.hermes/SOUL.md` |
@@ -535,14 +535,14 @@ This step happens **on Moses's machine**, not yours. Moses will:
 
 | File | Purpose |
 |------|---------|
-| `~/hermes-cortex/.env` | Your bus credentials and agent identity (HTTP client) |
+| `~/steadfaste-fleet/.env` | Your bus credentials and agent identity (HTTP client) |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
-| `~/hermes-cortex/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
-| `~/hermes-cortex/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
-| `~/hermes-cortex/core/cortex_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
-| `~/hermes-cortex/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |
-| `~/hermes-cortex/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
+| `~/steadfaste-fleet/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
+| `~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
+| `~/steadfaste-fleet/core/cortex_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
+| `~/steadfaste-fleet/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |
+| `~/steadfaste-fleet/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 
 ---
 
@@ -592,7 +592,7 @@ You don't need to install or manage Postgres yourself — your `cortex-update.sh
 **Verify your DB connectivity:** The doctor checks this:
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py
 ```
 
 Look for `Task DB connectivity` + `Task DB write-probe` — should show `PASS`.

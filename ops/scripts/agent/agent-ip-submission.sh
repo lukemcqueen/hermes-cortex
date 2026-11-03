@@ -18,11 +18,11 @@ ts() {
 }
 
 # ── Temporary governance lock for automated pushes ─────────
-_GOV_LOCK="${HOME}/.hermes-cortex/state/.governance-agent-ip-submission.json"
+_GOV_LOCK="${HOME}/.steadfaste-fleet/state/.governance-agent-ip-submission.json"
 trap 'rm -f "$_GOV_LOCK"' EXIT
 _create_gov_lock() {
-  mkdir -p "${HOME}/.hermes-cortex/state"
-  local _slug; _slug=$(basename "${CORTEX_REPO:-${HOME}/hermes-cortex}")
+  mkdir -p "${HOME}/.steadfaste-fleet/state"
+  local _slug; _slug=$(basename "${CORTEX_REPO:-${HOME}/steadfaste-fleet}")
   cat > "$_GOV_LOCK" <<-LOCKEOF
 {
   "task_id": "agent-ip-submission",
@@ -35,7 +35,7 @@ _create_gov_lock() {
 LOCKEOF
 }
 
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
 
 # Fail-safe cleanup for an interrupted rebase (added 2026-10-18): a `git pull --rebase`
 # that conflicts leaves the repository stopped mid-rebase, refusing every commit and push
@@ -141,7 +141,7 @@ else
 fi
 
 # ── Deploy live if deploy-blocked-ips is available ──
-DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/deploy-blocked-ips.sh"
+DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
   DEPLOY_BLOCKED="${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh"
 fi

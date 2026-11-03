@@ -1,5 +1,5 @@
 <!--
-  Hermes Cortex — Seeded AGENTS.md template
+  Steadfaste Fleet — Seeded AGENTS.md template
 
   SOUL.md vs AGENTS.md — the relationship:
 
@@ -20,7 +20,7 @@
 -->
 # Agent Guidelines — {{PROJECT_NAME}}
 
-*Seeded from Hermes Cortex {{SEED_COMMIT}} on {{SEED_DATE}}*
+*Seeded from Steadfaste Fleet {{SEED_COMMIT}} on {{SEED_DATE}}*
 
 ---
 
@@ -39,7 +39,7 @@
 |------|-------|
 | Agent identity | `~/.hermes/SOUL.md` — character, principles, how to think |
 | Project context | **This file** — build, conventions, what to build |
-| Hermes Cortex source | `~/hermes-cortex/` — shared skills, scripts, templates |
+| Steadfaste Fleet source | `~/steadfaste-fleet/` — shared skills, scripts, templates |
 | Doc index | `docs/DOCS-INDEX.md` (if present) |
 
 ---
@@ -189,7 +189,7 @@ serves every repo you work in. When switching between repos:
 - Project-specific constraints and rules
 
 **When you have a skill that spans projects:** upstream it to
-`hermes-cortex` so all agents and all repos benefit. If it's truly one-repo
+`steadfaste-fleet` so all agents and all repos benefit. If it's truly one-repo
 only, reference it from AGENTS.md via the skills manifest.
 
 <!--

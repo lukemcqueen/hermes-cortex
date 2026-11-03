@@ -142,7 +142,7 @@ def _find_timed_out_steps(now: datetime) -> list[dict]:
         return [_row_to_dict(cur, r) for r in cur.fetchall()]
 
 
-DLQ_STATE_FILE = Path.home() / ".hermes-cortex" / "state" / "sla-watchdog-dlq-state.json"
+DLQ_STATE_FILE = Path.home() / ".steadfaste-fleet" / "state" / "sla-watchdog-dlq-state.json"
 DLQ_ALERT_THRESHOLD = 20  # alert if DLQ depth grew by more than this since last check
 
 

@@ -1,6 +1,6 @@
-# Cloud Deployment Runbook — Hermes Cortex
+# Cloud Deployment Runbook — Steadfaste Fleet
 
-Deploy a Hermes Cortex agent to a cloud VM (AWS EC2 or Hetzner Cloud).
+Deploy a Steadfaste Fleet agent to a cloud VM (AWS EC2 or Hetzner Cloud).
 Local/private-first — this enables migration when needed, not a replacement for local operation.
 
 ---
@@ -72,15 +72,15 @@ yourdomain.com.    A     → <Elastic-IP>
 
 ### 2. Firewall Rules
 
-Same port map as AWS security group above. Create a Hermes Cortex firewall template:
+Same port map as AWS security group above. Create a Steadfaste Fleet firewall template:
 
 ```bash
-hcloud firewall create --name hermes-cortex
-hcloud firewall add-rule hermes-cortex --direction in --protocol tcp --port 22 --source-ips 0.0.0.0/0 --description SSH
-hcloud firewall add-rule hermes-cortex --direction in --protocol tcp --port 80 --source-ips 0.0.0.0/0 --description HTTP
-hcloud firewall add-rule hermes-cortex --direction in --protocol tcp --port 443 --source-ips 0.0.0.0/0 --description HTTPS
+hcloud firewall create --name steadfaste-fleet
+hcloud firewall add-rule steadfaste-fleet --direction in --protocol tcp --port 22 --source-ips 0.0.0.0/0 --description SSH
+hcloud firewall add-rule steadfaste-fleet --direction in --protocol tcp --port 80 --source-ips 0.0.0.0/0 --description HTTP
+hcloud firewall add-rule steadfaste-fleet --direction in --protocol tcp --port 443 --source-ips 0.0.0.0/0 --description HTTPS
 # Agent ports restricted to fleet
-hcloud firewall add-rule hermes-cortex --direction in --protocol tcp --port 13001-13007 --source-ips <your-fleet-cidr>
+hcloud firewall add-rule steadfaste-fleet --direction in --protocol tcp --port 13001-13007 --source-ips <your-fleet-cidr>
 ```
 
 ### 3. Additional Volume (for models)
@@ -107,7 +107,7 @@ ssh ubuntu@<server-ip>
 ### 2. Configure Secrets
 
 ```bash
-nano ~/hermes-cortex/.env
+nano ~/steadfaste-fleet/.env
 ```
 
 Required variables — set every one:
@@ -133,7 +133,7 @@ Required variables — set every one:
 ### 3. Run Installer
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 bash ops/install/install.sh
 ```
 

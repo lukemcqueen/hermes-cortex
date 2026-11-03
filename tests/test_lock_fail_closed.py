@@ -14,7 +14,7 @@ import importlib.util, json, shutil, sys, tempfile
 from pathlib import Path
 
 DEPLOY = Path.home() / ".hermes/plugins/governance-enforcer/__init__.py"
-STATE = Path.home() / ".hermes-cortex/state"
+STATE = Path.home() / ".steadfaste-fleet/state"
 REPO = Path(__file__).resolve().parents[1]  # repo root under test
 
 failures = []

@@ -60,7 +60,7 @@ done
 BHTML=$(curl -sf http://localhost:8901/bus 2>/dev/null || true)
 [ -z "$BHTML" ] && fail "/bus: no response" || {
   echo "$BHTML" | grep -qF 'src="/bus.js"' && pass "/bus: external bus.js" || fail "/bus: missing bus.js"
-  INLINE=$(grep -cP '<script>(?!\s*src)' ~/.hermes-cortex/dashboard/static/bus.html 2>/dev/null || true)
+  INLINE=$(grep -cP '<script>(?!\s*src)' ~/.steadfaste-fleet/dashboard/static/bus.html 2>/dev/null || true)
   [ "$INLINE" -eq 0 ] 2>/dev/null && pass "/bus: 0 inline scripts" || fail "/bus: $INLINE inline scripts"
 }
 
@@ -68,7 +68,7 @@ BHTML=$(curl -sf http://localhost:8901/bus 2>/dev/null || true)
 LHTML=$(curl -sf http://localhost:8901/langfuse 2>/dev/null || true)
 [ -z "$LHTML" ] && fail "/langfuse: no response" || {
   echo "$LHTML" | grep -qF 'src="/langfuse.js"' && pass "/langfuse: external langfuse.js" || fail "/langfuse: missing langfuse.js"
-  INLINE=$(grep -cP '<script>(?!\s*src)' ~/.hermes-cortex/dashboard/static/langfuse.html 2>/dev/null || true)
+  INLINE=$(grep -cP '<script>(?!\s*src)' ~/.steadfaste-fleet/dashboard/static/langfuse.html 2>/dev/null || true)
   [ "$INLINE" -eq 0 ] 2>/dev/null && pass "/langfuse: 0 inline scripts" || fail "/langfuse: $INLINE inline scripts"
 }
 
@@ -82,7 +82,7 @@ echo "$HTML" | grep -qF '@media (max-width: 640px)' && pass "Responsive 640px" |
 
 echo ""
 echo "═══ 5. JS Structure ═══"
-JS=$(cat ~/.hermes-cortex/dashboard/static/dashboard.js 2>/dev/null || echo "")
+JS=$(cat ~/.steadfaste-fleet/dashboard/static/dashboard.js 2>/dev/null || echo "")
 [ -z "$JS" ] && { fail "dashboard.js not found"; JS=" "; }
 for fn in switchView renderBusView renderLangfuseView prefetchBus formatCost; do
   echo "$JS" | grep -qF "function $fn" && pass "function $fn()" || fail "function $fn() missing"
@@ -120,7 +120,7 @@ for p in / /bus /langfuse /api/bus /api/healthy; do
 done
 
 # JS syntax check
-node --check ~/.hermes-cortex/dashboard/static/dashboard.js 2>/dev/null && pass "dashboard.js syntax valid" || fail "dashboard.js syntax INVALID"
+node --check ~/.steadfaste-fleet/dashboard/static/dashboard.js 2>/dev/null && pass "dashboard.js syntax valid" || fail "dashboard.js syntax INVALID"
 
 # CSP header allows our resources
 CSP=$(curl -skI -m 5 https://bus.example.org:13001/ 2>/dev/null | grep -i "content-security-policy" || echo "")
@@ -137,10 +137,10 @@ echo "$HTML" | grep -cP ' onclick=' 2>/dev/null && INLINE_EVENTS=$(echo "$HTML" 
 [ "$INLINE_EVENTS" -eq 0 ] && pass "Zero onclick attributes" || fail "$INLINE_EVENTS onclick attributes"
 echo "$HTML" | grep -cP '<script>(?!\s*src)' 2>/dev/null && INLINE_SCRIPTS=$(echo "$HTML" | grep -cP '<script>(?!\s*src)' 2>/dev/null || echo 0) || INLINE_SCRIPTS=0
 [ "$INLINE_SCRIPTS" -eq 0 ] && pass "Zero inline scripts in main page" || fail "$INLINE_SCRIPTS inline scripts"
-[ -f ~/.hermes-cortex/dashboard/static/bus.js ] && pass "bus.js exists" || fail "bus.js missing"
-[ -f ~/.hermes-cortex/dashboard/static/langfuse.js ] && pass "langfuse.js exists" || fail "langfuse.js missing"
-BS=$(wc -c < ~/.hermes-cortex/dashboard/static/bus.js 2>/dev/null || echo 0)
-LS=$(wc -c < ~/.hermes-cortex/dashboard/static/langfuse.js 2>/dev/null || echo 0)
+[ -f ~/.steadfaste-fleet/dashboard/static/bus.js ] && pass "bus.js exists" || fail "bus.js missing"
+[ -f ~/.steadfaste-fleet/dashboard/static/langfuse.js ] && pass "langfuse.js exists" || fail "langfuse.js missing"
+BS=$(wc -c < ~/.steadfaste-fleet/dashboard/static/bus.js 2>/dev/null || echo 0)
+LS=$(wc -c < ~/.steadfaste-fleet/dashboard/static/langfuse.js 2>/dev/null || echo 0)
 [ "$BS" -gt 1000 ] && pass "bus.js $BS bytes" || fail "bus.js $BS bytes"
 [ "$LS" -gt 1000 ] && pass "langfuse.js $LS bytes" || fail "langfuse.js $LS bytes"
 

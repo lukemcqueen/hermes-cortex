@@ -1,6 +1,6 @@
 {
   "version": 4,
-  "description": "Agent registry for Hermes Cortex v4. Every agent must have entries for all 5 fleet concerns: identity & trust, topology, choreography, economics, and sovereign control. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
+  "description": "Agent registry for Steadfaste Fleet v4. Every agent must have entries for all 5 fleet concerns: identity & trust, topology, choreography, economics, and sovereign control. health_method: 'http' for server agents with reachable health endpoints, 'inbox' for client-only agents that push via inbox.",
   "health_vector_map": [
     "resources", "services", "no_errored_crons", "no_stale_crons",
     "nginx", "ollama", "mycortex", "disk_ok", "mycortex_sources_ok"
@@ -39,11 +39,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -52,7 +52,7 @@
             "type": "assistant",
             "permissions": "edit",
             "tool_scope": [
-              "hermes-cortex",
+              "steadfaste-fleet",
               "agent-bus",
               "nginx",
               "docker",
@@ -119,11 +119,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -132,7 +132,7 @@
             "type": "claw",
             "permissions": "run",
             "tool_scope": [
-              "hermes-cortex",
+              "steadfaste-fleet",
               "local-services"
             ],
             "version": "1.0.0"
@@ -200,11 +200,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -213,7 +213,7 @@
             "type": "claw",
             "permissions": "run",
             "tool_scope": [
-              "hermes-cortex",
+              "steadfaste-fleet",
               "nginx",
               "web-services"
             ],
@@ -289,11 +289,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -302,7 +302,7 @@
             "type": "claw",
             "permissions": "edit",
             "tool_scope": [
-              "hermes-cortex",
+              "steadfaste-fleet",
               "nginx",
               "fail2ban",
               "ip-blocking"
@@ -372,11 +372,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -385,7 +385,7 @@
             "type": "assistant",
             "permissions": "edit",
             "tool_scope": [
-              "hermes-cortex"
+              "steadfaste-fleet"
             ],
             "version": "1.0.0"
           }
@@ -451,11 +451,11 @@
         "git": {
           "remote": "origin",
           "default_branch": "main",
-          "repo_path": "~/hermes-cortex"
+          "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
           "update_method": "cortex-update",
-          "doctor_path": "~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -464,7 +464,7 @@
             "type": "assistant",
             "permissions": "edit",
             "tool_scope": [
-              "hermes-cortex",
+              "steadfaste-fleet",
               "agent-bus",
               "nginx"
             ],

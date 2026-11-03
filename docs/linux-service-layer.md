@@ -15,7 +15,7 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Unit | What it runs | Notes |
 |---|---|---|---|
-| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.hermes-cortex/gateway.yaml`; env from `%h/hermes-cortex/.env`. |
+| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.steadfaste-fleet/gateway.yaml`; env from `%h/steadfaste-fleet/.env`. |
 | `health-vector.service` | `health-vector.service` | `ops/scripts/health/health-vector.py --serve 8905` | INTERNAL port **8905** — nginx's `health_backend` upstream expects it. Do not change it without patching the nginx upstream too. |
 
 ## Rules
@@ -26,13 +26,13 @@ docs audit, which both pointed at this file before it existed.
 2. **`%h` is the home specifier** — that is how these units stay host-independent. Never write
    `/home/<user>/`. systemd expands `%h` inside `ExecStart`/`ExecStartPre` arguments, including
    inside the shell string below.
-3. **Interpreter: the fleet venv**, `%h/.hermes-cortex/venv/bin/python3` — the venv
+3. **Interpreter: the fleet venv**, `%h/.steadfaste-fleet/venv/bin/python3` — the venv
    `cortex-update.sh` registers every MCP server against. **Not `/usr/bin/python3`** (it lacks
    the declared set) and not the Hermes venv.
 4. **Source the launcher guard before exec'ing**, so a missing venv or payload is named in the
    journal instead of dying as `No such file or directory`:
    ```ini
-   ExecStart=/bin/bash -lc '. %h/.hermes-cortex/scripts/lib/require-fleet-venv.sh; require_fleet_venv <payload>; exec "%h/.hermes-cortex/venv/bin/python3" <payload> <args>'
+   ExecStart=/bin/bash -lc '. %h/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh; require_fleet_venv <payload>; exec "%h/.steadfaste-fleet/venv/bin/python3" <payload> <args>'
    ```
    If the venv is absent, `cortex-update.sh` creates and fills it on the host's next update
    (see `docs/troubleshooting.md`).

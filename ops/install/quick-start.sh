@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Quick Start (10 seconds)
+#  Steadfaste Fleet — Quick Start (10 seconds)
 #
 #  Installs the bare minimum to use TDD scoring and skills:
 #    1. Loop-governance tools (score-cycle, loop-feedback)
@@ -9,7 +9,7 @@
 #  Usage:
 #    bash quick-start.sh
 #
-#  For the full Hermes Cortex experience (brain, dashboard,
+#  For the full Steadfaste Fleet experience (brain, dashboard,
 #  offline knowledge), run: bash install.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -23,7 +23,7 @@ fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════╗"
-echo "║    Hermes Cortex — Quick Start               ║"
+echo "║    Steadfaste Fleet — Quick Start               ║"
 echo "║    TDD scoring + skills in 10 seconds        ║"
 echo "╚═══════════════════════════════════════════════╝"
 echo ""

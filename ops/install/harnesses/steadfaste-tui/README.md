@@ -35,9 +35,9 @@ export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
 
 ## Shared pieces (identical for every harness — never fork them)
 
-- CLI: `~/.hermes-cortex/scripts/cortex-context.py`
-- MCP server: `~/hermes-cortex/mcp-servers/cortex-context-mcp.py`
-- Trigger: `~/.hermes-cortex/scripts/session-autocheckpoint.py`
+- CLI: `~/.steadfaste-fleet/scripts/cortex-context.py`
+- MCP server: `~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py`
+- Trigger: `~/.steadfaste-fleet/scripts/session-autocheckpoint.py`
 - One implementation: `ops/services/mycortex-mem/context_tools.py`
 
 Full runbook: [`docs/runbooks/context-integration.md`](../../../docs/runbooks/context-integration.md)

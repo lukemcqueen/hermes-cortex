@@ -3,12 +3,12 @@ name: documentation-scope
 version: 1.0.0
 category: devops
 description: >
-  Multi-audience documentation scoping conventions for Hermes Cortex. Defines
+  Multi-audience documentation scoping conventions for Steadfaste Fleet. Defines
   when and how to distinguish general (universal) content from deployment-
   specific content using scope banners and section tags. Keeps the public
   OSS repo usable by everyone while preserving Luke's personal deployment notes.
-author: Hermes Cortex
-tags: [docs, scope, multi-audience, conventions, hermes-cortex]
+author: Steadfaste Fleet
+tags: [docs, scope, multi-audience, conventions, steadfaste-fleet]
 related_skills: [agent-contract, public-contribution]
 ---
 
@@ -17,7 +17,7 @@ related_skills: [agent-contract, public-contribution]
 ## When to Use
 
 Load this skill when:
-- Adding a new document or section to Hermes Cortex that mixes general guidance with deployment-specific details
+- Adding a new document or section to Steadfaste Fleet that mixes general guidance with deployment-specific details
 - Reviewing existing docs for content that should be clearly scoped
 - Adding agent handoff notes, cron job references, or deployment-specific schedules to the public repo
 - A reader might misinterpret your deployment-specific setup as required or universal
@@ -25,7 +25,7 @@ Load this skill when:
 
 ## Scope Convention
 
-The Hermes Cortex repo serves **two audiences**:
+The Steadfaste Fleet repo serves **two audiences**:
 1. **General developers** — anyone who clones the repo for their own use
 2. **Luke's deployment** — the Moses-orchestrated multi-machine setup operating in KST (Seoul)
 
@@ -61,7 +61,7 @@ When a general skill or document hardcodes Luke-specific agent names, **generali
 ```markdown
 ### 7.5 Operator Notification Protocol
 
-When any Hermes Cortex agent receives a task from an upstream orchestrator
+When any Steadfaste Fleet agent receives a task from an upstream orchestrator
 agent, it MUST notify its human operator before executing the task.
 
 > **Example (Luke's deployment):** The Moses orchestrator delegates to peer
@@ -85,7 +85,7 @@ agent, it MUST notify its human operator before executing the task.
 - **Over-tagging.** Not everything in a deployment-specific section needs a `⚡` — tag the header, not every paragraph within.
 - **Under-tagging.** If a section references KST, Telegram, specific agent names, or private repo paths without a scope marker, add one.
 - **Scope drift.** When updating a tagged section, the new content stays under the same scope. Don't re-tag every edit.
-- **Leaking deployment details into general skills.** The `agent-contract` skill is a general Hermes Cortex contract — hardcoding Titus/Gisu/Joseph into it makes it unusable by outsiders. Always generalize rules, add examples in blockquotes.
+- **Leaking deployment details into general skills.** The `agent-contract` skill is a general Steadfaste Fleet contract — hardcoding Titus/Gisu/Joseph into it makes it unusable by outsiders. Always generalize rules, add examples in blockquotes.
 - **Dual-scope headers.** Don't mix general and deployment-specific concepts in the same heading level. Structure subsections under a general parent if needed.
 
 ## Verification checklist

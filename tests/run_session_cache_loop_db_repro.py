@@ -22,7 +22,7 @@ Asserted (each one has bitten this file at least once):
      content, a dangling code_hash, and empty-string content all yield 0 rows.
 
 Hermetic: builds a throwaway SQLite fixture in a temp dir; never touches the
-live ~/.hermes-cortex/data databases.
+live ~/.steadfaste-fleet/data databases.
 
 Usage:  python3 tests/run_session_cache_loop_db_repro.py
 Exit 0 = every assertion held. Non-zero = a real regression.

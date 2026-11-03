@@ -1,6 +1,6 @@
 # Profiles — Optional Add-on Layers
 
-Hermes Cortex ships with a neutral enterprise core. Personal or opinionated content lives in `profiles/` as optional add-on layers.
+Steadfaste Fleet ships with a neutral enterprise core. Personal or opinionated content lives in `profiles/` as optional add-on layers.
 
 ## Structure
 

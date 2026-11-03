@@ -31,7 +31,7 @@ Environment:
   CORTEX_SSL_CERT_KEY_PATH   Explicit key path (overrides auto-detect)
   CORTEX_SSL_DOMAIN          Domain name for Let's Encrypt lookup
   CORTEX_NGINX_PORT_PREFIX   Port prefix (default: 13)
-  CORTEX_REPO                Path to hermes-cortex repo (default: $HOME/hermes-cortex)
+  CORTEX_REPO                Path to steadfaste-fleet repo (default: $HOME/steadfaste-fleet)
   CORTEX_SKIP_NGINX          Set to skip nginx test/reload
 """
 
@@ -51,13 +51,13 @@ from pathlib import Path
 # ── Source .env overrides ─────────────────────────────────────
 
 def _source_env_overrides():
-    """Load ~/hermes-cortex/.env into os.environ (never overriding existing).
+    """Load ~/steadfaste-fleet/.env into os.environ (never overriding existing).
 
     Called from main(), NOT at import: a module-scope splash-export mutates the
     importing process's environment (it polluted os.environ for unrelated tests
     and callers that merely loaded this module).
     """
-    repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
+    repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "steadfaste-fleet"))
     env_path = repo / ".env"
     if not env_path.exists():
         return
@@ -410,7 +410,7 @@ def main():
 
     # ── Determine paths ──
     config_dir, available_dir, log_dir, htpasswd = detect_nginx_paths()
-    cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
+    cortex_repo = Path(os.environ.get("CORTEX_REPO", Path.home() / "steadfaste-fleet"))
     # Detect real user (works even under sudo)
     sudo_user = os.environ.get("SUDO_USER")
     if sudo_user:
@@ -731,7 +731,7 @@ def main():
     if test_nginx():
         reload_nginx()
     else:
-        print("  → Rollback: restore from /etc/hermes-cortex-backups/")
+        print("  → Rollback: restore from /etc/steadfaste-fleet-backups/")
         sys.exit(1)
 
     print(f"━━━ Deploy complete ━━━")
@@ -739,7 +739,7 @@ def main():
 
 if __name__ == "__main__":
     # ── Auto-source env file (so agents don't need env_keep in sudoers) ──
-    env_file = Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex")) / ".env"
+    env_file = Path(os.environ.get("CORTEX_REPO", Path.home() / "steadfaste-fleet")) / ".env"
     if env_file.is_file():
         with open(env_file) as f:
             for line in f:

@@ -3,25 +3,25 @@ name: reliable-agent-design
 description: "Use when designing or improving LLM agent workflows."
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 ---
 
 # Reliable Agent Design — Production-Grade LLM Agent Principles
 
-> Distilled from Dexter Horthy (HumanLayer, 12-Factor Agents, coined "context engineering") via the David Ondrej podcast (2026-08) and the public 12-factor-agents repo. These are the patterns that separate "demo agent" from "production agent" — use them when building or improving agent workflows in hermes-cortex.
+> Distilled from Dexter Horthy (HumanLayer, 12-Factor Agents, coined "context engineering") via the David Ondrej podcast (2026-08) and the public 12-factor-agents repo. These are the patterns that separate "demo agent" from "production agent" — use them when building or improving agent workflows in steadfaste-fleet.
 
 ## When to Use
 
 - Designing a new agent workflow, cron, or multi-agent pipeline
-- Reviewing hermes-cortex capabilities against industry best practice (gap analyses, HC-parties)
+- Reviewing steadfaste-fleet capabilities against industry best practice (gap analyses, HC-parties)
 - Implementing agent improvements: context engineering, program design, quality gates
 - Answering "how do we make our agents more reliable / top-1%?" questions
 
 ## The 12 Factors (condensed)
 
-| # | Factor | Essence | hermes-cortex status |
+| # | Factor | Essence | steadfaste-fleet status |
 |---|--------|---------|---------------------|
 | 1 | Natural language → tool calls | NLI is the primitive | ✅ tools everywhere |
 | 2 | Own your prompts | Versioned, explicit, no hidden strings | ✅ SOUL/AGENTS/skills |
@@ -63,7 +63,7 @@ Before letting an agent "cook", walk these four stages in order — decisions ar
 - **Two-model review:** have a second frontier model review the first's output when trust matters.
 - **Benchmarks are not evidence:** one-off problems, model sees the whole problem, no penalty for slop. Real evidence = can the codebase keep accepting features for months?
 
-## Recommended hermes-cortex Improvements (gap analysis, 2026-08-24)
+## Recommended steadfaste-fleet Improvements (gap analysis, 2026-08-24)
 
 Priority order (see `references/dexter-12-factor-agents-research.md` for the full research + mapping):
 
@@ -81,4 +81,4 @@ Priority order (see `references/dexter-12-factor-agents-research.md` for the ful
 
 ## References
 
-- `references/dexter-12-factor-agents-research.md` — full video salient points, 12-factor detail, and the hermes-cortex gap analysis
+- `references/dexter-12-factor-agents-research.md` — full video salient points, 12-factor detail, and the steadfaste-fleet gap analysis

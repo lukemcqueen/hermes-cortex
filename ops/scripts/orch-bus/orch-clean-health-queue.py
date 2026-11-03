@@ -10,7 +10,7 @@ auth (Basic/Bearer) and bus URL resolution (CORTEX_BUS_URL with
 fallback). Reads/archives up to 50 messages per tick.
 
 While draining, persists each agent's latest health vector + timestamp to
-``~/.hermes-cortex/state/inbox-health-state.json`` — the hourly
+``~/.steadfaste-fleet/state/inbox-health-state.json`` — the hourly
 ``orch-health-report`` reads this file for inbox-method agents (the retired
 file-inbox API is gone; the queue itself is transient and drained here).
 Also updates ``last-seen.json`` so laptop grace periods work.
@@ -26,7 +26,7 @@ from pathlib import Path
 REPO_VAR = os.environ.get("CORTEX_REPO", "")
 REPO = Path(REPO_VAR) if REPO_VAR else Path()
 if not REPO.is_dir() or not REPO_VAR:
-    for c in [Path.home() / "hermes-cortex", Path.home() / "src" / "hermes-cortex"]:
+    for c in [Path.home() / "steadfaste-fleet", Path.home() / "src" / "steadfaste-fleet"]:
         if c.is_dir() and (c / "AGENTS.md").exists():
             REPO = c
             break
@@ -38,7 +38,7 @@ from lib.cortex_bus import bus_read, bus_archive
 QUEUE = "inbox_health_check"
 MAX_PER_TICK = 50
 
-STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 HEALTH_STATE_FILE = STATE_DIR / "inbox-health-state.json"
 LAST_SEEN_FILE = STATE_DIR / "last-seen.json"
 

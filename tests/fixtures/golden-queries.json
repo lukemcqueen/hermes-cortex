@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "description": "Golden known-answer set for mycortex parity (S-001). Re-baselined 2026-08-02: HC-001 expected updated to current canonical answer (loop-governance SKILL.md is the operational doc; the legacy brain's own baseline ranked the template, not the reference). Pinned to current hermes-cortex HEAD f8a91495.",
+  "description": "Golden known-answer set for mycortex parity (S-001). Re-baselined 2026-08-02: HC-001 expected updated to current canonical answer (loop-governance SKILL.md is the operational doc; the legacy brain's own baseline ranked the template, not the reference). Pinned to current steadfaste-fleet HEAD f8a91495.",
   "pinned_at": "2026-08-02",
   "sources": {
-    "hermes-cortex": {
+    "steadfaste-fleet": {
       "mode": "git",
       "sha": "f8a91495dd82e13535d5d879fc6563980cb08fc6",
       "scope": "federated"
@@ -18,7 +18,7 @@
     {
       "id": "HC-001",
       "query": "loop governance",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/devops/loop-governance/SKILL.md",
@@ -29,7 +29,7 @@
     {
       "id": "HC-002",
       "query": "bus architecture",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/architecture.md",
@@ -40,7 +40,7 @@
     {
       "id": "HC-003",
       "query": "pre-commit scoring",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/git-enforcement.md",
@@ -51,7 +51,7 @@
     {
       "id": "HC-004",
       "query": "cron schedules",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/cron-schedules.md",
@@ -62,7 +62,7 @@
     {
       "id": "HC-005",
       "query": "agent memory pointer pattern",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/agent-memory-pointer-pattern.md",
@@ -73,7 +73,7 @@
     {
       "id": "HC-007",
       "query": "knowledge isolation architecture",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/knowledge-isolation-architecture.md",
@@ -84,7 +84,7 @@
     {
       "id": "HC-008",
       "query": "skills manifest",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "ops/scripts/manage/cortex_doctor/checks.py",
@@ -96,7 +96,7 @@
     {
       "id": "HC-009",
       "query": "fleet update protocol",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/fleet-update-protocol.md",
@@ -107,7 +107,7 @@
     {
       "id": "HC-010",
       "query": "agent onboarding",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/agent-onboarding.md",
@@ -118,7 +118,7 @@
     {
       "id": "HC-011",
       "query": "backup orchestrator failover",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "docs/setup-reference.md",
@@ -129,7 +129,7 @@
     {
       "id": "HC-012",
       "query": "cron job management",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/devops/cron-job-management/SKILL.md",
@@ -140,7 +140,7 @@
     {
       "id": "HC-013",
       "query": "shell scripting pitfalls",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/devops/shell-scripting/SKILL.md",
@@ -151,7 +151,7 @@
     {
       "id": "HC-014",
       "query": "two hard rules",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/devops/two-hard-rules/SKILL.md",
@@ -162,7 +162,7 @@
     {
       "id": "HC-015",
       "query": "repo organization",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/software-development/repo-organization/SKILL.md",
@@ -173,7 +173,7 @@
     {
       "id": "HC-016",
       "query": "story decomposition",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/software-development/story-decomposition/SKILL.md",
@@ -184,7 +184,7 @@
     {
       "id": "HC-017",
       "query": "cortex deployment sync",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "skills/devops/cortex-deployment-sync/SKILL.md",
@@ -195,7 +195,7 @@
     {
       "id": "HC-018",
       "query": "secret leak detector",
-      "source": "hermes-cortex",
+      "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
         "ops/scripts/secret-leak-detector.sh",

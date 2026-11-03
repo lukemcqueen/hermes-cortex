@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-agent-session-mine-cron.py — Overnight session mining for Hermes Cortex agents.
+agent-session-mine-cron.py — Overnight session mining for Steadfaste Fleet agents.
 
 Runs session-mine to extract lessons from recent sessions and dump them
 into ~/brain/lessons/ where the agent-learning-collector picks them up.
@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "agent-session-mine-state.json"
 TIMEOUT = 120  # 2 minutes — bootstrap finished in 82s on this server
 

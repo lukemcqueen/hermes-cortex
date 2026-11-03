@@ -11,7 +11,7 @@ description: |-
   Outcome: a populated ~/.hermes/SOUL.md that encodes the agent's core
   identity, mission, principles, communication style, and boundaries.
 version: 1.0.0
-author: Kustos (Hermes Cortex)
+author: Kustos (Steadfaste Fleet)
 tags: [persona, identity, soul, personality, character]
 related_skills: [memory-architecture, agent-contract]
 platforms: [linux, macos]

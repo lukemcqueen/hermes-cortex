@@ -50,7 +50,7 @@ bypass, not gates that bite* — so "write another rule" is not a systemic fix.
 | new code file + test file in same commit | pass |
 | new code file, no tests/ anywhere | pass |
 | modified-only code file | pass |
-| hermes-cortex repo modification (fleet pattern) | pass |
+| steadfaste-fleet repo modification (fleet pattern) | pass |
 
 Plus unit-test `_tdd_required` over the ext/path matrix (14 cases: py gates,
 yaml/md/env/css don't, test files exempt, skill_manage exempt).

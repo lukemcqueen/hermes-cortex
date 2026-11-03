@@ -2,7 +2,7 @@
 """
 Purge stale governance lock files from crashed sessions.
 
-Scans ~/.hermes-cortex/state/ for .governance-*.json files whose
+Scans ~/.steadfaste-fleet/state/ for .governance-*.json files whose
 heartbeat has exceeded their TTL and removes them. Also cleans
 orphan symlinks pointing to deleted targets.
 
@@ -41,7 +41,7 @@ from pathlib import Path
 
 # CORTEX_HOME-driven (matching agent-pending-cycle-watchdog.py) so the whole sweep can be pointed at
 # a throwaway tree by a test or a probe. Unset in the deploy and the cron: the paths are unchanged.
-CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".hermes-cortex")))
+CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".steadfaste-fleet")))
 STATE_DIR = CORTEX_HOME / "state"
 DB_PATH = CORTEX_HOME / "data" / "loop-governance.db"
 DEFAULT_TTL = 3600  # 1 hour

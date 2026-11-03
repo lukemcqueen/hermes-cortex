@@ -9,7 +9,7 @@ issues=0
 
 echo ""
 echo "--- Repo symlinks ---"
-find ~/hermes-cortex -type l ! -path '*/__pycache__/*' ! -path '*/.git/*' | while read link; do
+find ~/steadfaste-fleet -type l ! -path '*/__pycache__/*' ! -path '*/.git/*' | while read link; do
   total=$((total + 1))
   target=$(readlink "$link")
   if [ ! -e "$link" ]; then

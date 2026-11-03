@@ -113,9 +113,9 @@ node_modules/
 
 # Git filter-repo artifacts
 # Agent infrastructure
-# (.hermes-cortex/ ignore rules REMOVED 2026-10-07: the Cortex repo must not
-#  carry that directory — inside ~/hermes-cortex it shadowed the runtime dir
-#  ~/.hermes-cortex and made a governance marker look like repo state. Deliberately
+# (.steadfaste-fleet/ ignore rules REMOVED 2026-10-07: the Cortex repo must not
+#  carry that directory — inside ~/steadfaste-fleet it shadowed the runtime dir
+#  ~/.steadfaste-fleet and made a governance marker look like repo state. Deliberately
 #  NOT ignored now, so a recurrence shows up as untracked instead of hiding.)
 IMPROVEMENTS.md
 
@@ -132,7 +132,7 @@ allow-ips-manual.conf
 # (Previously used per-file whitelist; fell out of sync too often.)
 /runtime
 # (The in-repo governance lock marker was REMOVED 2026-10-07 — locks are
-#  runtime-only in ~/.hermes-cortex/state/, and nothing may write governance
+#  runtime-only in ~/.steadfaste-fleet/state/, and nothing may write governance
 #  state inside a repository. Its ignore rule went with it.)
 private-data/
 # mycortex DB backups (e.g. pre-migration dumps) — large, PII-heavy, never commit

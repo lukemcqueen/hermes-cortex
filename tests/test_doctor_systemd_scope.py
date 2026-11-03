@@ -67,7 +67,7 @@ def test_inactive_system_unit_warns(monkeypatch, scope_fixture):
     """A system Hermes unit in a FAILED state is a real problem => WARN."""
     units = (
         "/etc/systemd/system/hermes-gateway.service\n"
-        "/etc/systemd/system/hermes-cortex-dashboard.service\n"
+        "/etc/systemd/system/steadfaste-fleet-dashboard.service\n"
     )
     fake = scope_fixture(units, "failed")
     monkeypatch.setattr(checks, "run_bg", fake)
@@ -110,7 +110,7 @@ def test_active_system_scope_passes(monkeypatch, scope_fixture):
     """3 active system Hermes units (migrated-host design) => PASS, not WARN."""
     units = (
         "/etc/systemd/system/hermes-gateway.service\n"
-        "/etc/systemd/system/hermes-cortex-dashboard.service\n"
+        "/etc/systemd/system/steadfaste-fleet-dashboard.service\n"
         "/etc/systemd/system/cortex-bus.service\n"
     )
     fake = scope_fixture(units, "active")

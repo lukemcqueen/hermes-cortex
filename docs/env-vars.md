@@ -1,4 +1,4 @@
-# Hermes Cortex — Environment Variable Reference
+# Steadfaste Fleet — Environment Variable Reference
 
 All `CORTEX_*` environment variables used across the nginx deploy pipeline
 and related scripts. New variables should be added here with all fields.
@@ -7,13 +7,13 @@ and related scripts. New variables should be added here with all fields.
 
 ## Env File
 
-The env file lives at `~/hermes-cortex/.env` (gitignored) — the single source of truth
+The env file lives at `~/steadfaste-fleet/.env` (gitignored) — the single source of truth
 for all Cortex environment variables. It's auto-sourced by deploy scripts and `cortex-update.sh`.
 Every reference now points here. The deploy dir carries a **sanctioned back-compat symlink**,
-`~/.hermes-cortex/.env → ~/hermes-cortex/.env`, so legacy readers resolving the deploy-dir
-path keep working; the old `~/.hermes-cortex/cortex-bus.conf` name was retired 2026-10-17
+`~/.steadfaste-fleet/.env → ~/steadfaste-fleet/.env`, so legacy readers resolving the deploy-dir
+path keep working; the old `~/.steadfaste-fleet/cortex-bus.conf` name was retired 2026-10-17
 (`consolidate-env.sh` migrates it to the `.env` symlink). A **real file** (not a symlink) at
-`~/.hermes-cortex/.env` is unowned — a doctor FAIL. `~/.hermes/.env` is **Hermes-owned** —
+`~/.steadfaste-fleet/.env` is unowned — a doctor FAIL. `~/.hermes/.env` is **Hermes-owned** —
 provider keys, Telegram, browser/terminal settings — and is never merged here.
 
 These claims are pinned by committed tests (run them to verify): the doctor check's
@@ -23,19 +23,19 @@ sanctioned-symlink / real-file-FAIL / missing-symlink behaviour is exercised by
 
 ```bash
 # Copy the template, then edit
-cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
+cp ~/steadfaste-fleet/.env.example ~/steadfaste-fleet/.env
 # Edit with your settings:
-vim ~/hermes-cortex/.env
+vim ~/steadfaste-fleet/.env
 # Consolidate the bus conf into the single file (idempotent):
-bash ~/.hermes-cortex/scripts/consolidate-env.sh
+bash ~/.steadfaste-fleet/scripts/consolidate-env.sh
 ```
 
 ## Variable Reference
 
 | Variable | Default | Scripts | Purpose |
 |----------|---------|---------|---------|
-| `CORTEX_PYTHON` | `~/.hermes-cortex/venv/bin/python3` (declared in `~/.hermes-cortex/agent.env` by `cortex-update.sh`) | `python-with-module.sh`, every caller that needs "the fleet python" | **The ONE named fleet interpreter.** Callers read this instead of re-deriving a path, so a wrong one is visible in one place instead of seven. `python-with-module.sh` consults it first (after `PYTHON=`) and still requires the CAPABILITY to import the module it was asked for — a declaration that cannot import is NAMED, not silently skipped. Never overwritten by a deploy: an operator may legitimately point a host elsewhere. |
-| `CORTEX_REPO` | `$HOME/hermes-cortex` | `cortex-update.sh`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
+| `CORTEX_PYTHON` | `~/.steadfaste-fleet/venv/bin/python3` (declared in `~/.steadfaste-fleet/agent.env` by `cortex-update.sh`) | `python-with-module.sh`, every caller that needs "the fleet python" | **The ONE named fleet interpreter.** Callers read this instead of re-deriving a path, so a wrong one is visible in one place instead of seven. `python-with-module.sh` consults it first (after `PYTHON=`) and still requires the CAPABILITY to import the module it was asked for — a declaration that cannot import is NAMED, not silently skipped. Never overwritten by a deploy: an operator may legitimately point a host elsewhere. |
+| `CORTEX_REPO` | `$HOME/steadfaste-fleet` | `cortex-update.sh`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
 || `CORTEX_SKIP_NGINX` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. ||
 || `CORTEX_FORCE_DEPLOY` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |
 || `CORTEX_NGINX_PORT_PREFIX` | `13` | `cortex-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. |
@@ -49,16 +49,16 @@ bash ~/.hermes-cortex/scripts/consolidate-env.sh
 | `CORTEX_COST_DAILY_TARGET_USD` | `10` | `orch-weekly-cost-report.py` | Weekly fleet cost report: alert (non-zero exit + `⚠️ FLEET COST ABOVE TARGET`) when the measured daily average exceeds this. The average covers MEASURED hosts only — the report prints a COVERAGE block naming what it does not cover, and a missing spend source prints `NO DATA` and never alerts. |
 | `CORTEX_VM_FRESHNESS_METRIC` | `node_uptime_seconds` | `cortex-doctor` (Metrics arrival age) | Series used to measure arrival age per agent. Pick a metric every pushing agent reports. |
 
-### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/hermes-cortex/.env`)
+### Agent-side metrics push (read by `agent-push-metrics.sh`, set in `~/steadfaste-fleet/.env`)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `VICTORIA_METRICS_URL` | _(unset = push disabled)_ | Prometheus-compatible import endpoint on the sink host (the xx005 proxy). Unset ⇒ the cron exits 0 with "metrics push disabled (this is optional)". |
 | `VICTORIA_METRICS_FALLBACK_URL` | _(unset)_ | Second sink tried after the primary exhausts its retries. Must point at the peer's **xx005** port (e.g. `14005` on a `14xxx` host) — pointing it at a grafana port (xx003) makes a working primary look broken. |
-| `PUSH_METRICS_STATE_FILE` | `~/.hermes-cortex/state/push-metrics.state` | Outage bookkeeping (consecutive failures, last alert). |
+| `PUSH_METRICS_STATE_FILE` | `~/.steadfaste-fleet/state/push-metrics.state` | Outage bookkeeping (consecutive failures, last alert). |
 | `PUSH_METRICS_ALERT_COOLDOWN_S` | `21600` (6h) | How long the client stays quiet after the first alert of an outage, so a root-blocked sink yields one alert per 6h instead of one error per 5m tick. |
 
-### Identity, model & fleet variables (`~/hermes-cortex/.env`)
+### Identity, model & fleet variables (`~/steadfaste-fleet/.env`)
 
 **NAMES ONLY — values live in the gitignored env file.** An agent needing a
 value reads it from the env file, never from this doc or from memory. These
@@ -74,7 +74,7 @@ names are the contract — never invent a new name without checking here first
 | `ADVERSARIAL_TRIAGE_MODEL` | Faster "System One" model for the close-gate's finding triage. **Unset = triage DISABLED** — the gate then behaves exactly as it did before triage existed, with the reviewer's severities unchanged. It is **not** a chat-completions model: see `docs/runbooks/review-triage-jev.md` |
 | `JUDGMENT_CONFIG_PATH` | Optional override for the judgment client's provider/routing config. Default: `judgment-providers.yaml` beside `judgment.py`. Set per host to route triage to your own judge |
 | `TYPESAFE_API_KEY` | Credential for the Jev judge (`typesafe/jev-router`). **Name only — the value lives in the gitignored env file.** Without it the `review-triage` class cannot run and triage stays off (fail-safe) |
-| `CORTEX_ENV_FILE` | Explicit path to the env file the **gate** reads for its own config (reviewer backend/model, triage switch, credentials). Unset ⇒ it resolves `$CORTEX_REPO/.env` (default `~/hermes-cortex/.env`), then the deploy root, and only **last** `~/.hermes/.env` |
+| `CORTEX_ENV_FILE` | Explicit path to the env file the **gate** reads for its own config (reviewer backend/model, triage switch, credentials). Unset ⇒ it resolves `$CORTEX_REPO/.env` (default `~/steadfaste-fleet/.env`), then the deploy root, and only **last** `~/.hermes/.env` |
 | `CORTEX_REPO` | Cortex repo root, used to locate the canonical env when `CORTEX_ENV_FILE` is unset |
 | `ADVERSARIAL_REVIEW_BACKEND` | Who reviews a complex change before it can close: `llm` (default; canonical fleet-wide) or `agent` (fallback-only — offline/test-execution needs). **All agents configure the same way**: `llm` + `ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro`. See `docs/runbooks/review-triage-jev.md` |
 | `ADVERSARIAL_REVIEWER_MODEL` | _llm backend._ The reviewer model. Use a model DIFFERENT from the worker's — a model reviewing its own output is not a review |
@@ -142,7 +142,7 @@ To force re-evaluation on the next deploy:
 
 ```bash
 # Re-resolve SSL certs and port prefix from scratch (Python script, primary)
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --force
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --force
 
 # Or with the legacy bash script (not recommended)
 # CORTEX_FORCE_DEPLOY=1 sudo install-nginx-full.sh
@@ -192,16 +192,16 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ```bash
 # Defaults — auto-detects everything
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # With custom SSL and port prefix
 CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/mydomain.com/fullchain.pem \
 CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/mydomain.com/privkey.pem \
 CORTEX_NGINX_PORT_PREFIX=12 \
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # Skip nginx entirely (scripts-only update)
-CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+CORTEX_SKIP_NGINX=1 bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 > ⚠ **Legacy script:** `install-nginx-full.sh` is deprecated. Use `hermes-services-apply.py` above instead.
@@ -214,16 +214,16 @@ CORTEX_SKIP_NGINX=1 bash ~/hermes-cortex/ops/scripts/cortex-update.sh
 
 ```bash
 # Auto-detect
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py
 
 # Dry-run (no files changed)
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 
 # Explicit domain
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --domain mydomain.com
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --domain mydomain.com
 
 # Validate only
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --validate
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --validate
 ```
 
 ---

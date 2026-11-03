@@ -16,9 +16,9 @@ exclusion ALSO hid leaked cycles from finished tasks.
 whose task_id has NO active lock file is a leak; the current task's cycle
 (lock exists, `status: executing`) is expected.
 
-Lock file: `~/.hermes-cortex/state/.governance-<session_id>.json`
+Lock file: `~/.steadfaste-fleet/state/.governance-<session_id>.json`
 ```json
-{ "task_id": "...", "status": "executing", "repo_slug": "hermes-cortex", ... }
+{ "task_id": "...", "status": "executing", "repo_slug": "steadfaste-fleet", ... }
 ```
 
 Doctor logic (checks.py check_governance, PENDING cycles section):
@@ -73,7 +73,7 @@ The pre-push doctor gate I first shipped ran on EVERY push in EVERY repo
 (original code had a `DOCTOR_RELEVANT` case match on cortex_doctor/* paths,
 which doc-only pushes bypassed). Luke's two corrections:
 
-1. "This is ONLY FOR HERMES-CORTEX updates... does not apply to non-hermes
+1. "This is ONLY FOR STEADFASTE-FLEET updates... does not apply to non-hermes
    cortex repos" → repo-top check.
 2. "really only applied to orchestrators in practice" → _detect_orch.
 
@@ -106,7 +106,7 @@ matched ANY file anywhere — Titus blocked on
 guard (docs/orchestrator-only-paths.txt from HEAD, "no config = no
 restrictions") is the correct repo-aware design; the array was a legacy
 remnant. Fix: wrap the whole array in
-`if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]`, add
+`if [[ "$REPO_ROOT" == "${HOME}/steadfaste-fleet" ]]`, add
 `^core/governance/tests/` (3 live test files the config's `tests/` entry
 doesn't cover). Note: `REPO_ROOT` and `STAGED_FILES` are defined earlier in
 the hook (config-driven guard section) — reuse them, don't re-derive.

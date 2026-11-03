@@ -1,4 +1,4 @@
-# Hermes Cortex brain source — .gitignore
+# Steadfaste Fleet brain source — .gitignore
 #
 # MEMORY.md and USER.md are private to each Hermes instance.
 # They contain per-machine topology, agent identity, and user preferences.

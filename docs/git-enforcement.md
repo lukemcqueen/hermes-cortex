@@ -6,7 +6,7 @@
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 ## Secondary Enforcement — MCP Server Is Primary
 
@@ -28,7 +28,7 @@ Two git hooks that enforce the governance workflow in a multi-agent repo:
  4. **Doc coverage** — warns if code/config changes without `.md` changes
  5. **Pull-before-push** — ensures local `main` isn't behind `origin/main`
 
-They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `hermes-cortex`.
+They're part of the Agent Execution Contract (rules #10 and #13) and apply to every agent and human working on `steadfaste-fleet`.
 
 ---
 
@@ -81,7 +81,7 @@ Both hooks are deployed by a shared installer:
 bash ops/scripts/install/install-score-hook.sh
 
 # Install into a specific repo
-bash ops/scripts/install/install-score-hook.sh --path ~/hermes-cortex
+bash ops/scripts/install/install-score-hook.sh --path ~/steadfaste-fleet
 
 # Check which repos have hooks
 bash ops/scripts/install/install-score-hook.sh --check
@@ -90,7 +90,7 @@ bash ops/scripts/install/install-score-hook.sh --check
 bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
-The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cortex-update.sh` creates symlinks from `~/.hermes-cortex/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
+The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `cortex-update.sh` creates symlinks from `~/.steadfaste-fleet/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
 
 ---
 
@@ -98,7 +98,7 @@ The installer deploys the source scripts to `~/.hermes-cortex/scripts/` and `cor
 
 There is **no sanctioned bypass**. The pre-commit hook runs scoring **and** the mandatory adversarial verification gate (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. `--no-verify` is a **logged, audited bypass** (`agent-no-verify-audit` cron) — it is not a conscious choice, it is an audit event, and it must never be used to ship a hook-rejected change. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
 
-**When the hook blocks you:** fix the finding (the gate prints what it found), then commit normally through the hook. If the scoring stack itself is broken, repair via the sanctioned path: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`.
+**When the hook blocks you:** fix the finding (the gate prints what it found), then commit normally through the hook. If the scoring stack itself is broken, repair via the sanctioned path: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`.
 
 These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment.
 
@@ -120,8 +120,8 @@ If you're an agent working on this repo:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
-| `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/hermes-cortex/core/governance/setup.sh` |
-| Hook not running at all | Hook not symlinked into `~/.hermes-cortex/hooks/` | Re-run `cortex-update.sh ` |
+| `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/steadfaste-fleet/core/governance/setup.sh` |
+| Hook not running at all | Hook not symlinked into `~/.steadfaste-fleet/hooks/` | Re-run `cortex-update.sh ` |
 | `❌ $file — syntax error` | `.py` file has a Python syntax error | Fix the error and re-push |
 | `❌ $file — shell syntax error` | `.sh` file has a shell syntax error | Fix the error and re-push |
 
@@ -176,7 +176,7 @@ repos on macOS, `grep -c adversarial = 0`).
 
 4. **⚠️ Guard carve-out (critical — discovered during verify)** — the
    deployed pre-commit/pre-push hooks fail CLOSED when `core.hooksPath !=
-   ~/.hermes-cortex/hooks` (5ab54547). Pinned repos exist precisely because
+   ~/.steadfaste-fleet/hooks` (5ab54547). Pinned repos exist precisely because
    their hooksPath points at their own dir — refreshing the full hooks into
    them would have blocked **every commit**. The guard now passes when the
    hooks dir carries any cortex-managed hook (governance IS running there);
@@ -217,7 +217,7 @@ per repo.
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 ### Secondary Logger — the MCP Server Is Primary
 
@@ -237,7 +237,7 @@ Every time you run `git commit`:
 4. **Queries** the loop-governance DB for the highest `cycle_num` with that task ID
 5. **Auto-increments**: previous cycle 3 → this commit becomes cycle 4
 6. **Runs `score-cycle`** with the task ID, staged file, and pass rate
-7. **Creates a cycle** in the loop-governance DB (at `~/.hermes-cortex/data/loop-governance.db`)
+7. **Creates a cycle** in the loop-governance DB (at `~/.steadfaste-fleet/data/loop-governance.db`)
 8. **Prints** the decision and task so you can follow up with feedback
 
 Note: step 6's governance-lock check is redundant — the MCP server already verified the lock at write time. But the scoring call itself is useful for keeping the DB populated.
@@ -246,11 +246,11 @@ Note: step 6's governance-lock check is redundant — the MCP server already ver
 
 ```
 $ git commit -m "fix: nginx returns 0 for uninstalled"
-📊 score-cycle: LOOP 🔄 (task=precommit-hermes-cortex-main/fix-nginx-returns-0-for-uninstalled, pass-pct=100)
+📊 score-cycle: LOOP 🔄 (task=precommit-steadfaste-fleet-main/fix-nginx-returns-0-for-uninstalled, pass-pct=100)
 [main abc1234] fix: nginx returns 0 for uninstalled
 ```
 
-The cycle is now in the DB with `task_id = precommit-hermes-cortex-main/fix-nginx-returns-0-for-uninstalled`, `cycle_num = 1`.
+The cycle is now in the DB with `task_id = precommit-steadfaste-fleet-main/fix-nginx-returns-0-for-uninstalled`, `cycle_num = 1`.
 
 ---
 
@@ -266,9 +266,9 @@ cortex-update
 ```
 
 This:
-1. Copies `pre-commit-score` to `~/.hermes-cortex/hooks/pre-commit`
-2. Copies `pre-push-pull` to `~/.hermes-cortex/hooks/pre-push`
-3. Sets `git config --global core.hooksPath ~/.hermes-cortex/hooks/`
+1. Copies `pre-commit-score` to `~/.steadfaste-fleet/hooks/pre-commit`
+2. Copies `pre-push-pull` to `~/.steadfaste-fleet/hooks/pre-push`
+3. Sets `git config --global core.hooksPath ~/.steadfaste-fleet/hooks/`
 
 Step 3 is the key — `core.hooksPath` overrides the per-repo `.git/hooks/`
 directory for **every git repository on the machine**. One config change, all
@@ -278,21 +278,21 @@ repos covered.
 
 ```bash
 ## Deploy the hook script
-mkdir -p ~/.hermes-cortex/hooks
-cp ~/hermes-cortex/ops/scripts/pre-commit-score ~/.hermes-cortex/hooks/pre-commit
-chmod +x ~/.hermes-cortex/hooks/pre-commit
+mkdir -p ~/.steadfaste-fleet/hooks
+cp ~/steadfaste-fleet/ops/scripts/pre-commit-score ~/.steadfaste-fleet/hooks/pre-commit
+chmod +x ~/.steadfaste-fleet/hooks/pre-commit
 
 ## Set global hooks path
-git config --global core.hooksPath ~/.hermes-cortex/hooks/
+git config --global core.hooksPath ~/.steadfaste-fleet/hooks/
 ```
 
 #### Verify installation
 
 ```bash
 git config --global core.hooksPath
-## → /home/<user>/.hermes-cortex/hooks
+## → /home/<user>/.steadfaste-fleet/hooks
 
-ls ~/.hermes-cortex/hooks/
+ls ~/.steadfaste-fleet/hooks/
 ## → pre-commit (pre-push also present if deployed)
 ```
 
@@ -337,7 +337,7 @@ system can learn whether each cycle was good or bad.
 
 ```python
 ## Find the cycle
-mcp__review__cycle_query(task_id="precommit-hermes-cortex-main/nginx-returns-0-for-uninstalled")
+mcp__review__cycle_query(task_id="precommit-steadfaste-fleet-main/nginx-returns-0-for-uninstalled")
 
 ## Accept it (correct decision)
 mcp__review__feedback_accept(cycle_id=122, note="nginx health fix — 0 for uninstalled")
@@ -380,7 +380,7 @@ loop-feedback override 122 --note "Complete change, should STOP" --correct-decis
                │
           ┌─────────▼────────────────────────┐
           │  loop-governance.db       │
-          │  ~/.hermes-cortex/data/         │
+          │  ~/.steadfaste-fleet/data/         │
           └──────────────────────────────────┘
 ```
 
@@ -390,12 +390,12 @@ applies to all agent sessions automatically.
 
 > ⚠️ **The hooks run in EVERY repo — project repos included.** `core.hooksPath`
 > is global, so the pre-commit/pre-push hooks fire in client/project repos
-> (client-alpha, etc.) that have **no `ops/` tree and no repo-local `.hermes-cortex/`**
+> (client-alpha, etc.) that have **no `ops/` tree and no repo-local `.steadfaste-fleet/`**
 > inside them. A hook that resolves a tool via `$REPO_ROOT/ops/...` (the repo
 > being committed IN) breaks every commit there — regression `faa0e929`, fix
 > `72d6cdc3` (2026-08-04). Hooks must resolve shared tools with a candidate
 > loop: repo-local first, then the canonically-deployed copy at
-> `$HOME/.hermes-cortex/scripts/` (registered by cortex-update.sh on both
+> `$HOME/.steadfaste-fleet/scripts/` (registered by cortex-update.sh on both
 > Linux and macOS). See `enforcement-change-safety` Rule 6.
 
 ---
@@ -406,13 +406,13 @@ applies to all agent sessions automatically.
 ```bash
 ## Check hooksPath is set
 git config --global core.hooksPath
-## Should output: /home/<user>/.hermes-cortex/hooks
+## Should output: /home/<user>/.steadfaste-fleet/hooks
 
 ## Check hook file exists
-ls -la ~/.hermes-cortex/hooks/pre-commit
+ls -la ~/.steadfaste-fleet/hooks/pre-commit
 
 ## Check it's executable
-test -x ~/.hermes-cortex/hooks/pre-commit && echo "executable" || echo "not executable"
+test -x ~/.steadfaste-fleet/hooks/pre-commit && echo "executable" || echo "not executable"
 ```
 
 #### Cycle not created (hook says LOOP but DB empty)
@@ -433,7 +433,7 @@ git config core.hooksPath      # should show global path
 The hook **blocks the commit** (exit 1 — fail closed). Scoring is part of the
 enforcement chain: a commit without a cycle record is invisible to governance.
 Fix by running `cortex-update.sh` to deploy the scorer (installs
-`~/.hermes-cortex/tools/loop-governance/score_cycle.py` on Linux and macOS),
+`~/.steadfaste-fleet/tools/loop-governance/score_cycle.py` on Linux and macOS),
 then re-commit. Do NOT use `--no-verify`.
 
 ---

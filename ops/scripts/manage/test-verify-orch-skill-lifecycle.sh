@@ -134,8 +134,8 @@ echo "probe 7: archived-category reports are skipped, live ones are still judged
 # redden the check. The filter must be NARROW: a genuinely repo-missing live skill
 # reported in the SAME batch must STILL fail — otherwise the exclusion is a bypass.
 # Drives the derivation path (no SKILLS= override) by pointing HOME at the overlay,
-# since the enumerator reads $HOME/.hermes-cortex/state/learning-reports/*.md.
-r7="$TMP/archived"; mkdir -p "$r7/repo/ops/scripts/manage" "$r7/deployed" "$r7/home/.hermes-cortex/state/learning-reports"
+# since the enumerator reads $HOME/.steadfaste-fleet/state/learning-reports/*.md.
+r7="$TMP/archived"; mkdir -p "$r7/repo/ops/scripts/manage" "$r7/deployed" "$r7/home/.steadfaste-fleet/state/learning-reports"
 mk_repo "$r7"
 # live skill present on BOTH sides
 mkdir -p "$r7/repo/skills/devops/live-skill" "$r7/deployed/devops/live-skill"
@@ -148,7 +148,7 @@ mk_stub_doctor "$r7/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift �
 mk_stub_recon "$r7/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
 now_iso="$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')"
 printf '{"text": "Learning Report — probehost\\nGenerated: %s\\nType: full\\n== Skills (3 changed) ==\\n  [NEW] live-skill (devops)\\n  [NEW] ghost-archived (.archive)\\n  [NEW] ghost-missing (devops)\\n"}' "$now_iso" \
-  > "$r7/home/.hermes-cortex/state/learning-reports/probe-1.md"
+  > "$r7/home/.steadfaste-fleet/state/learning-reports/probe-1.md"
 out="$(env HOME="$r7/home" REPO="$r7/repo" DEPLOYED="$r7/deployed" \
         bash "$r7/repo/ops/scripts/manage/verify-orch-skill-lifecycle.sh" 2>&1)"; rc=$?
 # (a) the .archive item must not appear in the checked set at all

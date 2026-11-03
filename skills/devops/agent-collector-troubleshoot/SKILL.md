@@ -17,14 +17,14 @@ A report can be absent from what YOU read while the agent sent it perfectly. Rul
 out first — every one of them costs an hour if skipped, and none of them is a collector bug:
 
 - **Two staging dirs, two report kinds.** `agent-learning-collector` reports stage to
-  `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`; the older chunked
+  `~/.steadfaste-fleet/state/learning-reports/<agent>-<ts>.md`; the older chunked
   `Skill Report:` messages stage to `state/skill-reports/`. Look at the dir named for the
   SUBJECT you are chasing, and read the newest file per agent instead of counting files.
 - **Which host staged it is a race, not a property.** BOTH orchestrators poll the shared
   `inbox_orchestrator`, so whichever ticks first consumes the report and stages it on ITS OWN
   host — a report consumed by the peer is invisible locally with no error anywhere. Before
   concluding an agent stopped reporting, compare BOTH hosts' staged dirs
-  (`ssh <peer> "ls -1t ~/.hermes-cortex/state/learning-reports | grep '^<agent>-' | head"`).
+  (`ssh <peer> "ls -1t ~/.steadfaste-fleet/state/learning-reports | grep '^<agent>-' | head"`).
 - **"Received" and "digested" are different facts — check the CONSUMER's scope.** The pipeline
   that turns reports into a digest reads the staged dir on the host IT runs on, while staging
   happens on whichever host won the race. So an agent can be reporting every 6h, its files sitting
@@ -46,7 +46,7 @@ Who last reported, from the archive (the authoritative record of what was consum
 live peek sees only what is still pending):
 
 ```bash
-set -a; . ~/.hermes-cortex/.env; set +a   # never echo the token value
+set -a; . ~/.steadfaste-fleet/.env; set +a   # never echo the token value
 curl -s -H "Authorization: Bearer $CORTEX_BUS_TOKEN" \
   "http://127.0.0.1:8903/api/pgmq/archives/inbox_orchestrator?limit=2000&since_minutes=300000" \
 | python3 -c "import json,sys,collections; d=json.load(sys.stdin); m=d if isinstance(d,list) else d.get('messages',[]); c=collections.Counter(((x.get('body') or {}).get('subject'),(x.get('body') or {}).get('from')) for x in m); [print(n,s,f) for (s,f),n in c.most_common(20)]"
@@ -60,28 +60,28 @@ expected — not evidence of breakage. Compare against a server agent before cal
 
 ```bash
 # Collector script
-ls -la ~/.hermes-cortex/scripts/agent-learning-collector.py
-python3 -m py_compile ~/.hermes-cortex/scripts/agent-learning-collector.py
+ls -la ~/.steadfaste-fleet/scripts/agent-learning-collector.py
+python3 -m py_compile ~/.steadfaste-fleet/scripts/agent-learning-collector.py
 
 # Session-mine
 ls -la ~/.hermes/bin/session-mine
-ls -la ~/.hermes-cortex/offline/session_mine.py
-python3 -m py_compile ~/.hermes-cortex/offline/session_mine.py
+ls -la ~/.steadfaste-fleet/offline/session_mine.py
+python3 -m py_compile ~/.steadfaste-fleet/offline/session_mine.py
 ```
 
-**If missing:** `bash ~/.hermes-cortex/scripts/cortex-update.sh`
+**If missing:** `bash ~/.steadfaste-fleet/scripts/cortex-update.sh`
 
 ## Step 2 — Bus Connectivity
 
 ```bash
 # Bus URL
-grep -r "CORTEX_BUS_URL" ~/hermes-cortex/.env ~/hermes-cortex/.env 2>/dev/null
+grep -r "CORTEX_BUS_URL" ~/steadfaste-fleet/.env ~/steadfaste-fleet/.env 2>/dev/null
 
 # Auth
-grep -r "CORTEX_BUS_AUTH\|CORTEX_BASIC_AUTH" ~/hermes-cortex/.env 2>/dev/null
+grep -r "CORTEX_BUS_AUTH\|CORTEX_BASIC_AUTH" ~/steadfaste-fleet/.env 2>/dev/null
 
 # Test
-curl -sI "$(grep CORTEX_BUS_URL ~/hermes-cortex/.env 2>/dev/null | head -1 | cut -d= -f2)" | head -3
+curl -sI "$(grep CORTEX_BUS_URL ~/steadfaste-fleet/.env 2>/dev/null | head -1 | cut -d= -f2)" | head -3
 ```
 
 **Required:** HTTP 200 + auth creds. Missing = contact Moses.
@@ -99,14 +99,14 @@ must agree: prefer the token, add the Basic fallback.
 hermes cron list | grep -E "agent-learning-collector|agent-session-mine"
 ```
 
-**Expected:** Both exist, `enabled: true`. If missing, `bash ~/.hermes-cortex/scripts/install-crons.sh`.
+**Expected:** Both exist, `enabled: true`. If missing, `bash ~/.steadfaste-fleet/scripts/install-crons.sh`.
 
 ## Step 4 — Path Alignment
 
 Collector scans `~/brain/lessons/`. Session-mine must write there.
 
 ```bash
-grep "LESSONS" ~/.hermes-cortex/offline/session_mine.py
+grep "LESSONS" ~/.steadfaste-fleet/offline/session_mine.py
 # Correct: HOME / "brain" / "lessons"
 # Wrong:   HOME / "brain" / "<hostname>" / "lessons"
 ```
@@ -121,8 +121,8 @@ mkdir -p ~/brain/lessons ~/brain/learnings/pending ~/brain/learnings/sent
 ## Step 5 — Send Test Report
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agent-learning-collector.py --dry-run   # preview
-python3 ~/.hermes-cortex/scripts/agent-learning-collector.py --force     # send
+python3 ~/.steadfaste-fleet/scripts/agent-learning-collector.py --dry-run   # preview
+python3 ~/.steadfaste-fleet/scripts/agent-learning-collector.py --force     # send
 ```
 
 **Output:** `Sent: Learning Report: ... (msg_id=...)`. Silent = bus issue (Step 2).
@@ -135,7 +135,7 @@ field(s): topic; subject: required UPPER_CASE protocol name; priority: optional
 integer` — no report is staged and the collector still reports `ok`. A 400/`ERR`
 line in the run means conformance, not connectivity: drop the `topic` field, UPPER_CASE
 the subject (and keep every `LIKE 'Learning Report%'` consumer in sync), integer
-priority 0-100. Verify by watching `~/.hermes-cortex/state/learning-reports/` for
+priority 0-100. Verify by watching `~/.steadfaste-fleet/state/learning-reports/` for
 a newly staged file, not by trusting `last_status`.
 
 ## Step 6 — Submit Ad-Hoc Learning
@@ -149,7 +149,7 @@ type: discovery
 ---
 Testing end-to-end. If received, pipeline is healthy.
 EOF
-python3 ~/.hermes-cortex/scripts/agent-learning-collector.py --force
+python3 ~/.steadfaste-fleet/scripts/agent-learning-collector.py --force
 ```
 
 Moves to `~/brain/learnings/sent/` after success.
@@ -157,8 +157,8 @@ Moves to `~/brain/learnings/sent/` after success.
 ## Step 7 — State Files
 
 ```bash
-cat ~/.hermes-cortex/state/agent-learning-collector-state.json
-cat ~/.hermes-cortex/state/agent-session-mine-state.json
+cat ~/.steadfaste-fleet/state/agent-learning-collector-state.json
+cat ~/.steadfaste-fleet/state/agent-session-mine-state.json
 ```
 
 **Expected:** Valid JSON. If corrupt, delete and re-run.
@@ -166,8 +166,8 @@ cat ~/.hermes-cortex/state/agent-session-mine-state.json
 ## Step 8 — Bootstrap Session Mining
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agent-session-mine-cron.py
-cat ~/.hermes-cortex/state/agent-session-mine-state.json
+python3 ~/.steadfaste-fleet/scripts/agent-session-mine-cron.py
+cat ~/.steadfaste-fleet/state/agent-session-mine-state.json
 # Should show: bootstrap_done: true
 ```
 
@@ -182,4 +182,4 @@ cat ~/.hermes-cortex/state/agent-session-mine-state.json
 | Lesson count 0 | session_mine.py path | Step 4 |
 | `session-mine: not found` | Not deployed | `cortex-update.sh` |
 | Collector silent | Already sent | Delete state, re-run |
-| ModuleNotFoundError | PYTHONPATH | Export `~/.hermes-cortex/scripts` |
+| ModuleNotFoundError | PYTHONPATH | Export `~/.steadfaste-fleet/scripts` |

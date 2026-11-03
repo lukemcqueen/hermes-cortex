@@ -17,7 +17,7 @@ service snapshot. restic itself is byte-identical everywhere.
 Env / files:
   RESTIC_BIN            restic binary (default ~/.local/bin/restic, else PATH)
   RESTIC_EXCLUDES       exclude file (default ~/.local/bin/restic-excludes.txt)
-  RESTIC_PASSWORD_FILE  passphrase file (default ~/.hermes-cortex/state/restic/passphrase)
+  RESTIC_PASSWORD_FILE  passphrase file (default ~/.steadfaste-fleet/state/restic/passphrase)
   RESTIC_REMOTE         remote repo spec (default sftp:<BACKUP_HOST>:~/backups/<agent>/restic-repo)
   BACKUP_HOST           hostname used in the default remote repo (default esther)
 
@@ -57,7 +57,7 @@ if OS_FAMILY == "linux":
 # Agent identity: env first (cron sets it), else .env, else HOME name
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
-    bus_conf = HOME / "hermes-cortex" / ".env"
+    bus_conf = HOME / "steadfaste-fleet" / ".env"
     if bus_conf.exists():
         for line in bus_conf.read_text().splitlines():
             if line.startswith("AGENT_NAME="):
@@ -70,7 +70,7 @@ RESTIC_BIN = os.environ.get("RESTIC_BIN") or str(HOME / ".local" / "bin" / "rest
 if not Path(RESTIC_BIN).exists():
     RESTIC_BIN = shutil.which("restic") or RESTIC_BIN
 EXCLUDES = Path(os.environ.get("RESTIC_EXCLUDES") or (HOME / ".local" / "bin" / "restic-excludes.txt"))
-PASSFILE = Path(os.environ.get("RESTIC_PASSWORD_FILE") or (HOME / ".hermes-cortex" / "state" / "restic" / "passphrase"))
+PASSFILE = Path(os.environ.get("RESTIC_PASSWORD_FILE") or (HOME / ".steadfaste-fleet" / "state" / "restic" / "passphrase"))
 LOCAL_REPO = HOME / "backups" / "restic-repo"
 # Off-box target = the PEER orchestrator: Moses backs up to Esther, Esther
 # backs up to Moses. Derived from AGENT_NAME so no per-host env is needed;
@@ -79,10 +79,10 @@ _ORCH_PEER = {"moses": "esther", "esther": "moses"}
 BACKUP_HOST = os.environ.get("BACKUP_HOST") or _ORCH_PEER.get(AGENT_NAME, "esther")
 # Repos live in the cloud (GitHub) — no need to store a second copy inside
 # the backup. Exclude the git working trees we would otherwise walk:
-# hermes-agent checkout under ~/.hermes, the hermes-cortex repo itself.
+# hermes-agent checkout under ~/.hermes, the steadfaste-fleet repo itself.
 REPO_EXCLUDES = [
     str(HOME / ".hermes" / "hermes-agent"),
-    str(HOME / "hermes-cortex"),
+    str(HOME / "steadfaste-fleet"),
 ]
 # NOTE: restic's sftp backend REJECTS "~" in the path (parse error — the
 # tilde is never expanded on the remote). A relative path is interpreted

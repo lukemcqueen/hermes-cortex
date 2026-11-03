@@ -16,7 +16,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="$REPO/docs/evidence/cost4-host-cost-adapter"
 OUT="$OUTDIR/update-verify-2026-10-24.txt"
 CORRS="$HOME/.hermes/cache/scratch/cost4-update-corrs.json"
-PY="$HOME/.hermes-cortex/venv/bin/python3"
+PY="$HOME/.steadfaste-fleet/venv/bin/python3"
 
 mkdir -p "$OUTDIR"
 exec >"$OUT" 2>&1
@@ -30,7 +30,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts"))
+sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
 from lib.cortex_bus import bus_peek, bus_archives, bus_list_queues
 
 CORRS = Path.home() / ".hermes/cache/scratch/cost4-update-corrs.json"

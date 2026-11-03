@@ -3,11 +3,11 @@ name: fleet-management
 version: 1.0.0
 category: devops
 description: >-
-  Fleet-level agent management for Hermes Cortex — agent registry, fleet
+  Fleet-level agent management for Steadfaste Fleet — agent registry, fleet
   ready score, fleet-audit CLI, adding/removing agents, and multi-slice
   fleet upgrades (S1-S4 pattern). Covers the 5 fleet concerns (identity,
   topology, choreography, economics, sovereign control) per PRD-005.
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 related_skills:
@@ -29,13 +29,13 @@ triggers:
 
 ## Overview
 
-Fleet management covers the lifecycle of agents in a Hermes Cortex deployment:
+Fleet management covers the lifecycle of agents in a Steadfaste Fleet deployment:
 registering agents with all 5 fleet concerns, validating readiness via the
 Fleet Ready Score, and upgrading the fleet through levels F0 → F3.
 
 ## Agent Registry Schema (v4)
 
-The registry lives at `~/.hermes-cortex/state/agent-registry.json`. Each agent
+The registry lives at `~/.steadfaste-fleet/state/agent-registry.json`. Each agent
 has three structural layers:
 
 ### Layer 1: Core Identity
@@ -92,7 +92,7 @@ Exit code: 0 = all pass, 1 = issues found.
 
 1. Add entry to the registry JSON with all 3 layers (core, capabilities, fleet_concerns)
 2. Run `fleet-audit --level F1` to validate
-3. Run `python3 ~/.hermes-cortex/scripts/generate-bus-wrappers.py --apply-crons`
+3. Run `python3 ~/.steadfaste-fleet/scripts/generate-bus-wrappers.py --apply-crons`
 4. Register any new scripts in `cortex-update.sh` via `register()`
 
 ## Multi-Slice Fleet Upgrades (S Pattern)

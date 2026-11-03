@@ -52,7 +52,7 @@ PYTHON="${PYTHON:-}"
 # none until it was filled). Choosing one by PATH existence and then failing with "PyYAML
 # required" blames the host and skips the skills half — so ask the shared resolver which
 # interpreter can actually import it, and never pick one on the strength of its path.
-_RESOLVER="${HOME}/.hermes-cortex/scripts/lib/python-with-module.sh"
+_RESOLVER="${HOME}/.steadfaste-fleet/scripts/lib/python-with-module.sh"
 if [[ ! -f "$_RESOLVER" ]]; then
   _RESOLVER="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/lib/python-with-module.sh"
 fi
@@ -108,8 +108,8 @@ fi
 # Resolve each by name; a missing one is a wiring fault, never a silent skip.
 resolve_ext() {
   for candidate in \
-      "${HOME}/.hermes-cortex/harnesses/pi/extensions/$1" \
-      "${HOME}/hermes-cortex/ops/install/harnesses/pi/extensions/$1"; do
+      "${HOME}/.steadfaste-fleet/harnesses/pi/extensions/$1" \
+      "${HOME}/steadfaste-fleet/ops/install/harnesses/pi/extensions/$1"; do
     if [[ -f "$candidate" ]]; then printf '%s' "$candidate"; return 0; fi
   done
   return 1
@@ -121,8 +121,8 @@ GOVERNANCE_EXTENSION="$(resolve_ext cortex-governance.ts || true)"
 MANIFEST=""
 for candidate in \
     "${CORTEX_SKILLS_MANIFEST:-}" \
-    "${HOME}/.hermes-cortex/skills.yaml" \
-    "${HOME}/hermes-cortex/skills.yaml"; do
+    "${HOME}/.steadfaste-fleet/skills.yaml" \
+    "${HOME}/steadfaste-fleet/skills.yaml"; do
   if [[ -n "$candidate" && -f "$candidate" ]]; then MANIFEST="$candidate"; break; fi
 done
 

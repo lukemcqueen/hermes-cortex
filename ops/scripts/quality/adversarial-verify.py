@@ -1199,10 +1199,10 @@ def main():
             #   repo:     ops/scripts/quality/adversarial-verify.py
             #             → dirname×2 = ops/scripts/ → lib at ops/scripts/lib/
             #   deployed: scripts/adversarial-verify.py
-            #             → dirname×2 = ~/.hermes-cortex/ → lib at
-            #               ~/.hermes-cortex/scripts/lib/
+            #             → dirname×2 = ~/.steadfaste-fleet/ → lib at
+            #               ~/.steadfaste-fleet/scripts/lib/
             # Try both candidate lib dirs (2026-08-24: the deployed path
-            # resolved to a non-existent ~/.hermes-cortex/lib and the
+            # resolved to a non-existent ~/.steadfaste-fleet/lib and the
             # except:pass silently disabled the TOON check — verified in
             # live test: malformed TOON produced 0 findings).
             _here = os.path.dirname(os.path.abspath(__file__))

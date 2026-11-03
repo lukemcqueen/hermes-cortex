@@ -59,9 +59,9 @@ def _setup(tmp_path, monkeypatch, chat: str = "111222333", quiet: str = "", mute
 # ── Scrub gate (R-6 / NF-031 extension) ─────────────────────
 
 def test_scrub_strips_absolute_paths():
-    out = tn.scrub_text("see /home/user/hermes-cortex/ops/x.py for details")
+    out = tn.scrub_text("see /home/user/steadfaste-fleet/ops/x.py for details")
     assert "/home/" not in out
-    assert "hermes-cortex" not in out
+    assert "steadfaste-fleet" not in out
 
 
 def test_scrub_strips_tilde_paths():

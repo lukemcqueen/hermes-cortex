@@ -48,7 +48,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS mycortex.sources (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name          TEXT NOT NULL UNIQUE,          -- 'hermes-cortex', 'moses', 'shared', 'lessons'
+    name          TEXT NOT NULL UNIQUE,          -- 'steadfaste-fleet', 'moses', 'shared', 'lessons'
     local_path    TEXT,                           -- absolute path (scrubbed from logs)
     host          TEXT NOT NULL DEFAULT 'localhost', -- owning host; sync/CLI always sets it
     sync_mode     TEXT NOT NULL DEFAULT 'git',    -- 'git' | 'local'

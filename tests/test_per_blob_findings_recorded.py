@@ -30,7 +30,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SERVER = Path(os.environ.get("SERVER_UNDER_TEST") or (REPO / "mcp-servers" / "loop-gov-mcp.py"))
-LIVE_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+LIVE_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 
 
 def _mod():

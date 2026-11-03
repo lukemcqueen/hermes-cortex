@@ -6,7 +6,7 @@
 #  on orchestrator machines (Moses primary, Esther backup).
 #  Worker agents should NEVER run this script.
 #
-#  Guard: IS_ORCHESTRATOR=true in ~/hermes-cortex/.env
+#  Guard: IS_ORCHESTRATOR=true in ~/steadfaste-fleet/.env
 #  Fallback: hostname is 'moses' or 'esther' (legacy compat)
 #
 #  Usage:
@@ -38,7 +38,7 @@ fi
 source "$OS_CONFIG"
 # .env is sourced for cron config values (model, provider) — NOT for role.
 # Role comes exclusively from os-config.sh's hostname+home-dir detection.
-CORTEX_ENV="${REPO_DIR:-${HOME}/hermes-cortex}/.env"
+CORTEX_ENV="${REPO_DIR:-${HOME}/steadfaste-fleet}/.env"
 if [[ -f "$CORTEX_ENV" ]]; then
   set -a; source "$CORTEX_ENV"; set +a
 fi
@@ -58,7 +58,7 @@ check_agent_type "orchestrator" "${BASH_SOURCE[0]}" || {
 TELEGRAM_HOME_CHANNEL="$(grep -E '^TELEGRAM_HOME_CHANNEL=' "${HERMES_HOME:-${HOME}/.hermes}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
 
 # ── Repo path ──────────────────────────────────────────────
-# LLM-driven crons need a model + provider. Set these in ~/hermes-cortex/.env.
+# LLM-driven crons need a model + provider. Set these in ~/steadfaste-fleet/.env.
 # The install script sources .env above, so these will be picked up.
 # If not set, halt with a clear message showing where to set them.
 LLM_CRON_MODEL="${LLM_CRON_MODEL:-}"
@@ -69,7 +69,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "━━━ LLM Cron Model/Provider Not Configured ━━━"
   echo ""
   echo "  LLM-driven cron jobs (skill-evaluate, memory-pruning, etc.)"
-  echo "  need a model and provider. Set them in ~/hermes-cortex/.env:"
+  echo "  need a model and provider. Set them in ~/steadfaste-fleet/.env:"
   echo ""
   echo "    LLM_CRON_MODEL=deepseek/deepseek-v4.1-flash"
   echo "    LLM_CRON_PROVIDER=openrouter"
@@ -88,7 +88,7 @@ source "$OS_CONFIG"
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
-SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
+SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"
 HERMES_CMD=""
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
   if command -v "$candidate" &>/dev/null; then
@@ -286,7 +286,7 @@ create_cron() {
 
   if $exists && $FORCE && [[ -n "$HERMES_CMD" ]]; then
     local job_id _tmp
-    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state/_cron_find.py"
+    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state/_cron_find.py"
     mkdir -p "$(dirname "$_tmp")"
     cat > "$_tmp" << 'PYEOF'
 import json, sys
@@ -456,7 +456,7 @@ create_cron "orch-task-morning-pass" "0 7 * * *" \
   "" \
   "Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
-task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, the DEPLOYED copy is NOT lock-free by virtue of its location: python3 <script> is write-class wherever it lives and needs a RESOLVED GOVERNED REPO (a path-like arg on the call, or the repo your session already resolved). With neither you get its own refusal, No governed repo could be resolved for this call — which is NOT the lock rule. So either open the cycle first (begin_change) and then read via the deployed copy from anywhere, or use an ungated surface: read_file / search_files / the MCP task tools.
+task-db.py lives at ~/steadfaste-fleet/ops/scripts/manage/task-db.py (NOT tools/). For reads, the DEPLOYED copy is NOT lock-free by virtue of its location: python3 <script> is write-class wherever it lives and needs a RESOLVED GOVERNED REPO (a path-like arg on the call, or the repo your session already resolved). With neither you get its own refusal, No governed repo could be resolved for this call — which is NOT the lock rule. So either open the cycle first (begin_change) and then read via the deployed copy from anywhere, or use an ungated surface: read_file / search_files / the MCP task tools.
 
 READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess column names):
   docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex -c '<sql>'

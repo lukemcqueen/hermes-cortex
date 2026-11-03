@@ -114,13 +114,13 @@ def test_an_empty_state_dir_is_zero_locks_not_an_error(tmp_path, monkeypatch):
 def test_a_non_repo_cwd_is_named_not_silent():
     c = _cli()
     note, fatal = c._repo_identity_note(
-        "no-repo", Path("/home/app/mwi/koscap-mwi"), "hermes-cortex", "begin_change")
+        "no-repo", Path("/home/app/mwi/koscap-mwi"), "steadfaste-fleet", "begin_change")
 
     assert fatal is False, "a non-repo cwd is the documented benign case — report it, do not refuse"
     assert note, "silence is the defect: the caller never learns what the lock will claim"
     assert "not a git repo" in note
     assert "/home/app/mwi/koscap-mwi" in note, "name the cwd — it is the only record of where the work was"
-    assert "hermes-cortex" in note, "name the repo the lock WILL be tagged with"
+    assert "steadfaste-fleet" in note, "name the repo the lock WILL be tagged with"
     assert "--repo" in note and "inside a repo" in note, "and both ways out"
 
 
@@ -188,7 +188,7 @@ def test_a_real_non_repo_cwd_run_warns_on_stderr(tmp_path):
     assert "is not a git repo" in r.stderr, r.stderr
     assert str(d) in r.stderr, "the cwd must be named — it is where the work would happen"
     # portable: name the fallback slug when it resolves, else say it could not be resolved
-    assert "hermes-cortex" in r.stderr or "host-canonical" in r.stderr, r.stderr
+    assert "steadfaste-fleet" in r.stderr or "host-canonical" in r.stderr, r.stderr
     assert "--repo" in r.stderr, "and the way out"
 
 

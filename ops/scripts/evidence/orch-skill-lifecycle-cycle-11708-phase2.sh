@@ -14,11 +14,11 @@ if [[ -z "$DOCTOR_PY" ]]; then
 fi
 
 echo "=== A. Learning reports: staged inventory ==="
-echo "  staged reports total: $(ls ~/.hermes-cortex/state/learning-reports/*.md 2>/dev/null | wc -l)"
+echo "  staged reports total: $(ls ~/.steadfaste-fleet/state/learning-reports/*.md 2>/dev/null | wc -l)"
 echo "  newest 5 staged:"
-ls -t ~/.hermes-cortex/state/learning-reports/*.md 2>/dev/null | head -5 | sed 's/^/    /'
+ls -t ~/.steadfaste-fleet/state/learning-reports/*.md 2>/dev/null | head -5 | sed 's/^/    /'
 echo "  [NEW]/[MOD] skill signals in newest 30 staged reports (deduped):"
-for f in $(ls -t ~/.hermes-cortex/state/learning-reports/*.md 2>/dev/null | head -30); do
+for f in $(ls -t ~/.steadfaste-fleet/state/learning-reports/*.md 2>/dev/null | head -30); do
   grep -hoE '\[(NEW|MOD)\] [A-Za-z0-9._-]+ \([a-z-]+\)' "$f" 2>/dev/null
 done | sort -u | sed 's/^/    /'
 

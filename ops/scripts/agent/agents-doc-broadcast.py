@@ -54,8 +54,8 @@ def main():
         print(f"2. Check your own SOUL.md for gaps against the new template")
         print(f"3. The orch-skill-lifecycle cron (04:00 daily) will auto-fill gaps (Channel C)")
         print(f"")
-        print(f"**Location:** `~/hermes-cortex/AGENTS.md` or `~/.hermes/SOUL.md`")
-        print(f"**Reference template:** `~/hermes-cortex/docs/templates/SOUL.md`")
+        print(f"**Location:** `~/steadfaste-fleet/AGENTS.md` or `~/.hermes/SOUL.md`")
+        print(f"**Reference template:** `~/steadfaste-fleet/docs/templates/SOUL.md`")
         print("---END-MARKER---")
         sys.exit(0)
     except Exception as e:

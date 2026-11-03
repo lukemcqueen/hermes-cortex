@@ -16,7 +16,7 @@
 #
 # Target queue resolution order:
 #   1. CORTEX_INBOX_TARGET env var
-#   2. CORTEX_INBOX_TARGET in ~/hermes-cortex/.env
+#   2. CORTEX_INBOX_TARGET in ~/steadfaste-fleet/.env
 #   3. Default: inbox_orchestrator (shared orchestrator inbox — seen by BOTH
 #      orchestrators, Moses and Esther, so whichever is available handles it)
 #
@@ -28,20 +28,20 @@ set -euo pipefail
 # Source agent.env for AGENT_NAME when unset (else sends misattribute to OS user).
 # ⚠️ MUST precede the AGENT_NAME fallback below — placing it after the CONF line
 # would be dead code (AGENT_NAME is never empty by then). Titus proposal 2026-08-06.
-if [ -z "${AGENT_NAME:-}" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
-  . "${HOME}/.hermes-cortex/agent.env"
+if [ -z "${AGENT_NAME:-}" ] && [ -f "${HOME}/.steadfaste-fleet/agent.env" ]; then
+  . "${HOME}/.steadfaste-fleet/agent.env"
 fi
 # NEVER fall back to USER/hostname — a missing identity must fail loudly
 # instead of misattributing the message (Luke directive 2026-08-14).
 if [ -z "${AGENT_NAME:-}" ] || [ "$AGENT_NAME" = "unknown" ]; then
-  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
   exit 1
 fi
 SUBJECT="${1:-}"
 BODY="${2:-}"
 PRIORITY="${3:-normal}"
 
-CONF="${CORTEX_BUS_CONF:-${HOME}/hermes-cortex/.env}"
+CONF="${CORTEX_BUS_CONF:-${HOME}/steadfaste-fleet/.env}"
 
 _read_conf() {
   local key="$1"
@@ -64,8 +64,8 @@ if [ -z "$SUBJECT" ] || [ -z "$BODY" ]; then
   exit 1
 fi
 
-# lib.cortex_bus is deployed alongside this script (~/.hermes-cortex/scripts/lib/).
-LIB_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts"
+# lib.cortex_bus is deployed alongside this script (~/.steadfaste-fleet/scripts/lib/).
+LIB_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts"
 
 echo "📤 Sending to ${TARGET_QUEUE} (primary bus, fallback automatic)..."
 RESULT=$(AGENT_NAME="$AGENT_NAME" SUBJECT="$SUBJECT" BODY="$BODY" PRIORITY="$PRIORITY" \

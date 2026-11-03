@@ -2,9 +2,9 @@
 # ─────────────────────────────────────────────────────────────
 # consolidate-env.sh — single .env source of truth (cortex layer)
 #
-# Merges the legacy bus config file (~/.hermes-cortex/cortex-bus.conf) into
-# the single cortex env file (~/hermes-cortex/.env), then creates
-# ~/.hermes-cortex/.env as a SYMLINK to it so every existing reader keeps
+# Merges the legacy bus config file (~/.steadfaste-fleet/cortex-bus.conf) into
+# the single cortex env file (~/steadfaste-fleet/.env), then creates
+# ~/.steadfaste-fleet/.env as a SYMLINK to it so every existing reader keeps
 # working (doctor, forwarder, failover watchdog, contact-orchestrator, ...).
 # The legacy cortex-bus.conf name is retired: a host that still carries it
 # (real file or old symlink) is migrated to the .env name.
@@ -19,9 +19,9 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_ENV="${HOME}/hermes-cortex/.env"           # the canonical cortex env
-DEPLOY_ENV="${HOME}/.hermes-cortex/.env"        # the sanctioned back-compat symlink (deploy dir)
-LEGACY="${HOME}/.hermes-cortex/cortex-bus.conf" # retired name — migrated to DEPLOY_ENV
+REPO_ENV="${HOME}/steadfaste-fleet/.env"           # the canonical cortex env
+DEPLOY_ENV="${HOME}/.steadfaste-fleet/.env"        # the sanctioned back-compat symlink (deploy dir)
+LEGACY="${HOME}/.steadfaste-fleet/cortex-bus.conf" # retired name — migrated to DEPLOY_ENV
 BACKUP="${LEGACY}.bak-$(date +%Y%m%d)"
 
 info() { printf '✓ %s\n' "$*"; }
@@ -61,7 +61,7 @@ if [[ ! -f "${REPO_ENV}" ]]; then
 fi
 
 # ── Guard 2: a stray real-file .env in the deploy dir ────────
-# Historically ~/.hermes-cortex/.env was a stray symlink to ~/langfuse/.env.
+# Historically ~/.steadfaste-fleet/.env was a stray symlink to ~/langfuse/.env.
 # The .env name is now OURS (canonical + sanctioned symlink), so a REAL file
 # at the deploy path is not something consolidate-env created — refuse to own it.
 if [[ -e "${DEPLOY_ENV}" && ! -L "${DEPLOY_ENV}" ]]; then

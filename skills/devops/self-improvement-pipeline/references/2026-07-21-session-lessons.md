@@ -93,7 +93,7 @@ After this session:
 - Moses never created todo items in the prior session (reacted to commands, didn't plan)
 
 **Permanent fix:**
-- Added `~/.hermes-cortex/state/session-todo.json` as persistence file
+- Added `~/.steadfaste-fleet/state/session-todo.json` as persistence file
 - Principle 37 rewritten: each step now includes "Write to persistence file"
 - Session-end: save pending items or write empty `[]`
 - task-start skill Step 1: checks persistence file before cache search

@@ -14,7 +14,7 @@ Predecessor [cost/1] `5e875477` is `completed` (proof: `docs/evidence/morning-ta
 | Fact | Evidence |
 |---|---|
 | The sink at `:14005` is a reverse proxy in front of VictoriaMetrics; the client pushes Prometheus text to `/api/v1/import/prometheus` | `docs/runbooks/push-metrics-nginx-deploy.md:1-28`, `ops/install/deploy/nginx/metrics-sink.conf` |
-| This host's push targets are `VICTORIA_METRICS_URL` (remote `:13005`, primary) and `VICTORIA_METRICS_FALLBACK_URL` (local `:14005`) | `~/hermes-cortex/.env:66-67` (values not reproduced — the URL carries a Basic-auth credential) |
+| This host's push targets are `VICTORIA_METRICS_URL` (remote `:13005`, primary) and `VICTORIA_METRICS_FALLBACK_URL` (local `:14005`) | `~/steadfaste-fleet/.env:66-67` (values not reproduced — the URL carries a Basic-auth credential) |
 | The push client is `ops/scripts/manage/agent-push-metrics.sh`, 403 lines, `collect_metrics()` at line 122 builds the payload, `set -euo pipefail` at line 25, pushes every 5m on every host (`agent-push-metrics`, scope universal) | `wc -l` = 403; `ops/install/cron-manifest.yaml` `agent-push-metrics` |
 | The client pushes ONLY system metrics today (cpu/load/mem/disk/uptime) — no cost or token series | `grep -n -e cron -e token -e cost ops/scripts/manage/agent-push-metrics.sh` → matches are comments only |
 | Per-cron token truth: `~/.hermes/cron/usage_audit.jsonl`, one JSON object per fire: `{"ts","job_id","fire_id","prompt_tokens","completion_tokens","total_tokens","model","duration_ms","error",...}` — 1740 rows on this host, first row 2026-08-09 | `read_file` line 1 of that file |
@@ -57,7 +57,7 @@ session ids are `cron_<jobid>_<ts>`. (The first version of the generator assumed
 matched zero rows and the series reported spend unavailable while the data was there.)
 
 `agent-push-metrics.sh` gains one call site inside `collect_metrics()`: if
-`~/.hermes-cortex/scripts/cron-cost-metrics.py` exists, append its stdout to the payload; if it exits
+`~/.steadfaste-fleet/scripts/cron-cost-metrics.py` exists, append its stdout to the payload; if it exits
 non-zero or is absent, the push proceeds unchanged and records one stderr line (fail-soft — a missing
 generator must never turn a metrics push into a failure, and must never silently report $0).
 

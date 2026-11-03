@@ -61,8 +61,8 @@ to inspect, prefer `read_file` / `search_files`: those are never gated.
 
 - Read before you write. `search_files` before creating anything — extend an
   existing script/doc/skill rather than adding a second implementation.
-- `~/hermes-cortex/` is ours. `~/.hermes/` files that are not in the repo are
-  Hermes-owned: don't touch them. `~/.hermes-cortex/state/*` and
+- `~/steadfaste-fleet/` is ours. `~/.hermes/` files that are not in the repo are
+  Hermes-owned: don't touch them. `~/.steadfaste-fleet/state/*` and
   `~/.hermes/config.yaml` are live config.
 - Identity is host-derived (`moses`/`esther`), never from `AGENT_ID`/`AGENT_TYPE`.
 - Never print secrets. `$(cat <file>)` in a subshell only.
@@ -110,7 +110,7 @@ The pre-push gate runs the doctor. If deployed state ≠ repo source (i.e. you c
 anything `cortex-update.sh` deploys), the push is **rejected** until you run:
 
 ```bash
-bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force   # pull → deploy → doctor → verify
+bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force   # pull → deploy → doctor → verify
 ```
 
 Then push, and verify the **deployed** copy afterwards — a committed file is not a
@@ -172,5 +172,5 @@ matches its diff cannot converge, and a lock description must never be hand-edit
 | Score + close | `feedback_accept(…scores…)` → `end_change(task_id=…)` |
 | Re-judge a fixed change | `rereview_change(task_id=…, note=<NEW note + evidence>)` |
 | Commit-hook gate | automatic (`core.hooksPath`) |
-| Deploy + verify | `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` |
+| Deploy + verify | `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` |
 | Full health | `python3 ops/scripts/manage/cortex-doctor.py` |

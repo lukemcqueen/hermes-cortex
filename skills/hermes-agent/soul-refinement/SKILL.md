@@ -2,7 +2,7 @@
 name: soul-refinement
 description: "Daily SOUL.md refinement process — mine sessions for lessons, apply corrections, codify principles. Optional per-agent Bible insight integration for daily Scripture reading."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [macos, linux]
 metadata:
@@ -226,7 +226,7 @@ body are invisible to it. So:
   transports, keep `active=1`, and note `time.strptime` rejects GNU `date`'s `'%F %T'`
   (`ValueError: 'F' is a bad directive`) — the format is `'%Y-%m-%d %H:%M:%S'`.
 - **Verify the skill file you patched is REPO-SOURCED, not stranded in the deployed tree.**
-  Content written only to `~/.hermes-cortex/skills/...` is invisible to the fleet: the deploy's
+  Content written only to `~/.steadfaste-fleet/skills/...` is invisible to the fleet: the deploy's
   drift guardrail refuses to overwrite it, so it never reaches the repo or any peer. Run
   `python3 ops/scripts/manage/check-skill-drift-parity.py` after every skill patch, and if your
   path is under `Stranded in place:` land it into the repo source in the same cycle (measured
@@ -270,7 +270,7 @@ body are invisible to it. So:
   governed repo could be resolved for this call"*. That is its OWN message, not the gate-2 lock
   rule, and acquiring a lock is not the remedy: resolving a **repo** is. It cost this pass two
   calls retrying the same shape from `~` before `workdir=` was passed, and the deployed-copy
-  location never helps (`~/.hermes-cortex` has no `.git`). The remedy is ORDER: run `begin_change`
+  location never helps (`~/.steadfaste-fleet` has no `.git`). The remedy is ORDER: run `begin_change`
   first (step 2 of the sequence this pass runs anyway) and the identical shape then returns rc=0
   from any cwd. So when a mining call is refused, do not reword it and do not go hunting for a
   lock — open the cycle, then re-issue it unchanged.

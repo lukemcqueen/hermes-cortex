@@ -97,12 +97,12 @@ When a `register()` line is removed, the deployed copy stays on disk as
 an orphan. The doctor detects these:
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stale deploy"
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stale deploy"
 ```
 
 Fix with:
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh --clean-stale
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --clean-stale
 ```
 
 Or run `cortex-update.sh` (auto-cleans stales after deploy). For non-scripts
@@ -114,7 +114,7 @@ cleanup may be needed.
 After any structural change, run the full doctor and check ALL sections:
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py 2>&1 | grep -E "❌|⚠️|ℹ️" | head -20
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep -E "❌|⚠️|ℹ️" | head -20
 ```
 
 New in this session (2026-07-23):
@@ -323,7 +323,7 @@ whole fleet benefits:
 
 `docs/reviews/repo-health-review-YYYY-MM-DD.md`
 
-Treat that as relative to the repo root (e.g. `hermes-cortex/docs/reviews/`).
+Treat that as relative to the repo root (e.g. `steadfaste-fleet/docs/reviews/`).
 Prior reports live alongside it in `docs/reviews/` — keep new reports there,
 never at the docs root.
 

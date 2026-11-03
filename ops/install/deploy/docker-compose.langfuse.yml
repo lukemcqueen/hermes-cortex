@@ -141,7 +141,7 @@ services:
       LANGFUSE_S3_CONCURRENT_WRITES: "10"          # default 50 — each socket costs memory
       LANGFUSE_API_CLICKHOUSE_DISABLE_OBSERVATIONS_FINAL: "true"
       # ── Init vars — stay active for auth validation ──
-      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-hermes-cortex}
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-steadfaste-fleet}
       LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-default-project}
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
       LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}

@@ -69,10 +69,10 @@ echo "--- rc=$?"
 echo
 
 run "2. drift check (the doctor's own reader)" \
-  "$PY" "$HOME/hermes-cortex/ops/scripts/manage/cron_manifest.py" --check
+  "$PY" "$HOME/steadfaste-fleet/ops/scripts/manage/cron_manifest.py" --check
 
 echo "=== [2b] \$ cron_manifest.py --json | python3 -c (drifted/missing names)"
-"$PY" "$HOME/hermes-cortex/ops/scripts/manage/cron_manifest.py" --json > "$TMP"/_ev_drift.json
+"$PY" "$HOME/steadfaste-fleet/ops/scripts/manage/cron_manifest.py" --json > "$TMP"/_ev_drift.json
 echo "--- manifest json rc=$?"
 "$PY" -c "import json; d=json.load(open('"$TMP"/_ev_drift.json')); print('drifted:', [x['name'] for x in d['drifted']]); print('missing:', [x['name'] for x in d['missing']])"
 echo "--- rc=$?"
@@ -81,7 +81,7 @@ run "3. installer syntax" bash -n ops/scripts/install/install-orch-crons.sh
 run "4. prompt parity test (live == installer)" \
   "$PY" -m pytest tests/test_cron_prompt_matches_installer.py -q
 run "5. static adversarial gate on the changed script" \
-  "$PY" "$HOME/.hermes-cortex/scripts/adversarial-verify.py" \
+  "$PY" "$HOME/.steadfaste-fleet/scripts/adversarial-verify.py" \
   --file ops/scripts/install/install-orch-crons.sh --level A2 --gate
 echo "=== [6] \$ live job pin state (orch-bus-worker must be unpinned)"
 "$PY" -c "import json,os; d=json.load(open(os.path.expanduser('~/.hermes/cron/jobs.json'))); jobs=d.get('jobs',d); j=[x for x in jobs if x.get('name')=='orch-bus-worker'][0]; print('model=%r provider=%r' % (j.get('model',''), j.get('provider','')))"
@@ -92,7 +92,7 @@ echo "=== [7] \$ date"
 date
 echo "--- rc=$?"
 echo
-"$PY" "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py" --quiet > "$TMP"/_ev_doctor.txt 2>&1
+"$PY" "$HOME/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py" --quiet > "$TMP"/_ev_doctor.txt 2>&1
 echo "--- doctor rc=$?"
 grep -E "Cron manifest drift|Overall" "$TMP"/_ev_doctor.txt
 echo

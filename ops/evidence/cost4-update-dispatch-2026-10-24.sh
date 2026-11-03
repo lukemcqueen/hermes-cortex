@@ -26,7 +26,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="$REPO/docs/evidence/cost4-host-cost-adapter"
 OUT="$OUTDIR/update-dispatch-2026-10-24.txt"
 CORRS="$HOME/.hermes/cache/scratch/cost4-update-corrs.json"
-PY="$HOME/.hermes-cortex/venv/bin/python3"
+PY="$HOME/.steadfaste-fleet/venv/bin/python3"
 
 mkdir -p "$OUTDIR" "$(dirname "$CORRS")"
 exec >"$OUT" 2>&1
@@ -46,12 +46,12 @@ import sys
 import uuid
 from pathlib import Path
 
-sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts"))
+sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
 from lib.cortex_bus import bus_send, bus_peek
 from lib.handoff_schema import validate_payload
 
 CORRS = Path.home() / ".hermes/cache/scratch/cost4-update-corrs.json"
-REPO = Path.home() / "hermes-cortex"
+REPO = Path.home() / "steadfaste-fleet"
 
 import subprocess
 sha = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
@@ -96,7 +96,7 @@ say "── the four worker queues, right after the dispatch ──"
 "$PY" - <<'PYEOF'
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts"))
+sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
 from lib.cortex_bus import bus_list_queues
 for q in bus_list_queues():
     n = q.get("name", "")

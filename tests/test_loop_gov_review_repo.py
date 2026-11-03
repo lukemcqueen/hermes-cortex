@@ -4,10 +4,10 @@ working in, never a tree that cannot contain its work.
 
 Failure (2026-10-06, fleet operator reporting an orchestrator host): a delegated
 subagent opened its governance lock while working in `~/steadfaste`, but the
-lock was tagged `repo_slug: hermes-cortex` — both `_derive_slug()` (MCP) and
+lock was tagged `repo_slug: steadfaste-fleet` — both `_derive_slug()` (MCP) and
 `_derive_repo_slug()` (enforcer) return the host's canonical repo whenever
-`~/hermes-cortex/.git` exists, regardless of the session's repo. The close gate
-then did `repo = HOME / lock["repo_slug"]` and reviewed hermes-cortex: a tree
+`~/steadfaste-fleet/.git` exists, regardless of the session's repo. The close gate
+then did `repo = HOME / lock["repo_slug"]` and reviewed steadfaste-fleet: a tree
 that cannot contain the work. It returned FINDINGS every time, the close was
 refused forever, and each retry spawned another full review (a dozen 420s
 timeouts), wedging the server.
@@ -80,14 +80,14 @@ def _sandbox_home(two_repos: bool = True):
     """(home, started_at): `started_at` is the instant the lock OPENED — taken
     before the work commits, as in production."""
     home = Path(tempfile.mkdtemp(prefix="loop-gov-review-repo-"))
-    _mkrepo(home / "hermes-cortex", with_commit=False)      # canonical, EMPTY
+    _mkrepo(home / "steadfaste-fleet", with_commit=False)      # canonical, EMPTY
     started_at = _iso(time.time())                          # ← the lock opens here
     if two_repos:
         time.sleep(1.1)                                     # commits land INSIDE the window
         _mkrepo(home / "steadfaste", with_commit=True)
     mcp.HOME = home
     mcp.SESSION_FILE = home / ".hermes" / "session.id"
-    mcp.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    mcp.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     mcp.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
     mcp._PROCESS_SESSION_ID = ""
     return home, started_at
@@ -109,7 +109,7 @@ def _lock(repo_slug: str, started_at: str) -> dict:
 
 def test_review_refuses_when_lock_repo_cannot_contain_the_work():
     _home, started_at = _sandbox_home()
-    lock = _lock("hermes-cortex", started_at)
+    lock = _lock("steadfaste-fleet", started_at)
 
     block = mcp._adversarial_review_gate(lock, {"id": 4242})
 
@@ -120,7 +120,7 @@ def test_review_refuses_when_lock_repo_cannot_contain_the_work():
     text = block.content[0].text
     assert FAILURE_TEXT in text, f"refusal did not explain the mismatch: {text!r}"
     assert "steadfaste" in text, f"refusal did not name the repo holding the work: {text!r}"
-    assert "hermes-cortex" in text, f"refusal did not name the lock's repo: {text!r}"
+    assert "steadfaste-fleet" in text, f"refusal did not name the lock's repo: {text!r}"
 
 
 def test_guard_does_not_fire_when_lock_repo_holds_the_work():
@@ -129,12 +129,12 @@ def test_guard_does_not_fire_when_lock_repo_holds_the_work():
     home, started_at = _sandbox_home(two_repos=False)
     # Commit in the CANONICAL repo, after the lock opened: the work is here.
     time.sleep(1.1)
-    repo = home / "hermes-cortex"
+    repo = home / "steadfaste-fleet"
     (repo / "work.txt").write_text("y\n")
     _git(repo, "add", "work.txt")
     _git(repo, "commit", "-q", "-m", "the real work")
 
-    lock = _lock("hermes-cortex", started_at)
+    lock = _lock("steadfaste-fleet", started_at)
 
     block = mcp._adversarial_review_gate(lock, {"id": 4243})
     text = block.content[0].text if block is not None else ""
@@ -163,7 +163,7 @@ def test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo():
     mcp.HOME = home
     resolved = mcp._derive_slug({"repo_slug": "not-a-repo"})
     assert resolved != "not-a-repo", "a non-repo slug was accepted as the lock's repo"
-    assert resolved == "hermes-cortex", f"expected the canonical fallback, got {resolved!r}"
+    assert resolved == "steadfaste-fleet", f"expected the canonical fallback, got {resolved!r}"
 
 
 # ── Part 2b: the enforcer learns the session's repo and injects it ──
@@ -171,7 +171,7 @@ def test_derive_slug_ignores_an_injected_slug_that_is_not_a_repo():
 def test_enforcer_records_session_repo_from_touched_paths():
     home = Path(tempfile.mkdtemp(prefix="enf-repo-hint-"))
     proj = _mkrepo(home / "repos" / "proj", with_commit=True)
-    enf.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    enf.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
 
     enf._note_session_repo("S-hint", {"path": str(proj / "work.txt")})
@@ -184,7 +184,7 @@ def test_enforcer_records_session_repo_from_touched_paths():
 def test_enforcer_injects_recorded_repo_into_governance_calls():
     home = Path(tempfile.mkdtemp(prefix="enf-repo-inject-"))
     proj = _mkrepo(home / "repos" / "proj", with_commit=True)
-    enf.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    enf.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
 
     enf._note_session_repo("S-inj", {"workdir": str(proj)})
@@ -199,7 +199,7 @@ def test_enforcer_injects_recorded_repo_into_governance_calls():
 
 def test_enforcer_does_not_inject_a_repo_it_never_learned():
     home = Path(tempfile.mkdtemp(prefix="enf-repo-none-"))
-    enf.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    enf.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     enf.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
     args = {}
     enf._inject_session_context("S-unknown", "mcp__loop_governance__begin_change", args)
@@ -250,7 +250,7 @@ def test_lock_repo_prefers_the_absolute_path_over_the_slug():
 
 def test_nested_repo_holding_the_work_is_not_refused():
     home, deep = _nested()
-    _mkrepo(home / "hermes-cortex", with_commit=False)
+    _mkrepo(home / "steadfaste-fleet", with_commit=False)
     started = _iso(time.time())
     time.sleep(1.1)
     _mkrepo(deep, with_commit=True)               # the work lands INSIDE the window
@@ -275,9 +275,9 @@ def test_candidate_scan_finds_a_repo_two_levels_down():
 def test_a_lock_write_never_touches_the_nested_repo():
     """The lock must not be mirrored into the repo it governs.
 
-    This test asserted the in-repo `.hermes-cortex/.governance-lock` followed the
+    This test asserted the in-repo `.steadfaste-fleet/.governance-lock` followed the
     ABSOLUTE repo path. That marker was removed on purpose — inside a repo the name
-    shadows the runtime `~/.hermes-cortex`, and cortex-doctor now FAILS when the
+    shadows the runtime `~/.steadfaste-fleet`, and cortex-doctor now FAILS when the
     directory exists. What matters is that a lock write never lands in the repo,
     whichever path shape the state carries (2026-10-08).
     """
@@ -287,12 +287,12 @@ def test_a_lock_write_never_touches_the_nested_repo():
              "repo_path": str(deep), "started_at": mcp._now_iso(),
              "session_id": "N1", "ttl_seconds": 3600, "heartbeat_at": mcp._now_iso()}
     mcp._write_lock(state, {"session_id": "N1"})
-    assert not (deep / ".hermes-cortex").exists(), (
+    assert not (deep / ".steadfaste-fleet").exists(), (
         "a lock write put governance state inside the governed repo — the name "
-        "shadows the runtime ~/.hermes-cortex directory"
+        "shadows the runtime ~/.steadfaste-fleet directory"
     )
     mcp._release_lock({"session_id": "N1"})
-    assert not (deep / ".hermes-cortex").exists(), (
+    assert not (deep / ".steadfaste-fleet").exists(), (
         "releasing a lock wrote repo-local state"
     )
 
@@ -389,7 +389,7 @@ def _sandbox(tmp_prefix: str):
     home = Path(tempfile.mkdtemp(prefix=tmp_prefix))
     mcp.HOME = home
     mcp.SESSION_FILE = home / ".hermes" / "session.id"
-    mcp.GOVERNANCE_STATE_DIR = home / ".hermes-cortex" / "state"
+    mcp.GOVERNANCE_STATE_DIR = home / ".steadfaste-fleet" / "state"
     mcp.GOVERNANCE_STATE_DIR.mkdir(parents=True, exist_ok=True)
     mcp._PROCESS_SESSION_ID = ""
     return home
@@ -440,12 +440,12 @@ def test_the_mis_tag_refusal_names_the_session_repo_when_it_is_known():
     """The refusal's job is to say WHICH repo the session is actually in — the enforcer
     injects that path, so the message must use it rather than leaving the reader to guess."""
     home = _sandbox("loop-gov-tag-names-")
-    _mkrepo(home / "hermes-cortex", with_commit=False)           # the (wrongly tagged) lock repo
+    _mkrepo(home / "steadfaste-fleet", with_commit=False)           # the (wrongly tagged) lock repo
     started_at = _iso(time.time())
     time.sleep(1.1)
     real = _mkrepo(home / "steadfaste-s1-model", with_commit=True)
-    lock = {"task_id": "t", "description": "d", "repo_slug": "hermes-cortex",
-            "repo_path": str(home / "hermes-cortex"), "started_at": started_at,
+    lock = {"task_id": "t", "description": "d", "repo_slug": "steadfaste-fleet",
+            "repo_path": str(home / "steadfaste-fleet"), "started_at": started_at,
             "session_id": "S1", "ttl_seconds": 3600}
 
     with _EnvVar("CORTEX_SESSION_REPO", str(real)):

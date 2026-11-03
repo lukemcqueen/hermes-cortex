@@ -1,4 +1,4 @@
-"""Tests for seed-project.sh — bash-based Hermes Cortex project bootstrapper.
+"""Tests for seed-project.sh — bash-based Steadfaste Fleet project bootstrapper.
 
 Uses subprocess to shell out. Each test creates a fresh git repo under
 tmp_path so they're isolated and clean up automatically.
@@ -120,15 +120,15 @@ class TestSeedProject:
         assert (repo / "AGENTS.md").exists()
 
     def test_first_seed_creates_hermes_cortex(self, tmp_path):
-        """First seed creates .hermes-cortex/ structure."""
+        """First seed creates .steadfaste-fleet/ structure."""
         repo = tmp_path / "repo"
         repo.mkdir()
         _init_repo(repo)
         rc, stdout, _ = _seed(repo)
         assert rc == 0, f"seed failed:\n{stdout}"
-        assert (repo / ".hermes-cortex").is_dir()
+        assert (repo / ".steadfaste-fleet").is_dir()
         for sub in ("sessions", "memory", "skills"):
-            assert (repo / ".hermes-cortex" / sub).is_dir(), f"missing {sub}"
+            assert (repo / ".steadfaste-fleet" / sub).is_dir(), f"missing {sub}"
 
     def test_first_seed_no_backup_yet(self, tmp_path):
         """First seed on clean project creates NO backup (nothing to save)."""
@@ -136,7 +136,7 @@ class TestSeedProject:
         repo.mkdir()
         _init_repo(repo)
         _seed(repo)
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         assert not backup_root.is_dir(), "backup should not exist on first seed"
 
     # ── Second seed (merge) ──────────────────────────────────
@@ -150,7 +150,7 @@ class TestSeedProject:
 
         rc, stdout, _ = _seed(repo)
         assert rc == 0, f"re-seed failed:\n{stdout}"
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         assert backup_root.is_dir(), "backup root not created"
         backups = list(backup_root.iterdir())
         assert len(backups) >= 1
@@ -163,7 +163,7 @@ class TestSeedProject:
         _seed(repo)
         _seed(repo)
 
-        backups = sorted((repo / ".hermes-cortex" / ".seed-backups").iterdir())
+        backups = sorted((repo / ".steadfaste-fleet" / ".seed-backups").iterdir())
         latest = backups[-1]
         assert (latest / "AGENTS.md").exists(), "backup missing AGENTS.md"
 
@@ -184,7 +184,7 @@ class TestSeedProject:
         content = agents.read_text()
         assert "CORRUPTED" not in content
         # Template content starts with <!-- (HTML comment)
-        assert content.startswith("<!--") or "Hermes Cortex" in content
+        assert content.startswith("<!--") or "Steadfaste Fleet" in content
 
     def test_overwrite_creates_backup(self, tmp_path):
         """--mode=overwrite backs up the original before replacing."""
@@ -199,7 +199,7 @@ class TestSeedProject:
 
         # Backup should exist and contain the pre-overwrite state
         # (the CORRUPTED version — backup always captures pre-seed state)
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         backups = sorted(backup_root.iterdir())
         latest = backups[-1]
         backup_agents = latest / "AGENTS.md"
@@ -218,27 +218,27 @@ class TestSeedProject:
     # ── --mode=diff ──────────────────────────────────────────
 
     def test_diff_mode_no_writes(self, tmp_path):
-        """--mode=diff does not create AGENTS.md or .hermes-cortex/."""
+        """--mode=diff does not create AGENTS.md or .steadfaste-fleet/."""
         repo = tmp_path / "repo"
         repo.mkdir()
         _init_repo(repo)
         rc, stdout, _ = _seed(repo, "--mode=diff")
         assert rc == 0, f"diff mode failed:\n{stdout}"
         assert not (repo / "AGENTS.md").exists()
-        assert not (repo / ".hermes-cortex").exists()
+        assert not (repo / ".steadfaste-fleet").exists()
 
     # ── --components filtering ───────────────────────────────
 
     def test_components_agents_only_no_dot_hermes_cortex(self, tmp_path):
-        """--components=AGENTS.md must NOT create .hermes-cortex/ as side effect."""
+        """--components=AGENTS.md must NOT create .steadfaste-fleet/ as side effect."""
         repo = tmp_path / "repo"
         repo.mkdir()
         _init_repo(repo)
         rc, stdout, _ = _seed(repo, "--components=AGENTS.md")
         assert rc == 0, f"components seed failed:\n{stdout}"
         assert (repo / "AGENTS.md").exists(), "AGENTS.md should be created"
-        assert not (repo / ".hermes-cortex").exists(), (
-            ".hermes-cortex/ should not be created as side effect"
+        assert not (repo / ".steadfaste-fleet").exists(), (
+            ".steadfaste-fleet/ should not be created as side effect"
         )
 
     # ── --no-backup ──────────────────────────────────────────
@@ -252,7 +252,7 @@ class TestSeedProject:
 
         # First re-seed creates 1 backup
         _seed(repo)
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         assert backup_root.is_dir()
         before = len(list(backup_root.iterdir()))
 
@@ -329,7 +329,7 @@ class TestSeedProject:
         agents.write_text("# CORRUPTED")
         _run("bash", str(SEED_PROJECT), f"--restore={repo}")
 
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         assert backup_root.is_dir()
         backups = list(backup_root.iterdir())
         assert len(backups) >= 1, "backups were lost during restore"
@@ -346,7 +346,7 @@ class TestSeedProject:
         _seed(repo)
 
         # Get the first backup timestamp
-        backup_root = repo / ".hermes-cortex" / ".seed-backups"
+        backup_root = repo / ".steadfaste-fleet" / ".seed-backups"
         backups = sorted(backup_root.iterdir())
         first_ts = backups[0].name
 
@@ -363,13 +363,13 @@ class TestSeedProject:
     # ── --skill-refs ─────────────────────────────────────────
 
     def test_skill_refs_linked(self, tmp_path):
-        """--skill-refs registers skills in .hermes-cortex/skills.yaml always section."""
+        """--skill-refs registers skills in .steadfaste-fleet/skills.yaml always section."""
         repo = tmp_path / "repo"
         repo.mkdir()
         _init_repo(repo)
         rc, stdout, _ = _seed(repo, "--skill-refs=change-test-loop,engineering-approach")
         assert rc == 0, f"skill-refs seed failed:\n{stdout}"
-        skills_yaml = repo / ".hermes-cortex" / "skills.yaml"
+        skills_yaml = repo / ".steadfaste-fleet" / "skills.yaml"
         assert skills_yaml.is_file(), "skills.yaml not created"
         content = skills_yaml.read_text()
         assert "change-test-loop" in content, f"change-test-loop not in skills.yaml:\n{content}"

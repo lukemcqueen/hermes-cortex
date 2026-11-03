@@ -67,7 +67,7 @@ def _import_with_home(home: Path):
 def test_importing_the_module_purges_nothing():
     with tempfile.TemporaryDirectory() as tmp:
         home = Path(tmp)
-        state = home / ".hermes-cortex" / "state"
+        state = home / ".steadfaste-fleet" / "state"
         stale = _stale_lock(state)
         _import_with_home(home)
         assert stale.exists(), (
@@ -80,7 +80,7 @@ def test_the_state_dir_defaults_to_the_importers_home():
     with tempfile.TemporaryDirectory() as tmp:
         home = Path(tmp)
         mod = _import_with_home(home)
-        assert mod.STATE_DIR == home / ".hermes-cortex" / "state", (
+        assert mod.STATE_DIR == home / ".steadfaste-fleet" / "state", (
             "STATE_DIR must derive from Path.home() at import — the test above only proves "
             "something if the module really aimed at that HOME"
         )
@@ -91,7 +91,7 @@ def test_purge_still_removes_a_stale_lock_when_called():
     when purge() is actually invoked."""
     with tempfile.TemporaryDirectory() as tmp:
         home = Path(tmp)
-        stale = _stale_lock(home / ".hermes-cortex" / "state")
+        stale = _stale_lock(home / ".steadfaste-fleet" / "state")
         mod = _import_with_home(home)
         assert stale.exists(), "precondition: import left the stale lock alone"
         removed = mod.purge()
@@ -104,7 +104,7 @@ def test_running_it_as_a_script_still_purges():
     cannot reach the host's own locks."""
     with tempfile.TemporaryDirectory() as tmp:
         home = Path(tmp)
-        stale = _stale_lock(home / ".hermes-cortex" / "state")
+        stale = _stale_lock(home / ".steadfaste-fleet" / "state")
         env = {**os.environ, "HOME": str(home)}
         proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True,
                               env=env, timeout=120)

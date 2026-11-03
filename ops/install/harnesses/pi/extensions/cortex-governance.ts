@@ -12,7 +12,7 @@
  *   and write files with no lock at all.
  *
  *   The commit-time hook is not a substitute. Its lock check exists, but it is
- *   scoped to the hermes-cortex repo only (`IS_CORTEX_REPO`), deliberately, so a
+ *   scoped to the steadfaste-fleet repo only (`IS_CORTEX_REPO`), deliberately, so a
  *   pi session working in a PROJECT repo had no lock gate at write OR commit time.
  *
  * THIS FILE ADDS NO GOVERNANCE SEMANTICS. It is an adapter.
@@ -44,7 +44,7 @@
  * all. Everything else (pipes included) needs a lock. Deny by default.
  *
  * INSTALL (user scope, so every pi project gets it):
- *   bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+ *   bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh
  * ENV: CORTEX_SESSION_REPO pins the governed repo when pi's cwd is not it;
  *      CORTEX_GOVERNANCE_CLI overrides the loop-gov.py path;
  *      CORTEX_GOVERNANCE_PYTHON overrides the interpreter (macOS: a Homebrew
@@ -60,7 +60,7 @@ const run = promisify(execFile);
 
 const CLI =
   process.env.CORTEX_GOVERNANCE_CLI ??
-  `${process.env.HOME}/.hermes-cortex/scripts/loop-gov.py`;
+  `${process.env.HOME}/.steadfaste-fleet/scripts/loop-gov.py`;
 
 /** macOS: `python3` may not be on pi's PATH (Homebrew lives in /opt/homebrew/bin
  *  on Apple Silicon, /usr/local/bin on Intel) and a GUI-launched pi sees a
@@ -73,7 +73,7 @@ const PYTHON = process.env.CORTEX_GOVERNANCE_PYTHON ?? "python3";
 // bounded by rotation, and never able to break the gate.
 const LOG_PATH =
   process.env.CORTEX_GOVERNANCE_LOG ??
-  `${process.env.HOME ?? ""}/.hermes-cortex/logs/pi-governance.log`;
+  `${process.env.HOME ?? ""}/.steadfaste-fleet/logs/pi-governance.log`;
 const LOG_MAX_BYTES = Number(process.env.CORTEX_GOVERNANCE_LOG_MAX_BYTES ?? 1_048_576);
 const DEBUG = process.env.CORTEX_GOVERNANCE_DEBUG === "1";
 
@@ -407,9 +407,9 @@ function unavailableMessage(repo: string, detail: string): string {
     "bug to route around — there is no agent-side override.",
     "",
     "Operator remedy (in order):",
-    "  1. python3 ~/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --check",
-    "  2. bash ~/hermes-cortex/ops/scripts/cortex-update.sh",
-    "  3. confirm: python3 ~/.hermes-cortex/scripts/loop-gov.py --list",
+    "  1. python3 ~/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py --check",
+    "  2. bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh",
+    "  3. confirm: python3 ~/.steadfaste-fleet/scripts/loop-gov.py --list",
     "  4. to remove the gate entirely (operator decision, and visible): drop",
     "     cortex-governance.ts from \"extensions\" in ~/.pi/agent/settings.json",
   ].join("\n");

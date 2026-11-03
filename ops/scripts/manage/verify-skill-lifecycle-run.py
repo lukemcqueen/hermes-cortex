@@ -27,7 +27,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]          # ~/hermes-cortex
+REPO = Path(__file__).resolve().parents[3]          # ~/steadfaste-fleet
 HOME = Path.home()
 DEPLOYED = HOME / ".hermes" / "skills"
 
@@ -108,7 +108,7 @@ def check_titus(failures: list[str]) -> None:
     way — this check is CORROBORATING evidence only, never a delivery claim.
     The only hard failure is a missing hc CLI (the probe could not run).
     """
-    hc = HOME / ".hermes-cortex" / "scripts" / "hc"
+    hc = HOME / ".steadfaste-fleet" / "scripts" / "hc"
     if not hc.is_file():
         failures.append("hc CLI not found")
         return

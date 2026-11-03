@@ -16,7 +16,7 @@
 # dependency is guarded explicitly and a COULD NOT VERIFY outcome is FAIL.
 set -uo pipefail
 
-REPO="${REPO:-$HOME/hermes-cortex}"
+REPO="${REPO:-$HOME/steadfaste-fleet}"
 DEPLOYED_ROOT="${DEPLOYED_ROOT:-$HOME/.hermes/skills}"
 # SKILLS overrides the repo-side sweep (a narrow run, or a probe). When unset the
 # sweep is DISCOVERED from the tree, never a baked-in list.

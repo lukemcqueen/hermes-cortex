@@ -84,7 +84,7 @@ CREATE TABLE tasks.tasks (
     content            TEXT NOT NULL,                -- ← restored (Domain S-1)
     created_by         TEXT NOT NULL,                -- provenance + de-facto tenant
     assignee           TEXT,                         -- metadata-only until transport
-    project            TEXT NOT NULL DEFAULT 'hermes-cortex',  -- TEXT, NOT enum:
+    project            TEXT NOT NULL DEFAULT 'steadfaste-fleet',  -- TEXT, NOT enum:
                                                    -- app-layer registry (PII —
                                                    -- client names never in public CHECK)
     repo               TEXT,                         -- label only, resolved once at creation
@@ -230,7 +230,7 @@ orchestrator hosts carry test rows today (verified: 2 rows on Esther's host).
 3. **Copy in one transaction** with explicit mapping:
    `agent_name → created_by AND assignee`; `content → content`;
    `status → status`; `session_id → session_id`; `priority → priority`;
-   `created_at/updated_at` preserved; defaults: `project='hermes-cortex'`,
+   `created_at/updated_at` preserved; defaults: `project='steadfaste-fleet'`,
    `repo=NULL`, `target=NULL`, `scope='personal'`, `column=todo`,
    `position=0`, `source='manual'`. (The 2 live rows are Esther's personal
    dream todos — personal scope is correct.)
@@ -337,16 +337,16 @@ over stdio, pinned before/after), `tests/test_task_query_repo_scope.py`,
 
 
 **Config wiring (all agents):** mirror loop-governance exactly — the config
-points at the REPO path (`~/hermes-cortex/mcp-servers/`), same as
-loop-governance; the deployed copy in `~/.hermes-cortex/scripts/` is a
+points at the REPO path (`~/steadfaste-fleet/mcp-servers/`), same as
+loop-governance; the deployed copy in `~/.steadfaste-fleet/scripts/` is a
 fallback for doctor checks. The doctor's `--fix` converges this same way.
 
 ```yaml
 mcp_servers:
   todos:
-    command: /home/<user>/.hermes-cortex/venv/bin/python3
+    command: /home/<user>/.steadfaste-fleet/venv/bin/python3
     args:
-      - /home/<user>/hermes-cortex/mcp-servers/task-mcp.py
+      - /home/<user>/steadfaste-fleet/mcp-servers/task-mcp.py
     enabled: true
 ```
 

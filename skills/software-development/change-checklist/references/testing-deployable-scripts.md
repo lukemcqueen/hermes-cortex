@@ -50,7 +50,7 @@ python3 script.py
 sudo python3 script.py
 
 # Test with su — target user simulation
-su - joseph -c 'python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py'
+su - joseph -c 'python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py'
 ```
 
 ### Common Permission Pitfalls

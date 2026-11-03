@@ -60,8 +60,8 @@ def _server_path() -> Path | None:
     here = Path(__file__).resolve()
     candidates = [
         here.parent.parent / "mcp-servers" / SERVER_NAME,          # repo
-        Path.home() / ".hermes-cortex" / "scripts" / SERVER_NAME,  # deployed
-        Path.home() / "hermes-cortex" / "mcp-servers" / SERVER_NAME,
+        Path.home() / ".steadfaste-fleet" / "scripts" / SERVER_NAME,  # deployed
+        Path.home() / "steadfaste-fleet" / "mcp-servers" / SERVER_NAME,
     ]
     for c in candidates:
         if c.is_file():
@@ -99,7 +99,7 @@ def load_governance():
     path = _server_path()
     if path is None:
         print("loop-gov: the governance server module was not found "
-              f"({SERVER_NAME}). Looked in the repo and ~/.hermes-cortex/scripts.",
+              f"({SERVER_NAME}). Looked in the repo and ~/.steadfaste-fleet/scripts.",
               file=sys.stderr)
         sys.exit(3)
     try:

@@ -11,7 +11,7 @@
 # (launchd, pf, system.log). Platform-inapplicable checks are skipped
 # with an explicit "n/a" note, never silently.
 #
-# TIER — per-host posture depth, read from ~/hermes-cortex/.env:
+# TIER — per-host posture depth, read from ~/steadfaste-fleet/.env:
 #   SECURITY_POSTURE=full     (default) all checks — internet-facing host
 #   SECURITY_POSTURE=minimal  skip network-exposure checks (firewall ban
 #                             set, brute-force volume, nginx jail req);
@@ -31,7 +31,7 @@ set -uo pipefail
 
 # ── State dedup (source first, before any logic) ──
 SCRIPT_NAME="agent-security-posture-check"
-STATE_DIR="${HOME}/.hermes-cortex/state"
+STATE_DIR="${HOME}/.steadfaste-fleet/state"
 FINGERPRINT_FILE="${STATE_DIR}/${SCRIPT_NAME}-fingerprint.txt"
 mkdir -p "$STATE_DIR"
 
@@ -44,11 +44,11 @@ ok()    { :; }
 
 OS="$(uname -s)"
 
-# --- tier: env var wins, ~/hermes-cortex/.env is the fallback default ---
+# --- tier: env var wins, ~/steadfaste-fleet/.env is the fallback default ---
 # (same convention as IS_SERVER). SECURITY_POSTURE=full|minimal|off.
 POSTURE_TIER="${SECURITY_POSTURE:-full}"
-if [[ -z "${SECURITY_POSTURE:-}" && -f "${HOME}/hermes-cortex/.env" ]]; then
-  _tier="$(grep -E '^SECURITY_POSTURE=' "${HOME}/hermes-cortex/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+if [[ -z "${SECURITY_POSTURE:-}" && -f "${HOME}/steadfaste-fleet/.env" ]]; then
+  _tier="$(grep -E '^SECURITY_POSTURE=' "${HOME}/steadfaste-fleet/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
   [[ -n "$_tier" ]] && POSTURE_TIER="$_tier"
 fi
 case "$POSTURE_TIER" in

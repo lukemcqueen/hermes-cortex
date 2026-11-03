@@ -33,7 +33,7 @@ if [[ ! "$name" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
   exit 2
 fi
 
-for f in "${CORTEX_ENV_FILE:-$HOME/hermes-cortex/.env}" "$HOME/.hermes/.env"; do
+for f in "${CORTEX_ENV_FILE:-$HOME/steadfaste-fleet/.env}" "$HOME/.hermes/.env"; do
   [[ -f "$f" ]] || continue
   line="$(grep -m1 "^${name}=" "$f" 2>/dev/null || true)"
   [[ -n "$line" ]] || continue

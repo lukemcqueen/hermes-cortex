@@ -95,12 +95,12 @@ def integration_checks():
     """
     # Staleness guard: the deployed copy is what actually gates pushes, so if it
     # lacks the gate that is worth SEEING, not hiding behind a source-only pass.
-    deployed = Path.home() / ".hermes-cortex/hooks/pre-push"
+    deployed = Path.home() / ".steadfaste-fleet/hooks/pre-push"
     if deployed.exists():
         check("deployed hook carries the gate (staleness check)",
               "Review receipt gate" in deployed.read_text(), True)
 
-    live = Path.home() / ".hermes-cortex/state"
+    live = Path.home() / ".steadfaste-fleet/state"
     locks = sorted(live.glob(".governance-*.json"))
     if not locks:
         print("SKIP integration: no live lock to copy (cannot exercise the gate)")
@@ -222,7 +222,7 @@ def hook_authorises_by_content():
         print("SKIP hook-authorises: could not resolve this repo's range")
         return
 
-    live = Path.home() / ".hermes-cortex/state"
+    live = Path.home() / ".steadfaste-fleet/state"
     locks = sorted(live.glob(".governance-*.json"))
     if not locks:
         print("SKIP hook-authorises: no live lock to copy")
@@ -231,7 +231,7 @@ def hook_authorises_by_content():
     tmp = Path(tempfile.mkdtemp(prefix="receipt-allow-"))
     try:
         (tmp / locks[-1].name).write_text(locks[-1].read_text())
-        (tmp / ".reviewed-hermes-cortex-fixture.json").write_text(json.dumps({
+        (tmp / ".reviewed-steadfaste-fleet-fixture.json").write_text(json.dumps({
             "verdict": "CLEAN",
             "tip_sha": "0" * 40,          # deliberately NOT the current tip
             "base_sha": "0" * 40,

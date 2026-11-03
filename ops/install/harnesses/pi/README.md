@@ -42,8 +42,8 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 
 ```bash
 # USER SCOPE — every Pi project, one registration (recommended):
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
 # PROJECT SCOPE — one repo, files copied in + a generated run line:
 hc harness install pi --dir <your-pi-project>
 # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
@@ -60,7 +60,7 @@ pi   # tools come from ~/.pi/agent/mcp.json (install-pi-mcp.sh)
 1. pi mcp list shows cortex-context with the memory/session tools.
 2. In a Pi session call mem_context — the peer card must come back.
 3. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
-4. Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).
+4. Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.steadfaste-fleet/logs/pi-context.log`).
 5. node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the write gate and asserts both directions.
 6. In a Pi session, with no lock: writing a file is refused with GOVERNANCE LOCK REQUIRED; after begin_change it succeeds.
 
@@ -79,16 +79,16 @@ Overrides (usually unnecessary, needed on macOS):
 ```bash
 export CORTEX_CONTEXT_CLI=<path>   # see the failure modes in the runbook
 export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
-export CORTEX_CONTEXT_LOG=<value>   # default: ~/.hermes-cortex/logs/pi-context.log
+export CORTEX_CONTEXT_LOG=<value>   # default: ~/.steadfaste-fleet/logs/pi-context.log
 export CORTEX_CONTEXT_LOG_MAX_BYTES=<value>   # default: 1 MiB; rotates to <log>.1
 export CORTEX_CONTEXT_DEBUG=<value>   # 1 = echo routine markers to stderr while diagnosing
 ```
 
 ## Shared pieces (identical for every harness — never fork them)
 
-- CLI: `~/.hermes-cortex/scripts/cortex-context.py`
-- MCP server: `~/hermes-cortex/mcp-servers/cortex-context-mcp.py`
-- Trigger: `~/.hermes-cortex/scripts/session-autocheckpoint.py`
+- CLI: `~/.steadfaste-fleet/scripts/cortex-context.py`
+- MCP server: `~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py`
+- Trigger: `~/.steadfaste-fleet/scripts/session-autocheckpoint.py`
 - One implementation: `ops/services/mycortex-mem/context_tools.py`
 
 Full runbook: [`docs/runbooks/context-integration.md`](../../../docs/runbooks/context-integration.md)

@@ -3,7 +3,7 @@ name: governance-identity-hardening
 description: "Use when hardening orchestrator identity or unlock tokens."
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -70,7 +70,7 @@ When a claimed identity contradicts the host signals, write a LOUD line to a
 state file delivered by a no_agent watchdog (never block on network in a hook):
 
 ```bash
-ALERT_FILE="${HOME}/.hermes-cortex/state/impersonation-alerts.log"
+ALERT_FILE="${HOME}/.steadfaste-fleet/state/impersonation-alerts.log"
 _log_impersonation() {
   local claimed="${1:-unknown}"
   { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] IMPERSONATION: ${claimed} claimed on host $(hostname -s 2>/dev/null) — non-orchestrator host cannot be moses/esther"; } \
@@ -89,7 +89,7 @@ set the author of the commit being created (child→parent env doesn't
 propagate). Identity must be set at deploy time; the hook only verifies.
 
 Pattern:
-1. `~/.hermes-cortex/agent.env` holds `AGENT_NAME=<agent>` — **gitignored**,
+1. `~/.steadfaste-fleet/agent.env` holds `AGENT_NAME=<agent>` — **gitignored**,
    per-host (each machine's `/home/<user>` is a separate physical box, so the
    file is distinct even though the home path string is shared).
 2. `cortex-update.sh` calls `ensure_agent_identity()` (in os-config.sh) which

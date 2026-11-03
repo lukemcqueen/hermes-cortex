@@ -3,7 +3,7 @@ name: cron-no-agent-conversion
 version: 1.0.0
 category: devops
 description: "Convert LLM-driven Hermes agent crons to no_agent scripts with targeted API calls. Maximizes deterministic Python work, uses LLM only for the single creative task the model uniquely provides."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:

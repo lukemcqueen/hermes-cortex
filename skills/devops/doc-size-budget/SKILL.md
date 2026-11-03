@@ -2,7 +2,7 @@
 name: doc-size-budget
 description: "Slim docs and always-loaded skills to byte targets."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:

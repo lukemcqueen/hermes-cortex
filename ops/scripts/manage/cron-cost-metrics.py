@@ -52,8 +52,8 @@ PER_JOB_CAP = 15
 # passes no --agent, so without this the aggregate cannot be attributed — and a
 # label of "unknown" is worse than a refusal (SOUL Principle 3).
 IDENTITY_FILES = (
-    Path.home() / ".hermes-cortex" / "agent.env",
-    Path.home() / "hermes-cortex" / ".env",
+    Path.home() / ".steadfaste-fleet" / "agent.env",
+    Path.home() / "steadfaste-fleet" / ".env",
 )
 
 

@@ -67,7 +67,7 @@ matcher fires: the server falls back to step 0e/1 (env or per-repo file) and min
 under a DERIVED id (`sess_<hash>`), while the enforcer still demands
 `.governance-<its-session-id>.json` — so **begin_change succeeds, the lock exists, and
 EVERY write-class tool still deadlocks** with GOVERNANCE LOCK REQUIRED. The tell: read
-`~/.hermes-cortex/state/.hermes-session-current.id` (the enforcer's canonical id) and
+`~/.steadfaste-fleet/state/.hermes-session-current.id` (the enforcer's canonical id) and
 compare it to the lock file the fresh begin_change just wrote; different names = this bug.
 
 Recovery, in order: (1) mint a lock whose id MATCHES the enforcer's by driving the CLI with

@@ -16,7 +16,7 @@ import os
 import re
 import sys
 
-HERMES_CORTEX = os.path.expanduser("~/hermes-cortex")
+HERMES_CORTEX = os.path.expanduser("~/steadfaste-fleet")
 HERMES_DIR = os.path.expanduser("~/.hermes")
 
 # ── Section extraction ───────────────────────────────────────
@@ -151,17 +151,17 @@ def main():
     if issues:
         print("")
         print("⚠️  Template drift detected — your local files are outdated")
-        print("   compared to the hermes-cortex templates.")
+        print("   compared to the steadfaste-fleet templates.")
         print("")
         for issue in issues:
             print(issue)
         print("")
         print("   To fix:")
         print("   ── Update ~/.hermes/SOUL.md with template changes:")
-        print("      diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md")
+        print("      diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md")
         print("")
         print("   ── Or view the template directly:")
-        print("      cat ~/hermes-cortex/docs/templates/SOUL.md")
+        print("      cat ~/steadfaste-fleet/docs/templates/SOUL.md")
         print("")
         return 1
 

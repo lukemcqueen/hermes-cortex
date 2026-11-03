@@ -1,9 +1,9 @@
-# health-vector.service — Hermes Cortex Agent Health Vector Server (internal :8905)
+# health-vector.service — Steadfaste Fleet Agent Health Vector Server (internal :8905)
 #
 # ⚠️ USER-LEVEL ONLY — must live in ~/.config/systemd/user/
 #    Never copy to /etc/systemd/system/ (causes port conflicts).
 #    Enable/start: systemctl --user enable health-vector.service
-#    Template source: docs/templates/health-vector.service (hermes-cortex repo)
+#    Template source: docs/templates/health-vector.service (steadfaste-fleet repo)
 #
 # INTERNAL PORT: 8905 — nginx upstream health_backend expects this.
 # nginx proxies external :xx007 → internal :8905 for agent health polling.
@@ -14,7 +14,7 @@
 # Then patch BOTH the service ExecStart AND the nginx upstream server directive.
 
 [Unit]
-Description=Hermes Cortex Health Vector Server
+Description=Steadfaste Fleet Health Vector Server
 After=network.target
 
 [Service]
@@ -25,7 +25,7 @@ Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
 # counterpart (docs/templates/com.hermes.health-push.plist) uses. The shared
 # launcher guard names a missing venv/payload in the journal instead of leaving
 # an unexplained exec failure.
-ExecStart=/bin/bash -lc '. %h/.hermes-cortex/scripts/lib/require-fleet-venv.sh; require_fleet_venv %h/hermes-cortex/ops/scripts/health/health-vector.py; exec "%h/.hermes-cortex/venv/bin/python3" "%h/hermes-cortex/ops/scripts/health/health-vector.py" --serve 8905'
+ExecStart=/bin/bash -lc '. %h/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh; require_fleet_venv %h/steadfaste-fleet/ops/scripts/health/health-vector.py; exec "%h/.steadfaste-fleet/venv/bin/python3" "%h/steadfaste-fleet/ops/scripts/health/health-vector.py" --serve 8905'
 Restart=always
 RestartSec=5
 StandardOutput=journal

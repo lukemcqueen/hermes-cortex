@@ -36,7 +36,7 @@ run after the scoring section. Fix = keep ALL scoring, change the branch to
 -  echo "   Current governance is MCP-based (begin_change → cycle_query → feedback_accept → end_change)"
 -  exit 0
 +  echo "❌  score-cycle not found — cannot record governance cycle."
-+  echo "    Install it via the sanctioned path: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
++  echo "    Install it via the sanctioned path: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
 +  echo "    No bypass flags — do NOT use --no-verify."
 +  exit 1
  fi
@@ -71,21 +71,21 @@ Failures: `TestHasGovernanceLock::test_corrupted_lock_file_returns_false` and
 `test_deleted_lock_file_returns_false` (assert True is False).
 
 Cause: `_has_governance_lock()` Phase 3 reads `_secondary_lock_path()` → repo
-marker `.hermes-cortex/.governance-lock`, written by the ACTIVE lock of the
+marker `.steadfaste-fleet/.governance-lock`, written by the ACTIVE lock of the
 session running pytest. The test fixture only redirects Phase 1/2
 (GOVERNANCE_STATE_DIR), not the repo-located Phase 3 marker.
 
 Proof:
 ```bash
-mv .hermes-cortex/.governance-lock /tmp/governance-lock.bak
+mv .steadfaste-fleet/.governance-lock /tmp/governance-lock.bak
 pytest tests/test_runtime/test_governance_bypass.py::TestHasGovernanceLock -q   # 5 passed
-mv /tmp/governance-lock.bak .hermes-cortex/.governance-lock
+mv /tmp/governance-lock.bak .steadfaste-fleet/.governance-lock
 ```
 
 ## Verification recipe for hook changes
 
 ```bash
-bash -n ops/scripts/pre-commit-score && bash -n ~/.hermes-cortex/scripts/pre-commit-score
+bash -n ops/scripts/pre-commit-score && bash -n ~/.steadfaste-fleet/scripts/pre-commit-score
 # fail-closed branch: run the extracted search+warn block with empty HOME + stripped PATH → expect exit 1
 # scoring branch: run with scorer present → expect SCORER-PATH resolved, no early exit
 # scoring machinery anchors: grep -cE 'SCORE_OUTPUT=\$\(timeout|ALL_CODE_FILE=\$\(mktemp|PREV_FILE=\$\(mktemp|SCORE_STDERR=\$\(mktemp|Hard block \(2026-08-02\)' <hook>

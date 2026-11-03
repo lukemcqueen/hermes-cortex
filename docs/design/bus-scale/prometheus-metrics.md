@@ -236,7 +236,7 @@ For agents that aren't the bus server but still need to report metrics
 (e.g., cron job run times, health check status), use the reference script:
 
 ```bash
-# ~/.hermes-cortex/scripts/push-metrics.sh
+# ~/.steadfaste-fleet/scripts/push-metrics.sh
 # Collects system metrics and pushes to central VictoriaMetrics.
 # Called by cron or systemd timer or the agent itself.
 #

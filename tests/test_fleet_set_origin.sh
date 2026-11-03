@@ -8,7 +8,7 @@
 set -euo pipefail
 
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/ops/scripts/manage/fleet-set-origin.sh"
-LEGACY="https://github.com/lukemcqueen/hermes-cortex.git"
+LEGACY="https://github.com/lukemcqueen/steadfaste-fleet.git"
 CANONICAL="https://github.com/lukemcqueen/steadfaste-fleet.git"
 UNEXPECTED="https://github.com/other/thing.git"
 

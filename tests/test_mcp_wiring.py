@@ -128,7 +128,7 @@ def test_a_bare_command_is_resolved_on_PATH_not_as_a_path():
 
 def test_the_printed_fix_names_a_path_that_resolves():
     """The doctor calls audit() with a BARE filename ("cortex-bus-mcp.py"), so the printed fix
-    used to render `~/hermes-cortex/cortex-bus-mcp.py` — a path that does not exist, i.e. advice
+    used to render `~/steadfaste-fleet/cortex-bus-mcp.py` — a path that does not exist, i.e. advice
     nobody can run. The fix must name the repo-relative script."""
     m = _load()
     cfg = ("mcp_servers:\n  tasks:\n    command: /opt/hermes-agent/venv/bin/python3\n"

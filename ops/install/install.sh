@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# Hermes Cortex — Full System Installer
+# Steadfaste Fleet — Full System Installer
 # https://github.com/lukemcqueen/steadfaste-fleet
 #
 # One-line install:
@@ -8,7 +8,7 @@
 #
 # Or from a local clone:
 #  git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git
-#  cd hermes-cortex && bash install.sh
+#  cd steadfaste-fleet && bash install.sh
 #
 # Installs: Ollama · Bun · mycortex · Langfuse† · Cortex Dashboard† ·
 #      nginx† · Brain directory structure · Hermes plugins ·
@@ -35,7 +35,7 @@ fi
 
 # ── Locate repo root ─────────────────────────────────────────
 # SCRIPT_DIR may be ops/install/ (local clone) or the tarball root (remote)
-if [[ -n "$SCRIPT_DIR" && ( "$SCRIPT_DIR" == */ops/install || "$SCRIPT_DIR" == */hermes-cortex-main/ops/install ) ]]; then
+if [[ -n "$SCRIPT_DIR" && ( "$SCRIPT_DIR" == */ops/install || "$SCRIPT_DIR" == */steadfaste-fleet-main/ops/install ) ]]; then
  REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 elif [[ -n "$SCRIPT_DIR" ]]; then
  REPO_ROOT="$SCRIPT_DIR"
@@ -60,7 +60,7 @@ _dashboard() { echo "${REPO_ROOT}/ops/services/dashboard"; }
 REMOTE_CLEANUP=""
 if [[ -z "$REPO_ROOT" || ! -f "$(_scripts)/install/os-config.sh" ]]; then
  if [[ ! -f "${REPO_ROOT:-/dev/null}/ops/scripts/install/os-config.sh" ]]; then
-  printf "📡 Remote install detected — downloading hermes-cortex…\n\n"
+  printf "📡 Remote install detected — downloading steadfaste-fleet…\n\n"
 
   # Check required tools
   for cmd in curl tar mktemp; do
@@ -81,7 +81,7 @@ if [[ -z "$REPO_ROOT" || ! -f "$(_scripts)/install/os-config.sh" ]]; then
    exit 1
   }
 
-  SCRIPT_DIR="${REMOTE_CLEANUP}/hermes-cortex-main"
+  SCRIPT_DIR="${REMOTE_CLEANUP}/steadfaste-fleet-main"
   printf "\033[0;32m✓\033[0m Downloaded and extracted to temp directory\n\n"
 
   # Cleanup is handled by the existing EXIT trap below
@@ -98,7 +98,7 @@ BOLD='\033[1m'; RESET='\033[0m'
 if [[ "${1:-}" == "--check" ]]; then
  source "$(_scripts)/install/os-config.sh" 2>/dev/null || true
  echo ""
- echo " ${BOLD}Hermes Cortex — Prerequisites Check${RESET}"
+ echo " ${BOLD}Steadfaste Fleet — Prerequisites Check${RESET}"
  echo ""
 
  # Python — prefer 3.12+ (macOS ships 3.9 which breaks PEP 604)
@@ -176,14 +176,14 @@ source "$(_scripts)/install/os-config.sh"
 source "$(_scripts)/install/service-writer.sh"
 
 # ── Agent identity ──────────────────────────────────────────
-# Provision ~/.hermes-cortex/agent.env so the FIRST cortex-update.sh run
+# Provision ~/.steadfaste-fleet/agent.env so the FIRST cortex-update.sh run
 # (which hard-fails without identity) succeeds on fresh installs. Orch hosts
 # self-derive from hostname; non-orch hosts must have AGENT_NAME set or the
 # file created manually. Warn, don't fail — the installer can still finish,
 # but the user must fix identity before cortex-update will run.
 if ! ensure_agent_identity; then
   warn "Agent identity not provisioned — set AGENT_NAME=<your-agent> or create:"
-  warn "  ${HOME}/.hermes-cortex/agent.env  (AGENT_NAME=<your-agent>)"
+  warn "  ${HOME}/.steadfaste-fleet/agent.env  (AGENT_NAME=<your-agent>)"
   warn "  cortex-update.sh will refuse to run until this is fixed."
 fi
 
@@ -258,7 +258,7 @@ fi
 CORTEX_USER="${CORTEX_USER:-$USER}"
 CORTEX_HOME="${CORTEX_HOME:-$HOME}"
 BRAIN_DIR="${CORTEX_HOME}/brain"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${CORTEX_HOME}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${CORTEX_HOME}/.steadfaste-fleet}"
 
 # SCRIPT_DIR is already set at the top of the script
 
@@ -425,7 +425,7 @@ fi
 # plumbing. No legacy brain binary, no autopilot daemon.
 
 # ── mycortex Postgres container ─────────────────────────────
-# Dedicated hermes-cortex-owned Postgres (NOT the langfuse stack).
+# Dedicated steadfaste-fleet-owned Postgres (NOT the langfuse stack).
 step "Starting mycortex-postgres (knowledge brain index)"
 MYCORTEX_COMPOSE_DIR="${CORTEX_DEPLOY_HOME}"
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^mycortex-postgres$'; then
@@ -535,7 +535,7 @@ for source in "${SOURCES[@]}"; do
 
 ---
 
-*Created by Hermes Cortex installer v${VERSION}*
+*Created by Steadfaste Fleet installer v${VERSION}*
 INDEXEOF
   fi
   info " Created ${source_dir}/"
@@ -576,7 +576,7 @@ for source in "${SOURCES[@]}"; do
  else
   # Write inline fallback
   cat > "${source_dir}/.gitignore" <<GITEOF
-# Hermes Cortex brain source — never commit per-instance memory or secrets
+# Steadfaste Fleet brain source — never commit per-instance memory or secrets
 MEMORY.md
 USER.md
 .env
@@ -654,9 +654,9 @@ else
 
  # Copy the versioned plugin from the repo (source of truth).
  # legacy brain command is DEAD — decommissioned 2026-08-02; mycortex replaces it.
- if [[ -f "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/__init__.py" ]]; then
-  cp "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/__init__.py" "${PLUGIN_DIR}/__init__.py"
-  cp "${CORTEX_HOME}/hermes-cortex/plugins/mycortex-command/plugin.yaml" "${PLUGIN_DIR}/plugin.yaml"
+ if [[ -f "${CORTEX_HOME}/steadfaste-fleet/plugins/mycortex-command/__init__.py" ]]; then
+  cp "${CORTEX_HOME}/steadfaste-fleet/plugins/mycortex-command/__init__.py" "${PLUGIN_DIR}/__init__.py"
+  cp "${CORTEX_HOME}/steadfaste-fleet/plugins/mycortex-command/plugin.yaml" "${PLUGIN_DIR}/plugin.yaml"
   info " Plugin copied from repo"
  else
   warn "Repo plugin not found — run cortex-update.sh to deploy mycortex-command"
@@ -717,7 +717,7 @@ import json, os, subprocess, sys, re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".steadfaste-fleet"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 NOW = datetime.now()
 
@@ -822,7 +822,7 @@ def check_mycortex():
   index with no daemon; doctor verifies schema version + source freshness.
   Returns UNKNOWN (not DOWN) when mycortex isn't installed.
   """
-  cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+  cli = Path.home() / ".steadfaste-fleet" / "scripts" / "mycortex"
   if not cli.exists():
     return {"status": "UNKNOWN", "detail": "mycortex not installed — run install.sh"}
   try:
@@ -931,10 +931,10 @@ set -euo pipefail
 # ── Config ──
 AGENT_NAME="${HOSTNAME%%.*}"
 INBOX_URL="http://127.0.0.1:8903/send"
-STATE_DIR="${HOME}/.hermes-cortex/state"
+STATE_DIR="${HOME}/.steadfaste-fleet/state"
 LAST_SENT_FILE="${STATE_DIR}/agent-learning-last-sent"
 INTERVAL_SECONDS="${AGENT_LEARNING_INTERVAL:-21600}" # default 6h
-SESSION_DIR="${HOME}/.hermes-cortex/sessions"
+SESSION_DIR="${HOME}/.steadfaste-fleet/sessions"
 BRAIN_LESSONS_DIR="${HOME}/brain/${AGENT_NAME}/lessons"
 
 mkdir -p "${STATE_DIR}"
@@ -986,10 +986,10 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
 fi
 
 # From script changes (if this agent runs install.sh/cortex-update.sh)
-CUSTOM_SCRIPTS="${HOME}/.hermes-cortex/scripts"
+CUSTOM_SCRIPTS="${HOME}/.steadfaste-fleet/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
   # Check for any custom scripts not from the repo
-  REPO_SCRIPTS="${HOME}/hermes-cortex/ops/scripts"
+  REPO_SCRIPTS="${HOME}/steadfaste-fleet/ops/scripts"
   CUSTOM_COUNT=0
   for f in "${CUSTOM_SCRIPTS}"/*.sh "${CUSTOM_SCRIPTS}"/*.py 2>/dev/null; do
     [[ -f "$f" ]] || continue
@@ -1000,7 +1000,7 @@ if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
   done
   if [[ ${CUSTOM_COUNT} -gt 0 ]]; then
     SNIPPETS+="=== ${AGENT_NAME} — Custom scripts (${CUSTOM_COUNT}) ===\n"
-    SNIPPETS+="Found ${CUSTOM_COUNT} scripts not in hermes-cortex repo.\n\n"
+    SNIPPETS+="Found ${CUSTOM_COUNT} scripts not in steadfaste-fleet repo.\n\n"
   fi
 fi
 
@@ -1065,7 +1065,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".steadfaste-fleet"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 MEMORY_DIR = HERMES_HOME / "memories"
 OUT_DIR = BRAIN_SHARED / "hermes-memory"
@@ -1208,7 +1208,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes-cortex"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".steadfaste-fleet"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 MEMORY_DIR = HERMES_HOME / "memories"
 OUT_DIR = BRAIN_SHARED / "hermes-memory"
@@ -1343,7 +1343,7 @@ else
 # Auto-generated by install.sh
 set -euo pipefail
 BRAIN_DIR="${HOME}/brain"
-MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="${HOME}/.steadfaste-fleet/scripts/mycortex"
 echo "━━━ Brain Bootstrap ━━━"
 for dir in "$BRAIN_DIR"/*/; do
  name=$(basename "$dir")
@@ -1392,7 +1392,7 @@ PCT=$(( CHARS * 100 / LIMIT ))
 [[ $PCT -ge 85 && $PCT -lt 95 ]] && ICON="🟡" && STATUS="WARNING"
 [[ $PCT -lt 85 ]] && ICON="🟢" && STATUS="OK"
 echo "${ICON} MEMORY.md: ${PCT}% (${CHARS}/${LIMIT}) — ${STATUS}"
-[[ $PCT -ge 85 ]] && echo "Run: bash ~/.hermes-cortex/scripts/bootstrap-brain.sh to compact"
+[[ $PCT -ge 85 ]] && echo "Run: bash ~/.steadfaste-fleet/scripts/bootstrap-brain.sh to compact"
 BUDGET
  }
  chmod +x "$BUDGET_PATH"
@@ -1569,7 +1569,7 @@ fi
 
 # ── Orchestrator Crons (conditional on IS_ORCHESTRATOR) ──────────
 # Only installed on orchestrator machines (Moses / Esther).
-# Gate via IS_ORCHESTRATOR=true in ~/hermes-cortex/.env
+# Gate via IS_ORCHESTRATOR=true in ~/steadfaste-fleet/.env
 ORCH_CRONS_SCRIPT="${SCRIPTS_DIR}/install-orch-crons.sh"
 if [[ -f "$ORCH_CRONS_SCRIPT" ]]; then
  _ORCH=false
@@ -1820,7 +1820,7 @@ else
  LANGFUSE_ENV="${LANGFUSE_DIR}/.env"
  if [[ ! -f "$LANGFUSE_ENV" ]]; then
   cat > "$LANGFUSE_ENV" <<ENVFILE
-# Langfuse secrets — generated by hermes-cortex installer
+# Langfuse secrets — generated by steadfaste-fleet installer
 # WARNING: Change these if you shared access to this machine!
 LANGFUSE_SALT=$(openssl rand -hex 32)
 LANGFUSE_SECRET_KEY=$(openssl rand -hex 32)
@@ -1946,12 +1946,12 @@ PLIST
 
  elif [[ "$CORTEX_OS" == "linux" ]]; then
   DASHBOARD_SERVICE_DIR="${HOME}/.config/systemd/user"
-  DASHBOARD_SERVICE="${DASHBOARD_SERVICE_DIR}/hermes-cortex-dashboard.service"
+  DASHBOARD_SERVICE="${DASHBOARD_SERVICE_DIR}/steadfaste-fleet-dashboard.service"
   mkdir -p "$DASHBOARD_SERVICE_DIR"
   if [[ ! -f "$DASHBOARD_SERVICE" ]]; then
    cat > "$DASHBOARD_SERVICE" <<SYSTEMDEOF
 [Unit]
-Description=Hermes Cortex Dashboard
+Description=Steadfaste Fleet Dashboard
 After=network-online.target
 
 [Service]
@@ -1969,13 +1969,13 @@ WantedBy=default.target
 SYSTEMDEOF
   fi
   systemctl --user daemon-reload 2>/dev/null || true
-  systemctl --user enable hermes-cortex-dashboard 2>/dev/null || true
-  systemctl --user restart hermes-cortex-dashboard 2>/dev/null || true
-  if systemctl --user is-active --quiet hermes-cortex-dashboard; then
+  systemctl --user enable steadfaste-fleet-dashboard 2>/dev/null || true
+  systemctl --user restart steadfaste-fleet-dashboard 2>/dev/null || true
+  if systemctl --user is-active --quiet steadfaste-fleet-dashboard; then
    ok
    info " Dashboard running at http://localhost:8901"
   else
-   warn "Dashboard service may not be running — check: systemctl --user status hermes-cortex-dashboard"
+   warn "Dashboard service may not be running — check: systemctl --user status steadfaste-fleet-dashboard"
   fi
  fi
 fi
@@ -2007,9 +2007,9 @@ if [[ "$CORTEX_OS" == "macos" ]]; then
   <key>KeepAlive</key>
   <false/>
   <key>StandardOutPath</key>
-  <string>${CORTEX_HOME}/.hermes-cortex/logs/docker-launch.log</string>
+  <string>${CORTEX_HOME}/.steadfaste-fleet/logs/docker-launch.log</string>
   <key>StandardErrorPath</key>
-  <string>${CORTEX_HOME}/.hermes-cortex/logs/docker-launch.log</string>
+  <string>${CORTEX_HOME}/.steadfaste-fleet/logs/docker-launch.log</string>
 </dict>
 </plist>
 PLIST
@@ -2213,7 +2213,7 @@ if [[ -f "$BOOTSTRAP_SCRIPT" ]]; then
  # If some sources have 0 pages, suggest running full bootstrap
  if bash "$BOOTSTRAP_SCRIPT" --check-only 2>&1 | grep -q "0 pages"; then
   warn "Some brain sources have 0 indexed pages. Run:"
-  warn " bash ~/.hermes-cortex/scripts/bootstrap-brain.sh"
+  warn " bash ~/.steadfaste-fleet/scripts/bootstrap-brain.sh"
   warn " This will init git repos, register mycortex sources, and sync."
  else
   info "All brain sources are healthy and searchable"
@@ -2247,7 +2247,7 @@ printf " ${GREEN}•${RESET} cortex-health.sh  → single green-check system rea
 printf " ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf " ${GREEN}•${RESET} cortex-update.sh → git pull + delta-update + service restart\\n"
 printf " ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (no_agent watchdog)\\n"
-printf " ${GREEN}•${RESET} hermes-cortex-sync.sh → daily repo sync + tool re-install\\n"
+printf " ${GREEN}•${RESET} steadfaste-fleet-sync.sh → daily repo sync + tool re-install\\n"
 printf " ${GREEN}•${RESET} prod-watchdog.sh → production site monitoring with auto-remediation\\n"
 printf " ${GREEN}•${RESET} check-memory-budget.sh → MEMORY.md usage monitor\n"
 printf " ${GREEN}•${RESET} memory seeds   → ~/.hermes/memories/{MEMORY,USER}.md\\n"
@@ -2268,20 +2268,20 @@ printf "${BOLD}${YELLOW}⚠ Next Steps — give this prompt to your Hermes Agent
 printf "%s${BOLD}${CYAN}" "───────────────────────────────────────────────────"
 cat <<PROMPT
 
-I've installed the Hermes Cortex system. Please finish the setup by:
+I've installed the Steadfaste Fleet system. Please finish the setup by:
 
 1. Open ~/.hermes/memories/MEMORY.md and ~/.hermes/memories/USER.md — fill in your system topology and user profile so I know your context
-2. Load the shared skills from ~/.hermes-cortex/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, korean-language-learning)
+2. Load the shared skills from ~/.steadfaste-fleet/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the mycortex-command plugin
-4. Run ~/.hermes-cortex/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in mycortex, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
-5. If using Langfuse, run: bash ~/.hermes-cortex/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
-6. Seed project brains from existing repos: ~/.hermes-cortex/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
-7. Run cortex-health.sh to confirm everything is green: bash ~/.hermes-cortex/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, mycortex, memory freshness, disk usage — exits 0 when all systems go)
+4. Run ~/.steadfaste-fleet/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in mycortex, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
+5. If using Langfuse, run: bash ~/.steadfaste-fleet/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
+6. Seed project brains from existing repos: ~/.steadfaste-fleet/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
+7. Run cortex-health.sh to confirm everything is green: bash ~/.steadfaste-fleet/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, mycortex, memory freshness, disk usage — exits 0 when all systems go)
 8. Setting up these cron jobs (use the cronjob tool):
 
   a) agent-mycortex-sync — every 15 min (installed by install-crons.sh):
    Schedule: */15 * * * *
-   Script: ~/.hermes-cortex/scripts/agent-mycortex-sync.sh (no_agent)
+   Script: ~/.steadfaste-fleet/scripts/agent-mycortex-sync.sh (no_agent)
    (legacy brain nightly-dream REMOVED — legacy brain decommissioned 2026-08-02)
 
   b) system-heartbeat — every 30 minutes:
@@ -2305,7 +2305,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
   f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
    Schedule: 0 3 * * 0
-   Prompt: Run cortex-update to keep the system current: bash ~/.hermes-cortex/scripts/cortex-update.sh
+   Prompt: Run cortex-update to keep the system current: bash ~/.steadfaste-fleet/scripts/cortex-update.sh
    no_agent: true
 
   g) daily-lesson-mine — daily at 2am (auto-mining from last 24h):
@@ -2322,7 +2322,7 @@ I've installed the Hermes Cortex system. Please finish the setup by:
 
 9. Run /reset or /new to activate the /brain slash command
 10. Verify brain ingestion: run "mycortex search hello" then "mycortex search --source <name> hello" — you should see different results per source if sources have content
-11. (Optional) Check detailed heartbeat: bash ~/.hermes-cortex/scripts/heartbeat.py --report — watch how service status changes as you configure things
+11. (Optional) Check detailed heartbeat: bash ~/.steadfaste-fleet/scripts/heartbeat.py --report — watch how service status changes as you configure things
 
 PROMPT
 printf "${RESET}${BOLD}${CYAN}───────────────────────────────────────────────────${RESET}\n"
@@ -2345,7 +2345,7 @@ printf " ${GREEN}•${RESET} Scripts:     %s/scripts/\n" "${SCRIPTS_DIR}"
 
 printf "\n${BOLD}🐚 For daily use in shell:${RESET}\n"
 printf " Add to ~/.zshrc or ~/.bash_profile:\n"
-printf "${YELLOW} export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes-cortex/bin:\$PATH\"${RESET}\n"
+printf "${YELLOW} export PATH=\"\$HOME/.bun/bin:\$HOME/.steadfaste-fleet/bin:\$PATH\"${RESET}\n"
 
 # ─────────────────────────────────────────────────────────────
 # Security Warnings
@@ -2353,7 +2353,7 @@ printf "${YELLOW} export PATH=\"\$HOME/.bun/bin:\$HOME/.hermes-cortex/bin:\$PATH
 printf "\n"
 printf "${RED}${BOLD}━━━ SECURITY NOTES — PLEASE READ ━━━${RESET}\n"
 printf "\n"
-printf "${YELLOW}${BOLD}Important security actions for your Hermes Cortex system:${RESET}\n"
+printf "${YELLOW}${BOLD}Important security actions for your Steadfaste Fleet system:${RESET}\n"
 printf "\n"
 printf "${BOLD} 1. Langfuse passwords${RESET}\n"
 printf "   If you shared access to this machine, change all passwords in:\n"
@@ -2390,16 +2390,16 @@ printf " The MCP server enforces this at the tool level.\n"
 printf "\n"
 printf " ${BOLD}RULE 2:${RESET} SHARE IMPROVEMENTS TO THE PUBLIC REPO\n"
 printf " Every improvement that benefits other agents must go\n"
-printf " into the hermes-cortex repo — templates, skills, scripts,\n"
+printf " into the steadfaste-fleet repo — templates, skills, scripts,\n"
 printf " docs, configs. Not just your local profile.\n"
 printf "\n"
 
-printf "\n${GREEN}${BOLD}Hermes Cortex v${VERSION} installed. Enjoy! 🧠${RESET}\n"
+printf "\n${GREEN}${BOLD}Steadfaste Fleet v${VERSION} installed. Enjoy! 🧠${RESET}\n"
 
 # Clear the EXIT trap and clean up remote temp dir
 
 # Auto-run cortex doctor after install
-DOCTOR_PATH="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/cortex-doctor.py"
+DOCTOR_PATH="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/cortex-doctor.py"
 if command -v python3 &>/dev/null && [ -f "$DOCTOR_PATH" ]; then
  echo ""
  echo "━━━ Running post-install health check ━━━"

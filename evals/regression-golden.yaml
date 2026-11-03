@@ -47,7 +47,7 @@ tasks:
 
   - id: core-skills
     description: "All always-section skills present and loadable (SKILL.md + frontmatter)"
-    input: "Verify every skill named in ~/.hermes-cortex/skills.yaml always section resolves"
+    input: "Verify every skill named in ~/.steadfaste-fleet/skills.yaml always section resolves"
     expected:
       - "every always-skill has a SKILL.md"
       - "frontmatter name matches"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-main-sync.sh — return a hermes-cortex repo to origin/main and pull latest.
+# git-main-sync.sh — return a steadfaste-fleet repo to origin/main and pull latest.
 #
 # Doctor "Repo branch" WARN remediation ("Run: git checkout main"): a repo
 # left on a feature/detached branch (e.g. a titus/* PR branch) silently
@@ -13,17 +13,17 @@
 # the new commit is deployed in the same pass.
 #
 # Usage:
-#   git-main-sync.sh [REPO]        # default: $HOME/hermes-cortex
+#   git-main-sync.sh [REPO]        # default: $HOME/steadfaste-fleet
 #   git-main-sync.sh --check       # report-only: branch + behind/ahead, no changes
 #
 # Exit: 0 = on main and current (or --check clean), 1 = error (left untouched).
 set -euo pipefail
 
-REPO="${1:-$HOME/hermes-cortex}"
+REPO="${1:-$HOME/steadfaste-fleet}"
 CHECK_ONLY=0
 if [ "${1:-}" = "--check" ]; then
   CHECK_ONLY=1
-  REPO="${2:-$HOME/hermes-cortex}"
+  REPO="${2:-$HOME/steadfaste-fleet}"
 fi
 
 [ -d "$REPO/.git" ] || { echo "ERROR: not a git repo: $REPO" >&2; exit 1; }

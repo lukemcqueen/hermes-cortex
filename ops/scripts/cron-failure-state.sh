@@ -8,7 +8,7 @@
 #
 # Usage:
 #   source cron-failure-state.sh
-#   STATE_DIR="${HOME}/.hermes-cortex/state"
+#   STATE_DIR="${HOME}/.steadfaste-fleet/state"
 #   if ! cron_should_report "my-script" "error-hash" 30; then
 #       exit 0  # silent — already reported recently
 #   fi
@@ -19,10 +19,10 @@
 # On success:
 #   cron_record_success "my-script"
 #
-# State file: ~/.hermes-cortex/state/<script-name>.json
+# State file: ~/.steadfaste-fleet/state/<script-name>.json
 # ─────────────────────────────────────────────────────────────────────
 
-: "${CRON_STATE_DIR:=${HOME}/.hermes-cortex/state}"
+: "${CRON_STATE_DIR:=${HOME}/.steadfaste-fleet/state}"
 : "${CRON_DEFAULT_COOLDOWN:=30}"  # minutes
 
 # ── Internal: read a state file as JSON, return fields via env vars ──

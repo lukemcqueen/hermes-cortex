@@ -1,7 +1,7 @@
 # Design — cortex context: memory + session over one shared tool surface (S2c)
 
 > **Status:** proposed v2. Answers Luke: *"we need Pi to have session stage and
-> mycortex memory. can hermes-cortex provide this as a service or mcp server?"*,
+> mycortex memory. can steadfaste-fleet provide this as a service or mcp server?"*,
 > then *"session and mycortex memory are related too — consider how best to
 > incorporate memory too/mix/match/etc"*, and *"split the concerns design and
 > implement both"*.
@@ -205,15 +205,15 @@ Two independent pieces, per the split:
 **1. The store + search — declare the MCP server once:**
 ```bash
 hermes mcp add cortex-context \
-    --command ~/.hermes-cortex/venv/bin/python3 \
-    --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+    --command ~/.steadfaste-fleet/venv/bin/python3 \
+    --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
 ```
 Same wiring as `tasks` / `loop-governance`. No Hermes gateway required — the
 server reads `.env` + Postgres directly.
 
 **2. The trigger — the harness calls this at a boundary, not the model:**
 ```bash
-python3 ~/hermes-cortex/ops/scripts/session-autocheckpoint.py \
+python3 ~/steadfaste-fleet/ops/scripts/session-autocheckpoint.py \
     --done "<x>" --pending "<y>" --decision "<z>" [--close]
 ```
 Wire it to the harness's stop/turn-end hook (Pi: its stop hook; Claude Code:
@@ -252,7 +252,7 @@ one read by the MCP server agree on the session.
 
 - **Two writers, one store** — the plugin and the MCP server share a schema.
   Additive first, then retire the plugin; never both live indefinitely.
-- **Secret handling** — reads the canonical `~/hermes-cortex/.env` like every
+- **Secret handling** — reads the canonical `~/steadfaste-fleet/.env` like every
   other MCP server; no new credential surface.
 
 ## Verification

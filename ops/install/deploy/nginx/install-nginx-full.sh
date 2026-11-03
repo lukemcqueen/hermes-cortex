@@ -7,8 +7,8 @@
 #  Atomic: validates before reloading. Safe to re-run.
 #
 #  Sources:
-#  ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
-#  ~/hermes-cortex/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf (fail2ban filter)
+#  ~/steadfaste-fleet/ops/install/deploy/nginx/blocked_ips.add   (IPs to block)
+#  ~/steadfaste-fleet/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf (fail2ban filter)
 #
 #  Targets: (OS-aware — derived from uname -s)
 #    Linux:    /etc/nginx/              (nginx configs)
@@ -24,10 +24,10 @@ set -euo pipefail
 # ── Source derivation ───────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "${SUDO_USER:-}" ]; then
-  CORTEX_REPO="${CORTEX_REPO:-$(getent passwd "$SUDO_USER" | cut -d: -f6)/hermes-cortex}"
+  CORTEX_REPO="${CORTEX_REPO:-$(getent passwd "$SUDO_USER" | cut -d: -f6)/steadfaste-fleet}"
   CORTEX_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
 else
-  CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+  CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
   CORTEX_HOME="${HOME}"
 fi
 
@@ -63,7 +63,7 @@ case "$(uname -s)" in
     ;;
 esac
 
-BACKUP_DIR="/etc/hermes-cortex-backups/$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="/etc/steadfaste-fleet-backups/$(date +%Y%m%d-%H%M%S)"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 BLOCKED_IPS="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"

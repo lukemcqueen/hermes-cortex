@@ -175,7 +175,7 @@ def main():
             check_skill_stubs,
         ]
         if not res.json_mode:
-            print("Hermes Cortex Doctor — Quick Check")
+            print("Steadfaste Fleet Doctor — Quick Check")
 
     if list_dispositions:
         store = dispositions.load()

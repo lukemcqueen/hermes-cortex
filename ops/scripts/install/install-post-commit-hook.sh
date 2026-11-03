@@ -3,7 +3,7 @@
 #  install-post-commit-hook.sh — Install post-commit git hook
 #
 #  Installs scripts/post-commit-notify.sh as a git post-commit
-#  hook in the hermes-cortex repo, so every commit auto-notifies
+#  hook in the steadfaste-fleet repo, so every commit auto-notifies
 #  all agents via inbox broadcast.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -16,7 +16,7 @@ NOTIFY_SCRIPT="${REPO_DIR}/ops/scripts/manage/post-commit-notify.sh"
 
 if [ ! -d "$HOOK_DIR" ]; then
   echo "✗ No .git/hooks directory at ${HOOK_DIR}"
-  echo "  Are you inside the hermes-cortex repo?"
+  echo "  Are you inside the steadfaste-fleet repo?"
   exit 1
 fi
 

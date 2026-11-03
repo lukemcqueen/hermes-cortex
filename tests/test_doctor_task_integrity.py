@@ -135,7 +135,7 @@ def test_stranded_slices_are_flagged(monkeypatch, tmp_path):
     def fake_run(cmd, timeout=25, cwd=None):
         if "--assigned" in cmd:
             return ("ID         PR  ASSIGNEE   PROJECT            CONTENT\n"
-                    "72dc920b   2   joseph     hermes-cortex      Phase 1 Foundation\n")
+                    "72dc920b   2   joseph     steadfaste-fleet      Phase 1 Foundation\n")
         if "--dry-run" in cmd:
             return "tasks schema: current=12, no pending migrations\n"
         return ""

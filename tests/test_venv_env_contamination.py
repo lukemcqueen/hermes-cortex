@@ -6,7 +6,7 @@ Measured on esther 2026-10-13: the agent runtime exports
     PYTHONPATH=$HOME/.hermes/installs/<id>/environments/<id>/venv/lib/python3.14/site-packages
 
 which lands AHEAD of the fleet venv's own site-packages. `import mcp` inside
-~/.hermes-cortex/venv then loaded a python3.14 copy under a 3.12 interpreter and died
+~/.steadfaste-fleet/venv then loaded a python3.14 copy under a 3.12 interpreter and died
 on ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'. The venv was
 healthy; the PROBE was contaminated. The fixer reported "still cannot import" about a
 venv that imports fine, and the deploy inherited the same false failure.
@@ -25,7 +25,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 FIXER = REPO / "ops" / "scripts" / "manage" / "fix-cortex-venv.py"
-VENV = Path.home() / ".hermes-cortex" / "venv"
+VENV = Path.home() / ".steadfaste-fleet" / "venv"
 
 
 def _fixer_module():

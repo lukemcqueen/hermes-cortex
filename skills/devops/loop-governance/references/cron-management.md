@@ -8,7 +8,7 @@ cron/launchd. This means crons work identically on Linux, macOS, and Windows.
 All loop-governance crons are defined in a single versioned JSON template:
 
 ```
-~/hermes-cortex/core/governance/crons.json
+~/steadfaste-fleet/core/governance/crons.json
 ```
 
 The template has a `version` field and a `crons` array. Each cron specifies its name,

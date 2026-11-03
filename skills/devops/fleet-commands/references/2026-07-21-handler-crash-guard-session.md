@@ -15,7 +15,7 @@
 Kustos was polling `inbox_cisnet02` instead of `inbox_kustos`. Config was missing `AGENT_NAME=kustos`.
 
 ```bash
-# Fix: add to ~/.hermes-cortex/conf.d/cortex-bus.conf
+# Fix: add to ~/.steadfaste-fleet/conf.d/cortex-bus.conf
 AGENT_NAME=kustos
 ```
 

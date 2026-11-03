@@ -47,7 +47,7 @@ def _generator(tmp: Path, *, lines=(), rc=0, name="cost-gen", stderr="") -> Path
 
 def _run(tmp: Path, capture: Path, cost_bin: Path):
     home = tmp / "home"
-    (home / ".hermes-cortex").mkdir(parents=True, exist_ok=True)
+    (home / ".steadfaste-fleet").mkdir(parents=True, exist_ok=True)
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "HOME": str(home),

@@ -46,4 +46,4 @@ A new/unenrolled worker starts at **Tier 0**: dry-run only, human-in-the-loop, n
 - Trust-tier separation: enrollment ≠ authority; Tier-0 on-ramp is by design, higher tiers only prove out.
 
 ## Why it matters for coexistence
-A second harness (e.g. hermes-cortex) talking to steadfaste must register as a governed worker through this same flow — it does not get to rely on process lineage. The registration is what ties a trusted identity to a trust tier, so the whole approval/reputation system rests on an unforgeable identity layer rather than self-reporting.
+A second harness (e.g. steadfaste-fleet) talking to steadfaste must register as a governed worker through this same flow — it does not get to rely on process lineage. The registration is what ties a trusted identity to a trust tier, so the whole approval/reputation system rests on an unforgeable identity layer rather than self-reporting.

@@ -175,7 +175,7 @@ def main() -> int:
     # K: real cycles untouched by fixture cleanup; already-overridden fixture
     # rows untouched (idempotent — no re-mark, note preserved)
     db, state = _mkdb([
-        (12, "precommit-hermes-cortex-main/fix-verify-deploy-chain", LOOP, 10.0, None, None, None),
+        (12, "precommit-steadfaste-fleet-main/fix-verify-deploy-chain", LOOP, 10.0, None, None, None),
         (13, "precommit-repo-HEAD\nunknown/update", LOOP, 10.0, "human marked", 1, None),
     ])
     rc, out = _run(db, state)

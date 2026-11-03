@@ -3,7 +3,7 @@ name: agent-harness-design
 description: "Use when designing a coding-agent harness or runtime."
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 ---

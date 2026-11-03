@@ -1,8 +1,8 @@
 #!/usr/bin/env python3.12
 """
-Cortex Sandbox — disk access control for Hermes Cortex agents.
+Cortex Sandbox — disk access control for Steadfaste Fleet agents.
 
-Config file: ~/.hermes-cortex/config.yaml
+Config file: ~/.steadfaste-fleet/config.yaml
     folder_access:
       level: full              # "full" (default) or "specific"
       allowed_paths:           # required when level=specific
@@ -25,7 +25,7 @@ from typing import Optional, Sequence
 
 import yaml
 
-CONFIG_PATH = Path.home() / ".hermes-cortex" / "config.yaml"
+CONFIG_PATH = Path.home() / ".steadfaste-fleet" / "config.yaml"
 DEFAULT_LEVEL = "full"
 VALID_LEVELS = {"full", "specific"}
 VALID_OPERATIONS = {"read", "write", "execute", "delete"}
@@ -93,7 +93,7 @@ class SandboxConfig:
 
 
 def load_config(config_path: Optional[Path] = None) -> SandboxConfig:
-    """Load sandbox config from ~/.hermes-cortex/config.yaml.
+    """Load sandbox config from ~/.steadfaste-fleet/config.yaml.
 
     Returns default (full access) when file or key is absent.
     Logs warnings to stderr on invalid config and falls back to defaults.

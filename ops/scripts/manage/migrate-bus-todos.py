@@ -44,9 +44,9 @@ from pathlib import Path
 DEFAULT_DB = "mycortex"
 CONTAINER = "mycortex-postgres"
 BACKUP_DIR = Path(os.environ.get(
-    "MIGRATE_BACKUP_DIR", str(Path.home() / ".hermes-cortex" / "backups")))
+    "MIGRATE_BACKUP_DIR", str(Path.home() / ".steadfaste-fleet" / "backups")))
 MARKER_DIR = Path(os.environ.get(
-    "MIGRATE_MARKER_DIR", str(Path.home() / ".hermes-cortex" / "state")))
+    "MIGRATE_MARKER_DIR", str(Path.home() / ".steadfaste-fleet" / "state")))
 MARKER = MARKER_DIR / "bus-todos-migrated.json"
 
 PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
@@ -168,7 +168,7 @@ def main() -> int:
         session_id, created_at, updated_at, status_changed_at, completed_at
     )
     SELECT
-        b.id, b.content, b.agent_name, b.agent_name, 'hermes-cortex', NULL, NULL,
+        b.id, b.content, b.agent_name, b.agent_name, 'steadfaste-fleet', NULL, NULL,
         'personal', b.status,
         CASE b.status WHEN 'pending' THEN 'todo'
                       WHEN 'in_progress' THEN 'in_progress'

@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Hermes Cortex Agent Bus — Fleet Command Verifications
+-- Steadfaste Fleet Agent Bus — Fleet Command Verifications
 --
 -- Tables:
 --   bus.command_verifications — dispatch ledger with timeout/retry

@@ -33,8 +33,8 @@ import subprocess
 from pathlib import Path
 
 HOME = Path.home()
-REPO = HOME / "hermes-cortex"
-DEPLOY = HOME / ".hermes-cortex"
+REPO = HOME / "steadfaste-fleet"
+DEPLOY = HOME / ".steadfaste-fleet"
 SCHEMA = REPO / "ops" / "services" / "tasks" / "schema"
 
 # Baselines measured BEFORE the remediation (from the raw row dump, not from a

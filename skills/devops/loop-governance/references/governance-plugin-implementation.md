@@ -91,7 +91,7 @@ Later sources override earlier ones on name collision.
 name: governance-enforcer
 description: "Enforces loop governance at the tool level"
 version: "1.0.0"
-author: Joseph (Hermes Cortex)
+author: Joseph (Steadfaste Fleet)
 ```
 
 ### `__init__.py` Contract
@@ -199,7 +199,7 @@ Lock files are **session-scoped** — each governance session gets its own
 file named by session ID:
 
 ```
-~/.hermes-cortex/state/.governance-{session_id}.json
+~/.steadfaste-fleet/state/.governance-{session_id}.json
 ```
 
 Example: `.governance-sess_abc123def456.json`
@@ -223,7 +223,7 @@ scans all `.governance-*.json` files, filters by `repo_slug` in content,
 checks TTL staleness, and cleans stale/corrupt files automatically:
 
 ```python
-GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+GOVERNANCE_STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 
 def _has_governance_lock() -> bool:
     current_slug = _derive_slug()
@@ -253,7 +253,7 @@ def _has_governance_lock() -> bool:
 {
   "task_id": "fix-auth-403",
   "description": "Add rate limiting to auth endpoint",
-  "repo_slug": "hermes-cortex",
+  "repo_slug": "steadfaste-fleet",
   "started_at": "2026-07-04T00:00:00",
   "agent": "joseph",
   "session_id": "sess_abc123def456",
@@ -270,7 +270,7 @@ lock file.
 
 ### Critical: File Must Be Accessible
 
-The plugin reads this file from the filesystem. On remote Hermes backends (Modal, Daytona, Docker) where `~/.hermes-cortex/` isn't mounted to the Hermes process's filesystem, the lock check always returns `False` and all write tools are blocked. This is **by design** — governance enforcement is stricter on remote backends where the lock file pattern can't work.
+The plugin reads this file from the filesystem. On remote Hermes backends (Modal, Daytona, Docker) where `~/.steadfaste-fleet/` isn't mounted to the Hermes process's filesystem, the lock check always returns `False` and all write tools are blocked. This is **by design** — governance enforcement is stricter on remote backends where the lock file pattern can't work.
 
 ---
 
@@ -294,7 +294,7 @@ mkdir -p ~/.hermes/plugins
 # cortex-update.sh is the ONLY sanctioned way to update the enforcement chain
 # (hermes-plugin-lock unlock/update require the --cortex-update token or an
 # orchestrator account since 2026-07-31):
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # Manual maintenance (ORCHESTRATOR ACCOUNT ONLY — moses|esther):
 sudo hermes-plugin-lock unlock --orchestrator   # remove old immutability if set
@@ -319,16 +319,16 @@ HERMES_PLUGINS_DEBUG=1 hermes
 
 ## Fleet Installation (All Agents)
 
-The plugin source lives in the Hermes Cortex repo. To deploy to all agents:
+The plugin source lives in the Steadfaste Fleet repo. To deploy to all agents:
 
 ```bash
 # Source of truth (commit and push first if modified)
-ls ~/hermes-cortex/plugins/governance-enforcer/
+ls ~/steadfaste-fleet/plugins/governance-enforcer/
 
 # Deployed via cortex-update.sh as a copy (not symlink):
 #   plugins/governance-enforcer/ → ~/.hermes/plugins/governance-enforcer/
 # Run cortex-update to ensure repo is current:
-cd ~/hermes-cortex && git pull origin main
+cd ~/steadfaste-fleet && git pull origin main
 bash ops/scripts/cortex-update.sh
 
 # Then /reset the agent session
@@ -338,11 +338,11 @@ bash ops/scripts/cortex-update.sh
 
 | Agent | Host | Repo Path |
 |-------|------|-----------|
-| Moses | Orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Esther | Backup orchestrator | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Gisu | Work staging | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Kustos | Work production | `~/hermes-cortex/plugins/governance-enforcer/` |
-| Joseph | Personal production | `~/hermes-cortex/plugins/governance-enforcer/` |
+| Moses | Orchestrator | `~/steadfaste-fleet/plugins/governance-enforcer/` |
+| Esther | Backup orchestrator | `~/steadfaste-fleet/plugins/governance-enforcer/` |
+| Gisu | Work staging | `~/steadfaste-fleet/plugins/governance-enforcer/` |
+| Kustos | Work production | `~/steadfaste-fleet/plugins/governance-enforcer/` |
+| Joseph | Personal production | `~/steadfaste-fleet/plugins/governance-enforcer/` |
 
 The pattern is the same for all: plugin source in the Cortex repo → copy into `~/.hermes/plugins/` via cortex-update.sh (not symlink — uses chattr +i for immutability). The old `plugins/governance-enforcer` symlink has been removed — always use `plugins/governance-enforcer/`.
 
@@ -355,7 +355,7 @@ mkdir -p ~/.hermes/plugins
 if [ -L ~/.hermes/plugins/governance-enforcer ] || [ -d ~/.hermes/plugins/governance-enforcer ]; then
   echo "Plugin exists, skipping symlink"
 else
-  ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+  ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
   echo "Governance enforcer plugin installed. Restart Hermes to activate."
 fi
 ```

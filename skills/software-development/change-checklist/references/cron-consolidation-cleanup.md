@@ -54,7 +54,7 @@ After all four layers:
 
 ```bash
 cronjob action='list'          # verify the cron is gone
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
 # Expected: ✅ Crons registered (not ❌ Crons missing)
 ```
 

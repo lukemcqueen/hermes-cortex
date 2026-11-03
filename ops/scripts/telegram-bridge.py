@@ -383,9 +383,9 @@ def main() -> int:
                 or os.environ.get("CORTEX_BASIC_AUTH", "")).strip()
 
     # Config-file fallback (same precedence as cortex-bus-mcp): env first,
-    # then ~/hermes-cortex/.env for bus creds (the bridge runs
+    # then ~/steadfaste-fleet/.env for bus creds (the bridge runs
     # under the agent's own env, which may not carry the bus config).
-    conf = Path.home() / "hermes-cortex" / ".env"
+    conf = Path.home() / "steadfaste-fleet" / ".env"
     if conf.exists():
         for line in conf.read_text().splitlines():
             line = line.strip()

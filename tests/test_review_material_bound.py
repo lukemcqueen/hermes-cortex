@@ -564,7 +564,7 @@ def test_deployed_gate_behaves_as_this_file_says():
     pass anywhere.
     """
     import importlib.util
-    cand = REPO.parent / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+    cand = REPO.parent / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
     if not cand.is_file():
         print("  SKIP — no deployed gate on this host (expected on a fresh checkout)")
         return

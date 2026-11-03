@@ -25,10 +25,10 @@ import tempfile
 from pathlib import Path
 
 HOME = Path.home()
-REPO = HOME / "hermes-cortex"
+REPO = HOME / "steadfaste-fleet"
 DEFAULT_OUT = REPO / "docs" / "evidence" / "fix-receipt-paused-crons-2026-10-14.txt"
 HERMES_VENV = HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
-ADV = HOME / ".hermes-cortex" / "scripts" / "adversarial-verify.py"
+ADV = HOME / ".steadfaste-fleet" / "scripts" / "adversarial-verify.py"
 
 # The immutable range this artifact covers, pinned by revision so the before/after
 # comparison is repeatable. EVIDENCE_BASE is the revision the range starts from — the
@@ -256,7 +256,7 @@ def main() -> int:
     block("deploy != load (MCP child vs deployed file)",
           ["bash", "-c", "ps -eo pid,lstart,etimes,args | grep -F loop-gov-mcp | grep -v grep; "
                          "ls -l --time-style=+%Y-%m-%dT%H:%M:%S "
-                         f"{HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"])
+                         f"{HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"])
 
     # 10. The reserved word `column`, measured against the LIVE database with the
     #     prompt's OWN command form: quoted returns a row, unquoted must FAIL. Run

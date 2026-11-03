@@ -30,17 +30,17 @@ from pathlib import Path
 from typing import Any
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 HANDLER_STATE = STATE_DIR / "agent-message-state.json"
-CONFIG_FILE = HOME / "hermes-cortex" / ".env"
-CORTEX_REPO = HOME / "hermes-cortex"
+CONFIG_FILE = HOME / "steadfaste-fleet" / ".env"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 
 # Bus API connection (used on worker agents that can't query DB directly)
 BUS_URL = None
 
 
 def _read_config(key: str) -> str:
-    """Read a value from config files. Checks .env then hermes-cortex/.env."""
+    """Read a value from config files. Checks .env then steadfaste-fleet/.env."""
     # Check .env first
     if CONFIG_FILE.exists():
         for line in CONFIG_FILE.read_text().splitlines():
@@ -64,7 +64,7 @@ def _read_config(key: str) -> str:
 AGENT_NAME = os.environ.get("AGENT_NAME", "") or _read_config("AGENT_NAME")
 if not AGENT_NAME:
     try:
-        agent_env = HOME / ".hermes-cortex" / "agent.env"
+        agent_env = HOME / ".steadfaste-fleet" / "agent.env"
         if agent_env.exists():
             for line in agent_env.read_text().splitlines():
                 line = line.strip()
@@ -75,7 +75,7 @@ if not AGENT_NAME:
         pass
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / .env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / .env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 
@@ -84,7 +84,7 @@ def _bus_get(endpoint: str) -> dict:
     """GET from remote bus API. Returns {} on failure."""
     try:
         import sys
-        sys.path.insert(0, str(HOME / ".hermes-cortex" / "scripts"))
+        sys.path.insert(0, str(HOME / ".steadfaste-fleet" / "scripts"))
         from lib.cortex_bus import _get_auth_header, _read_config as _bus_cfg
         bus_url = _bus_cfg("CORTEX_BUS_URL") or os.environ.get("CORTEX_BUS_URL", "")
         if not bus_url:
@@ -239,7 +239,7 @@ def collect_agent() -> dict:
         result["git_sha"] = sha
     else:
         # Try deployed scripts dir
-        sha = _run(["git", "-C", str(HOME / ".hermes-cortex"), "rev-parse", "--short", "HEAD"])
+        sha = _run(["git", "-C", str(HOME / ".steadfaste-fleet"), "rev-parse", "--short", "HEAD"])
         if sha:
             result["git_sha"] = sha
         else:

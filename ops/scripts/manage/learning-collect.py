@@ -32,8 +32,8 @@ from pathlib import Path
 # ── Shared bus lib (repo + deployed layout) ──────────────────
 _LIB_CANDIDATES = [
     Path(__file__).resolve().parent.parent,          # repo: ops/scripts
-    Path.home() / ".hermes-cortex" / "scripts",      # deployed: scripts
-    Path.home() / "hermes-cortex" / "ops" / "scripts",
+    Path.home() / ".steadfaste-fleet" / "scripts",      # deployed: scripts
+    Path.home() / "steadfaste-fleet" / "ops" / "scripts",
 ]
 for _lib in _LIB_CANDIDATES:
     if _lib.is_dir() and str(_lib) not in sys.path:

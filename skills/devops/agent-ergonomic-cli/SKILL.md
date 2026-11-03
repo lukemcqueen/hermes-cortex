@@ -3,7 +3,7 @@ name: agent-ergonomic-cli
 description: "Use when writing or auditing agent-facing CLI output."
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -16,7 +16,7 @@ metadata:
 
 Design CLI/script stdout for the agents that consume it. Distilled from the
 AXI project (Agent eXperience Interface, Kun Chen, MIT — 2026-08-24). Full
-Cortex-surface mapping lives in `~/hermes-cortex/docs/axi-agent-ergonomics.md`.
+Cortex-surface mapping lives in `~/steadfaste-fleet/docs/axi-agent-ergonomics.md`.
 
 ## When to use
 
@@ -70,7 +70,7 @@ governance refusal, a pre-commit check, and a plan-review gate equally:
 
 - **Name the exact self-serve command with the DEPLOYED path.** The message must
   be copy-pasteable as-is: the deployed path
-  (`~/.hermes-cortex/scripts/...`), never a repo-relative `ops/scripts/...` path
+  (`~/.steadfaste-fleet/scripts/...`), never a repo-relative `ops/scripts/...` path
   that forces the agent into the wrong checkout, and never a shell metachar form
   (`--material "$(cat ...)"` is itself write-class and cannot be the remedy a
   write-gate offers). Placeholders use a shape the agent can resolve in one step
@@ -187,7 +187,7 @@ child, not to your own stdout:
    hang) when no server is reachable.
 2. **A TUI harness's stderr IS the user's prompt area.** Routine diagnostics written
    there scribble over the input line. Route them to a BOUNDED log file under the
-   cortex tree (`~/.hermes-cortex/logs/<component>.log`, mode 0600, rotate to `<log>.1`
+   cortex tree (`~/.steadfaste-fleet/logs/<component>.log`, mode 0600, rotate to `<log>.1`
    at a size cap) — the same shape `mcp-servers/loop-gov-mcp.py` uses — with the whole
    write wrapped so a logging failure can never change what the tool does. Keep GENUINE
    failures LOUD on stderr (a silent failure reads as "the feature had no data", a
@@ -230,6 +230,6 @@ child, not to your own stdout:
 
 ## Sources
 
-- Full distillation + Cortex mapping: `~/hermes-cortex/docs/axi-agent-ergonomics.md`
+- Full distillation + Cortex mapping: `~/steadfaste-fleet/docs/axi-agent-ergonomics.md`
 - Benchmarks + catalog: `references/axi-source-notes.md`
 - Original: AXI by Kun Chen (MIT) — github.com/kunchenguid/axi

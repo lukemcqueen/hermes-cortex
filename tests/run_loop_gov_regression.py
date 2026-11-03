@@ -42,7 +42,7 @@ ENSURE_PYTEST = "ops/scripts/lib/ensure-pytest.sh"
 NO_PYTEST_HINT = (
     "no interpreter can import pytest — create one with: "
     f"bash {ENSURE_PYTEST} (idempotent, age-gated: installs ops/install/requirements.txt, which "
-    "declares pytest, into ~/.hermes-cortex/venv); or resolve an existing one with: "
+    "declares pytest, into ~/.steadfaste-fleet/venv); or resolve an existing one with: "
     "bash ops/scripts/lib/python-with-module.sh --print pytest"
 )
 

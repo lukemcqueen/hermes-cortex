@@ -14,7 +14,7 @@ ts() {
 #   Empty stdout → silent (no update needed)
 #   Text output  → delivered (update occurred or error)
 #
-# Schedule: daily (recommended 22:23 KST, 10 min before hermes-cortex-sync)
+# Schedule: daily (recommended 22:23 KST, 10 min before steadfaste-fleet-sync)
 #
 # Cron imposes a 120s timeout on no_agent scripts, and `hermes update` can
 # take >120s when downloading a new binary.  We wrap the update step with an
@@ -80,7 +80,7 @@ fi
 # "update applied but not loaded" instead of silently running stale code
 # (O1-S1b: cost cache-split patch was on disk for hours while the daemon
 # wrote audit lines without it, 2026-08-21/22).
-RESTART_MARKER="${HOME}/.hermes-cortex/state/restart-pending"
+RESTART_MARKER="${HOME}/.steadfaste-fleet/state/restart-pending"
 if [ "$NEW_VERSION" != "$CURRENT_VERSION" ] && [ -n "$NEW_VERSION" ]; then
     echo "updated:${NEW_VERSION}" > "$RESTART_MARKER"
     log "restart-pending marker written (${NEW_VERSION}) — daemon must reload"

@@ -79,14 +79,14 @@ def test_the_normaliser_redacts_host_identity():
     assert hasattr(m, "normalise_line"), "the generator must own one redaction function"
     sample = (
         "Host: somehost\n"
-        "=== [x] $ python3 /home/someuser/hermes-cortex/ops/scripts/manage/cortex-doctor.py\n"
+        "=== [x] $ python3 /home/someuser/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py\n"
         "-rw-r--r-- 1 someuser someuser 4096 Oct 14 10:00 jobs.json\n"
         "mycortex_reader_someuser  (a ROLE name, not identity - must survive)\n"
     )
     got = m.normalise_line(sample, home=Path("/home/someuser"),
                            user="someuser", host="somehost")
     assert "/home/someuser" not in got, got
-    assert "$HOME/hermes-cortex" in got, got
+    assert "$HOME/steadfaste-fleet" in got, got
     assert "Host: <host>" in got, got
     assert "someuser someuser" not in got, got
     assert "<user> <user>" in got, got

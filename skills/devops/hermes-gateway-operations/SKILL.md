@@ -113,8 +113,8 @@ Then confirm WHAT THE CHILD LOADED — by content, not by a timestamp:
 ```bash
 python3 - <<'EOF'
 import hashlib, json, pathlib
-stamp = pathlib.Path.home() / ".hermes-cortex" / "state" / "loop-gov-daemon.json"
-mod = pathlib.Path.home() / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+stamp = pathlib.Path.home() / ".steadfaste-fleet" / "state" / "loop-gov-daemon.json"
+mod = pathlib.Path.home() / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
 rec = json.loads(stamp.read_text())            # written by the daemon itself at startup
 now = hashlib.sha256(mod.read_bytes()).hexdigest()
 print("daemon loaded:", rec["sha256"][:12], "pid", rec["pid"])
@@ -136,7 +136,7 @@ CONTENT — a startup hash stamp the process writes, or a witness only the new r
 and never chase the resulting warning with another restart. Rule and mechanism:
 `deploy-load-verification`.
 
-Note: a config value in `~/hermes-cortex/.env` does **not** need a restart once
+Note: a config value in `~/steadfaste-fleet/.env` does **not** need a restart once
 the gate's own resolver is deployed (it re-reads per call); only the code does.
 
 ### A restart that preserves sessions is INVISIBLE — announce it, and tell the agent
@@ -321,14 +321,14 @@ The repo ships a standalone `cortex-gateway` unit (`docs/templates/cortex-gatewa
 that answers a messaging bot with a pluggable backend, including a `kind: command` CLI
 coding agent (pi, Codex, Claude Code). It is deliberately INDEPENDENT of
 `hermes-gateway.service` — own unit, own config, no `After=`/`Wants=` on the incumbent.
-Enablement is a concrete sequence; books/detail: `pi-coding-agent`, `hermes-cortex`.
+Enablement is a concrete sequence; books/detail: `pi-coding-agent`, `steadfaste-fleet`.
 
 1. **Config**: copy `ops/scripts/gateway.yaml.example` (or `gateway-pi.example.yaml` for a
-   CLI backend) to `~/.hermes-cortex/gateway.yaml` — OUTSIDE the repo. A CLI backend entry
+   CLI backend) to `~/.steadfaste-fleet/gateway.yaml` — OUTSIDE the repo. A CLI backend entry
    is `kind: command` with an ABSOLUTE launcher path: `command` is an argv list, so `~`/`$HOME`
    are NOT expanded and the launcher is often a symlink into a dir not on a service PATH — a
    relative or guessed path is a silent per-message no-op.
-2. **Env** in the cortex env (`~/hermes-cortex/.env`): the bot's `token_ref` var,
+2. **Env** in the cortex env (`~/steadfaste-fleet/.env`): the bot's `token_ref` var,
    `TELEGRAM_ALLOWED_USERS` (sender allowlist — REQUIRED; without it any Telegram user reaches
    a bot that RUNS CODE), `TELEGRAM_HOME_CHANNEL`, `GATEWAY_SECRET` (HMAC; the daemon refuses to
    start without it), `TELEGRAM_API_BASE` (the transport fails CLOSED without it — the standard
@@ -347,7 +347,7 @@ Pitfalls that cost a cycle here:
   (e.g. `MOSESPI_BOT_TOKEN`); two pollers on one token drop the live channel. This is the guard
   working, not a bug to bypass.
 - **The unit's `ExecStart` interpreter must actually have the deps.** The template defaults to
-  `/usr/bin/python3`; the cortex deps live in the fleet venv `~/.hermes-cortex/venv/bin/python3`.
+  `/usr/bin/python3`; the cortex deps live in the fleet venv `~/.steadfaste-fleet/venv/bin/python3`.
   Point BOTH `ExecStartPre` and `ExecStart` at the venv python, and when a dep is missing install
   it INTO that venv (age-gated) rather than routing around it — a bot-lock
   `ImportError: psycopg package required` is the daemon's Postgres bus dependency surfacing, not a
@@ -367,10 +367,10 @@ When a `kind: command` gateway (pi/Codex/etc.) goes silent, the probe sequence i
 config → env → backend-direct → backend-through-gateway-code → inbound peek. Each
 step either finds the break or rules it out; stop at the first red.
 
-1. **Config** — the live `~/.hermes-cortex/gateway.yaml` (OUTSIDE the repo): backend
+1. **Config** — the live `~/.steadfaste-fleet/gateway.yaml` (OUTSIDE the repo): backend
    argv (ABSOLUTE paths), `stream`, `model`, `reply_mode`. Compare against the repo
    examples; verify the model pi can resolve.
-2. **Daemon env** — the unit's `EnvironmentFile` is `~/hermes-cortex/.env`; confirm the
+2. **Daemon env** — the unit's `EnvironmentFile` is `~/steadfaste-fleet/.env`; confirm the
    daemon PROCESS actually has the provider key it passes to the child
    (`tr '\0' '\n' < /proc/<pid>/environ | grep -E 'OPENROUTER|TELEGRAM'`).
 3. **Backend direct** — run the exact argv the gateway builds (`<pi> --session-id
@@ -415,7 +415,7 @@ Probe pitfalls (each reads as a REAL defect and is a false lead):
   ("a synthetic `m` is rejected silently"). Use a real `uuid4()`.
 - **The probe process env ≠ the daemon's env.** `_child_env` = the CALLER's `os.environ`
   + spec overrides; if the probe lacks `OPENROUTER_API_KEY` (it lives in the unit's
-  `~/hermes-cortex/.env`, not the shell's), pi runs without the key, prints nothing to
+  `~/steadfaste-fleet/.env`, not the shell's), pi runs without the key, prints nothing to
   stdout, exits 0, and dispatch returns a clean "nothing to say". Load the unit's env
   file into the probe (`os.environ.setdefault` per line) OR source it, and confirm the
   key is present before believing a negative.

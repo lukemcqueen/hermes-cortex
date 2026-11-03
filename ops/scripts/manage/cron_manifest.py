@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 # ── Paths ──────────────────────────────────────────────────────────────
-CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", os.path.expanduser("~/hermes-cortex")))
+CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", os.path.expanduser("~/steadfaste-fleet")))
 MANIFEST_PATH = CORTEX_REPO / "ops" / "install" / "cron-manifest.yaml"
 JOBS_FILE = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))) / "cron" / "jobs.json"
 
@@ -89,7 +89,7 @@ def _expand_placeholders(value: str) -> str:
         # The doctor / cron contexts don't always inherit ~/.hermes/.env —
         # source it like the installers do (best-effort, never fatal).
         for env_candidate in (Path(os.path.expanduser("~/.hermes/.env")),
-                              Path(os.path.expanduser("~/hermes-cortex/.env"))):
+                              Path(os.path.expanduser("~/steadfaste-fleet/.env"))):
             try:
                 if not env_candidate.exists():
                     continue
@@ -133,7 +133,7 @@ def is_in_scope(cron: dict, is_orch: Optional[bool] = None) -> bool:
         marker = cron.get("opt_in_marker", "")
         if not marker:
             return False
-        marker_path = Path(os.path.expanduser("~/.hermes-cortex")) / marker
+        marker_path = Path(os.path.expanduser("~/.steadfaste-fleet")) / marker
         return marker_path.exists()
     return False
 

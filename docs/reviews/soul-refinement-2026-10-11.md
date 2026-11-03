@@ -78,7 +78,7 @@ a bad measurement. That is a character habit, which is what SOUL is for.
 
 Add under the local-principles block (below canonical 12), generic to any agent,
 six sentences as written above, then run
-`python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py` and confirm the marker
+`python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py` and confirm the marker
 lands in the deployed copy before committing. Deployed SOUL is currently 13,408
 bytes against the doctor's 15K WARN / 20K FAIL budget — there is ~1.5K of room,
 so this lands at WARN, not FAIL.

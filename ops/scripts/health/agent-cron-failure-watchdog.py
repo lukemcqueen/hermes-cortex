@@ -29,7 +29,7 @@ from pathlib import Path
 
 HOME = Path.home()
 CRON_JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
-STATE_FILE = HOME / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
+STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "cron-failure-watchdog.json"
 
 # The watchdog's own cron job name — it must never evaluate/count/pause ITSELF.
 # When it pauses a broken cron it exits 1 (to deliver the alert), which sets its

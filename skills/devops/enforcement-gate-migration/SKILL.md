@@ -3,7 +3,7 @@ name: enforcement-gate-migration
 description: "Use when re-pointing a gate onto a new evidence store."
 version: 1.0.0
 category: devops
-author: Hermes Cortex curator
+author: Steadfaste Fleet curator
 license: MIT
 platforms: [linux, macos]
 metadata:

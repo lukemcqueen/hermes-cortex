@@ -45,7 +45,7 @@ Since the bus is the broken channel, send via Telegram:
 ```
 Run a full diagnostic and report back:
 1. Check handler cron exists and is enabled
-2. Read handler state file (~/.hermes-cortex/state/agent-handler-state.json)
+2. Read handler state file (~/.steadfaste-fleet/state/agent-handler-state.json)
 3. Check system load / memory / disk
 4. Check latest handler output log
 5. Run doctor
@@ -62,7 +62,7 @@ Return everything as raw output, don't summarize.
 | System OOM / high load | Memory pressure killing handler | Free memory, restart services |
 | `""` in processed_ids | Messages without correlation_id causing skip loop | Archive backlog, keep correlation_ids unique |
 | **Messages stuck `processing`, handler runs fine** | **`bus_archive()` returning False but handler ignores it — archive silently fails** | **Upgrade to handler commit `c306e3d`+ which logs archive failures. Check network/auth from agent to bus server.** |
-| **Agent polls wrong queue** | **`AGENT_NAME` missing in cortex-bus.conf** | **Set `AGENT_NAME=<agent>` in `~/.hermes-cortex/conf.d/cortex-bus.conf`** |
+| **Agent polls wrong queue** | **`AGENT_NAME` missing in cortex-bus.conf** | **Set `AGENT_NAME=<agent>` in `~/.steadfaste-fleet/conf.d/cortex-bus.conf`** |
 
 ## The Poll-Once Crash Pattern (No Exception Handler)
 

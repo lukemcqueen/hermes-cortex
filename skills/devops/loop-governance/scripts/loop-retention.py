@@ -22,7 +22,7 @@ import sqlite3
 import sys
 from datetime import datetime
 
-DEFAULT_DB = "~/.hermes-cortex/data/loop-governance.db"
+DEFAULT_DB = "~/.steadfaste-fleet/data/loop-governance.db"
 TABLE = "loop_cycles"
 
 
@@ -99,7 +99,7 @@ def main(argv=None):
         return 0
 
     archive_path = os.path.expanduser(
-        f"~/.hermes-cortex/data/loop-cycles-archive-{datetime.now().strftime('%Y%m%d')}.json"
+        f"~/.steadfaste-fleet/data/loop-cycles-archive-{datetime.now().strftime('%Y%m%d')}.json"
     )
     # The archive is written BEFORE anything is deleted, so it must not be able to
     # fail on a missing directory: a host whose data/ dir was never created would

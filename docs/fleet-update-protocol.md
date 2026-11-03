@@ -58,7 +58,7 @@ Sent when Moses pushes new code to main and the fleet should update.
 MCP servers), the orchestrator ALSO sends a `FLEET_NOTICE` to every agent
 (one message per agent) describing what changed, the commit SHA, and any
 action needed. Verify delivery with the non-destructive peek
-`~/.hermes-cortex/scripts/hc inbox <agent>` (HTTP — never the
+`~/.steadfaste-fleet/scripts/hc inbox <agent>` (HTTP — never the
 ssh+docker/psql path by default). Full procedure:
 `skills/devops/fleet-commands/SKILL.md` → "Fleet Broadcast After
 Fleet-Wide Changes".
@@ -180,8 +180,8 @@ Sent when UPDATE_RESULT contains issues Moses can identify and fix.
  "priority": "high",
  "body": {
   "issue": "AGENTS.md needs sync",
-  "fix": "cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md",
-  "verify": "python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --json",
+  "fix": "cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md",
+  "verify": "python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --json",
   "deadline_minutes": 10
  }
 }

@@ -48,7 +48,7 @@ Possible root causes when read works but send doesn't:
 ## Diagnostic Command
 
 ```bash
-cd ~/hermes-cortex && python3 -c "
+cd ~/steadfaste-fleet && python3 -c "
 from ops.scripts.lib.cortex_bus import bus_send, bus_read, BUS_URL, CORTEX_BUS_AUTH, CORTEX_BUS_TOKEN
 print(f'URL: {BUS_URL}')
 print(f'Has auth: {bool(CORTEX_BUS_AUTH)}')

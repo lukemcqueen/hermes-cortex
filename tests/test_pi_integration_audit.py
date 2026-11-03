@@ -46,8 +46,8 @@ def _check(name: str, cond: bool, detail: str = "") -> None:
 def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
           drop_link: str | None = None, pi: bool = True,
           omit_server: str | None = None) -> Path:
-    """Build a synthetic host. CORTEX_DEPLOY_HOME == home/.hermes-cortex."""
-    dep = home / ".hermes-cortex"
+    """Build a synthetic host. CORTEX_DEPLOY_HOME == home/.steadfaste-fleet."""
+    dep = home / ".steadfaste-fleet"
     agent = home / ".pi" / "agent"
     (agent / "install" / "releases" / "1.0.0").mkdir(parents=True)
     (agent / "install" / "current-version").write_text("1.0.0\n")

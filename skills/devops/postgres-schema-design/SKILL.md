@@ -2,7 +2,7 @@
 name: postgres-schema-design
 description: "Postgres schemas with RLS, roles, or migrations."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:

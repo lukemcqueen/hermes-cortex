@@ -78,7 +78,7 @@ ls -lat ~/.hermes/cron/output/ | head
 cat ~/.hermes/cron/output/<job_id>/<timestamp>.md
 ```
 Map job IDs to names via `~/.hermes/cron/jobs.json`. The daily
-`agent-hermes-cortex-sync` cron (22:33 KST) stashes → fetches → pops; its
+`agent-steadfaste-fleet-sync` cron (22:33 KST) stashes → fetches → pops; its
 output lines like `deleted: ops/...` are the **pre-existing** state it
 saved and restored, not actions it took.
 
@@ -148,14 +148,14 @@ reduction — restore first, commit second.
 
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
-| **Stash-pop masks deletion time** | dir mtime = cron run time, not true deletion | A stashing cron (e.g. agent-hermes-cortex-sync) pops the stash, rewriting dir mtimes. The stash commit's parent bounds the true time. |
+| **Stash-pop masks deletion time** | dir mtime = cron run time, not true deletion | A stashing cron (e.g. agent-steadfaste-fleet-sync) pops the stash, rewriting dir mtimes. The stash commit's parent bounds the true time. |
 | **`reset: moving to HEAD` misread as deletion** | reflog reset near suspicious time | That's the stash's internal reset — check `git show --stat <stash-sha>` for what the stash actually captured. |
 | **Uncommitted deletions committed accidentally** | `git add -A` sweeps foreign deletions into your commit | Stage explicit paths only when the tree contains deletions you didn't author. |
 | **Dropped stash assumed lost** | `git stash pop` then "Dropped refs/stash@{0}" | The commit object is still reachable by SHA until gc — `git cat-file -t <sha>` works. |
 | **No-op stash + pop steals a sibling's stash** | `git stash -q` on a CLEAN tree does nothing (no new entry); a later `git stash pop` then pops the TOP of the stack — which on a multi-session host may be ANOTHER session's stash, half-applying it and creating conflicts (2026-08-05: popped `sibling-wip-soul-cortex-skills` while mine was committed). | Verify before popping: `git stash list` (check messages — "sibling-" / "wip-" entries are not yours), or pop by explicit index `git stash pop stash@{N}`. After a no-op stash, confirm the list count did NOT increase. If you half-applied a foreign stash: `git reset --hard HEAD` restores the tree; the foreign stash entry remains intact (pop keeps it on conflict). |
 | **Concurrent git commits corrupt temp indexes** | `git commit` fails with `error: invalid object 100644 <sha> for '<file>'` + `error: Error building trees`, even though `git fsck --full` is clean, `git write-tree` succeeds, and every reachable object exists (2026-08-07) | A sibling agent's `git commit` running concurrently truncated/overwrote this commit's temp index (`.git/next-index-<pid>.lock`) mid-hook — a healthy 218KB temp index shrank to a 137-byte stub whose single entry referenced the pruned blob. Diagnose with `GIT_TRACE=1 git commit ...` (shows `GIT_INDEX_FILE=.../next-index-<pid>.lock` for the hook), inspect the temp index mid-commit (`GIT_INDEX_FILE=<file> git ls-files --stage`), and `ps aux | grep "[g]it commit"` to spot sibling commits. Escapes that worked: `git commit --no-verify -m` (the hooks themselves PASS — only the tree-build races; verify hooks separately) and retrying when the repo is quiescent. Full recipe: `references/concurrent-commit-corruption.md`. |
 | **Tool-call regex misses commands** | Searching messages.content for `"command"` returns nothing | Tool args live in the `tool_calls` JSON column with escaped quotes — parse with json.loads. |
-| **Search_files blind on hidden dirs** | 0 results for `.hermes`, `.hermes-cortex` paths that exist | ripgrep skips hidden dirs by default; use `ls`/`find`/`git ls-files` to confirm absence. |
+| **Search_files blind on hidden dirs** | 0 results for `.hermes`, `.steadfaste-fleet` paths that exist | ripgrep skips hidden dirs by default; use `ls`/`find`/`git ls-files` to confirm absence. |
 | **User shell falsely exonerated** | No rm in zsh history | History flushes only on clean exit; reboots lose it. Report the gap honestly, don't claim innocence. |
 
 ## Reference

@@ -3,7 +3,7 @@
 
 Luke 2026-08-24: titusclaude (Claude Code) must have the same governance as
 Hermes agents, and the doctor must check CLAUDE.md like it checks AGENTS.md —
-especially on NON-hermes-cortex repos where Claude usually works.
+especially on NON-steadfaste-fleet repos where Claude usually works.
 
 Covers check_dev_repo_claude: scans dev repos, warns when CLAUDE.md is
 missing while a Claude agent is configured, passes when all have it, and
@@ -118,11 +118,11 @@ def test_warns_when_claude_md_missing_excellence_section(fake_home):
 
 def _user_paths(tmp_path, monkeypatch):
     """Re-point checks.CORTEX_REPO + Path.home() so check_user_template reads a temp tree."""
-    template = tmp_path / "hermes-cortex" / "docs" / "templates" / "USER.seed.md"
+    template = tmp_path / "steadfaste-fleet" / "docs" / "templates" / "USER.seed.md"
     template.parent.mkdir(parents=True)
     live = tmp_path / ".hermes" / "memories" / "USER.md"
     live.parent.mkdir(parents=True)
-    monkeypatch.setattr(checks, "CORTEX_REPO", tmp_path / "hermes-cortex")
+    monkeypatch.setattr(checks, "CORTEX_REPO", tmp_path / "steadfaste-fleet")
     # check_user_template derives the live path from Path.home(), not checks.HOME
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     return template, live
@@ -178,4 +178,4 @@ def test_skips_hermes_cortex_repo_itself(fake_home):
     checks.check_dev_repo_claude(res)
     # Only the client-repo is scanned; cortex repo itself never appears
     names = [e["name"] for e in res.checks]
-    assert all("hermes-cortex" not in n for n in names)
+    assert all("steadfaste-fleet" not in n for n in names)

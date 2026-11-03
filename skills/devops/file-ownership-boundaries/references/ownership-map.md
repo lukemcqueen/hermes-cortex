@@ -5,14 +5,14 @@
 | Domain | Base path | Config | Skills | Scripts | State |
 |--------|-----------|--------|--------|---------|-------|
 | **Hermes Agent** | `~/.hermes/` | `config.yaml` | `skills/` (built-in) | `scripts/` | Plugins, sessions, memory |
-| **Our Repo** | `~/hermes-cortex/` | N/A (git tracked) | `skills/` (cortex-only) | `ops/scripts/` | N/A (git tracked) |
-| **Deployed** | `~/.hermes-cortex/` | `skills.yaml` | `skills/` (synced from repo) | `scripts/` (synced from repo) | `state/`, `data/` |
+| **Our Repo** | `~/steadfaste-fleet/` | N/A (git tracked) | `skills/` (cortex-only) | `ops/scripts/` | N/A (git tracked) |
+| **Deployed** | `~/.steadfaste-fleet/` | `skills.yaml` | `skills/` (synced from repo) | `scripts/` (synced from repo) | `state/`, `data/` |
 
 ## Ownership Test
 
 ```bash
 # Quick check: is this file in our repo?
-grep -q "hermes-cortex" <<< "$filepath" && echo "OURS" || echo "CHECK FURTHER"
+grep -q "steadfaste-fleet" <<< "$filepath" && echo "OURS" || echo "CHECK FURTHER"
 ```
 
 ## Do NOT Edit (Hermes Defaults)
@@ -27,7 +27,7 @@ grep -q "hermes-cortex" <<< "$filepath" && echo "OURS" || echo "CHECK FURTHER"
 
 ## Edit Freely (Our Skills)
 
-- `~/hermes-cortex/skills/devops/*`
-- `~/hermes-cortex/skills/software-development/codebase-portability/*`
-- `~/hermes-cortex/ops/scripts/*`
-- `~/hermes-cortex/docs/*`
+- `~/steadfaste-fleet/skills/devops/*`
+- `~/steadfaste-fleet/skills/software-development/codebase-portability/*`
+- `~/steadfaste-fleet/ops/scripts/*`
+- `~/steadfaste-fleet/docs/*`

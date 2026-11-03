@@ -1,7 +1,7 @@
 #!/usr/bin/env ansible-playbook
 ---
 # ───────────────────────────────────────────────────────────────
-#  Hermes Cortex — Ansible Provisioning Playbook
+#  Steadfaste Fleet — Ansible Provisioning Playbook
 #  Target: Ubuntu 24.04 LTS
 #
 #  Usage:
@@ -31,7 +31,7 @@
 #    all          — everything (default)
 # ───────────────────────────────────────────────────────────────
 
-- name: Provision Hermes Cortex Agent
+- name: Provision Steadfaste Fleet Agent
   hosts: all
   become: true
   vars:
@@ -43,8 +43,8 @@
 
     # Paths
     hermes_home: "/home/{{ ansible_user }}/.hermes"
-    cortex_repo: "/home/{{ ansible_user }}/hermes-cortex"
-    cortex_deploy: "/home/{{ ansible_user }}/.hermes-cortex"
+    cortex_repo: "/home/{{ ansible_user }}/steadfaste-fleet"
+    cortex_deploy: "/home/{{ ansible_user }}/.steadfaste-fleet"
     langfuse_dir: "/home/{{ ansible_user }}/langfuse"
 
     # Port map
@@ -239,7 +239,7 @@
             HOME: "{{ ansible_user_dir }}"
           when: hermes_download is success
 
-        - name: Clone hermes-cortex repo
+        - name: Clone steadfaste-fleet repo
           git:
             repo: https://github.com/lukemcqueen/steadfaste-fleet.git
             dest: "{{ cortex_repo }}"
@@ -316,13 +316,13 @@
         - name: Create nginx config from template
           template:
             src: hermes-nginx.conf.j2
-            dest: /etc/nginx/sites-available/hermes-cortex.conf
+            dest: /etc/nginx/sites-available/steadfaste-fleet.conf
           notify: reload nginx
 
         - name: Enable site
           file:
-            src: /etc/nginx/sites-available/hermes-cortex.conf
-            dest: /etc/nginx/sites-enabled/hermes-cortex.conf
+            src: /etc/nginx/sites-available/steadfaste-fleet.conf
+            dest: /etc/nginx/sites-enabled/steadfaste-fleet.conf
             state: link
           notify: reload nginx
 

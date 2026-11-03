@@ -28,7 +28,7 @@ each host's `cycle_query`/`feedback_accept` reads is that HOST's local DB:
 
 ## 2. Deploy-sync ordering: commit → cortex-update.sh → push
 
-The doctor's `Deploy sync` check compares `~/.hermes-cortex/state/update-commit`
+The doctor's `Deploy sync` check compares `~/.steadfaste-fleet/state/update-commit`
 (last deployed commit) against git HEAD. Running `cortex-update.sh` BEFORE
 committing leaves `update-commit` pointing at the old HEAD, so the pre-push
 dogfood gate blocks with:
@@ -39,7 +39,7 @@ dogfood gate blocks with:
 ```
 
 The dogfood gate does NOT fix this itself — it reports the failure and
-blocks the push. Correct order for script/config changes in hermes-cortex:
+blocks the push. Correct order for script/config changes in steadfaste-fleet:
 
 1. `git commit` (pre-commit scores + adversarial gate)
 2. `bash ops/scripts/cortex-update.sh` (deploys the committed state, writes

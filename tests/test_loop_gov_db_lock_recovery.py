@@ -1,7 +1,7 @@
 """Regression test: in-process SQLite write-lock recovery for begin_change.
 
 Incident class (2026-09-29): a loop-gov MCP daemon spawned BEFORE a deploy held
-an uncommitted write transaction on ~/.hermes-cortex/data/loop-governance.db.
+an uncommitted write transaction on ~/.steadfaste-fleet/data/loop-governance.db.
 begin_change then failed with "database is locked" for every session, and write
 tools were gated behind the very lock that could not be acquired (the
 enforcement-gate-integrity catch-22). Recovery = kill the stale holder daemon;

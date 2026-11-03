@@ -174,10 +174,10 @@ If the run errors instead of producing output, check `cronjob(action='list')` fo
 If you updated this skill (`cron-format-standard`) in the repo at `skills/devops/cron-format-standard/SKILL.md`:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git add skills/devops/cron-format-standard/SKILL.md
 # Governance lock required for commit — or use run mode:
-# cd ~/hermes-cortex && begin_change && git commit && end_change
+# cd ~/steadfaste-fleet && begin_change && git commit && end_change
 git commit -m "skill: cron-format-standard — <what changed>"
 ```
 
@@ -195,7 +195,7 @@ The skill at `skills/` is synced automatically to all agents on the next `cortex
 To force an immediate sync on another agent:
 ```bash
 # On the target agent's machine:
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 (`cortex-update.sh` is idempotent and safe to re-run — default mode deploys all changed files. There is no `--skip-existing` flag on `install.sh`; do not use one.)

@@ -88,7 +88,7 @@ def resolve_enforcer(explicit: str | None) -> Path:
         candidates.append(Path(os.environ["HERMES_ENFORCER"]).expanduser())
     home = Path.home()
     candidates.append(home / ".hermes" / "plugins" / "governance-enforcer" / "__init__.py")
-    candidates.append(home / "hermes-cortex" / "plugins" / "governance-enforcer" / "__init__.py")
+    candidates.append(home / "steadfaste-fleet" / "plugins" / "governance-enforcer" / "__init__.py")
     for path in candidates:
         if path.is_file():
             return path

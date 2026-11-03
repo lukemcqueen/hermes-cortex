@@ -2,8 +2,8 @@
 """Regression test: adversarial-verify TOON check works from BOTH locations.
 
 2026-08-24 live test found: the DEPLOYED verifier
-(~/.hermes-cortex/scripts/adversarial-verify.py) resolved its lib dir to
-~/.hermes-cortex/lib (dirname×2 from scripts/ — one level too shallow),
+(~/.steadfaste-fleet/scripts/adversarial-verify.py) resolved its lib dir to
+~/.steadfaste-fleet/lib (dirname×2 from scripts/ — one level too shallow),
 which does not exist → import toon_parse failed → except:pass silently
 disabled the TOON check → malformed TOON produced 0 findings.
 
@@ -64,7 +64,7 @@ def test_deployed_layout_toon_check_works():
     """Simulate the DEPLOYED layout: verifier in scripts/ with lib/ as a
     sibling. Copy both into a temp scripts/ dir and confirm the TOON check
     fires (this is the path that silently broke — the lib path resolved to
-    ~/.hermes-cortex/lib, dirname×2 from scripts/, which doesn't exist)."""
+    ~/.steadfaste-fleet/lib, dirname×2 from scripts/, which doesn't exist)."""
     with tempfile.TemporaryDirectory() as td:
         scripts = Path(td) / "scripts"
         lib = scripts / "lib"

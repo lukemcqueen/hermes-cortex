@@ -76,7 +76,7 @@ three extra rules apply:
   Parallelize ACROSS repos; within one repo run subagents sequentially, or have
   them do the work without committing and commit serially yourself.
 - **Put the full governance sequence in the child's context.** In a governed
-  repo (Hermes Cortex enforcer), a child's first write blocks until it loads the
+  repo (Steadfaste Fleet enforcer), a child's first write blocks until it loads the
   always-skills and holds a lock. Tell it explicitly: load the 7 always-skills
   in one turn → `cache_search` → `begin_change` → work with TDD →
   `feedback_accept` → `end_change`, commit through the hooks (no `--no-verify`),

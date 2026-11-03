@@ -32,13 +32,13 @@ def _run(home):
 def _fake_home(tmp, with_python=False, with_server=False, calls=None):
     root = Path(tmp)
     if with_python:
-        p = root / ".hermes-cortex" / "venv" / "bin" / "python3"
+        p = root / ".steadfaste-fleet" / "venv" / "bin" / "python3"
         p.parent.mkdir(parents=True, exist_ok=True)
         # A real file that records how it was called — the guard must exec it, with args.
         p.write_text('#!/usr/bin/env bash\nprintf "EXEC:%s\\n" "$@"\n')
         p.chmod(0o755)
     if with_server:
-        s = root / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+        s = root / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
         s.parent.mkdir(parents=True, exist_ok=True)
         s.write_text("# deployed governance server\n")
     return root
@@ -50,7 +50,7 @@ def test_missing_interpreter_is_named_with_its_home_and_the_fix():
         r = _run(home)
         assert r.returncode == EX_CONFIG, f"expected rc={EX_CONFIG}, got {r.returncode}"
         assert "NO INTERPRETER" in r.stderr, r.stderr
-        assert str(home / ".hermes-cortex" / "venv" / "bin" / "python3") in r.stderr, \
+        assert str(home / ".steadfaste-fleet" / "venv" / "bin" / "python3") in r.stderr, \
             "the message must name the exact path that is missing"
         assert f"HOME={home}" in r.stderr, "the message must print the HOME it resolved"
         assert "python3 -m venv" in r.stderr, "it must show how to create the venv"
@@ -66,7 +66,7 @@ def test_missing_server_points_at_the_deploy():
         r = _run(home)
         assert r.returncode == EX_CONFIG, f"expected rc={EX_CONFIG}, got {r.returncode}"
         assert "NOT DEPLOYED" in r.stderr, r.stderr
-        assert str(home / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py") in r.stderr
+        assert str(home / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py") in r.stderr
         assert "cortex-update.sh" in r.stderr, "it must name the deploy that installs it"
         print("  B: absent server -> named path, deploy command, rc=78 ✓")
 
@@ -77,7 +77,7 @@ def test_the_happy_path_still_execs_with_arguments():
         r = _run(home)
         assert r.returncode == 0, f"the guard must not break the exec: {r.stderr}"
         assert r.stdout.startswith("EXEC:"), r.stdout
-        assert str(home / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py") in r.stdout
+        assert str(home / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py") in r.stdout
         print("  C: both present -> execs the server ✓")
 
 

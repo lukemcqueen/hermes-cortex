@@ -3,15 +3,15 @@
 
 Luke's report (titus, pi): a pi session working in a project repo opened a
 governance lock, and the lock was NEVER released — he had to delete
-`~/.hermes-cortex/state/.governance-sess_*.json` by hand each time ("the lock is
+`~/.steadfaste-fleet/state/.governance-sess_*.json` by hand each time ("the lock is
 not being removed when the reviewer finishes").
 
 Root cause. The lock's repo comes from `_derive_slug()` / `_derive_repo_path()`.
 A Hermes caller has its repo INJECTED by the governance enforcer, so it is
 tagged correctly. A non-Hermes caller (pi, Claude Code, Codex, the `loop-gov`
 CLI) has NO injector — and the resolver then fell through to Priority 1, the
-HOST-CANONICAL repo `~/hermes-cortex`, which exists on every dev host. A session
-working in `~/projects/proj` was therefore locked as `hermes-cortex`.
+HOST-CANONICAL repo `~/steadfaste-fleet`, which exists on every dev host. A session
+working in `~/projects/proj` was therefore locked as `steadfaste-fleet`.
 
 At close, `_adversarial_review_gate` looked for the session's work in the lock's
 repo, found none, and refused:
@@ -90,15 +90,15 @@ def _sandbox(with_project_commit: bool = True):
     Code layout.
     """
     home = Path(tempfile.mkdtemp(prefix="non-hermes-repo-id-"))
-    _mkrepo(home / "hermes-cortex", with_commit=False)      # canonical, EMPTY
+    _mkrepo(home / "steadfaste-fleet", with_commit=False)      # canonical, EMPTY
     proj = _mkrepo(home / "projects" / "proj", with_commit=with_project_commit)
 
-    state = home / ".hermes-cortex" / "state"
+    state = home / ".steadfaste-fleet" / "state"
     state.mkdir(parents=True, exist_ok=True)
     mcp.HOME = home
     mcp.SESSION_FILE = home / ".hermes" / "session.id"
     mcp.GOVERNANCE_STATE_DIR = state
-    mcp.LOOP_DB = home / ".hermes-cortex" / "data" / "loop-governance.db"
+    mcp.LOOP_DB = home / ".steadfaste-fleet" / "data" / "loop-governance.db"
     mcp._PROCESS_SESSION_ID = ""                            # fresh non-Hermes child
     return home, proj, state
 
@@ -174,7 +174,7 @@ def test_session_repo_env_identity_is_honoured():
                   f"got {got!r}")
             got = _slug_with("does-not-exist", home)          # not a repo → fall back
             check("a bogus CORTEX_SESSION_REPO falls back to the canonical default",
-                  got == "hermes-cortex", f"got {got!r}")
+                  got == "steadfaste-fleet", f"got {got!r}")
     finally:
         if prev is None:
             os.environ.pop("CORTEX_SESSION_REPO", None)
@@ -230,7 +230,7 @@ def test_cwd_that_is_not_a_repo_still_falls_back_to_canonical():
     plain.mkdir()
     with _Cwd(plain):
         got = mcp._derive_slug(None)
-        assert got == "hermes-cortex", (
+        assert got == "steadfaste-fleet", (
             "a session in a non-repo directory must keep the canonical fallback, "
             f"got {got!r}"
         )
@@ -238,14 +238,14 @@ def test_cwd_that_is_not_a_repo_still_falls_back_to_canonical():
 
 def test_hermes_caller_without_a_repo_hint_keeps_the_canonical_default():
     """A Hermes caller (per-call session_id injected by the enforcer) must NOT be
-    re-tagged from the shared daemon's cwd — that is the hermes-agent/hermes-cortex
+    re-tagged from the shared daemon's cwd — that is the hermes-agent/steadfaste-fleet
     mismatch the canonical preference exists to prevent."""
     _home, proj, _state = _sandbox()
     injected = {"session_id": "sess_hermes_injected"}
     with _Cwd(proj):
         slug = mcp._derive_slug(injected)
         check("Hermes caller without a repo hint keeps the canonical default",
-              slug == "hermes-cortex", f"got {slug!r}")
+              slug == "steadfaste-fleet", f"got {slug!r}")
         check("no repo path is inferred for a Hermes caller",
               mcp._session_repo_path(injected) is None)
 

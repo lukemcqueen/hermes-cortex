@@ -2,7 +2,7 @@
 name: offline-knowledge
 description: "Offline knowledge cascade — query local content (web-cache, kiwix ZIM, mycortex) without internet. Perfect for travel, remote areas, or saving API costs."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos, windows]
 ---
@@ -25,10 +25,10 @@ The offline knowledge tool provides a transparent **cascade lookup** across four
 
 ```bash
 # Step 1: Run the installer
-hermes-cortex/install.sh    # steps 11 + 13 cover all offline tools
+steadfaste-fleet/install.sh    # steps 11 + 13 cover all offline tools
 
 # Step 2: Download content (interactive menu)
-hermes-cortex/ops/offline/prep-offline.sh
+steadfaste-fleet/ops/offline/prep-offline.sh
 
 # Step 3: Verify
 offline_knowledge stats
@@ -74,14 +74,14 @@ offline_knowledge stats
 
 If kiwix-serve isn't running, start it:
 ```bash
-docker compose -f ~/.hermes-cortex/offline/kiwix-docker-compose.yml up -d
+docker compose -f ~/.steadfaste-fleet/offline/kiwix-docker-compose.yml up -d
 ```
 
 ## Pre-Flight Checklist (Before Going Offline)
 
 ```bash
 # 1. Download all content
-hermes-cortex/ops/offline/prep-offline.sh --mode=travel   # or build/education/all
+steadfaste-fleet/ops/offline/prep-offline.sh --mode=travel   # or build/education/all
 
 # 2. Verify everything works
 offline_knowledge stats

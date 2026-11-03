@@ -2,7 +2,7 @@
 name: threat-defense-pipeline
 description: "Layered defense system: fail2ban jails + nginx IP blocking + daily auto-deploy pipeline. How to add blocked IPs, check jails, and deploy."
 version: 1.0.0
-author: Hermes Cortex (hermes-cortex)
+author: Steadfaste Fleet (steadfaste-fleet)
 platforms: [linux, macos]
 trigger: when adding blocked IPs, checking threat activity, or troubleshooting blocked connections
 ---
@@ -11,7 +11,7 @@ trigger: when adding blocked IPs, checking threat activity, or troubleshooting b
 
 ## Overview
 
-Hermes Cortex runs a **three-layer defense** against port scanning and brute force:
+Steadfaste Fleet runs a **three-layer defense** against port scanning and brute force:
 
 ```
 Layer 1: fail2ban (sshd + nginx-badbots jails)  → auto-bans at OS/nginx level
@@ -21,19 +21,19 @@ Layer 3: threat-pipeline cron (daily 5AM)        → deploys + commits blocked I
 
 ## How to Add a Blocked IP
 
-The single source of truth is **`ops/install/deploy/nginx/blocked_ips.add`** in the hermes-cortex repo. One IP per line.
+The single source of truth is **`ops/install/deploy/nginx/blocked_ips.add`** in the steadfaste-fleet repo. One IP per line.
 
 ### Quick add (for agents with repo access):
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 echo "1.2.3.4" >> ops/install/deploy/nginx/blocked_ips.add
 ```
 
 ### Commit and deploy immediately:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git add ops/install/deploy/nginx/blocked_ips.add
 # SKIP_SCORE=1 has been REMOVED. Use _create_gov_lock instead
 # (see nginx-threat-pipeline.sh for the temp lock pattern)
@@ -119,7 +119,7 @@ review) vs stale vs allow-listed. Run it on the host with the ban evidence
 (Joseph is primary discovery host):
 
 ```bash
-bash ~/.hermes-cortex/scripts/classify-blocked-ips.sh
+bash ~/.steadfaste-fleet/scripts/classify-blocked-ips.sh
 ```
 
 Review-only — never edits or deploys. The safety net: fail2ban stays armed,
@@ -132,7 +132,7 @@ so any IP removed that is genuinely attacking gets re-banned automatically.
 bash ~/.hermes/scripts/deploy-blocked-ips.sh
 
 # Or from the repo directly:
-bash ~/hermes-cortex/ops/scripts/manage/deploy-blocked-ips.sh
+bash ~/steadfaste-fleet/ops/scripts/manage/deploy-blocked-ips.sh
 ```
 
 Generates `blocked_ips.conf` from `blocked_ips.add`, deploys with `sudo cp`,

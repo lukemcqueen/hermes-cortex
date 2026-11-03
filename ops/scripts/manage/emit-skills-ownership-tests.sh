@@ -16,8 +16,8 @@ REPO="$(cd "${HERE}/../../.." && pwd)"   # manage -> scripts -> ops -> repo root
 # successful transcript once (2026-10-21), the very swallowed-error class under review.
 if [ -n "${CORTEX_PY:-}" ]; then
   PY="$CORTEX_PY"
-elif [ -x "${HOME}/.hermes-cortex/venv/bin/python3" ]; then
-  PY="${HOME}/.hermes-cortex/venv/bin/python3"
+elif [ -x "${HOME}/.steadfaste-fleet/venv/bin/python3" ]; then
+  PY="${HOME}/.steadfaste-fleet/venv/bin/python3"
 else
   PY="python3"
 fi

@@ -8,7 +8,7 @@
 #       in ~/.pi/agent/mcp.json (Pi >= 1.0 MCP client).
 #    2. Preserves every pre-existing key in the file (never clobbers).
 #    3. Preserves the user's own non-governance mcpServers.
-#    4. Derives AGENT_NAME from ~/.hermes-cortex/agent.env.
+#    4. Derives AGENT_NAME from ~/.steadfaste-fleet/agent.env.
 #    5. Is idempotent (second run = same server set).
 #    6. --remove strips only the cortex servers.
 #    7. KEEPS the interpreter an existing mcp.json already proves works, instead
@@ -36,17 +36,17 @@ check() { # check <name> <0|1>
 # exit 3 = COULD NOT VERIFY: fail loudly, never skip silently.
 PY_MCP="$(bash "$REPO/ops/scripts/lib/python-with-module.sh" --print mcp)" || {
   echo "  FAIL  no interpreter on this host can import mcp — cannot exercise the installer"
-  echo "        (fix: bash ~/.hermes-cortex/scripts/cortex-update.sh, or: python3 -m pip install mcp)"
+  echo "        (fix: bash ~/.steadfaste-fleet/scripts/cortex-update.sh, or: python3 -m pip install mcp)"
   exit 3
 }
 
 TD="$(mktemp -d)"
 trap 'rm -rf "$TD"' EXIT
-HOME_T="$TD/home"; mkdir -p "$HOME_T/.pi/agent" "$HOME_T/.hermes-cortex"
+HOME_T="$TD/home"; mkdir -p "$HOME_T/.pi/agent" "$HOME_T/.steadfaste-fleet"
 PJ="$HOME_T/.pi/agent/mcp.json"
 
 # Per-host identity file — the installer must use this name, not a guess.
-python3 - "$HOME_T/.hermes-cortex/agent.env" <<'PY'
+python3 - "$HOME_T/.steadfaste-fleet/agent.env" <<'PY'
 import pathlib, sys
 pathlib.Path(sys.argv[1]).write_text("AGENT_NAME=tituspi\n")
 PY
@@ -101,8 +101,8 @@ echo "B. an interpreter the existing mcp.json PROVES works is kept"
 # Discriminating by construction: the registered command is a shim the resolver
 # would never pick (it honours PYTHON first), so a regression that ignores the
 # existing config shows up as a changed command string.
-HOME_B="$TD/home_b"; mkdir -p "$HOME_B/.pi/agent" "$HOME_B/.hermes-cortex" "$TD/shim"
-printf 'AGENT_NAME=tituspi\n' > "$HOME_B/.hermes-cortex/agent.env"
+HOME_B="$TD/home_b"; mkdir -p "$HOME_B/.pi/agent" "$HOME_B/.steadfaste-fleet" "$TD/shim"
+printf 'AGENT_NAME=tituspi\n' > "$HOME_B/.steadfaste-fleet/agent.env"
 # A WRAPPER, not a symlink: a symlinked venv python loses its venv (no pyvenv.cfg
 # beside the link) and cannot import mcp, which the installer then rightly refuses
 # to preserve — the assertion would test the probe, not the preservation logic.
@@ -128,18 +128,18 @@ echo "C. nothing can import mcp -> refuse loudly, leave the config untouched"
 # The five deployed servers DO exist here, so the "Run cortex-update.sh first"
 # warning stays silent and a passing remediation assertion can only come from the
 # interpreter error itself.
-HOME_C="$TD/home_c"; mkdir -p "$HOME_C/.pi/agent" "$HOME_C/.hermes-cortex/scripts" \
-  "$HOME_C/.hermes-cortex/tools/loop-governance"
+HOME_C="$TD/home_c"; mkdir -p "$HOME_C/.pi/agent" "$HOME_C/.steadfaste-fleet/scripts" \
+  "$HOME_C/.steadfaste-fleet/tools/loop-governance"
 for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/cortex-bus-mcp.py \
          scripts/cortex-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
-  printf '# mcp server\n' > "$HOME_C/.hermes-cortex/$f"
+  printf '# mcp server\n' > "$HOME_C/.steadfaste-fleet/$f"
 done
 BIN_C="$TD/bin_c"; mkdir -p "$BIN_C"
 for b in bash dirname grep cp mkdir cat sed head cut tr basename cmp; do
   ln -sf "$(command -v "$b")" "$BIN_C/$b" 2>/dev/null || true
 done
 printf '#!/bin/sh\nexit 1\n' > "$BIN_C/python3"; chmod +x "$BIN_C/python3"
-printf 'AGENT_NAME=tituspi\n' > "$HOME_C/.hermes-cortex/agent.env"
+printf 'AGENT_NAME=tituspi\n' > "$HOME_C/.steadfaste-fleet/agent.env"
 PJC="$HOME_C/.pi/agent/mcp.json"
 python3 - "$PJC" "$BIN_C/python3" <<'PY'
 import json, sys
@@ -157,12 +157,12 @@ check "C: existing mcp.json left byte-identical" "$(cmp -s "$PJC" "$PJC.before" 
 
 echo
 echo "D. a malformed mcp.json is refused in one sentence, never a traceback"
-HOME_D="$TD/home_d"; mkdir -p "$HOME_D/.pi/agent" "$HOME_D/.hermes-cortex/scripts" \
-  "$HOME_D/.hermes-cortex/tools/loop-governance"
-printf 'AGENT_NAME=tituspi\n' > "$HOME_D/.hermes-cortex/agent.env"
+HOME_D="$TD/home_d"; mkdir -p "$HOME_D/.pi/agent" "$HOME_D/.steadfaste-fleet/scripts" \
+  "$HOME_D/.steadfaste-fleet/tools/loop-governance"
+printf 'AGENT_NAME=tituspi\n' > "$HOME_D/.steadfaste-fleet/agent.env"
 for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/cortex-bus-mcp.py \
          scripts/cortex-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
-  printf '# mcp server\n' > "$HOME_D/.hermes-cortex/$f"
+  printf '# mcp server\n' > "$HOME_D/.steadfaste-fleet/$f"
 done
 PJD="$HOME_D/.pi/agent/mcp.json"
 # EVERY malformed SHAPE, not one fixture: an empty file, a truncated object and

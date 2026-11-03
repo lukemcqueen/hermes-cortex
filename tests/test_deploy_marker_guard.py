@@ -28,7 +28,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 UPDATE_SH = REPO / "ops/scripts/cortex-update.sh"
 AUDITOR_PY = REPO / "ops/scripts/manage/agent-governance-auditor.py"
-MARKER = Path.home() / ".hermes-cortex" / "state" / "deploy-in-progress"
+MARKER = Path.home() / ".steadfaste-fleet" / "state" / "deploy-in-progress"
 
 
 def _load_auditor():
@@ -146,7 +146,7 @@ def test_fresh_marker_defers_and_stale_marker_does_not():
     auditor = _load_auditor()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        marker = root / ".hermes-cortex" / "state" / "deploy-in-progress"
+        marker = root / ".steadfaste-fleet" / "state" / "deploy-in-progress"
         marker.parent.mkdir(parents=True)
         marker.write_text("2026-10-03T07:30:00Z\n")
         with mock.patch.object(Path, "home", lambda: root):

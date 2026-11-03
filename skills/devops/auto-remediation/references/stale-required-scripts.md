@@ -19,7 +19,7 @@ updated after a repo reorganization.
 
 ## Root Cause
 
-The hermes-cortex repo was reorganized: operational scripts moved from
+The steadfaste-fleet repo was reorganized: operational scripts moved from
 `src/scripts/` (deleted) → `ops/scripts/{health,manage}/`. The sensor's
 `required_scripts` list was never updated to source from the new paths.
 
@@ -35,12 +35,12 @@ Scripts affected in this deployment:
 
 ```bash
 # Locate via git
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git ls-files -- '*/cron-auto-remediate.sh'
 # → ops/scripts/health/cron-auto-remediate.sh
 
 # Copy from actual repo path
-cp ~/hermes-cortex/ops/scripts/health/cron-auto-remediate.sh ~/.hermes/scripts/
+cp ~/steadfaste-fleet/ops/scripts/health/cron-auto-remediate.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/cron-auto-remediate.sh
 # Repeat for each missing script
 ```

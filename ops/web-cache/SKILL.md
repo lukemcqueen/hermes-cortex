@@ -2,7 +2,7 @@
 name: web-cache
 description: "Local semantic web cache for AI agents — cache web_search and web_extract results locally with embeddings, reducing API costs and enabling offline operation."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos, windows]
 ---

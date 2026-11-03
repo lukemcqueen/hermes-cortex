@@ -6,7 +6,7 @@ A server can be *registered* and still expose nothing. Registrations are read at
 ## Check, in this order (read-only)
 
 ```bash
-<fleet python> ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py   # paths + interpreter per server
+<fleet python> ~/steadfaste-fleet/ops/scripts/manage/mcp_wiring.py   # paths + interpreter per server
 hermes mcp list                                                  # what THIS host registers
 hermes mcp test <name>                                           # starts it; does it connect?
 ```
@@ -19,9 +19,9 @@ not exist). Exit 0 clean, 1 broken entry, 3 = COULD NOT VERIFY.
 
 | What the check says | Fix |
 |---|---|
-| entry missing | `hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/<script>` |
-| a registered path does NOT exist | deploy it: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`, re-check |
-| the fleet venv cannot import `mcp` | `~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/fix-cortex-venv.py` |
+| entry missing | `hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
+| a registered path does NOT exist | deploy it: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`, re-check |
+| the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py` |
 | command is the Hermes venv or bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command …` (there is no `hermes mcp update`) |
 
 ## Re-registering against a different interpreter (the fleet-venv migration)
@@ -36,14 +36,14 @@ commands exit 0. So:
 ```bash
 cp -a ~/.hermes/config.yaml ~/.hermes/cache/scratch/config.yaml.bak-$(date +%Y%m%d_%H%M%S)
 for s in agent-bus loop-governance tasks executor; do
-  printf 'y\n' | hermes mcp add "$s" --command ~/.hermes-cortex/venv/bin/python3 --args "$DEPLOYED_PATH_FOR_$s"
+  printf 'y\n' | hermes mcp add "$s" --command ~/.steadfaste-fleet/venv/bin/python3 --args "$DEPLOYED_PATH_FOR_$s"
 done
 sed -n '/^mcp_servers:/,/^[a-z_]*:/p' ~/.hermes/config.yaml   # read the block back
-python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py      # then the audit, not the rc
+python3 ~/steadfaste-fleet/ops/scripts/manage/mcp_wiring.py      # then the audit, not the rc
 ```
 
-- **Keep the ARGS as the deployed script paths** (`~/.hermes-cortex/scripts/<name>.py`,
-  `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`): that is what the fleet's own
+- **Keep the ARGS as the deployed script paths** (`~/.steadfaste-fleet/scripts/<name>.py`,
+  `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py`): that is what the fleet's own
   installer registers (`ops/scripts/install/install-pi-mcp.sh`) and it keeps the deploy
   boundary — pointing a server at the repo working tree makes an uncommitted edit live.
   Change the `command` only.

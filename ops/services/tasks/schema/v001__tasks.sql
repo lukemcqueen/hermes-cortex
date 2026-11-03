@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS tasks.tasks (
     content            TEXT NOT NULL,
     created_by         TEXT NOT NULL,                -- provenance + de-facto tenant
     assignee           TEXT,                         -- metadata-only until transport
-    project            TEXT NOT NULL DEFAULT 'hermes-cortex',  -- TEXT, app-layer registry
+    project            TEXT NOT NULL DEFAULT 'steadfaste-fleet',  -- TEXT, app-layer registry
     repo               TEXT,                         -- label only, resolved once at creation
     target             TEXT,                         -- host/service name; validated in CLI
     scope              TEXT NOT NULL DEFAULT 'personal'
@@ -140,7 +140,7 @@ CREATE OR REPLACE FUNCTION tasks.task_upsert(
     p_content       TEXT DEFAULT NULL,
     p_created_by    TEXT DEFAULT NULL,
     p_assignee      TEXT DEFAULT NULL,
-    p_project       TEXT DEFAULT 'hermes-cortex',
+    p_project       TEXT DEFAULT 'steadfaste-fleet',
     p_repo          TEXT DEFAULT NULL,
     p_target        TEXT DEFAULT NULL,
     p_scope         TEXT DEFAULT 'personal',
@@ -165,7 +165,7 @@ DECLARE
     v_target_id UUID := COALESCE(p_id, gen_random_uuid());
     -- Non-nullable columns: coalesce defaults so a partial update (status-only)
     -- still proposes a valid row that passes RLS WITH CHECK and NOT NULL.
-    v_project TEXT := COALESCE(p_project, 'hermes-cortex');
+    v_project TEXT := COALESCE(p_project, 'steadfaste-fleet');
     v_scope   TEXT := COALESCE(p_scope, 'personal');
     v_status  TEXT := COALESCE(p_status, 'pending');
     v_priority INT := COALESCE(p_priority, 0);

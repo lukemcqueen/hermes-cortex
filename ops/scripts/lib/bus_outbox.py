@@ -5,7 +5,7 @@ When the bus is unreachable, `bus_send()` would return None and the
 message would be silently lost. This module makes bus delivery durable:
 
   enqueue(queue, message_body)
-      Write the message to ~/.hermes-cortex/bus-retry/ atomically.
+      Write the message to ~/.steadfaste-fleet/bus-retry/ atomically.
       Returns {"queued": true, "outbox_file": <path>} or raises.
 
   sweep(now=None)
@@ -66,7 +66,7 @@ def _resolved_bus_send(queue, body):
     return bus_send(queue, body)
 
 
-DEFAULT_RETRY_DIR = Path.home() / ".hermes-cortex" / "bus-retry"
+DEFAULT_RETRY_DIR = Path.home() / ".steadfaste-fleet" / "bus-retry"
 RETRY_DIR = Path(os.environ.get("CORTEX_BUS_RETRY_DIR", DEFAULT_RETRY_DIR))
 QUARANTINE_DIR = RETRY_DIR / "quarantine"
 LOCK_FILE = RETRY_DIR / ".sweep.lock"

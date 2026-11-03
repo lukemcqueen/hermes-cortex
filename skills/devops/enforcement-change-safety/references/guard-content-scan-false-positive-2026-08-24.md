@@ -77,7 +77,7 @@ assert not lg.contains_gateway_lifecycle_command_or_referenced_script("bash .../
 ## Verification checklist (all passed for d2de94d9)
 
 - [ ] `bash -n ops/scripts/cortex-update.sh`
-- [ ] Guard scan PASS on repo source AND deployed copy (`~/.hermes-cortex/scripts/`)
+- [ ] Guard scan PASS on repo source AND deployed copy (`~/.steadfaste-fleet/scripts/`)
 - [ ] Referenced-script scan PASS (`contains_gateway_lifecycle_command_or_referenced_script`)
 - [ ] Zero splice artifacts remain (grep `re""start`, `hermes""`, `gw_verb` etc.)
 - [ ] Runtime discovery works on a live host (units loop handles empty via `|| true`)

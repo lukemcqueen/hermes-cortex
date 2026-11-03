@@ -1,9 +1,9 @@
 {
   "name": "moses",
-  "description": "Orchestrator agent for Hermes Cortex — manages infrastructure, cron jobs, system health, agent inbox, and multi-agent orchestration across the fleet.",
+  "description": "Orchestrator agent for Steadfaste Fleet — manages infrastructure, cron jobs, system health, agent inbox, and multi-agent orchestration across the fleet.",
   "url": "https://your-domain.com:13004/bus/agent-card",
   "provider": {
-    "name": "Hermes Cortex",
+    "name": "Steadfaste Fleet",
     "version": "1.0"
   },
   "capabilities": {

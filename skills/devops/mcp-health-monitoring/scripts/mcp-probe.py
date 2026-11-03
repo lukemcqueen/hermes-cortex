@@ -2,8 +2,8 @@
 """mcp-probe.py — import + list_tools health probe for an MCP server.
 
 Usage:  <server-python> mcp-probe.py <server-path>
-        e.g. ~/.hermes-cortex/venv/bin/python3 mcp-probe.py \
-             ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+        e.g. ~/.steadfaste-fleet/venv/bin/python3 mcp-probe.py \
+             ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py
 
 Prints a JSON array of tool names on success (exit 0); on import crash or
 handler failure prints the traceback to stderr and exits non-zero.

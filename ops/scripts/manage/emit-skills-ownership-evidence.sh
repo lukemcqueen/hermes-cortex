@@ -26,7 +26,7 @@ echo "repo rev : $(git -C "${HERE}/../.." rev-parse --short HEAD 2>/dev/null || 
 echo
 echo "-- 1. the three paths --"
 echo "expected: cortex REAL, the other two POINTERS to it"
-for p in "${HOME}/.hermes-cortex/skills" "${HOME}/.hermes/skills" "${HOME}/.agents/skills"; do
+for p in "${HOME}/.steadfaste-fleet/skills" "${HOME}/.hermes/skills" "${HOME}/.agents/skills"; do
   if [ -e "$p" ] || [ -L "$p" ]; then
     printf '%s\n' "$(ls -ld "$p" 2>&1)" | red
   else
@@ -56,7 +56,7 @@ echo
 echo "-- 5. a WRITE through the Hermes pointer lands in the cortex tree --"
 PROBE="${HOME}/.hermes/skills/.ownership-probe.$$"
 if printf 'probe\n' > "$PROBE" 2>/dev/null; then
-  if [ -f "${HOME}/.hermes-cortex/skills/.ownership-probe.$$" ]; then
+  if [ -f "${HOME}/.steadfaste-fleet/skills/.ownership-probe.$$" ]; then
     echo "PASS: the write is visible in the cortex tree (same inode via the pointer)"
   else
     echo "FAIL: the write through the Hermes path did NOT reach the cortex tree"
@@ -69,7 +69,7 @@ fi
 echo
 echo "-- 6. skill count per path, and READER SENSITIVITY (why the mode matters) --"
 echo "   plain 'find' does NOT traverse a symlinked root; python rglob/os.walk DOES."
-for p in "${HOME}/.hermes-cortex/skills" "${HOME}/.hermes/skills" "${HOME}/.agents/skills"; do
+for p in "${HOME}/.steadfaste-fleet/skills" "${HOME}/.hermes/skills" "${HOME}/.agents/skills"; do
   plain="$(find "$p" -name SKILL.md -type f 2>/dev/null | wc -l)"
   followed="$(find -L "$p" -name SKILL.md -type f 2>/dev/null | wc -l)"
   python_sees="$("$PY" - "$p" <<'EOF' 2>/dev/null

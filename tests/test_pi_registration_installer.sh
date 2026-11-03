@@ -53,15 +53,15 @@ trap 'rm -rf "$TD"' EXIT
 export HOME="$TD/home"
 # The published tree is what Pi is pointed at; the installer refuses to run
 # without it, so a fixture that omits it exercises nothing but the guard.
-mkdir -p "$HOME/.pi/agent" "$HOME/.hermes-cortex/harnesses/pi/extensions" "$HOME/.agents/skills/workflow" "$HOME/.agents/skills/software-development"
+mkdir -p "$HOME/.pi/agent" "$HOME/.steadfaste-fleet/harnesses/pi/extensions" "$HOME/.agents/skills/workflow" "$HOME/.agents/skills/software-development"
 
 # A real deployed extension + a skills tree (only names matter here).
 # BOTH extensions: the installer requires cortex-context.ts AND
 # cortex-governance.ts (registering only one looks wired while leaving writes
 # open, so it refuses) — a fixture with one is a broken fixture, and it made
 # this suite fail for a reason unrelated to what it tests.
-touch "$HOME/.hermes-cortex/harnesses/pi/extensions/cortex-context.ts" \
-      "$HOME/.hermes-cortex/harnesses/pi/extensions/cortex-governance.ts"
+touch "$HOME/.steadfaste-fleet/harnesses/pi/extensions/cortex-context.ts" \
+      "$HOME/.steadfaste-fleet/harnesses/pi/extensions/cortex-governance.ts"
 for s in task-start agent-flow reflexion-check change-checklist survey-before-action agent-contract test-driven-development; do
   if [[ "$s" == "task-start" ]]; then d="$HOME/.agents/skills/workflow/$s"; else d="$HOME/.agents/skills/software-development/$s"; fi
   mkdir -p "$d"; printf -- '---\nname: %s\ndescription: test\n---\n' "$s" > "$d/SKILL.md"
@@ -72,8 +72,8 @@ done
 # published tree IS the registration. It is written here so a future change
 # that starts requiring it again is caught by the "no longer a prerequisite"
 # check at the end rather than silently.
-mkdir -p "$HOME/.hermes-cortex"
-cat > "$HOME/.hermes-cortex/skills.yaml" <<'EOF'
+mkdir -p "$HOME/.steadfaste-fleet"
+cat > "$HOME/.steadfaste-fleet/skills.yaml" <<'EOF'
 always:
   - name: task-start
     why: first
@@ -325,11 +325,11 @@ mv "$HOME/.agents/skills.bak" "$HOME/.agents/skills"
 # library; the published tree is the registration). Assert the installer works
 # with no manifest at all, so a change that quietly reintroduces the dependency
 # is caught here instead of on a host that has none.
-mv "$HOME/.hermes-cortex/skills.yaml" "$HOME/.hermes-cortex/skills.yaml.bak"
+mv "$HOME/.steadfaste-fleet/skills.yaml" "$HOME/.steadfaste-fleet/skills.yaml.bak"
 set +e
 OUT_NOMAN="$(bash "$SCRIPT" 2>&1)"; RC_NOMAN=$?
 set -e
-mv "$HOME/.hermes-cortex/skills.yaml.bak" "$HOME/.hermes-cortex/skills.yaml"
+mv "$HOME/.steadfaste-fleet/skills.yaml.bak" "$HOME/.steadfaste-fleet/skills.yaml"
 check "no manifest → still installs (manifest is no longer a prerequisite)" \
     "$([ "$RC_NOMAN" -eq 0 ] && echo 1 || echo 0)"
 

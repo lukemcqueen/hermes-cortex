@@ -134,7 +134,7 @@ artifact so the comparison stays re-runnable after your own commit lands.
 
 **Attribute a failing item by NODE ID, not by the printed line.** A runner reports paths relative to
 its own rootdir, so the same failure reads differently from a worktree and from the repo
-(`base-wt/tests/x.py::test_y` vs `../hermes-cortex/tests/x.py::test_y`). Diffing the whole `FAILED`
+(`base-wt/tests/x.py::test_y` vs `../steadfaste-fleet/tests/x.py::test_y`). Diffing the whole `FAILED`
 line therefore answers DIFFERS for two identical failures and throws away the pre-existence verdict
 you just earned. Normalise both sides to the test's own ID (the `::test_name` suffix) before
 diffing, print the shared IDs in the artifact, and pair that with an outcome classification
@@ -249,7 +249,7 @@ transcript that quotes `$HOME` is more portable than one quoting a real home pat
 
 An MCP close/re-review can exceed the client's call timeout while the SERVER finishes the work. Do
 not conclude failure and do not re-run the review: check the cycle's stored note and the receipt file
-(`~/.hermes-cortex/state/.reviewed-<slug>-<tip>.json`). If the note and receipt are there, call
+(`~/.steadfaste-fleet/state/.reviewed-<slug>-<tip>.json`). If the note and receipt are there, call
 `end_change` again — it reports the frozen verdict if the re-review did not land, and closes
 cleanly if it did. Re-running the re-review instead re-rolls a verdict the guard exists to protect.
 

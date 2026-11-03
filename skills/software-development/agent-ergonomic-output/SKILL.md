@@ -38,7 +38,7 @@ one. Turns = LLM calls = the cost line.
 
 Full detail + examples: `references/axi-ten-principles.md`.
 
-## Hard Rules in Hermes Cortex
+## Hard Rules in Steadfaste Fleet
 
 1. **Protocol boundary:** bus wire format (PGMQ JSON) and MCP transport stay
    JSON — TOON is an output-boundary format ONLY, never a transport. Never

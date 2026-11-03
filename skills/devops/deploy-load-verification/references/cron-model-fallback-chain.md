@@ -61,15 +61,15 @@ pins are provisional until they survive a cortex-update.**
 
 | Knob | File | Who wins |
 |---|---|---|
-| Cron primary model | `ops/install/cron-manifest.yaml` (per-cron) vs `~/hermes-cortex/.env` `LLM_CRON_MODEL/PROVIDER` | manifest > env |
+| Cron primary model | `ops/install/cron-manifest.yaml` (per-cron) vs `~/steadfaste-fleet/.env` `LLM_CRON_MODEL/PROVIDER` | manifest > env |
 | Live job pin | `~/.hermes/cron/jobs.json` via `hermes cron edit --model --provider` | reverted by manifest on next deploy |
 | Fallback chain | `~/.hermes/config.yaml` `fallback_providers` | operator-owned; set via `hermes config set fallback_providers '<json>'` |
 | API keys | `~/.hermes/.env` (`OPENCODE_ZEN_API_KEY`) | secrets only; models/chain go in HC .env |
 
-Env-file trap: `~/hermes-cortex/.env` (repo root, gitignored, real config) is
-NOT the same file as `~/hermes-cortex/.env` — on Esther the latter is a
+Env-file trap: `~/steadfaste-fleet/.env` (repo root, gitignored, real config) is
+NOT the same file as `~/steadfaste-fleet/.env` — on Esther the latter is a
 SYMLINK to `~/langfuse/.env`. `install-crons.sh` sources
-`${HOME}/hermes-cortex/.env` (repo root). Verify with `ls -la` before
+`${HOME}/steadfaste-fleet/.env` (repo root). Verify with `ls -la` before
 editing; a model change written to the symlink target silently does nothing.
 
 ## Non-interactive paths
@@ -113,7 +113,7 @@ EOF
 
 ## Fleet propagation gap (answer to "will all agents update?")
 
-- Repo files (manifest, docs) reach all agents via `agent-hermes-cortex-sync`
+- Repo files (manifest, docs) reach all agents via `agent-steadfaste-fleet-sync`
   (daily pull) + `cortex-update.sh` deploy → their crons DO get repinned on
   next install-crons run (manifest wins).
 - BUT config.yaml `fallback_providers` is per-host **operator-owned** — it is

@@ -2,7 +2,7 @@
 name: hermes-backup
 description: "Use when performing a full-system backup of a Hermes Agent server — survey, clean up caches, checkpoint databases, bundle repos and configs, compress, and write a manifest. Pairs with hermes-recovery for the restore side."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -37,7 +37,7 @@ du -sh ~/* ~/.[!.]* 2>/dev/null | sort -rh | head -30
 du -sh ~/.hermes/
 ls -la ~/.hermes/state.db ~/.hermes/kanban.db ~/.hermes/web-cache/cache.db
 ls ~/.hermes/*.json ~/.hermes/*.yaml 2>/dev/null
-for repo in ~/hermes-cortex ~/.hermes/hermes-agent; do
+for repo in ~/steadfaste-fleet ~/.hermes/hermes-agent; do
   if [ -d "$repo" ]; then
     git -C $repo log --oneline -1 2>/dev/null
     git -C $repo gc --auto 2>/dev/null
@@ -80,7 +80,7 @@ rm -f ~/.zcompdump*
 - `~/.legacy-brain/` — knowledge graph database
 - `~/brain/`, `~/.brain/` — knowledge sources
 - `~/langfuse/` — Langfuse stack config
-- `~/hermes-cortex*` — git repos
+- `~/steadfaste-fleet*` — git repos
 
 **Skip from backup (re-downloadable):**
 - Ollama models (~262 MB for nomic-embed-text) — `ollama pull` restores
@@ -114,8 +114,8 @@ mkdir -p ~/backups/$BACKUP_DATE/{databases,configs,brain,langfuse,docker-images,
 Use `git bundle` for portable full-repo snapshots (all branches, all tags):
 
 ```bash
-cd ~/hermes-cortex && git bundle create ~/backups/$BACKUP_DATE/repos/hermes-cortex-public.bundle --all
-# ~/hermes-cortex-private no longer a git repo — backup via cp -r ~/hermes-cortex-private ~/backups/$BACKUP_DATE/private-data/
+cd ~/steadfaste-fleet && git bundle create ~/backups/$BACKUP_DATE/repos/steadfaste-fleet-public.bundle --all
+# ~/steadfaste-fleet-private no longer a git repo — backup via cp -r ~/steadfaste-fleet-private ~/backups/$BACKUP_DATE/private-data/
 cd ~/.hermes/hermes-agent && git bundle create ~/backups/$BACKUP_DATE/repos/hermes-agent.bundle --all
 ```
 

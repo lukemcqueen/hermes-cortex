@@ -55,7 +55,7 @@ This is faster than reading the entire file when you know what to look for.
 Check if a specific config key exists across all env/config files:
 
 ```bash
-grep -E 'KEY_NAME' ~/.hermes/ ~/.hermes-cortex/ ~/hermes-cortex/ -r 2>/dev/null
+grep -E 'KEY_NAME' ~/.hermes/ ~/.steadfaste-fleet/ ~/steadfaste-fleet/ -r 2>/dev/null
 ```
 
 This works for `CORTEX_INBOX_URL`, `HERMES_LANGFUSE_PUBLIC_KEY`, etc.

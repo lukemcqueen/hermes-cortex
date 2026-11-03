@@ -22,7 +22,7 @@ The `CORTEX_INBOX_URL` environment variable is empty or unset. Scripts that cons
 
 ```bash
 echo "$CORTEX_INBOX_URL"
-grep CORTEX_INBOX_URL ~/.hermes/ ~/.hermes-cortex/ -r 2>/dev/null
+grep CORTEX_INBOX_URL ~/.hermes/ ~/.steadfaste-fleet/ -r 2>/dev/null
 # If empty → not configured
 ```
 
@@ -38,7 +38,7 @@ This is a cross-agent coordination value — Moses controls the inbox server, an
 
 ## Resolution (manual — no auto-fix)
 
-Add to `~/.hermes/hermes-cortex.env` or export in the agent's shell profile:
+Add to `~/.hermes/steadfaste-fleet.env` or export in the agent's shell profile:
 
 ```bash
 export CORTEX_INBOX_URL="https://realgospelmessage.org:13004"

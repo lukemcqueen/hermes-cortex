@@ -5,14 +5,14 @@
 -- ON CONFLICT DO UPDATE clause reads COALESCE(EXCLUDED.col, existing.col),
 -- but EXCLUDED.col is NEVER NULL because the INSERT branch coalesces unset
 -- params to defaults (v_source→'manual', v_scope→'personal', v_project→
--- 'hermes-cortex', v_priority→0, v_created_by→current profile). Therefore
+-- 'steadfaste-fleet', v_priority→0, v_created_by→current profile). Therefore
 -- EVERY status-only update (e.g. `task-db.py update <id> --status
 -- in_progress`) silently clobbered:
 --     source   inbox  → manual      (breaks S4 bus→task correlation lookup +
 --                                    untrusted-inbox pending marking)
 --     scope    fleet  → personal    (breaks fleet-task visibility/writes)
 --     priority 3      → 0
---     project  client-x → hermes-cortex
+--     project  client-x → steadfaste-fleet
 --     created_by owner → updater    (ownership theft on cross-role updates)
 --
 -- FIX: the DO UPDATE branch must coalesce against the FUNCTION PARAMETER
@@ -37,7 +37,7 @@ CREATE OR REPLACE FUNCTION tasks.task_upsert(
     p_content        TEXT DEFAULT NULL,
     p_created_by     TEXT DEFAULT NULL,
     p_assignee       TEXT DEFAULT NULL,
-    p_project        TEXT DEFAULT 'hermes-cortex',
+    p_project        TEXT DEFAULT 'steadfaste-fleet',
     p_repo           TEXT DEFAULT NULL,
     p_target         TEXT DEFAULT NULL,
     p_scope          TEXT DEFAULT 'personal',
@@ -67,7 +67,7 @@ DECLARE
     -- Non-nullable columns: coalesce defaults so a partial update
     -- (status-only) still proposes a valid row that passes RLS WITH CHECK
     -- and NOT NULL.
-    v_project TEXT := COALESCE(p_project, 'hermes-cortex');
+    v_project TEXT := COALESCE(p_project, 'steadfaste-fleet');
     v_scope   TEXT := COALESCE(p_scope, 'personal');
     v_status  TEXT := COALESCE(p_status, 'pending');
     v_priority INT := COALESCE(p_priority, 0);

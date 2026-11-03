@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""AGENTS.md must not name the infra directory with a bare (un-anchored) `.hermes-cortex`.
+"""AGENTS.md must not name the infra directory with a bare (un-anchored) `.steadfaste-fleet`.
 
 TWO DIFFERENT DIRECTORIES SHARE THIS NAME:
 
-  ~/.hermes-cortex/    The RUNTIME infra dir. Deployed by cortex-update.sh —
+  ~/.steadfaste-fleet/    The RUNTIME infra dir. Deployed by cortex-update.sh —
                        scripts/, state/, sessions/, memory/, hooks/, and the
                        skills.yaml the governance enforcer reads. Always written
                        with the `~/` prefix.
 
-  ./.hermes-cortex/    A REPO-LOCAL overlay inside a CONSUMER project, created by
+  ./.steadfaste-fleet/    A REPO-LOCAL overlay inside a CONSUMER project, created by
                        seed-project.sh. A different directory with the same name;
                        documented in docs/skills-manifest-reference.md.
 
 Why this is pinned: AGENTS.md is the always-loaded orientation doc (it is also
-copied to ~/.hermes/AGENTS.md), so a bare `.hermes-cortex` there reads as "the
+copied to ~/.hermes/AGENTS.md), so a bare `.steadfaste-fleet` there reads as "the
 Hermes agent infra directory" and sends the agent looking for the deploy home
 inside the project. Operator report, 2026-10-30 (source: a seeded project
 AGENTS.md on a dev host; NOT re-measured here): an agent read that file's
-convention section — which listed `.hermes-cortex/sessions/`,
-`.hermes-cortex/memory/` and `.hermes-cortex/skills.yaml` — and reported it as
+convention section — which listed `.steadfaste-fleet/sessions/`,
+`.steadfaste-fleet/memory/` and `.steadfaste-fleet/skills.yaml` — and reported it as
 "the Hermes agent infra directory". Verified on this host instead: all three of
-those live in ~/.hermes-cortex/ (evidence:
-docs/evidence/hermes-cortex-path-anchor-2026-10-30.txt; the overlay itself is
+those live in ~/.steadfaste-fleet/ (evidence:
+docs/evidence/steadfaste-fleet-path-anchor-2026-10-30.txt; the overlay itself is
 documented at docs/skills-manifest-reference.md).
 
 Subject of this test: `AGENTS.md` at the repo root, provided by commit 43f001a6
 in this range. The test needs no other file of the range to run.
 
-The rule: every `.hermes-cortex` occurrence in AGENTS.md is home-anchored
-(`~/.hermes-cortex`, `$HOME/.hermes-cortex` or `${HOME}/.hermes-cortex`).
+The rule: every `.steadfaste-fleet` occurrence in AGENTS.md is home-anchored
+(`~/.steadfaste-fleet`, `$HOME/.steadfaste-fleet` or `${HOME}/.steadfaste-fleet`).
 The repo-local overlay is documented in docs/, where it can be qualified in
 prose; it does not belong in AGENTS.md unqualified.
 
@@ -40,11 +40,11 @@ import re
 import pytest
 
 ANCHORS = ("~/", "$HOME/", "${HOME}/")
-TOKEN = ".hermes-cortex"
+TOKEN = ".steadfaste-fleet"
 
 
 def bare_line_numbers(text):
-    """Line numbers where `.hermes-cortex` appears without a home anchor."""
+    """Line numbers where `.steadfaste-fleet` appears without a home anchor."""
     hits = []
     for m in re.finditer(re.escape(TOKEN), text):
         i = m.start()
@@ -54,7 +54,7 @@ def bare_line_numbers(text):
 
 
 def anchored_line_numbers(text):
-    """Line numbers where `.hermes-cortex` IS home-anchored."""
+    """Line numbers where `.steadfaste-fleet` IS home-anchored."""
     hits = []
     for m in re.finditer(re.escape(TOKEN), text):
         i = m.start()
@@ -70,8 +70,8 @@ def test_repo_agents_md_has_no_bare_hermes_cortex():
     text = (repo_root / "AGENTS.md").read_text()
     bare = bare_line_numbers(text)
     assert bare == [], (
-        f"AGENTS.md line(s) {bare} name `.hermes-cortex` without a home anchor. "
-        f"Write `~/.hermes-cortex/...` for the runtime infra dir; a repo-local "
+        f"AGENTS.md line(s) {bare} name `.steadfaste-fleet` without a home anchor. "
+        f"Write `~/.steadfaste-fleet/...` for the runtime infra dir; a repo-local "
         f"overlay belongs in docs/ with an explicit qualifier."
     )
 
@@ -83,7 +83,7 @@ def test_repo_agents_md_still_names_the_runtime_dir():
     repo_root = Path(__file__).resolve().parents[1]
     text = (repo_root / "AGENTS.md").read_text()
     assert anchored_line_numbers(text), (
-        "AGENTS.md no longer names ~/.hermes-cortex/ at all — the agent has no "
+        "AGENTS.md no longer names ~/.steadfaste-fleet/ at all — the agent has no "
         "pointer to the deployed infra dir. Keep the home-anchored reference."
     )
 
@@ -99,6 +99,6 @@ def test_deployed_agents_md_copy_when_present_is_also_clean():
     text = home_agents.read_text()
     bare = bare_line_numbers(text)
     assert bare == [], (
-        f"deployed ~/.hermes/AGENTS.md line(s) {bare} name `.hermes-cortex` "
-        f"without a home anchor: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md"
+        f"deployed ~/.hermes/AGENTS.md line(s) {bare} name `.steadfaste-fleet` "
+        f"without a home anchor: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md"
     )

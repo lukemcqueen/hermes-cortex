@@ -29,7 +29,7 @@ CNT="$(printf '%s\n' "$OUT" | sed -n 's/^Total skills: *//p' | head -1)"
 if [[ "${CNT:-0}" -gt 0 ]]; then ok "Total skills: $CNT"; else bad "Total skills not > 0 (got '${CNT:-<none>}')"; fi
 
 echo "== 2b. SYMLINKED skills root still enumerates (deployed shape) =="
-# Production deploys ~/.hermes/skills as a SYMLINK to ~/.hermes-cortex/skills.
+# Production deploys ~/.hermes/skills as a SYMLINK to ~/.steadfaste-fleet/skills.
 # A bare `find "$ROOT" -type f` does NOT traverse a symlinked root, so this
 # case must be exercised explicitly — test 2 above builds a REAL dir and was
 # green while production reported 0 skills.

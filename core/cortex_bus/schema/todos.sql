@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Hermes Cortex Agent Bus — Cross-Session Todo Persistence
+-- Steadfaste Fleet Agent Bus — Cross-Session Todo Persistence
 --
 -- Durable per-agent todo items that survive session boundaries.
 -- All agents share the same Postgres — fleet-visible by default.

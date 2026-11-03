@@ -67,11 +67,11 @@ def test_golden_sources_pinned():
 
 
 def test_golden_expected_paths_exist_in_repo():
-    """Every expected path must exist (hermes-cortex paths repo-relative)."""
+    """Every expected path must exist (steadfaste-fleet paths repo-relative)."""
     golden = parity.load_golden(GOLDEN)
     missing = []
     for q in golden["queries"]:
-        if q["source"] != "hermes-cortex":
+        if q["source"] != "steadfaste-fleet":
             continue
         for p in q["expected_top3"]:
             if not (REPO_ROOT / p).exists():

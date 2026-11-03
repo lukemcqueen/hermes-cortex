@@ -42,7 +42,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 TASK_DB_REL = "ops/scripts/manage/task-db.py"
 TASK_MCP_REL = "mcp-servers/task-mcp.py"
-DEPLOY = Path.home() / ".hermes-cortex"
+DEPLOY = Path.home() / ".steadfaste-fleet"
 SCRATCH_DB = os.environ.get("TASK_REPO_SCOPE_TEST_DB", "tasks_repo_scope_test")
 READER_ROLE = "mycortex_reader"
 CONTAINER = "mycortex-postgres"

@@ -11,8 +11,8 @@ Dedup (2026-08-20): each section fires only when its CONTENT changes —
 the same backlog or debt across ticks stays silent, so an unchanged
 reminder posts ONCE, not every 10 minutes.
 
-State tracked in: ~/.hermes-cortex/state/no-verify-audit-state.json
-Debt tracked in:  ~/.hermes-cortex/state/bypass-debt.json
+State tracked in: ~/.steadfaste-fleet/state/no-verify-audit-state.json
+Debt tracked in:  ~/.steadfaste-fleet/state/bypass-debt.json
 Schedule: every 10 minutes (2026-08-05 — was 60m; bounded escape hatch).
 """
 
@@ -22,10 +22,10 @@ import sqlite3
 import sys
 from datetime import datetime, timezone
 
-LOG_FILE = os.path.expanduser("~/.hermes-cortex/state/no-verify-log.json")
-STATE_FILE = os.path.expanduser("~/.hermes-cortex/state/no-verify-audit-state.json")
-DEBT_FILE = os.path.expanduser("~/.hermes-cortex/state/bypass-debt.json")
-LOOP_DB = os.path.expanduser("~/.hermes-cortex/data/loop-governance.db")
+LOG_FILE = os.path.expanduser("~/.steadfaste-fleet/state/no-verify-log.json")
+STATE_FILE = os.path.expanduser("~/.steadfaste-fleet/state/no-verify-audit-state.json")
+DEBT_FILE = os.path.expanduser("~/.steadfaste-fleet/state/bypass-debt.json")
+LOOP_DB = os.path.expanduser("~/.steadfaste-fleet/data/loop-governance.db")
 
 # Scoring backlog: alert when >= 2 PENDING cycles and any is older than this
 PENDING_MIN_AGE_MIN = 30

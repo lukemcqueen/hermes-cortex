@@ -11,7 +11,7 @@
 #    3a. curl/wget -u "user:12+alnum-chars" (looks like a live
 #        password, not a placeholder like your-password)
 #    7.  Real email addresses in the PUBLIC repo (default
-#        $HOME/hermes-cortex; override with PII_PUBLIC_REPO for
+#        $HOME/steadfaste-fleet; override with PII_PUBLIC_REPO for
 #        tests). Placeholder domains (example.com, client-domain.com,
 #        *.test, *.local, public services) pass.
 #  WARNS on:
@@ -52,9 +52,9 @@ FOUND_ISSUES=0
 BLOCKING_ISSUES=0
 DETECTION_FILE=$(mktemp)
 
-# Public-repo scope: real emails BLOCK only here (default = hermes-cortex).
+# Public-repo scope: real emails BLOCK only here (default = steadfaste-fleet).
 # Override PII_PUBLIC_REPO for testing the block path in a scratch repo.
-PII_PUBLIC_REPO="${PII_PUBLIC_REPO:-$HOME/hermes-cortex}"
+PII_PUBLIC_REPO="${PII_PUBLIC_REPO:-$HOME/steadfaste-fleet}"
 IS_PUBLIC_REPO=0
 
 # Only run in a git repo

@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Hermes Cortex Agent Bus — Queue Schema
+-- Steadfaste Fleet Agent Bus — Queue Schema
 --
 -- Lightweight message queue on Postgres using SKIP LOCKED.
 -- No external extensions required.

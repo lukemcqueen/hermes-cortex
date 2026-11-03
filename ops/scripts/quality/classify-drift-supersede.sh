@@ -17,7 +17,7 @@
 #
 # Usage: bash ops/scripts/quality/classify-drift-supersede.sh [repo] [deployed]
 set -uo pipefail
-REPO="${1:-$HOME/hermes-cortex}"
+REPO="${1:-$HOME/steadfaste-fleet}"
 DEPLOYED="${2:-$HOME/.hermes/skills}"
 
 FILES=(

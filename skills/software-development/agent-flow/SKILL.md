@@ -3,7 +3,7 @@ name: agent-flow
 description: "Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the correct tooling, output format, and checklist."
 version: 1.2.0
 category: software-development
-source: hermes-cortex
+source: steadfaste-fleet
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -19,10 +19,10 @@ metadata:
 
 ## Skill loading (before routing)
 
-1. Read the deployed skills manifest at `~/.hermes-cortex/skills.yaml` (or `skills.yaml` in cwd).
+1. Read the deployed skills manifest at `~/.steadfaste-fleet/skills.yaml` (or `skills.yaml` in cwd).
 2. If present: load always skills via skill_view(name), classify the task, then load matching on_task skills.
 3. Always run `skills_list(category=<domain>)` to discover skills not in the manifest — a skill you never load can never save you. Load anything relevant before touching code.
-4. No manifest → scan a seeded project's repo-local `.hermes-cortex/skills/` for embedded SKILL.md files.
+4. No manifest → scan a seeded project's repo-local `.steadfaste-fleet/skills/` for embedded SKILL.md files.
 
 ## How to route
 

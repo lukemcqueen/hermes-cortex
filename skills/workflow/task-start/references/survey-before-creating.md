@@ -25,7 +25,7 @@ Run `cronjob(action='list')` and read the full output. Note every cron that cove
 
 ### Step 3 — Search repo for existing scripts
 
-Run `search_files()` with **3+ different terms** for the script name and purpose. Check `ops/scripts/` for existing scripts that do this or could be extended. Also check `~/.hermes-cortex/scripts/` for deployed copies that might differ from repo source.
+Run `search_files()` with **3+ different terms** for the script name and purpose. Check `ops/scripts/` for existing scripts that do this or could be extended. Also check `~/.steadfaste-fleet/scripts/` for deployed copies that might differ from repo source.
 
 ### Step 4 — Check if existing can absorb the new capability
 

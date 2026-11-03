@@ -1,7 +1,7 @@
 """
 Postgres-native message queue client.
 
-Connects to the Hermes Cortex Postgres instance and provides
+Connects to the Steadfaste Fleet Postgres instance and provides
 send/read/archive operations on bus queues.
 """
 
@@ -32,7 +32,7 @@ def _load_config() -> dict:
 
     # Fall back to .env
     if not config["user"]:
-        env_file = Path.home() / "hermes-cortex" / ".env"
+        env_file = Path.home() / "steadfaste-fleet" / ".env"
         if env_file.exists():
             for line in env_file.read_text().splitlines():
                 line = line.strip()
@@ -90,7 +90,7 @@ def _connect():
 
 
 class BusClient:
-    """Synchronous client for the Hermes Cortex Agent Bus."""
+    """Synchronous client for the Steadfaste Fleet Agent Bus."""
 
     def __init__(self, conn=None):
         self._conn = conn

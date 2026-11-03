@@ -1263,7 +1263,7 @@ def build_gateway(config_path: Path) -> Gateway:
     # The poll offset is persisted NEXT TO the deploy and keyed by token_ref, so two
     # gateways on one host never share a resume point (and a deploy never clobbers it).
     _state_dir = Path(os.environ.get(
-        "CORTEX_DEPLOY_HOME", str(Path.home() / ".hermes-cortex"))) / "state"
+        "CORTEX_DEPLOY_HOME", str(Path.home() / ".steadfaste-fleet"))) / "state"
     transport = TelegramAdapter(
         token=token, initial_offset=bot.initial_offset, home_channel=home,
         state_path=_state_dir / f"gateway-offset-{bot.token_ref}.json")
@@ -1300,7 +1300,7 @@ def build_gateway(config_path: Path) -> Gateway:
     pairing = None
     from . import pairing as _pairing
     if _pairing.enabled():
-        store_path = Path(os.environ.get("CORTEX_DEPLOY_HOME", str(Path.home() / ".hermes-cortex"))) / "paired_chats.json"
+        store_path = Path(os.environ.get("CORTEX_DEPLOY_HOME", str(Path.home() / ".steadfaste-fleet"))) / "paired_chats.json"
         pairing = _pairing.PairingStore(store_path)
         print(f"🔐 DM pairing enabled ({len(pairing.approved)} approved chat(s))",
               file=sys.stderr)

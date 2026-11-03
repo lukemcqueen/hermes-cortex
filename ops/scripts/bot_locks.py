@@ -32,10 +32,10 @@ def _connect():
     import importlib.util
     from pathlib import Path
     # The bus core lives at core/cortex_bus/queue.py (repo) or
-    # ~/.hermes-cortex/queue.py (deployed). Try the deployed first, then
+    # ~/.steadfaste-fleet/queue.py (deployed). Try the deployed first, then
     # the repo relative path.
     candidates = [
-        Path.home() / ".hermes-cortex" / "queue.py",
+        Path.home() / ".steadfaste-fleet" / "queue.py",
         Path(__file__).resolve().parent.parent.parent
         / "core" / "cortex_bus" / "queue.py",
     ]

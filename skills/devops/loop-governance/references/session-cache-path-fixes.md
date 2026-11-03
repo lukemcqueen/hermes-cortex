@@ -1,10 +1,10 @@
 # Session Cache Path Fixes
 
-> Applied by Esther, 2026-07-13. Three divergences found between the hardcoded paths in `session_cache.py` and the actual deployment layout of the Hermes Cortex fleet.
+> Applied by Esther, 2026-07-13. Three divergences found between the hardcoded paths in `session_cache.py` and the actual deployment layout of the Steadfaste Fleet fleet.
 
 ## Divergence 1: Session storage format
 
-**Script expected:** `~/.hermes-cortex/sessions/*.md` (individual markdown files)
+**Script expected:** `~/.steadfaste-fleet/sessions/*.md` (individual markdown files)
 
 **Actual:** `~/.hermes/sessions/sessions.json` (single JSON blob)
 
@@ -26,13 +26,13 @@ if SESSION_JSON.exists():
 
 ## Divergence 2: Skills directory
 
-**Script expected:** `~/.hermes-cortex/skills/software-development/`
+**Script expected:** `~/.steadfaste-fleet/skills/software-development/`
 
 **Actual:** `~/.hermes/skills/` (flat directory with 60+ skill subdirectories)
 
 **Fix:** Changed the constant:
 ```python
-SKILLS_DIR = HOME / ".hermes" / "skills"  # not / ".hermes-cortex" / "skills" / "software-development"
+SKILLS_DIR = HOME / ".hermes" / "skills"  # not / ".steadfaste-fleet" / "skills" / "software-development"
 ```
 
 ## Divergence 3: DB schema columns

@@ -28,7 +28,7 @@ WATCHDOG = Path(_env) if _env else (
     REPO / "ops" / "scripts" / "health" / "agent-pending-cycle-watchdog.py"
 )
 # The watchdog imports state_tracker + hermes_tz from the scripts dir
-SCRIPTS_DIR = Path.home() / ".hermes-cortex" / "scripts"
+SCRIPTS_DIR = Path.home() / ".steadfaste-fleet" / "scripts"
 
 SCHEMA = """
 CREATE TABLE loop_cycles (
@@ -68,7 +68,7 @@ def _run(db: str, state_file: str) -> tuple[int, str]:
     # Point the StateTracker at an isolated state dir so runs are independent
     env["CORTEX_HOME"] = os.path.dirname(state_file)
     # StateTracker resolves ~ via $HOME (Path.home()) — isolate it too, or
-    # the test writes the REAL ~/.hermes-cortex/state/<name>.state and
+    # the test writes the REAL ~/.steadfaste-fleet/state/<name>.state and
     # dedup scenarios share fingerprints with live runs (2026-08-22).
     os.makedirs(os.path.dirname(state_file), exist_ok=True)
     env["HOME"] = os.path.dirname(state_file)

@@ -40,11 +40,11 @@ except ImportError:
 # ── Configuration ────────────────────────────────────────────────
 
 HOME = Path.home()
-CORTEX_HOME = HOME / ".hermes-cortex"
+CORTEX_HOME = HOME / ".steadfaste-fleet"
 EVALS_DIR = CORTEX_HOME / "evals"
 TRACES_DIR = EVALS_DIR / "traces"
 REPORTS_DIR = EVALS_DIR / "reports"
-EVALS_REPO_DIR = HOME / "hermes-cortex" / "evals"
+EVALS_REPO_DIR = HOME / "steadfaste-fleet" / "evals"
 SCRIPTS_DIR = CORTEX_HOME / "scripts"
 SKILLS_MANIFEST = CORTEX_HOME / "skills.yaml"
 DOCTOR = SCRIPTS_DIR / "cortex-doctor.py"
@@ -105,8 +105,8 @@ def _task_db_identity() -> tuple[str, str]:
         val = os.environ.get("AGENT_NAME", "").strip()
         if val and val != "unknown":
             return val
-        for _p in (Path.home() / ".hermes-cortex" / "agent.env",
-                   Path.home() / "hermes-cortex" / ".env"):
+        for _p in (Path.home() / ".steadfaste-fleet" / "agent.env",
+                   Path.home() / "steadfaste-fleet" / ".env"):
             try:
                 if _p.is_file():
                     for _l in _p.read_text().splitlines():
@@ -121,7 +121,7 @@ def _task_db_identity() -> tuple[str, str]:
     profile = (os.environ.get("HERMES_PROFILE")
                or _env_or_file()
                or sys.exit("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-                           "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env "
+                           "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env "
                            "or export AGENT_NAME"))
     return f"mycortex_reader_{profile}", profile
 
@@ -139,8 +139,8 @@ def _bus_sender_name() -> str:
     env_val = os.environ.get("AGENT_NAME", "").strip()
     if env_val and env_val != "unknown":
         return env_val
-    for _p in (Path.home() / ".hermes-cortex" / "agent.env",
-               Path.home() / "hermes-cortex" / ".env"):
+    for _p in (Path.home() / ".steadfaste-fleet" / "agent.env",
+               Path.home() / "steadfaste-fleet" / ".env"):
         try:
             if _p.is_file():
                 for _l in _p.read_text().splitlines():
@@ -181,8 +181,8 @@ def _bus_round_trip() -> tuple[bool, str]:
     consumers and leaves zero residue.
     """
     # Resolve the deployed scripts dir so `lib.cortex_bus` imports in both
-    # layouts: deployed (~/.hermes-cortex/scripts/) and in-repo (ops/scripts/).
-    scripts_dir = SCRIPTS_DIR if SCRIPTS_DIR.is_dir() else HOME / "hermes-cortex" / "ops" / "scripts"
+    # layouts: deployed (~/.steadfaste-fleet/scripts/) and in-repo (ops/scripts/).
+    scripts_dir = SCRIPTS_DIR if SCRIPTS_DIR.is_dir() else HOME / "steadfaste-fleet" / "ops" / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
@@ -409,7 +409,7 @@ def _fact_retention() -> tuple[bool, str]:
     """
     probe = SCRIPTS_DIR / "fact-retention-eval.py"
     if not probe.exists():
-        probe = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "fact-retention-eval.py"
+        probe = HOME / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "fact-retention-eval.py"
     if not probe.exists():
         return False, f"fact-retention-eval.py not found ({probe})"
     venv_py = HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"

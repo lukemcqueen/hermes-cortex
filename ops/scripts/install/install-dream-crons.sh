@@ -30,14 +30,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
 # ── Source project .env ──────────────────────────────────
-ENV_FILE="${HOME}/hermes-cortex/.env"
+ENV_FILE="${HOME}/steadfaste-fleet/.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
-SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
+SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"
 HERMES_CMD=""
 for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
   if command -v "$candidate" &>/dev/null; then
@@ -171,7 +171,7 @@ if $UNINSTALL; then
     remove_cron "$job"
   done
   # Remove the installed-marker so the doctor stops expecting dream crons
-  rm -f "${HOME}/.hermes-cortex/state/dream-layer-installed"
+  rm -f "${HOME}/.steadfaste-fleet/state/dream-layer-installed"
   info "Dream crons removed. Dream files are knowledge — kept."
   exit 0
 fi
@@ -188,13 +188,13 @@ create_cron "agent-mycortex-dream-monthly" "0 5 1 * *" \
   "You are the monthly mycortex dream arc — Tier 3 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: the time-lapse view — how the work evolved this month, what scale grew, and what the brain is missing.
 
 ## Steps
-1. TIME-LAPSE: \`git -C ~/hermes-cortex log --oneline --since=\"30 days\" | wc -l\` for the month's commit count; \`git -C ~/hermes-cortex log --oneline --since=\"30 days\" | head -30\` to see the work arc; \`ls ~/brain/lessons/ | wc -l\` for lesson scale; \`mycortex stats\` for brain scale
+1. TIME-LAPSE: \`git -C ~/steadfaste-fleet log --oneline --since=\"30 days\" | wc -l\` for the month's commit count; \`git -C ~/steadfaste-fleet log --oneline --since=\"30 days\" | head -30\` to see the work arc; \`ls ~/brain/lessons/ | wc -l\` for lesson scale; \`mycortex stats\` for brain scale
 2. \`mycortex list -n 30\` — what's fresh; pick 3-5 pages that capture the month's themes
 3. KNOWLEDGE-GAP PROBE: take 3-5 topics the month's work clearly touched (from the git log themes) and run \`mycortex search \"<topic>\" --limit 3\` for each. Topics with zero or weak results become explicit flags: \"the brain knows nothing about X yet.\"
 4. Write a ~300-word monthly arc: the shape of the month, the scale numbers, the gaps found. Reference 2-3 prior dreams from the INDEX.
 5. WRITE-BACK (mandatory): create \`~/brain/<profile>/dreams/\` if missing, write_file \`~/brain/<profile>/dreams/YYYY-MM-monthly.md\`, then append \`YYYY-MM | <title> | <one-line summary>\` to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing). PROFILE name — NOT hostname (tenant boundary): check HERMES_PROFILE env, then AGENT_NAME env — if both unset, FAIL loudly and stop (never hostname; a machine name is not a tenant identity — Luke directive 2026-08-14) — NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile; observed 2026-08-06: 'personal' dir exists but the session runs as esther).
-6. DREAM→TODO BRIDGE (Option A — knowledge gaps): for the top 4 gappy topics from Phase 3, run \`python3 ~/.hermes-cortex/scripts/dream-task-bridge.py add-gap --topic \"<topic>\" --agent <profile> --month YYYY-MM\`. The script enforces dedup (skips topics already covered by a pending todo) and priority 1. If the script prints SKIP, note it in the dream; if it prints \`todo <uuid8>\`, record it in Phase 3b.
-7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file.
+6. DREAM→TODO BRIDGE (Option A — knowledge gaps): for the top 4 gappy topics from Phase 3, run \`python3 ~/.steadfaste-fleet/scripts/dream-task-bridge.py add-gap --topic \"<topic>\" --agent <profile> --month YYYY-MM\`. The script enforces dedup (skips topics already covered by a pending todo) and priority 1. If the script prints SKIP, note it in the dream; if it prints \`todo <uuid8>\`, record it in Phase 3b.
+7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.steadfaste-fleet/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file.
 
 Real numbers only — every count from an actual command. Real connections only — never fabricate. If the brain is genuinely empty, output exactly [SILENT].
 
@@ -253,7 +253,7 @@ create_cron "agent-mycortex-dream-nightly" "0 5 * * *" \
 4. Write a short, warm digest (~100-150 words): the insight, pattern, or connection — the brain telling you something interesting
 5. WRITE-BACK (mandatory): determine your PROFILE name (NOT hostname — profile is the tenant boundary: check HERMES_PROFILE env, then AGENT_NAME env — if both unset, FAIL loudly and stop (never hostname; a machine name is not a tenant identity — Luke directive 2026-08-14) — NEVER scan ~/.hermes/profiles/*/ (the first entry alphabetically is NOT the active profile; observed 2026-08-06: 'personal' dir exists but the session runs as esther)). Create \`~/brain/<profile>/dreams/\` if missing, then write_file \`~/brain/<profile>/dreams/YYYY-MM-DD.md\` containing the digest. Then append a one-line entry to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing) in format: \`YYYY-MM-DD | <short title> | <one-line summary>\`.
 6. Before writing, read \`~/brain/<profile>/dreams/INDEX.md\` if it exists and reference 1-2 prior dreams in your digest when natural (the brain remembering its own dreaming).
-7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the digest.
+7. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.steadfaste-fleet/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the digest.
 
 Real connections only — never fabricate page relationships; every claimed link must come from an actual mycortex search result or session. If the brain is genuinely empty (no pages, no sessions), output exactly [SILENT].
 
@@ -305,7 +305,7 @@ create_cron "agent-mycortex-dream-weekly" "0 5 * * 6" \
 5. Write a warm ~200-250 word dream: the insight, the pattern, the thread that ties the week together.
 6. WRITE-BACK (mandatory): create \`~/brain/<profile>/dreams/\` if missing, write_file \`~/brain/<profile>/dreams/YYYY-MM-DD-weekly.md\`, then append \`YYYY-MM-DD | <title> | <one-line summary>\` to \`~/brain/<profile>/dreams/INDEX.md\` (create if missing).
 7. Read the INDEX first and reference prior dreams when natural.
-8. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.hermes-cortex/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the dream.
+8. DREAM→TODO BRIDGE (Option B — insight triage): after writing the dream, ask: does any insight imply a concrete verifiable action (verb + object + outcome)? At most 2 per run. For each, run \`python3 ~/.steadfaste-fleet/scripts/dream-task-bridge.py add-insight --content \"<verb> <object> — <outcome>\" --agent <profile> --date YYYY-MM-DD --priority 2\` (priority 1 for doc/write/probe/build, 2 for fix/verify/rollout). Observational/reflective insights are NEVER todos — they stay in the dream file. The script enforces dedup and tenant-scoping; if it prints SKIP, note it in the dream.
 
 Real connections only — never fabricate relationships. Every claimed link must come from an actual mycortex search result or file read. If the brain is genuinely empty, output exactly [SILENT].
 
@@ -354,6 +354,6 @@ Result: 1 weekly dream written to brain and delivered.
   "" \
   "false"
 
-mkdir -p "${HOME}/.hermes-cortex/state"
-touch "${HOME}/.hermes-cortex/state/dream-layer-installed"
+mkdir -p "${HOME}/.steadfaste-fleet/state"
+touch "${HOME}/.steadfaste-fleet/state/dream-layer-installed"
 info "Dream layer installed (marker set — doctor now expects these crons). Remove anytime: bash install-dream-crons.sh --uninstall"

@@ -57,8 +57,8 @@ def _env_or_file_agent() -> str:
     val = os.environ.get("AGENT_NAME", "").strip()
     if val and val != "unknown":
         return val
-    for _p in (Path.home() / ".hermes-cortex" / "agent.env",
-               Path.home() / "hermes-cortex" / ".env"):
+    for _p in (Path.home() / ".steadfaste-fleet" / "agent.env",
+               Path.home() / "steadfaste-fleet" / ".env"):
         try:
             if _p.is_file():
                 for _l in _p.read_text().splitlines():
@@ -78,7 +78,7 @@ def resolve_profile() -> str:
     return (os.environ.get("HERMES_PROFILE")
             or _env_or_file_agent()
             or sys.exit("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-                        "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env "
+                        "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env "
                         "or export AGENT_NAME"))
 
 

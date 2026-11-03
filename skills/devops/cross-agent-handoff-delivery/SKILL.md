@@ -2,7 +2,7 @@
 name: cross-agent-handoff-delivery
 description: "Verify a cross-agent handoff is usable, not just delivered."
 version: 0.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:

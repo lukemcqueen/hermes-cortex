@@ -7,11 +7,11 @@
 
 | Directory | Who writes it | Who reads it |
 |-----------|---------------|--------------|
-| `~/.hermes-cortex/scripts/` | `cortex-update.sh` `register()` deploys fresh code here | Doctor checks, `diff` against repo |
+| `~/.steadfaste-fleet/scripts/` | `cortex-update.sh` `register()` deploys fresh code here | Doctor checks, `diff` against repo |
 | `~/.hermes/scripts/` | **NOT updated by deploy** | **The cron runner executes from here** (`HERMES_HOME/scripts`, scheduler.py) |
 
 The intended bridge is a directory symlink `~/.hermes/scripts →
-~/.hermes-cortex/scripts/`, created at the end of cortex-update.sh. It is
+~/.steadfaste-fleet/scripts/`, created at the end of cortex-update.sh. It is
 **skipped** when `~/.hermes/scripts/` contains files not present in the
 deploy dir — the script warns `~/.hermes/scripts/ has unique files: ... —
 not replacing`. Local-only scripts routinely block it: `remediation-sensor.py`,
@@ -19,7 +19,7 @@ not replacing`. Local-only scripts routinely block it: `remediation-sensor.py`,
 
 ## Why the Doctor Misses It
 
-The doctor's staleness checks compare repo vs `~/.hermes-cortex/scripts/`
+The doctor's staleness checks compare repo vs `~/.steadfaste-fleet/scripts/`
 (which cortex-update keeps fresh), so it reports PASS. It does NOT compare
 repo vs `~/.hermes/scripts/` — the directory the cron actually executes.
 
@@ -40,24 +40,24 @@ ls -t ~/.hermes/cron/output/<job-id>/*.md | head -5   # check Status lines
 
 # 2. Compare the two script dirs (NOT repo — deployed files carry a
 #    "# SOURCE:" header so repo-diff always reports drift):
-diff ~/.hermes/scripts/<script> ~/.hermes-cortex/scripts/<script>
+diff ~/.hermes/scripts/<script> ~/.steadfaste-fleet/scripts/<script>
 
 # 3. Is the bridge symlink present?
-ls -la ~/.hermes/scripts        # should be "-> ~/.hermes-cortex/scripts"
+ls -la ~/.hermes/scripts        # should be "-> ~/.steadfaste-fleet/scripts"
 
 # 4. What blocks it?
 comm -23 <(cd ~/.hermes/scripts && ls *.py *.sh | sort) \
-         <(cd ~/.hermes-cortex/scripts && ls *.py *.sh | sort)
+         <(cd ~/.steadfaste-fleet/scripts && ls *.py *.sh | sort)
 ```
 
 ## Fix (safe)
 
 Copy SHARED scripts (present in both dirs, including the `manage/` subdir)
-from `~/.hermes-cortex/scripts/` to `~/.hermes/scripts/`, plus any
+from `~/.steadfaste-fleet/scripts/` to `~/.hermes/scripts/`, plus any
 cron-referenced script missing entirely from the cron dir:
 
 ```bash
-cd ~/.hermes-cortex/scripts
+cd ~/.steadfaste-fleet/scripts
 for f in *.py *.sh; do
   [ -f ~/.hermes/scripts/$f ] && cp "$f" ~/.hermes/scripts/$f
 done

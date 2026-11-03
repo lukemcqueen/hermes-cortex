@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION tasks.task_upsert(
     p_content       TEXT DEFAULT NULL,
     p_created_by    TEXT DEFAULT NULL,
     p_assignee      TEXT DEFAULT NULL,
-    p_project       TEXT DEFAULT 'hermes-cortex',
+    p_project       TEXT DEFAULT 'steadfaste-fleet',
     p_repo          TEXT DEFAULT NULL,
     p_target        TEXT DEFAULT NULL,
     p_scope         TEXT DEFAULT 'personal',
@@ -51,7 +51,7 @@ DECLARE
     v_target_id UUID := COALESCE(p_id, gen_random_uuid());
     -- Non-nullable columns: coalesce defaults so a partial update (status-only)
     -- still proposes a valid row that passes RLS WITH CHECK and NOT NULL.
-    v_project TEXT := COALESCE(p_project, 'hermes-cortex');
+    v_project TEXT := COALESCE(p_project, 'steadfaste-fleet');
     v_scope   TEXT := COALESCE(p_scope, 'personal');
     v_status  TEXT := COALESCE(p_status, 'pending');
     v_priority INT := COALESCE(p_priority, 0);

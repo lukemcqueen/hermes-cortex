@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Optional
 
 HOME = Path.home()
-CORTEX_ENV = HOME / "hermes-cortex" / ".env"
+CORTEX_ENV = HOME / "steadfaste-fleet" / ".env"
 
 # Ensure lib.cortex_bus is importable (same pattern as orch-clean-health-queue.py)
 try:
@@ -45,9 +45,9 @@ try:
 except Exception:
     pass  # not fatal — bus read degrades to None
 
-REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
-REGISTRY_TEMPLATE = HOME / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json"
-REGISTRY_LOCAL = HOME / ".hermes-cortex" / "state" / "agent-registry.local.json"
+REGISTRY_PATH = HOME / ".steadfaste-fleet" / "state" / "agent-registry.json"
+REGISTRY_TEMPLATE = HOME / "steadfaste-fleet" / "ops" / "install" / "deploy" / "agent-registry.template.json"
+REGISTRY_LOCAL = HOME / ".steadfaste-fleet" / "state" / "agent-registry.local.json"
 # External SSL-terminated endpoints need headroom. A 3s timeout was measured
 # dying during :00 poller bursts (single-threaded health server + cold mycortex
 # cache → 2-9s responses → BrokenPipe). 5s matches fleet poller guidance
@@ -59,11 +59,11 @@ ICONS = {1: "🟢", 0: "⚪", -1: "🔴"}
 
 # Laptop grace period — shared with orch-fleet-watchdog.py
 LAPTOP_GRACE_MINUTES = 30  # 30 min — covers quick coffee breaks / lid closes
-LAST_SEEN_FILE = HOME / ".hermes-cortex" / "state" / "last-seen.json"
+LAST_SEEN_FILE = HOME / ".steadfaste-fleet" / "state" / "last-seen.json"
 
 # State-transition gate (silent-when-clean): the snapshot is delivered only
 # when the fleet health signature changes. Persisted between runs.
-REPORT_STATE_FILE = HOME / ".hermes-cortex" / "state" / "health-report-sig.json"
+REPORT_STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "health-report-sig.json"
 
 
 # ── Last-seen tracking (laptop grace period, shared with orch-fleet-watchdog.py) ──
@@ -195,14 +195,14 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
 
     The ``orch-clean-health-queue`` cron (every 10m) drains that queue and
     persists each agent's latest vector + timestamp to
-    ``~/.hermes-cortex/state/inbox-health-state.json`` — that file is the
+    ``~/.steadfaste-fleet/state/inbox-health-state.json`` — that file is the
     reliable source here (a live queue read at hourly report time would often
     find the queue already drained).
 
     Returns the vector or None. For laptop agents (inbox method), None can mean
     offline — the caller checks _last_seen_minutes_ago() for grace period.
     """
-    state_file = HOME / ".hermes-cortex" / "state" / "inbox-health-state.json"
+    state_file = HOME / ".steadfaste-fleet" / "state" / "inbox-health-state.json"
     try:
         if state_file.exists():
             state = json.loads(state_file.read_text())

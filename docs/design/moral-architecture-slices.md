@@ -1,4 +1,4 @@
-# Moral Architecture — Story/Slice Build Plan (Hermes Cortex)
+# Moral Architecture — Story/Slice Build Plan (Steadfaste Fleet)
 
 > **Status:** DESIGN (build plan) — the fine-grained, deepseek-flash-sized task
 > list a weak model can execute without drifting.
@@ -116,7 +116,7 @@ sliced, but several are `CHECK` (fail-closed) and several are pure-doc `BUILD`.
 **M3.1 — Refusal log schema + writer** — BUILD
 - File: `ops/scripts/manage/refusal-log.py` (new) — append a JSONL record
   `{ts, session_id, context, challenged: bool, override_outcome: (upheld|overridden|none)}`
-  to `~/.hermes-cortex/data/refusals.jsonl`. `challenged=false` = the agent did
+  to `~/.steadfaste-fleet/data/refusals.jsonl`. `challenged=false` = the agent did
   not push back (baseline); `challenged=true` = pushback happened, with outcome.
 - Test: call `refusal-log.py record --challenged --outcome overridden` → a line
   appears in the JSONL with the right shape (parse it back).

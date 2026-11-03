@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
-LOGDIR="${HOME}/.hermes-cortex/state"
+LOGDIR="${HOME}/.steadfaste-fleet/state"
 NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
 DEBT_FILE="${LOGDIR}/bypass-debt.json"
 

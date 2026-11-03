@@ -19,7 +19,7 @@ from .config import HOME, REPO_OWNERS_PATH, REPO_OWNERS_TEMPLATE, BUS_CONFIG_PAT
 def load_repo_owners() -> dict:
     """Load repo→agent mapping from repo-owners.yaml. Returns empty dict on failure.
 
-    Priority: ~/.hermes-cortex/config/repo-owners.yaml (per-machine config)
+    Priority: ~/.steadfaste-fleet/config/repo-owners.yaml (per-machine config)
     Fallback:  docs/templates/repo-owners.yaml (repo template)
     """
     paths_to_try = [REPO_OWNERS_PATH, REPO_OWNERS_TEMPLATE]
@@ -99,7 +99,7 @@ def send_bus_alert(
                         f"AGENTS.md is missing from ~/{repo_name}. "
                         f"This repo was detected as a git project you maintain.\n\n"
                         f"Please create ~/{repo_name}/AGENTS.md with agent guidelines for this project. "
-                        f"Template: ~/hermes-cortex/docs/templates/AGENTS.seed.md"
+                        f"Template: ~/steadfaste-fleet/docs/templates/AGENTS.seed.md"
                     ),
                     "topic": "development",
                 }),
@@ -153,9 +153,9 @@ def dispatch_bus_alerts(res):
     owners = load_repo_owners()
     if not owners:
         print("  ℹ️  --bus-alert: no repo-owners.yaml found")
-        print("       Create ~/.hermes-cortex/config/repo-owners.yaml from template:")
-        print("       mkdir -p ~/.hermes-cortex/config")
-        print("       cp ~/hermes-cortex/docs/templates/repo-owners.yaml ~/.hermes-cortex/config/repo-owners.yaml")
+        print("       Create ~/.steadfaste-fleet/config/repo-owners.yaml from template:")
+        print("       mkdir -p ~/.steadfaste-fleet/config")
+        print("       cp ~/steadfaste-fleet/docs/templates/repo-owners.yaml ~/.steadfaste-fleet/config/repo-owners.yaml")
         return
 
     token = read_bus_token()

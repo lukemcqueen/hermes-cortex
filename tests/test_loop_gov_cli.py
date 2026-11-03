@@ -313,9 +313,9 @@ def test_rereview_cannot_bypass_the_reviewer(gov):
 # gateway's enforcer pre_tool_call hook, so `_inject_session_context` never
 # stamps `repo_path`/`repo_slug` onto the call. `_derive_slug` then falls to
 # Priority 1 (the host-canonical governed repo), which tags the lock
-# `hermes-cortex` whenever `~/hermes-cortex` exists on the host — even though the
+# `steadfaste-fleet` whenever `~/steadfaste-fleet` exists on the host — even though the
 # session is working in a different repo (observed on Titus: a pi session in
-# steadfaste-s1-model locked `hermes-cortex`, the close gate refused forever).
+# steadfaste-s1-model locked `steadfaste-fleet`, the close gate refused forever).
 #
 # The CLI KNOWS its cwd repo (it chdir's to `--repo` or runs in cwd), so it must
 # stamp the payload the way the enforcer does. These tests pin that contract.
@@ -356,14 +356,14 @@ def _stamp_status(cli_mod, payload: dict, cwd: Path) -> str:
 
 def test_cli_stamps_the_cwd_repo_not_the_host_canonical():
     """THE BUG (Titus cycle 5742): a CLI/pi begin_change in a non-canonical repo
-    must tag the lock with that repo, not `hermes-cortex` (which exists on the
+    must tag the lock with that repo, not `steadfaste-fleet` (which exists on the
     host and won Priority 1 because the enforcer never injected the real repo).
 
     The helper must resolve the git root of the cwd and stamp BOTH `repo_path`
     (absolute) and `repo_slug` (name) — the same pair `_derive_slug` Priority 0
     and `_lock_repo` consume, so a nested checkout resolves correctly."""
     home = Path(_tempfile.mkdtemp(prefix="cli-stamp-home-"))
-    canonical = _mkrepo(home / "hermes-cortex", with_commit=False)
+    canonical = _mkrepo(home / "steadfaste-fleet", with_commit=False)
     proj = _mkrepo(home / "repos" / "steadfaste-s1-model", with_commit=True)
     mod = _load(CLI, "loop_gov_cli_stamp")
 
@@ -613,11 +613,11 @@ def test_cli_begin_change_locks_the_cwd_repo_end_to_end():
     the CLI's `_stamp_repo_into_payload` stamps the cwd git root, and the
     server's `_derive_slug` (Priority 0, exactly what begin_change uses to tag
     the lock) honours the stamped `repo_path` over the host-canonical default.
-    A decoy `~/hermes-cortex` repo is present to prove the canonical fallback
+    A decoy `~/steadfaste-fleet` repo is present to prove the canonical fallback
     does NOT win when the session works elsewhere.
     """
     home = Path(_tempfile.mkdtemp(prefix="cli-e2e-home-"))
-    _mkrepo(home / "hermes-cortex", with_commit=False)   # decoy canonical repo
+    _mkrepo(home / "steadfaste-fleet", with_commit=False)   # decoy canonical repo
     proj = _mkrepo(home / "repos" / "steadfaste-s1-model", with_commit=True)
     cli_mod = _load(CLI, "loop_gov_cli_e2e")
     server = _load(SERVER, "loop_gov_e2e_server")

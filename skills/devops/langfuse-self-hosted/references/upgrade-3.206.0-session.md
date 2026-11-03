@@ -4,7 +4,7 @@
 2026-07-09
 
 ## Environment
-- Deployment path: `~/langfuse/` (NOT `~/hermes-cortex/deploy/`)
+- Deployment path: `~/langfuse/` (NOT `~/steadfaste-fleet/deploy/`)
 - Env file: `~/langfuse/.env`
 - Previous version: `langfuse/langfuse:3.200.0`, `langfuse/langfuse-worker:3.200.0`
 - Upgrade via: `docker compose pull` + `docker compose down && docker compose up -d`
@@ -40,7 +40,7 @@ Applying clickhouse migrations failed.
 
 ### 3. Dual deploy paths (repo vs live)
 
-`cortex-update.sh` triggered a Langfuse restart but targeted `~/hermes-cortex/deploy/docker-compose.langfuse.yml`, while the actual running stack is at `~/langfuse/docker-compose.yml`. Both compose files had the same content (3.206.0 image tags) but the `.env` file was only at `~/langfuse/.env`, causing variable interpolation failures from the repo path.
+`cortex-update.sh` triggered a Langfuse restart but targeted `~/steadfaste-fleet/deploy/docker-compose.langfuse.yml`, while the actual running stack is at `~/langfuse/docker-compose.yml`. Both compose files had the same content (3.206.0 image tags) but the `.env` file was only at `~/langfuse/.env`, causing variable interpolation failures from the repo path.
 
 ### 4. Large image pull timeout
 

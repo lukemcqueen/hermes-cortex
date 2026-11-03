@@ -16,19 +16,19 @@
 #   exec "$(fleet_venv_python)" "$PAYLOAD" "$@"
 #
 # ENV
-#   FLEET_VENV_DIR   override the venv root (tests use this; default ~/.hermes-cortex/venv)
+#   FLEET_VENV_DIR   override the venv root (tests use this; default ~/.steadfaste-fleet/venv)
 #
 # EXIT
 #   78 (EX_CONFIG) from require_fleet_venv, after printing what is missing and how to fix it.
 
-fleet_venv_dir() { printf '%s' "${FLEET_VENV_DIR:-${HOME}/.hermes-cortex/venv}"; }
+fleet_venv_dir() { printf '%s' "${FLEET_VENV_DIR:-${HOME}/.steadfaste-fleet/venv}"; }
 fleet_venv_python() { printf '%s' "$(fleet_venv_dir)/bin/python3"; }
 
 #: The repair sequence for an absent venv, in the order a human should run it.
 fleet_venv_fix_hint() {
   echo "  create: python3 -m venv \"$(fleet_venv_dir)\""
-  echo "  fill:   \"$(fleet_venv_python)\" \"${HOME}/.hermes-cortex/scripts/fix-cortex-venv.py\""
-  echo "  (fixer not deployed yet? bash ~/hermes-cortex/ops/scripts/cortex-update.sh)"
+  echo "  fill:   \"$(fleet_venv_python)\" \"${HOME}/.steadfaste-fleet/scripts/fix-cortex-venv.py\""
+  echo "  (fixer not deployed yet? bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh)"
 }
 
 require_fleet_venv() {
@@ -49,7 +49,7 @@ require_fleet_venv() {
     [[ -f "$payload" ]] && continue
     echo "${0##*/}: NOT DEPLOYED at $payload" >&2
     echo "  HOME=${HOME}  (check this FIRST — a different HOME makes a present file look absent)" >&2
-    echo "  deploy it: bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
+    echo "  deploy it: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
     exit 78
   done
 }

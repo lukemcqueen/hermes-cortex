@@ -47,8 +47,8 @@ DEFAULT_CONFIG = {
     ],
     "agents_files": [
         {
-            "path": "~/hermes-cortex/AGENTS.md",
-            "repo": "hermes-cortex",
+            "path": "~/steadfaste-fleet/AGENTS.md",
+            "repo": "steadfaste-fleet",
             "mandatory_sections": [
                 "Agent Execution Contract",
                 "Loop Governance",
@@ -493,7 +493,7 @@ def apply_pruning(repo_root, content, candidates, config):
     sections = parse_sections(content)
     new_lines = []
     removed = set(c["heading"] for c in candidates if c["suggested_target"] and c["suggested_target"] != "inline merge")
-    heading_preamble = "# Agent Guidelines — Hermes Cortex"  # file-level H1, kept
+    heading_preamble = "# Agent Guidelines — Steadfaste Fleet"  # file-level H1, kept
 
     for heading, level, lines in sections:
         if heading in removed:

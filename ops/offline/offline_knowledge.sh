@@ -1,13 +1,13 @@
 #!/bin/bash
 # offline_knowledge — CLI for offline knowledge cascade
-# Installed by Hermes Cortex install.sh
+# Installed by Steadfaste Fleet install.sh
 
-SCRIPT_DIR="$HOME/.hermes-cortex/offline"
+SCRIPT_DIR="$HOME/.steadfaste-fleet/offline"
 SCRIPT="$SCRIPT_DIR/offline_knowledge.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/ops/offline/offline_knowledge.py"
+    SCRIPT="$HOME/steadfaste-fleet/ops/offline/offline_knowledge.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then

@@ -1,5 +1,5 @@
 """
-Hermes Cortex Agent Bus — Postgres Native Message Queue.
+Steadfaste Fleet Agent Bus — Postgres Native Message Queue.
 
 A lightweight message queue built on Postgres using SKIP LOCKED.
 No external extensions required. Each agent has its own queue + DLQ.

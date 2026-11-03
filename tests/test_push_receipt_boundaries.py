@@ -60,7 +60,7 @@ def git(repo, *args):
     return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
 
 
-def mk_repo(tmp, name="hermes-cortex", commits=2):
+def mk_repo(tmp, name="steadfaste-fleet", commits=2):
     repo = Path(tempfile.mkdtemp(prefix=f"{name}-", dir=str(tmp)))
     (repo / "plugins").mkdir(parents=True)
     git(repo, "init", "-q", "-b", "main")
@@ -99,15 +99,15 @@ def boundary_checks(tmp):
 
     # ── the scan's own boundaries ───────────────────────────────────────
     check("missing state dir refuses",
-          rrc.scan_covering(tmp / "nope", "hermes-cortex", tip, base, repo=repo), (False, None))
+          rrc.scan_covering(tmp / "nope", "steadfaste-fleet", tip, base, repo=repo), (False, None))
     afile = tmp / "afile"
     afile.write_text("x")
     check("state dir that is a FILE refuses",
-          rrc.scan_covering(afile, "hermes-cortex", tip, base, repo=repo), (False, None))
+          rrc.scan_covering(afile, "steadfaste-fleet", tip, base, repo=repo), (False, None))
     check("empty slug refuses", rrc.scan_covering(state, "", tip, base, repo=repo), (False, None))
-    check("empty tip refuses", rrc.scan_covering(state, "hermes-cortex", "", base, repo=repo),
+    check("empty tip refuses", rrc.scan_covering(state, "steadfaste-fleet", "", base, repo=repo),
           (False, None))
-    check("None base refuses", rrc.scan_covering(state, "hermes-cortex", tip, None, repo=repo),
+    check("None base refuses", rrc.scan_covering(state, "steadfaste-fleet", tip, None, repo=repo),
           (False, None))
 
     # A repo DIRECTORY named '*' must not match another repo's receipts: the slug is
@@ -122,31 +122,31 @@ def boundary_checks(tmp):
 
     s2 = tmp / "state2"
     s2.mkdir()
-    (s2 / f".reviewed-hermes-cortex-{tip}.json").mkdir()
+    (s2 / f".reviewed-steadfaste-fleet-{tip}.json").mkdir()
     check("a receipt path that is a DIRECTORY is skipped, not a crash",
-          rrc.scan_covering(s2, "hermes-cortex", tip, base, repo=repo), (False, None))
+          rrc.scan_covering(s2, "steadfaste-fleet", tip, base, repo=repo), (False, None))
 
     s2b = tmp / "state2b"
-    put(s2b, "hermes-cortex", "a" * 40, "{not json")
-    put(s2b, "hermes-cortex", tip, good)
+    put(s2b, "steadfaste-fleet", "a" * 40, "{not json")
+    put(s2b, "steadfaste-fleet", tip, good)
     check("an unparseable sibling does not block a valid receipt",
-          rrc.scan_covering(s2b, "hermes-cortex", tip, base, repo=repo)[0], True)
+          rrc.scan_covering(s2b, "steadfaste-fleet", tip, base, repo=repo)[0], True)
 
     s3 = tmp / "state3"
-    put(s3, "hermes-cortex", tip, "[1,2,3]")
+    put(s3, "steadfaste-fleet", tip, "[1,2,3]")
     check("a JSON LIST never authorises",
-          rrc.scan_covering(s3, "hermes-cortex", tip, base, repo=repo)[0], False)
+          rrc.scan_covering(s3, "steadfaste-fleet", tip, base, repo=repo)[0], False)
     s3b = tmp / "state3b"
-    put(s3b, "hermes-cortex", tip, {**good, "verdict": None})
+    put(s3b, "steadfaste-fleet", tip, {**good, "verdict": None})
     check("a null verdict never authorises",
-          rrc.scan_covering(s3b, "hermes-cortex", tip, base, repo=repo)[0], False)
+          rrc.scan_covering(s3b, "steadfaste-fleet", tip, base, repo=repo)[0], False)
 
     s4 = tmp / "state4"
-    p_old = put(s4, "hermes-cortex", "f" * 40, good)
-    p_new = put(s4, "hermes-cortex", "e" * 40, good)
+    p_old = put(s4, "steadfaste-fleet", "f" * 40, good)
+    p_new = put(s4, "steadfaste-fleet", "e" * 40, good)
     os.utime(p_old, (1000, 1000))
     os.utime(p_new, (2000, 2000))
-    ok, used = rrc.scan_covering(s4, "hermes-cortex", tip, base, repo=repo)
+    ok, used = rrc.scan_covering(s4, "steadfaste-fleet", tip, base, repo=repo)
     check("several covering receipts → the NEWEST is used", (ok, used == str(p_new)), (True, True))
 
     # ── the matcher's shape list ────────────────────────────────────────

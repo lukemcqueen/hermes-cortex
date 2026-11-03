@@ -166,7 +166,7 @@ fi
 # (mycortex_reader_<AGENT_NAME>). Hardcoding esther's role here broke the
 # battery on the moses host — same lesson as run-evals.py _task_db_identity
 # (2026-08-09): each host provisions only its own reader role.
-LOCAL_AGENT="${LEARNINGS_READER_AGENT:-$(grep -h '^AGENT_NAME=' "$HOME/.hermes-cortex/agent.env" "$HOME/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d ' ')}"
+LOCAL_AGENT="${LEARNINGS_READER_AGENT:-$(grep -h '^AGENT_NAME=' "$HOME/.steadfaste-fleet/agent.env" "$HOME/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d ' ')}"
 PSQL_LIFECYCLE="docker exec ${CONTAINER} psql -U mycortex_reader_${LOCAL_AGENT} -d ${TEST_DB} -t -A"
 LIFECYCLE_READ=$($PSQL_LIFECYCLE -c "SELECT count(*) FROM learnings.learning;" 2>/dev/null || true)
 if [[ "$LIFECYCLE_READ" =~ ^[0-9]+$ ]] && [ "$LIFECYCLE_READ" -ge 1 ]; then

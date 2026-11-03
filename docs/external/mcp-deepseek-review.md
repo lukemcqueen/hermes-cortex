@@ -5,7 +5,7 @@
 > **The tool is named `review`.** It was `review_experimental_plan`, which is narrower than
 > what it does — it reviews a memo, a plan, or a results summary. The rename is **automated**
 > (see [Keeping the name current](#keeping-the-name-current-automated)); do not hand-edit the
-> server, and do not copy its source into `hermes-cortex`.
+> server, and do not copy its source into `steadfaste-fleet`.
 
 ---
 
@@ -30,7 +30,7 @@ The agent never sees the `OPENROUTER_API_KEY`. The server process reads `.env` d
 scripts/util/mcp_deepseek_server.py      # The MCP stdio server
 ```
 
-**The server lives in a PRODUCT repo, not in `hermes-cortex`.** `ops/install/harnesses/pi/ADDON-deepseek-mcp.md` names the canonical path and forbids copying it here — a second copy of a server is the phantom this tree exists to prevent.
+**The server lives in a PRODUCT repo, not in `steadfaste-fleet`.** `ops/install/harnesses/pi/ADDON-deepseek-mcp.md` names the canonical path and forbids copying it here — a second copy of a server is the phantom this tree exists to prevent.
 
 ## .pi/mcp.json (project override)
 
@@ -77,10 +77,10 @@ agent:
 
 ```bash
 # Detect only; exit 1 when this host still exposes the old name:
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --check-tools
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --check-tools
 
 # Do it (copies the server file to <name>.bak first; idempotent, so a second run is a no-op):
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --fix-tools
 
 # Then reconnect the client so it picks up the new tool name:
 pi mcp list | grep deepseek        # expect the tool named `review`
@@ -109,7 +109,7 @@ notes, so the behaviour is not surprising:
 | `429 rate limited` | Upstream provider throttling | Retry with a different model slug (e.g. `deepseek/deepseek-v4-flash`) |
 | Server not in `/mcp` list | Project not trusted | Start `pi` from project root and accept trust prompt |
 | Timeout after 60s | Default Pi MCP timeout | Add `"timeout": 300` in `~/.pi/agent/mcp.json` server entry |
-| Tool called by its old name | Host has not run the rename yet | `bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools` |
+| Tool called by its old name | Host has not run the rename yet | `bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --fix-tools` |
 
 ## Model slugs
 
@@ -125,4 +125,4 @@ Default: `deepseek/deepseek-v4-pro`.
 - **Never log the key.** Sanitize before printing any API response.
 - **User-level `~/.pi/agent/mcp.json` is the preferred location** for the server definition with the key.
 - **Project `.pi/mcp.json` should only contain overrides** (`enabled`, `exposure`) — no secrets.
-- **Never copy the server into `hermes-cortex`** — it lives in a product repo and calls a paid API. Moving it is an owner decision.
+- **Never copy the server into `steadfaste-fleet`** — it lives in a product repo and calls a paid API. Moving it is an owner decision.

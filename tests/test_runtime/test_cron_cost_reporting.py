@@ -455,8 +455,8 @@ def test_json_summary_reports_unreadable_spend_as_unavailable_never_zero(tmp_pat
 
 def test_agent_identity_falls_back_to_the_host_env_file(tmp_path):
     home = tmp_path / "home"
-    (home / ".hermes-cortex").mkdir(parents=True)
-    (home / ".hermes-cortex" / "agent.env").write_text("AGENT_NAME=worker-nine\n")
+    (home / ".steadfaste-fleet").mkdir(parents=True)
+    (home / ".steadfaste-fleet" / "agent.env").write_text("AGENT_NAME=worker-nine\n")
     audit = _audit(tmp_path, [{"job_id": "jobA", "total_tokens": 10, "ts": "2026-10-20T00:00:00Z"}])
     d = _summary(
         _run(

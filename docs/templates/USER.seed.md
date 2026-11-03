@@ -1,4 +1,4 @@
-<!-- Part of Hermes Cortex. See docs/SECURITY.md for privacy. -->
+<!-- Part of Steadfaste Fleet. See docs/SECURITY.md for privacy. -->
 # User Profile — USER.md
 
 Your agent reads this on every turn. USER.md holds **personal context about the

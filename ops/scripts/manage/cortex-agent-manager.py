@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex Agent Manager — Enterprise credential provisioning.
+Steadfaste Fleet Agent Manager — Enterprise credential provisioning.
 
 Usage:
   cortex-agent-manager.py add <name> --role worker|orchestrator [--labels key=val,key2=val2]
@@ -31,7 +31,7 @@ from pathlib import Path
 logger = logging.getLogger("cortex-agent-manager")
 
 # ── Paths ────────────────────────────────────────────────────
-CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
+CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
 SECRETS_FILE = CORTEX_HOME / "agent-secrets.yaml"
 NGINX_HTPASSWD = Path("/etc/nginx/.hermes-htpasswd")
 BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
@@ -591,7 +591,7 @@ def cmd_label_show(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Hermes Cortex Agent Manager")
+    parser = argparse.ArgumentParser(description="Steadfaste Fleet Agent Manager")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # add

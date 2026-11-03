@@ -39,7 +39,7 @@ def _cron_ts(name: str) -> str:
 
 UID = os.getuid()
 LANGFUSE_DIR = str(Path.home() / "langfuse")
-HERMES_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
+HERMES_SCRIPTS = Path.home() / ".steadfaste-fleet" / "scripts"
 CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 
 def _docker_via_sg(container: str) -> bool:
@@ -57,7 +57,7 @@ CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 if CORTEX_REPO_ENV:
     CORTEX_SCRIPTS = Path(CORTEX_REPO_ENV) / "ops" / "scripts"
 else:
-    CORTEX_SCRIPTS = Path.home() / "hermes-cortex" / "ops" / "scripts"
+    CORTEX_SCRIPTS = Path.home() / "steadfaste-fleet" / "ops" / "scripts"
 
 
 def _make_service(name: str, label: str = "", pgrep: str = "",

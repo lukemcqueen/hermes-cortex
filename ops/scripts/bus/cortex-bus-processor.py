@@ -23,8 +23,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Ensure the hermes-cortex scripts dir is in sys.path for lib.cortex_bus
-_HC_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
+# Ensure the steadfaste-fleet scripts dir is in sys.path for lib.cortex_bus
+_HC_SCRIPTS = Path.home() / ".steadfaste-fleet" / "scripts"
 if str(_HC_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_HC_SCRIPTS))
 
@@ -38,7 +38,7 @@ SEEN_FILE = STATE_DIR / "bus-broadcast-seen"
 # (Luke directive 2026-08-14).
 AGENT = os.environ.get("AGENT_NAME", "").strip()
 if not AGENT:
-    for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+    for _idf in (HOME / ".steadfaste-fleet" / "agent.env", HOME / "steadfaste-fleet" / ".env"):
         try:
             if _idf.is_file():
                 for _line in _idf.read_text().splitlines():
@@ -52,7 +52,7 @@ if not AGENT:
             continue
 if not AGENT or AGENT == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 

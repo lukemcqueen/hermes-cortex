@@ -50,8 +50,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
-DEFAULT_MANIFEST = Path.home() / ".hermes-cortex" / "state" / "task-id-normalization-manifest.txt"
+DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
+DEFAULT_MANIFEST = Path.home() / ".steadfaste-fleet" / "state" / "task-id-normalization-manifest.txt"
 
 # The documented id shape: precommit-<repo>-<branch>/<slug>
 SHAPE = re.compile(r"^precommit-[^/]+/[A-Za-z0-9._-]+$")

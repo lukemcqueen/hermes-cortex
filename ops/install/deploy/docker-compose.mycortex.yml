@@ -1,10 +1,10 @@
-# hermes-cortex Postgres — the knowledge brain database (mycortex) + agent bus
+# steadfaste-fleet Postgres — the knowledge brain database (mycortex) + agent bus
 #
-# Dedicated, hermes-cortex-owned Postgres — NOT part of the langfuse stack.
+# Dedicated, steadfaste-fleet-owned Postgres — NOT part of the langfuse stack.
 # Replaces the old `legacy Postgres` container (which carried stale langfuse
 # compose labels and lived on a langfuse-named volume).
 #
-# Primary location: ~/.hermes-cortex/docker-compose.mycortex.yml
+# Primary location: ~/.steadfaste-fleet/docker-compose.mycortex.yml
 # Run with: docker compose -f docker-compose.mycortex.yml up -d
 # Listen: 127.0.0.1:15432 (host) -> 5432 (container)
 #

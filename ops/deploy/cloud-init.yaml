@@ -1,6 +1,6 @@
 #cloud-config
 # ───────────────────────────────────────────────────────────────
-#  Hermes Cortex — Cloud VM Bootstrap (cloud-init)
+#  Steadfaste Fleet — Cloud VM Bootstrap (cloud-init)
 #  Target: Ubuntu 24.04 LTS on AWS EC2 or Hetzner Cloud
 #
 #  Usage:
@@ -9,9 +9,9 @@
 #
 #  After boot:
 #    1. ssh in as ubuntu (AWS) or root (Hetzner)
-#    2. sudo -Hu ubuntu cat ~/hermes-cortex/.env.example > .env
-#    3. Edit ~/hermes-cortex/.env with your secrets
-#    4. bash ~/hermes-cortex/ops/install/install.sh
+#    2. sudo -Hu ubuntu cat ~/steadfaste-fleet/.env.example > .env
+#    3. Edit ~/steadfaste-fleet/.env with your secrets
+#    4. bash ~/steadfaste-fleet/ops/install/install.sh
 #    5. cortex-doctor.py --fix
 # ───────────────────────────────────────────────────────────────
 
@@ -52,15 +52,15 @@ packages:
 
 write_files:
   # ── Step 1: UFW firewall rules ──
-  - path: /etc/ufw/applications.d/hermes-cortex
+  - path: /etc/ufw/applications.d/steadfaste-fleet
     content: |
       [Hermes-Health]
-      title=Hermes Cortex Health Server
+      title=Steadfaste Fleet Health Server
       description=Agent health endpoint (13007)
       ports=13007/tcp
 
       [Hermes-Dashboard]
-      title=Hermes Cortex Dashboard
+      title=Steadfaste Fleet Dashboard
       description=Cortex dashboard UI (13001)
       ports=13001/tcp
 
@@ -74,15 +74,15 @@ write_files:
       description=Agent-to-agent messaging (13004)
       ports=13004/tcp
 
-      [Hermes-Cortex-UI]
+      [Steadfaste-Fleet-UI]
       title=Hermes Desktop UI
       description=Hermes web gateway (13005)
       ports=13005/tcp
 
   # ── Step 2: sysctl hardening ──
-  - path: /etc/sysctl.d/99-hermes-cortex.conf
+  - path: /etc/sysctl.d/99-steadfaste-fleet.conf
     content: |
-      # Hermes Cortex — kernel tuning for LLM serving
+      # Steadfaste Fleet — kernel tuning for LLM serving
       net.ipv4.tcp_keepalive_time = 60
       net.ipv4.tcp_keepalive_intvl = 10
       net.ipv4.tcp_keepalive_probes = 6
@@ -114,7 +114,7 @@ write_files:
       WantedBy=multi-user.target
 
   # ── Step 4: Journald rate limiting ──
-  - path: /etc/systemd/journald.conf.d/99-hermes-cortex.conf
+  - path: /etc/systemd/journald.conf.d/99-steadfaste-fleet.conf
     content: |
       [Journal]
       RateLimitIntervalSec=30s
@@ -153,10 +153,10 @@ runcmd:
     # Add hermes to PATH for the ubuntu user
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/ubuntu/.bashrc
 
-  # ── Phase 3: Clone hermes-cortex ──
+  # ── Phase 3: Clone steadfaste-fleet ──
   - |
-    git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git /home/ubuntu/hermes-cortex
-    chown -R ubuntu:ubuntu /home/ubuntu/hermes-cortex
+    git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git /home/ubuntu/steadfaste-fleet
+    chown -R ubuntu:ubuntu /home/ubuntu/steadfaste-fleet
 
   # ── Phase 4: Install Ollama ──
   - |
@@ -167,8 +167,8 @@ runcmd:
   # ── Phase 5: Deploy Docker stack (Langfuse + ClickHouse) ──
   - |
     mkdir -p /home/ubuntu/langfuse
-    cp /home/ubuntu/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml /home/ubuntu/langfuse/docker-compose.yml
-    cp /home/ubuntu/hermes-cortex/ops/install/deploy/.env.example /home/ubuntu/langfuse/.env.example
+    cp /home/ubuntu/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml /home/ubuntu/langfuse/docker-compose.yml
+    cp /home/ubuntu/steadfaste-fleet/ops/install/deploy/.env.example /home/ubuntu/langfuse/.env.example
     if [ ! -f /home/ubuntu/langfuse/.env ]; then
       cp /home/ubuntu/langfuse/.env.example /home/ubuntu/langfuse/.env
       echo "⚠️  Edit /home/ubuntu/langfuse/.env with Langfuse secrets before starting stack"
@@ -193,12 +193,12 @@ runcmd:
     mkdir -p /var/www/html
     cat > /var/www/html/index.html << 'HTML'
     <!DOCTYPE html>
-    <html><head><title>Hermes Cortex</title>
+    <html><head><title>Steadfaste Fleet</title>
     <style>body{font-family:sans-serif;margin:2em;background:#111;color:#eee}
     h1{color:#0f0} a{color:#4af}</style></head>
     <body>
-    <h1>✅ Hermes Cortex</h1>
-    <p>This server is running the Hermes Cortex agent stack.</p>
+    <h1>✅ Steadfaste Fleet</h1>
+    <p>This server is running the Steadfaste Fleet agent stack.</p>
     <ul>
       <li><a href="https://DOMAIN:13001/">Cortex Dashboard</a></li>
       <li><a href="https://DOMAIN:13002/">Langfuse</a></li>
@@ -209,10 +209,10 @@ runcmd:
 
   # ── Phase 8: Create .env from template ──
   - |
-    if [ ! -f /home/ubuntu/hermes-cortex/.env ]; then
-      cp /home/ubuntu/hermes-cortex/.env.example /home/ubuntu/hermes-cortex/.env
-      chown ubuntu:ubuntu /home/ubuntu/hermes-cortex/.env
-      chmod 600 /home/ubuntu/hermes-cortex/.env
+    if [ ! -f /home/ubuntu/steadfaste-fleet/.env ]; then
+      cp /home/ubuntu/steadfaste-fleet/.env.example /home/ubuntu/steadfaste-fleet/.env
+      chown ubuntu:ubuntu /home/ubuntu/steadfaste-fleet/.env
+      chmod 600 /home/ubuntu/steadfaste-fleet/.env
       echo ""
       echo "══════════════════════════════════════════════════════════════"
       echo "  🛠️  NEXT STEPS — manual configuration required"
@@ -222,7 +222,7 @@ runcmd:
       echo "     ssh ubuntu@<server-ip>"
       echo ""
       echo "  2. Edit the .env file with your secrets:"
-      echo "     nano ~/hermes-cortex/.env"
+      echo "     nano ~/steadfaste-fleet/.env"
       echo ""
       echo "  3. Set these required vars:"
       echo "     - CORTEX_HEALTH_URL"
@@ -235,7 +235,7 @@ runcmd:
       echo "     - CORTEX_SSL_CERT_KEY_PATH"
       echo ""
       echo "  4. Run the full installer:"
-      echo "     cd ~/hermes-cortex && bash ops/install/install.sh"
+      echo "     cd ~/steadfaste-fleet && bash ops/install/install.sh"
       echo ""
       echo "  5. Verify with doctor:"
       echo "     python3 ops/scripts/manage/cortex-doctor.py"
@@ -247,4 +247,4 @@ runcmd:
   - systemctl daemon-reload
   - systemctl enable ollama
   - ufw reload
-  - echo "Bootstrap complete. See ~/hermes-cortex/.env config instructions above."
+  - echo "Bootstrap complete. See ~/steadfaste-fleet/.env config instructions above."

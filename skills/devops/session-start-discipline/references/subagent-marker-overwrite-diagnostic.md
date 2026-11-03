@@ -7,7 +7,7 @@ tools get blocked. Here's how to diagnose and recover.
 
 - ✅ `echo`, `pwd`, `whoami` work (fast commands pass before re-check)
 - ❌ `python3 script.py`, `bash script.sh` get blocked (longer commands trigger re-check)
-- `cat ~/.hermes-cortex/state/.skills-loaded` shows a session ID different from
+- `cat ~/.steadfaste-fleet/state/.skills-loaded` shows a session ID different from
   yours (the subagent's session)
 
 The enforcer says "8/8 always-section skills loaded" immediately followed by
@@ -17,7 +17,7 @@ The enforcer says "8/8 always-section skills loaded" immediately followed by
 
 ```bash
 # Confirm the mismatch
-cat ~/.hermes-cortex/state/.skills-loaded
+cat ~/.steadfaste-fleet/state/.skills-loaded
 # → session:20260730_195730_2bebe5 (subagent)
 
 # Re-establish your marker — call ANY loaded skill again

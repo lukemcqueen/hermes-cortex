@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Lesson Database
+Steadfaste Fleet — Lesson Database
 ─────────────────────────────────
 A personal bug-fix memory that grows with every session.
 Each lesson captures: error → root cause → fix → tags.

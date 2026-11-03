@@ -22,7 +22,7 @@ and **you cannot write files without one** — a structural deadlock.
 
 | Command | Status | Why |
 |---------|--------|-----|
-| `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (exact, allowlisted flags) | ✅ Works | SANCTIONED lock-free self-recovery (2026-08-04) |
+| `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (exact, allowlisted flags) | ✅ Works | SANCTIONED lock-free self-recovery (2026-08-04) |
 | `sudo hermes-plugin-lock unlock` / `lock` | ❌ Blocked | Write-class — requires a governance lock (+ token for manual use) |
 | `whoami`, `ls`, `cat`, `grep` | ✅ Works | READ_COMMAND_PATTERNS fast-path |
 | `cp file1 file2` | ❌ Blocked | Hits governance lock check |
@@ -43,7 +43,7 @@ non-orchestrators are refused and audit-logged:
 ```bash
 sudo hermes-plugin-lock unlock --orchestrator
 cp ~/.hermes/plugins/governance-enforcer/__init__.py \
-   ~/hermes-cortex/plugins/governance-enforcer/__init__.py
+   ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py
 sudo chmod 444 ~/.hermes/plugins/governance-enforcer/__init__.py
 sudo hermes-plugin-lock lock
 ```
@@ -53,13 +53,13 @@ Then: `git add` → `git commit` → `git push` the synced repo change.
 #### If repo is ahead of deployed (pushed without deploying):
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 #### After recovery:
 
 ```bash
-sha256sum ~/hermes-cortex/plugins/governance-enforcer/__init__.py \
+sha256sum ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py \
           ~/.hermes/plugins/governance-enforcer/__init__.py
 ```
 
@@ -79,7 +79,7 @@ The self-healing dogfood check is not yet implemented (tracked in
 
 `sudo hermes-plugin-lock` does NOT pass through — it is write-class and
 blocked without a governance lock. The ONE lock-free file-modifying command
-is the exact `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation:
+is the exact `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` invocation:
 `_is_sanctioned_cortex_update_command()` allows exactly that path plus the
 allowlisted flags (`--dry-run/--status/--delta/--clean-stale`),
 with no metacharacters — so a DOGFOOD-blocked agent (no lock, no skills

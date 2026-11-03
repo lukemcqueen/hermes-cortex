@@ -5,7 +5,7 @@ endpoint (`/health` and `/` routes) in `health-server.py`.
 
 ## Source Location
 
-- File: `hermes-cortex/ops/scripts/health-server.py`
+- File: `steadfaste-fleet/ops/scripts/health-server.py`
 - Function: `_build_compact_health()` (lines ~468-520)
 - Route: `GET /health` and `GET /` → returns `_build_compact_health()`
 

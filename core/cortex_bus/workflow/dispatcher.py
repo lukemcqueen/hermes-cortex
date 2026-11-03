@@ -26,7 +26,7 @@ from cortex_bus.workflow.db import (
 
 # Standard workflow directories
 WORKFLOW_DIRS = [
-    Path.home() / "hermes-cortex" / "core" / "cortex_bus" / "workflows",
+    Path.home() / "steadfaste-fleet" / "core" / "cortex_bus" / "workflows",
 ]
 
 

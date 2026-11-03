@@ -118,13 +118,13 @@ def project_name_from_cwd(cwd: str) -> str:
 
 
 def has_hermes_cortex(cwd: str) -> bool:
-    """Check if the project has .hermes-cortex/ directory."""
-    return os.path.isdir(os.path.join(cwd, ".hermes-cortex"))
+    """Check if the project has .steadfaste-fleet/ directory."""
+    return os.path.isdir(os.path.join(cwd, ".steadfaste-fleet"))
 
 
 def ensure_archive_dir(cwd: str):
-    """Create .hermes-cortex/sessions/archive/ if needed. Return path or None."""
-    archive = os.path.join(cwd, ".hermes-cortex", "sessions", "archive")
+    """Create .steadfaste-fleet/sessions/archive/ if needed. Return path or None."""
+    archive = os.path.join(cwd, ".steadfaste-fleet", "sessions", "archive")
     try:
         os.makedirs(archive, exist_ok=True)
         return archive
@@ -176,7 +176,7 @@ def write_archive(project: dict):
     name = project_name_from_cwd(cwd)
     archive_dir = ensure_archive_dir(cwd)
     if not archive_dir:
-        print(f"  SKIP {name} — no .hermes-cortex (or inaccessible)")
+        print(f"  SKIP {name} — no .steadfaste-fleet (or inaccessible)")
         return None
 
     slug = kst_slug()

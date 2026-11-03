@@ -4,7 +4,7 @@
 
 The MCP loop-governance server's dogfood check compares SHA256 hashes of
 the governance enforcer at `~/.hermes/plugins/governance-enforcer/__init__.py`
-and the repo source at `~/hermes-cortex/plugins/governance-enforcer/__init__.py`
+and the repo source at `~/steadfaste-fleet/plugins/governance-enforcer/__init__.py`
 before allowing `begin_change()`. If they differ, `begin_change` is blocked.
 
 This creates a catch-22 when the **deployed** copy is ahead of the **repo**
@@ -22,7 +22,7 @@ because the files differ.
 **This can also happen when deployed is behind** — if you push enforcer
 changes via `git push origin main` but never run `cortex-update.sh`
 afterwards, the enforcer's pre-commit hook dogfood check (at
-`~/.hermes-cortex/hooks/pre-commit` lines 76-94) blocks commits until
+`~/.steadfaste-fleet/hooks/pre-commit` lines 76-94) blocks commits until
 you deploy.
 
 ## Root Cause
@@ -34,7 +34,7 @@ hotfix applied directly, or a previous session that deployed changes without
 committing), the repo falls behind.
 
 The dogfood check has TWO locations:
-1. **Pre-commit hook** (`~/.hermes-cortex/hooks/pre-commit` lines 76-94) —
+1. **Pre-commit hook** (`~/.steadfaste-fleet/hooks/pre-commit` lines 76-94) —
    blocks `git commit` when enforcer files differ.
 2. **`begin_change` MCP tool** (in loop-governance MCP server) — blocks
    `begin_change()` when enforcer files differ.
@@ -68,14 +68,14 @@ the exact `cortex-update.sh` deploy invocation. The DOGFOOD gate blocks
 a governance lock so the agent can self-recover:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 # allowed flags: --dry-run --status --delta --clean-stale
 # EXACT match only — no sudo, no chaining (&&, ;, |, >), no other scripts
 ```
 
 **Confirmed working (passes through without governance lock):**
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh   # sanctioned exact-path exception
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # sanctioned exact-path exception
 ls / whoami / git status                            # READ_COMMAND_PATTERNS fast-path
 ```
 
@@ -98,12 +98,12 @@ audit-logged; non-orchestrators are refused). Prefer Method 3 — it is the
 enforcer's single sanctioned lock-free command:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh   # sanctioned, lock-free
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # sanctioned, lock-free
 ```
 
 Then verify:
 ```bash
-sha256sum ~/hermes-cortex/plugins/governance-enforcer/__init__.py \
+sha256sum ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py \
           ~/.hermes/plugins/governance-enforcer/__init__.py
 ```
 
@@ -117,7 +117,7 @@ If the deployed copy has changes that need porting to the repo
 ```bash
 sudo hermes-plugin-lock unlock --orchestrator 2>/dev/null
 cp ~/.hermes/plugins/governance-enforcer/__init__.py \
-   ~/hermes-cortex/plugins/governance-enforcer/__init__.py
+   ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py
 sudo hermes-plugin-lock lock 2>/dev/null
 # Then git add/commit/push the repo change
 ```
@@ -125,7 +125,7 @@ sudo hermes-plugin-lock lock 2>/dev/null
 ### Method 3: Deploy repo → deployed (when repo is ahead) — SANCTIONED, LOCK-FREE
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 Since 2026-08-04 the enforcer's `_is_sanctioned_cortex_update_command()`
@@ -151,7 +151,7 @@ deliberately rejected — it would bypass the sanctioned deploy path). The
 the blocked state:
 
 1. The enforcer's `_is_sanctioned_cortex_update_command()` allows the
-   exact `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation
+   exact `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` invocation
    through WITHOUT a governance lock (exact path, allowlisted flags only,
    no chaining/sudo/metacharacters).
 2. The DOGFOOD message tells agents to run exactly that command.
@@ -168,7 +168,7 @@ After any session that modifies the enforcer plugin:
 
 1. Run `cortex-update.sh` IMMEDIATELY after EVERY push
    that touches enforcer code. The dogfood check detects push-without-deploy.
-2. Verify: `sha256sum ~/hermes-cortex/plugins/governance-enforcer/__init__.py
+2. Verify: `sha256sum ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py
    ~/.hermes/plugins/governance-enforcer/__init__.py` matches.
 3. If different, port the change immediately.
 
@@ -192,7 +192,7 @@ This means `cp` without a governance lock hits the same "GOVERNANCE LOCK
 REQUIRED" error as `git push` or `sudo chmod`. The only commands that
 pass through are:
 - Commands matching READ_COMMAND_PATTERNS (fast-path)
-- `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (exact, allowlisted
+- `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (exact, allowlisted
   flags only) — the single sanctioned exception (2026-08-04)
 
 ### The single sanctioned exception (updated 2026-08-04)
@@ -204,7 +204,7 @@ The ONE file-modifying command that works without a governance lock is the
 exact sanctioned deploy invocation:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 # allowlisted flags only: --dry-run --status --delta --clean-stale
 # EXACT match — no sudo, no chaining, no other scripts
 ```

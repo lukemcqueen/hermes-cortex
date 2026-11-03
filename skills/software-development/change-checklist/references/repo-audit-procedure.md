@@ -82,7 +82,7 @@ Three types of orphans:
 
 Always cap the audit with:
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
 ```
 
 Fix any warnings in priority order:

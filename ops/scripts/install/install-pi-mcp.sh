@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-pi-mcp.sh — Register the Hermes Cortex MCP servers in
+#  install-pi-mcp.sh — Register the Steadfaste Fleet MCP servers in
 #  Pi's USER-scope config so every Pi session gets governance.
 #
 #  Problem (2026-10-02, Luke/Titus): Pi gained an MCP client
@@ -55,7 +55,7 @@
 #  Supports macOS + Linux. Backs up the file first and preserves
 #  every existing key and the user's own servers. Set AGENT_NAME to
 #  attribute cycles (default: AGENT_NAME from
-#  ~/.hermes-cortex/agent.env, else "pi").
+#  ~/.steadfaste-fleet/agent.env, else "pi").
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -64,17 +64,17 @@ PYTHON="${PYTHON:-$(command -v python3)}"
 
 # Deployed MCP server paths (cortex-update.sh deploys here on both macOS
 # and Linux). Fall back to the repo source when not deployed.
-LOOP_GOV="${HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
-TASK_MCP="${HOME}/.hermes-cortex/scripts/task-mcp.py"
-EXECUTOR_MCP="${HOME}/.hermes-cortex/scripts/executor-mcp.py"
-BUS_MCP="${HOME}/.hermes-cortex/scripts/cortex-bus-mcp.py"
-CONTEXT_MCP="${HOME}/.hermes-cortex/scripts/cortex-context-mcp.py"
+LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
+TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
+EXECUTOR_MCP="${HOME}/.steadfaste-fleet/scripts/executor-mcp.py"
+BUS_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-bus-mcp.py"
+CONTEXT_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-context-mcp.py"
 
 # Identity: the per-host agent name, so cycles are attributed to this host's
 # agent (see AGENTS.md rule 21 — identity is host-derived, never guessed).
 DEFAULT_AGENT=""
-if [[ -f "${HOME}/.hermes-cortex/agent.env" ]]; then
-  DEFAULT_AGENT="$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if [[ -f "${HOME}/.steadfaste-fleet/agent.env" ]]; then
+  DEFAULT_AGENT="$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
 fi
 AGENT_NAME="${AGENT_NAME:-${DEFAULT_AGENT:-pi}}"
 
@@ -373,7 +373,7 @@ else
   _here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   _lib=""
   for _cand in "${_here}/../lib/python-with-module.sh" \
-               "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/lib/python-with-module.sh"; do
+               "${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/lib/python-with-module.sh"; do
     if [[ -f "$_cand" ]]; then _lib="$_cand"; break; fi
   done
   [[ -n "$_lib" ]] && PY_CMD="$(bash "$_lib" --print mcp)" || PY_CMD=""
@@ -386,7 +386,7 @@ if [[ -z "$PY_CMD" ]]; then
     echo "  (begin_change, tasks, bus and the memory tools unreachable), so your"
     echo "  existing mcp.json is left exactly as it is. Fix one, then re-run:"
     echo "    ${PYTHON:-python3} -m pip install mcp"
-    echo "    bash ${HOME}/.hermes-cortex/scripts/cortex-update.sh   # rebuild the cortex venv"
+    echo "    bash ${HOME}/.steadfaste-fleet/scripts/cortex-update.sh   # rebuild the cortex venv"
   } >&2
   exit 1
 fi

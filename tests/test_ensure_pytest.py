@@ -38,7 +38,7 @@ marker_dir = os.environ.get("MARKER_DIR", ".")
 with open(os.path.join(marker_dir, "repair.log"), "a") as fh:
     fh.write("ran\\n")
 if os.environ.get("REPAIR_WORKS") == "1":
-    d = os.path.join(os.environ["HOME"], ".hermes-cortex", "venv", "bin")
+    d = os.path.join(os.environ["HOME"], ".steadfaste-fleet", "venv", "bin")
     os.makedirs(d, exist_ok=True)
     p = os.path.join(d, "python3")
     with open(p, "w") as fh:
@@ -98,7 +98,7 @@ def test_it_creates_the_venv_then_verifies_by_import():
     r = _run(tmp, home, marker, AGE_OK="1", REPAIR_WORKS="1")
     assert r.returncode == 0, (r.returncode, r.stdout, r.stderr)
     printed = Path(r.stdout.strip())
-    assert printed == home / ".hermes-cortex" / "venv" / "bin" / "python3", printed
+    assert printed == home / ".steadfaste-fleet" / "venv" / "bin" / "python3", printed
     assert printed.is_file(), printed
     assert _repairs(marker) == 1, _repairs(marker)
     print(f"  created and verified: {printed} ✓")

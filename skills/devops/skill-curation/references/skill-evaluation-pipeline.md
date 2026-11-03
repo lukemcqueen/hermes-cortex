@@ -2,14 +2,14 @@
 
 ## Overview
 
-The skill evaluation pipeline collects, evaluates, and upstreams custom skills across the Hermes Cortex agent fleet. It runs on a cron schedule and produces a digest of findings.
+The skill evaluation pipeline collects, evaluates, and upstreams custom skills across the Steadfaste Fleet agent fleet. It runs on a cron schedule and produces a digest of findings.
 
 ## Pipeline Components
 
 ### Agent-side (every agent)
 | Script | Schedule | Purpose |
 |--------|----------|---------|
-| `collect-agent-skills.sh` | Every 6h | Scans `~/.hermes/skills/` and `~/.hermes-cortex/skills/` for SKILL.md files not in `runtime/skills/`. Writes manifest to `~/.hermes-cortex/state/skills-manifest.json`. |
+| `collect-agent-skills.sh` | Every 6h | Scans `~/.hermes/skills/` and `~/.steadfaste-fleet/skills/` for SKILL.md files not in `runtime/skills/`. Writes manifest to `~/.steadfaste-fleet/state/skills-manifest.json`. |
 | `send-skill-report.py` | Every 6h (+30m) | Reads manifest and posts to Moses inbox via JSON API. Silent exit if no custom skills. |
 
 ### Orchestrator-side (Moses / evaluator)
@@ -18,8 +18,8 @@ The skill evaluation pipeline collects, evaluates, and upstreams custom skills a
 | `process-skill-reports.py` | Every 6h | Reads inbox `reports` topic for skill-report messages. Compiles digest. Accepts `--all`, `--mark-read`. |
 
 ### File locations
-All scripts: `~/hermes-cortex/ops/scripts/manage/`
-State dir: `~/.hermes-cortex/state/`
+All scripts: `~/steadfaste-fleet/ops/scripts/manage/`
+State dir: `~/.steadfaste-fleet/state/`
 Manifest: `skills-manifest.json`
 Last-processed marker: `last-skill-report-processed.txt`
 Skill contents: `skill-contents/idx_{N}.txt`
@@ -28,7 +28,7 @@ Skill contents: `skill-contents/idx_{N}.txt`
 
 ### 401 on process-skill-reports.py
 - **Symptom:** `WARN: Could not fetch inbox: HTTP Error 401: Unauthorized`
-- **Cause:** `CORTEX_INBOX_AUTH` not set in agent's `.env` (at `~/hermes-cortex/.env` or `~/.hermes/hermes-inbox.conf`)
+- **Cause:** `CORTEX_INBOX_AUTH` not set in agent's `.env` (at `~/steadfaste-fleet/.env` or `~/.hermes/hermes-inbox.conf`)
 - **Fix:** Add `CORTEX_INBOX_AUTH=username:password` to `.env`. The `CORTEX_INBOX_URL` alone is insufficient.
 - **Who sets it:** The orchestrator (Moses) typically has auth. Leaf agents may not — they rely on the orchestrator to collect.
 
@@ -45,10 +45,10 @@ Skill contents: `skill-contents/idx_{N}.txt`
 
 ### State marker missing on first deployment
 - **Symptom:** `process-skill-reports.py` shows ALL historical reports (15+ agents) every run, even though they were already processed.
-- **Cause:** `~/.hermes-cortex/state/last-skill-report-processed.txt` doesn't exist. The dedup guard that filters `msg_id > last_processed` has no reference point.
+- **Cause:** `~/.steadfaste-fleet/state/last-skill-report-processed.txt` doesn't exist. The dedup guard that filters `msg_id > last_processed` has no reference point.
 - **Fix:** After confirming no new content was missed, run:
   ```bash
-  python3 ~/hermes-cortex/ops/scripts/manage/process-skill-reports.py --mark-read
+  python3 ~/steadfaste-fleet/ops/scripts/manage/process-skill-reports.py --mark-read
   ```
   This archives the messages and writes the marker file. Future runs will only show truly new reports.
 
@@ -69,7 +69,7 @@ When evaluating a custom skill for upstreaming into `runtime/skills/`:
 
 1. **Well-structured YAML frontmatter**: Has proper `name:`, `description:`, `version:`, `license:` fields.
 2. **General-purpose**: Not specific to one agent, one deployment, or one infrastructure.
-3. **MIT-licensed**: The hermes-cortex repo is MIT. Skills must be MIT-compatible.
+3. **MIT-licensed**: The steadfaste-fleet repo is MIT. Skills must be MIT-compatible.
 4. **No private paths**: No references to private domains, internal IPs, or agent-specific name patterns.
 5. **Self-contained**: No reliance on external APIs, private registries, or uninstalled packages.
 6. **No deprecation redirects**: Deprecated skills should be removed, not kept as redirect stubs.
@@ -98,7 +98,7 @@ from pathlib import Path
 # Resolve token
 token = os.environ.get('CORTEX_BUS_TOKEN', '')
 if not token:
-    for line in open(Path.home() / 'hermes-cortex' / '.env').read().splitlines():
+    for line in open(Path.home() / 'steadfaste-fleet' / '.env').read().splitlines():
         if line.startswith('CORTEX_BUS_TOKEN='):
             token = line.split('=', 1)[1].strip().strip(\"'\")
             break
@@ -137,7 +137,7 @@ When an agent reports 230+ "custom" skills but you need to know which are truly 
 
 ```bash
 # Collect all upstream skill names (handles maxdepth 3 category nesting)
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 find skills -maxdepth 3 -name SKILL.md | sed 's|.*/||; s|/SKILL\\.md$||' | sort -u > /tmp/upstream-skills.txt
 
 # Collect the agent's reported custom skills from the bus report body
@@ -154,20 +154,20 @@ Most agents (LAM2, cisnet03, luke-server) report the standard fleet skill set. I
 
 ```bash
 # Collect skills manifest
-bash ~/hermes-cortex/ops/scripts/manage/collect-agent-skills.sh
+bash ~/steadfaste-fleet/ops/scripts/manage/collect-agent-skills.sh
 
 # Send report
-python3 ~/hermes-cortex/ops/scripts/manage/send-skill-report.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/send-skill-report.py
 
 # Process reports (orchestrator-side)
-python3 ~/hermes-cortex/ops/scripts/manage/process-skill-reports.py --mark-read
+python3 ~/steadfaste-fleet/ops/scripts/manage/process-skill-reports.py --mark-read
 
 # Check which skills are truly custom vs already upstreamed
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 python3 -c "
 import json
 from pathlib import Path
-m = json.loads(Path('~/.hermes-cortex/state/skills-manifest.json').expanduser().read_text())
+m = json.loads(Path('~/.steadfaste-fleet/state/skills-manifest.json').expanduser().read_text())
 r = {p.parent.name for p in Path('runtime/skills').rglob('SKILL.md')}
 for s in m['skills']:
     if s['name'] not in r:

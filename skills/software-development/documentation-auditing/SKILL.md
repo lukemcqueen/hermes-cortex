@@ -26,7 +26,7 @@ structure", "run a stale-paths audit", "fresh audit of the docs directory".
 - `docs/DOCS-INDEX.md` exists — Phase 6 checks it.
 - There is currently **no** `docs/stale-paths-audit.md` in the repo — if it doesn't exist when you reach Phase 9, CREATE it fresh (use the Phase 8 report structure as its skeleton) instead of assuming a prior audit file exists.
 
-**Required tools:** `search_files` (or `grep`/`rg`), `read_file`, filesystem access to `~/hermes-cortex/`. No external network access needed.
+**Required tools:** `search_files` (or `grep`/`rg`), `read_file`, filesystem access to `~/steadfaste-fleet/`. No external network access needed.
 
 ## Audit corpus boundary
 
@@ -81,14 +81,14 @@ For every stale reference found, check the filesystem:
 
 ```bash
 # Replace <old-path> with the actual stale path found in Phase 2, e.g.:
-test -f ~/hermes-cortex/src/scripts/foo.py && echo "EXISTS at old path" || echo "NOT FOUND at old path"
+test -f ~/steadfaste-fleet/src/scripts/foo.py && echo "EXISTS at old path" || echo "NOT FOUND at old path"
 
 # Check canonical/new path
-test -f ~/hermes-cortex/ops/scripts/foo.py && echo "EXISTS at canonical path" || echo "NOT FOUND at canonical path"
+test -f ~/steadfaste-fleet/ops/scripts/foo.py && echo "EXISTS at canonical path" || echo "NOT FOUND at canonical path"
 
 # Check symlinks
-test -e ~/hermes-cortex/deploy && echo "deploy/ exists (symlink or dir)" || echo "deploy/ GONE — bare deploy/ refs are stale"
-ls -la ~/hermes-cortex/deploy 2>&1  # confirm whether it is a live symlink
+test -e ~/steadfaste-fleet/deploy && echo "deploy/ exists (symlink or dir)" || echo "deploy/ GONE — bare deploy/ refs are stale"
+ls -la ~/steadfaste-fleet/deploy 2>&1  # confirm whether it is a live symlink
 ```
 
 Also check the directory's parent to discover what *does* exist there:
@@ -102,7 +102,7 @@ This uncovers cases like "the file doesn't exist at the stated path and the cano
 ### Phase 5: Load Previous Audit (if exists)
 
 ```bash
-find ~/hermes-cortex/docs -iname '*stale*path*audit*' -o -iname '*audit*stale*'
+find ~/steadfaste-fleet/docs -iname '*stale*path*audit*' -o -iname '*audit*stale*'
 ```
 
 If the find returns nothing, there is no previous audit — proceed to Phase 6 and note "no prior audit exists" in the report. Do not invent prior findings.
@@ -129,7 +129,7 @@ Some docs reference files by name without a full path — these could be missing
 
 Search for the file at every plausible location:
 ```bash
-find ~/hermes-cortex/ -name '<referenced-filename>' 2>/dev/null
+find ~/steadfaste-fleet/ -name '<referenced-filename>' 2>/dev/null
 ```
 
 ### Phase 8: Produce Structured Report

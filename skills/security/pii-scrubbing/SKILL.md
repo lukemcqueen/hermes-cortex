@@ -169,7 +169,7 @@ Consumer code pattern:
 - Files the user will manually edit once
 - Self-explanatory values that don't need validation
 
-**Proven in Hermes Cortex:**
+**Proven in Steadfaste Fleet:**
 - `models.env` — env vars with `CORTEX_DOMAIN` override
 - `hermes-inbox.conf` — created by setup with `CORTEX_INBOX_*` vars
 - `agent-registry.json` — multi-agent registry created by `setup-agent-registry.sh`
@@ -198,7 +198,7 @@ CORTEX_DOMAIN=myhost.com CORTEX_HEALTH_PORT=13007 \
   .env.*
   !.env.example  # ← the negation must come AFTER .env.*
   ```
-- See: `deploy/.env.example` in hermes-cortex for a worked example
+- See: `deploy/.env.example` in steadfaste-fleet for a worked example
 
 **For service-specific config files** (e.g., `ops/scripts/inbox.conf.example`):
 - Follow the same pattern: real values → placeholders, document what the user should replace

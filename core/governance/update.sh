@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
 #  Loop Governance — Update Script
-#  Fetches the latest scripts from hermes-cortex repo.
+#  Fetches the latest scripts from steadfaste-fleet repo.
 #
 #  Usage:
 #    bash update.sh              # check for updates and apply
@@ -36,9 +36,9 @@ done
 # Try multiple locations in priority order
 INSTALL_DIR=""
 for dir in \
-  "${HOME}/.hermes-cortex/tools/loop-governance" \
-  "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts" \
-  "${HOME}/hermes-cortex/core/governance"; do
+  "${HOME}/.steadfaste-fleet/tools/loop-governance" \
+  "${HOME}/.steadfaste-fleet/skills/software-development/loop-governance/scripts" \
+  "${HOME}/steadfaste-fleet/core/governance"; do
   if [[ -f "${dir}/VERSION" ]]; then
     INSTALL_DIR="$dir"
     break
@@ -47,9 +47,9 @@ done
 
 if [[ -z "$INSTALL_DIR" ]]; then
   fail "Loop governance installation not found."
-  info "Clone hermes-cortex first:"
-  info "  git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex"
-  info "  cd ~/hermes-cortex && bash install.sh"
+  info "Clone steadfaste-fleet first:"
+  info "  git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet"
+  info "  cd ~/steadfaste-fleet && bash install.sh"
   exit 1
 fi
 
@@ -64,7 +64,7 @@ info "Current version: ${CURRENT_VERSION}"
 echo ""
 
 # ── Determine source (repo or GitHub) ──────────────────────
-REPO_DIR="${HOME}/hermes-cortex/core/governance"
+REPO_DIR="${HOME}/steadfaste-fleet/core/governance"
 
 if [[ -d "$REPO_DIR" && -f "${REPO_DIR}/VERSION" ]]; then
   # Local repo clone
@@ -76,7 +76,7 @@ else
   # Try to download from GitHub
   SOURCE_TYPE="remote"
   SOURCE_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/core/governance/VERSION" 2>/dev/null || echo "0.0.0")
-  info "Source: https://github.com/lukemcqueen/steadfaste-fleet (renamed from hermes-cortex)"
+  info "Source: https://github.com/lukemcqueen/steadfaste-fleet (renamed from steadfaste-fleet)"
 fi
 
 info "Available version: ${SOURCE_VERSION}"

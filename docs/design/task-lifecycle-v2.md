@@ -338,7 +338,7 @@ extends the base regex).
 - Host-level `flock` + last-send timestamp file → global coalescing
   ≤1 msg/2s (not per-process).
 - 429 → honor `Retry-After`, bounded retries (2), then drop + count.
-- Failure counter persisted (`~/.hermes-cortex/state/telegram-notify.json`),
+- Failure counter persisted (`~/.steadfaste-fleet/state/telegram-notify.json`),
   surfaced by doctor (WARN). Logs go to a file, not cron stdout (R-15).
 - Send is **post-commit, time-boxed ≤3s, non-fatal** — a notify failure never
   rolls back the task write (F-014, unchanged).
@@ -381,7 +381,7 @@ extends the base regex).
 ## 11. Implementation Plan — Story TL-v2 (slices in dependency order)
 
 **Story: "Task Lifecycle v2 — fleet task discipline"** (project
-`hermes-cortex`, seeded via task-db.py; promoted to real story/slice rows
+`steadfaste-fleet`, seeded via task-db.py; promoted to real story/slice rows
 when v006 ships).
 
 Product's locked sequencing (R-21): **event trail + lifecycle + paused +

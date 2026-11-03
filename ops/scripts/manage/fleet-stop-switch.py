@@ -30,8 +30,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-CORTEX_REPO = HOME / "hermes-cortex"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+CORTEX_REPO = HOME / "steadfaste-fleet"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 
 
 def get_fleet_agents() -> dict:

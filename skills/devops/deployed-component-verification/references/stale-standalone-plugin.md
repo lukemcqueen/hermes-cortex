@@ -41,10 +41,10 @@ sudo hermes-plugin-lock unlock --orchestrator
 rm -rf ~/.hermes/plugins/<name>
 
 # 3. Fresh symlink to repo source
-ln -sf ~/hermes-cortex/plugins/<source-name> ~/.hermes/plugins/<name>
+ln -sf ~/steadfaste-fleet/plugins/<source-name> ~/.hermes/plugins/<name>
 
 # 4. Re-deploy (converts symlink to locked copy)
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 ## Prevention

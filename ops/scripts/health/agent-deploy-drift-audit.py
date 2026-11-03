@@ -14,7 +14,7 @@ Checks (identical semantics to the doctor's checks):
   4. destination is a symlink to an unknown target  -> WARN (should be a copy)
   5. deployed copy content differs from repo source -> FAIL (stale code)
      (SOURCE header stripped first — both header layouts, see _content_md5)
-  6. orphan .py/.sh in ~/.hermes-cortex/scripts/ not in any register()
+  6. orphan .py/.sh in ~/.steadfaste-fleet/scripts/ not in any register()
      mapping (non local-*, non preserve list)       -> WARN (stale deploy)
 
 register_orch entries are only expected on orchestrator hosts (hostname
@@ -42,7 +42,7 @@ import sys
 from pathlib import Path
 
 # state_tracker.py + hermes_tz.py live beside the script when deployed
-# (~/.hermes-cortex/scripts/) and one level up when run from the repo
+# (~/.steadfaste-fleet/scripts/) and one level up when run from the repo
 # (ops/scripts/health/). Resolve before importing them.
 _HERE = Path(__file__).resolve().parent
 for _candidate in (_HERE, _HERE.parent):
@@ -53,8 +53,8 @@ for _candidate in (_HERE, _HERE.parent):
 from state_tracker import StateTracker  # noqa: E402
 from hermes_tz import format_timestamp  # noqa: E402
 
-CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", str(Path.home() / "hermes-cortex")))
-CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".hermes-cortex")))
+CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", str(Path.home() / "steadfaste-fleet")))
+CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".steadfaste-fleet")))
 
 # Local-only no_agent cron scripts — deployed per-host, intentionally absent
 # from register() mappings. Mirrors check_stale_deploys() + cortex-update.sh

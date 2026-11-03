@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Invert skills-tree ownership so Hermes Cortex owns it (cycle 13491).
+"""Invert skills-tree ownership so Steadfaste Fleet owns it (cycle 13491).
 
 WHY: the fleet is moving off the Hermes agent. Cortex owns the skill library, so
 the directory that is REAL must be the cortex one, and the Hermes path (and any
@@ -178,7 +178,7 @@ def migrate(cortex: Path, borrower: Path, backup_cortex: bool, stamp: str,
 
 
 def main() -> int:
-    default_cortex = Path(os.environ.get("CORTEX_HOME", Path.home() / ".hermes-cortex")) / "skills"
+    default_cortex = Path(os.environ.get("CORTEX_HOME", Path.home() / ".steadfaste-fleet")) / "skills"
     default_borrower = Path.home() / ".hermes" / "skills"
 
     ap = argparse.ArgumentParser(description=(__doc__ or "invert skills-tree ownership").split("\n")[0])

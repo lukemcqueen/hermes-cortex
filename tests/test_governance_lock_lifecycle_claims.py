@@ -28,7 +28,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 MCP_CANDIDATES = [
-    Path.home() / ".hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
+    Path.home() / ".steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py",
     REPO / "mcp-servers/loop-gov-mcp.py",
 ]
 

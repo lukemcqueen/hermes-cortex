@@ -18,7 +18,7 @@ implementation and update thoroughly, but be concise — no PII"). This is a
 **doc-vs-reality audit**, not a prose pass: verify claims against the tree,
 touch only what's wrong, scrub PII, and keep the diff small.
 
-Works best on the hermes-cortex public repo (`~/hermes-cortex`), but the
+Works best on the steadfaste-fleet public repo (`~/steadfaste-fleet`), but the
 protocol applies to any public/docs-driven repo.
 
 ## When to Use
@@ -45,7 +45,7 @@ protocol applies to any public/docs-driven repo.
    `find`/`grep` the actual tree and rewrite to a safe understatement
    (measured 522/59/32 → write "520+ / 55+ / 30+"). Never carry forward the
    old doc's numbers.
-4. **Run the PII/secret detector BEFORE commit.** For hermes-cortex:
+4. **Run the PII/secret detector BEFORE commit.** For steadfaste-fleet:
    `bash ops/scripts/secret-leak-detector.sh README.md` — exit 0 + no
    leakage lines = clean.
 5. **Scrub real personal names from example command-lines**, even

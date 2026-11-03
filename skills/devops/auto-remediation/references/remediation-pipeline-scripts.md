@@ -47,10 +47,10 @@ The repo's `.gitignore` has `ops/scripts/` as a blanket ignore at line 101, with
 
 ```bash
 # Check which scripts are exempted
-grep '!ops/scripts' ~/hermes-cortex/.gitignore
+grep '!ops/scripts' ~/steadfaste-fleet/.gitignore
 
 # Force-add new scripts
-cd ~/hermes-cortex && git add -f ops/scripts/<subdir>/<new-script>.py
+cd ~/steadfaste-fleet && git add -f ops/scripts/<subdir>/<new-script>.py
 ```
 
 Current exceptions for pipeline scripts:

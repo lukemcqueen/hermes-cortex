@@ -46,7 +46,7 @@ HAS_ISSUES=0
 # parse issue in ops/install/harnesses/registry.yaml while the fleet venv parsed the same file and
 # listed every entry, because the bare `python3` here has no yaml. A checker that cannot read the
 # file has no verdict, and inventing one invites a "fix" to a file that was never wrong.
-_RESOLVER="${HOME}/.hermes-cortex/scripts/lib/python-with-module.sh"
+_RESOLVER="${HOME}/.steadfaste-fleet/scripts/lib/python-with-module.sh"
 [[ -f "$_RESOLVER" ]] || _RESOLVER="$(cd "$(dirname "$0")" && pwd)/lib/python-with-module.sh"
 YAML_PY=""
 _yaml_resolved=0

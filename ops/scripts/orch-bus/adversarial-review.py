@@ -2,7 +2,7 @@
 """Independent adversarial review — assemble and run the reviewer prompt.
 
 Story M6.3/M6.4/M6.5. This script is WORKER-INVOCABLE (deployed to the shared
-path ~/.hermes-cortex/scripts/ for all agents, not orchestrator-only) — it is
+path ~/.steadfaste-fleet/scripts/ for all agents, not orchestrator-only) — it is
 what the plan-review-before-slice gate uses and any governed agent records a
 plan review for their own cycle with it. It:
 
@@ -66,7 +66,7 @@ _DEPLOYED_TEMPLATE = _SCRIPT_DIR.parent / "templates" / "adversarial-reviewer-pr
 if _DEPLOYED_TEMPLATE.is_file():
     TEMPLATE = _DEPLOYED_TEMPLATE
 MARKER = "=== REVIEWED MATERIAL ==="
-DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 
 
 def assemble_prompt(material: str) -> str:

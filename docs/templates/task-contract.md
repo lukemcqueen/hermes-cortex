@@ -108,7 +108,7 @@ If verification fails at any checkpoint:
 
 ## Usage
 
-1. **Copy this template** to the session dir — `~/.hermes-cortex/sessions/task-contract-[timestamp].md` (a consumer project uses its own repo-local `.hermes-cortex/sessions/` overlay instead)
+1. **Copy this template** to the session dir — `~/.steadfaste-fleet/sessions/task-contract-[timestamp].md` (a consumer project uses its own repo-local `.steadfaste-fleet/sessions/` overlay instead)
 2. **Fill in BEFORE starting work** — the discipline is in the upfront thinking
 3. **Reference in session state** — add contract path to `current.md`
 4. **Update post-task** — fill verification section with evidence

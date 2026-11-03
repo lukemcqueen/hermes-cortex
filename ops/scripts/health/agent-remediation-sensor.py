@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Server-agent gate: the remediation sensor runs only on hosts that declare
-# IS_SERVER=true (per-host, in ~/hermes-cortex/.env). This is ORTHOGONAL to
+# IS_SERVER=true (per-host, in ~/steadfaste-fleet/.env). This is ORTHOGONAL to
 # AGENT_TYPE — an orchestrator (moses/esther) may also be a server agent and
 # run the sensor; a dev box (titus) never does. Default when unset: enabled,
 # so a freshly provisioned server agent picks up the sensor without extra
@@ -42,14 +42,14 @@ CERT_HOLDER_HOSTS = {"joseph", "gisu", "kustos"}
 
 HOME = Path.home()
 HERMES_SCRIPTS = HOME / ".hermes" / "scripts"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 CORTEX_REPO_ENV = os.environ.get("CORTEX_REPO", "")
 if CORTEX_REPO_ENV:
     CORTEX_REPO = Path(CORTEX_REPO_ENV)
 else:
-    CORTEX_REPO = HOME / "hermes-cortex"
+    CORTEX_REPO = HOME / "steadfaste-fleet"
 CORTEX_SCRIPTS = CORTEX_REPO / "src" / "scripts"
-WEB_CACHE = HOME / ".hermes-cortex" / "data" / "web_cache.sqlite"
+WEB_CACHE = HOME / ".steadfaste-fleet" / "data" / "web_cache.sqlite"
 
 ISSUES = []
 
@@ -238,7 +238,7 @@ def check_mycortex_health():
     the mycortex CLI doctor instead of the removed legacy brain binary.
     """
     # Check if mycortex CLI is installed
-    cli = os.path.expanduser("~/.hermes-cortex/scripts/mycortex")
+    cli = os.path.expanduser("~/.steadfaste-fleet/scripts/mycortex")
     if not os.path.exists(cli):
         return  # mycortex not installed, skip
 
@@ -380,7 +380,7 @@ def _read_bus_config():
             bus_auth = os.environ.get("CORTEX_BASIC_AUTH", "")
         return bus_url, bus_auth
     
-    conf_path = HOME / "hermes-cortex" / ".env"
+    conf_path = HOME / "steadfaste-fleet" / ".env"
     if conf_path.exists():
         try:
             for line in conf_path.read_text().splitlines():
@@ -413,7 +413,7 @@ def _is_local_url(url):
 
 
 def check_cortex_bus():
-    """Check Hermes Cortex Agent Bus health.
+    """Check Steadfaste Fleet Agent Bus health.
     
     Checks that the Agent Bus service is active AND the endpoint responds.
     Only reports an issue if BOTH checks fail (to avoid false positives
@@ -523,11 +523,11 @@ def check_systemd_services():
 
 def _read_env_value(key: str) -> str:
     """Read a value from the environment, falling back to agent.env then
-    ~/hermes-cortex/.env (canonical identity/config sources)."""
+    ~/steadfaste-fleet/.env (canonical identity/config sources)."""
     val = os.environ.get(key, "").strip()
     if val:
         return val
-    for env_file in (HOME / ".hermes-cortex" / "agent.env", CORTEX_REPO / ".env"):
+    for env_file in (HOME / ".steadfaste-fleet" / "agent.env", CORTEX_REPO / ".env"):
         try:
             for line in env_file.read_text().splitlines():
                 line = line.strip()
@@ -553,14 +553,14 @@ def _local_agent_name() -> str:
     if name and name != "unknown":
         return name.lower()
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 
 
 def _is_server_agent() -> bool:
     """Server-agent gate: run the sensor only when this host declares
-    IS_SERVER=true (env or ~/hermes-cortex/.env). Orthogonal to AGENT_TYPE —
+    IS_SERVER=true (env or ~/steadfaste-fleet/.env). Orthogonal to AGENT_TYPE —
     an orchestrator may also be a server agent. Unset defaults to enabled so
     a freshly provisioned server agent picks up the sensor automatically."""
     flag = _read_env_value("IS_SERVER").lower()

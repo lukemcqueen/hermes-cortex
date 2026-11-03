@@ -15,7 +15,7 @@
 #            Hermes loads it at start; the cron-timeout pattern)
 #
 # Value: ${HERMES_TIMEZONE:-Asia/Seoul} — override per machine via
-# ~/hermes-cortex/.env (sourced by cortex-update.sh before this runs).
+# ~/steadfaste-fleet/.env (sourced by cortex-update.sh before this runs).
 #
 # ⚠️  Activation requires a gateway restart (same contract as
 #     install-gateway-cron-timeout.sh): systemd drop-ins are read at
@@ -40,7 +40,7 @@ esac
 
 HOME_DIR="${HOME:?}"
 HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.steadfaste-fleet}"
 STATE_FILE="${CORTEX_DEPLOY_HOME}/state/gateway-timezone-env"
 
 MECH=""

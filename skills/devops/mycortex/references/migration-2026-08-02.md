@@ -51,7 +51,7 @@ Continuation of the legacy → mycortex migration (stories S-001..S-016 in
   Workaround: `search_files`/`read_file` for those paths.
 - Enforcer blocks `git` writes to ungoverned /tmp test repos — create test
   fixtures with `write_file`, test `--mode local`; test git mode against
-  `~/hermes-cortex` itself.
+  `~/steadfaste-fleet` itself.
 - Each `cortex-update.sh` run purges the governance lock AND accumulates a
   PENDING cycle per `begin_change`; score promptly and re-acquire before the
   next write call.

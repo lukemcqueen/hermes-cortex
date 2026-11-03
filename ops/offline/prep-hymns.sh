@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Offline Hymn Downloader
+#  Steadfaste Fleet — Offline Hymn Downloader
 #  Downloads public domain hymn collections from the
 #  Open Hymnal Project (openhymnal.org).
 #
@@ -337,7 +337,7 @@ if ! command -v curl &>/dev/null; then error "curl required"; exit 1; fi
 
 mkdir -p "$HYMNS_DIR"
 
-header "Hermes Cortex — Offline Hymn Downloader"
+header "Steadfaste Fleet — Offline Hymn Downloader"
 echo "  Source: Open Hymnal Project (openhymnal.org)"
 echo "  Destination: $HYMNS_DIR"
 echo ""

@@ -79,12 +79,12 @@ def test_resolver_never_guesses_a_deployed_path():
     assert "strip" not in src.lower() or "never guessed" in src, \
         "no path-stripping heuristic may come back"
     # Scope this to the RESOLVER's body. A whole-file grep flags its own
-    # explanation: `~/.hermes-cortex/scripts` legitimately appears in
+    # explanation: `~/.steadfaste-fleet/scripts` legitimately appears in
     # ensure_scripts_path's docstring, and this assertion caught that prose rather
     # than the code (the probe was wrong, not the resolver).
     body = src.split("def resolve_repo_resource", 1)[1].split(
         "def repo_resource_candidates", 1)[0]
-    assert "hermes-cortex/scripts" not in body, \
+    assert "steadfaste-fleet/scripts" not in body, \
         "no hard-coded deployed candidate in the resolver — that is the hand-rolled list this replaced"
 
 
@@ -110,7 +110,7 @@ def test_manifest_covers_every_resource_the_servers_ask_for():
     paths = _load_paths()
     manifest = paths.deploy_manifest()
     if not manifest:
-        deployed = Path.home() / ".hermes-cortex" / "deploy-manifest.tsv"
+        deployed = Path.home() / ".steadfaste-fleet" / "deploy-manifest.tsv"
         if not deployed.is_file():
             pytest.skip("no deploy-manifest.tsv on this host")
         manifest = paths.read_manifest(deployed)

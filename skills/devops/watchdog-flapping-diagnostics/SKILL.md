@@ -3,7 +3,7 @@ name: watchdog-flapping-diagnostics
 description: "Watchdog flapping: nginx throttle of fleet probes; debounce."
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux]
 metadata:

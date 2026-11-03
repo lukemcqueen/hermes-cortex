@@ -36,7 +36,7 @@ FAILOVER SCENARIO
                drains Esther's backlog to Moses. Next tick, normal sync resumes.
 
 CONFIGURATION
-  All via env vars (set in ~/hermes-cortex/.env or ~/hermes-cortex/.env):
+  All via env vars (set in ~/steadfaste-fleet/.env or ~/steadfaste-fleet/.env):
 
   BUS_FORWARDER_LOCAL_URL     Local bus (default: http://127.0.0.1:8903)
   BUS_FORWARDER_LOCAL_TOKEN   Token for local bus (default: CORTEX_BUS_TOKEN)
@@ -66,7 +66,7 @@ from pathlib import Path
 from typing import Optional
 
 HOME = Path.home()
-STATE_FILE = HOME / ".hermes-cortex" / "state" / "bus-forwarder-state.json"
+STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "bus-forwarder-state.json"
 TIMEOUT = 10
 MAX_PER_QUEUE = 10
 MAX_SEEN = 10000  # compact state when seen set exceeds this
@@ -76,7 +76,7 @@ PEER_HEALTH_TIMEOUT = 5  # quick health check before attempting sync
 # The bus server validates that `from` matches the authenticated agent.
 # When forwarding messages from other agents, we must rewrite `from` to
 # our own name and preserve the original sender as `forwarded_from`.
-_AGENT_ENV = HOME / ".hermes-cortex" / "agent.env"
+_AGENT_ENV = HOME / ".steadfaste-fleet" / "agent.env"
 LOCAL_AGENT = "unknown"
 try:
     for line in _AGENT_ENV.read_text().splitlines():
@@ -111,8 +111,8 @@ def _resolve_var(key: str, default: str = "") -> str:
         return val
     # Try config files
     for cfg_path in [
-        HOME / "hermes-cortex" / ".env",
-        HOME / "hermes-cortex" / ".env",
+        HOME / "steadfaste-fleet" / ".env",
+        HOME / "steadfaste-fleet" / ".env",
     ]:
         cfg = _load_config_file(cfg_path)
         if key in cfg and cfg[key]:
@@ -122,7 +122,7 @@ def _resolve_var(key: str, default: str = "") -> str:
 
 # ── Config from env vars (with conf-file fallback) ──
 # NOTE (2026-08-05): ALL of these must resolve via _resolve_var (env →
-# .env → ~/hermes-cortex/.env), NOT os.environ alone. The
+# .env → ~/steadfaste-fleet/.env), NOT os.environ alone. The
 # failover watchdog rewrites CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL in
 # .env when it activates/recovers — an env-only read ignores
 # the swap, and cron runs (no env) resolve to empty peers/tokens, so the

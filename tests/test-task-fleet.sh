@@ -46,8 +46,8 @@ run_battery() {
   # Locate the deployed CLI + repo migrate runner.
   TASK_DB=""
   for cand in \
-    "$HOME/.hermes-cortex/scripts/task-db.py" \
-    "$HOME/hermes-cortex/ops/scripts/manage/task-db.py"; do
+    "$HOME/.steadfaste-fleet/scripts/task-db.py" \
+    "$HOME/steadfaste-fleet/ops/scripts/manage/task-db.py"; do
     if [ -f "$cand" ]; then TASK_DB="$cand"; break; fi
   done
   if [ -z "$TASK_DB" ]; then
@@ -58,8 +58,8 @@ run_battery() {
 
   MIGRATE_PY=""
   for cand in \
-    "$HOME/hermes-cortex/ops/services/tasks/migrate.py" \
-    "$HOME/.hermes-cortex/scripts/ops/services/tasks/migrate.py"; do
+    "$HOME/steadfaste-fleet/ops/services/tasks/migrate.py" \
+    "$HOME/.steadfaste-fleet/scripts/ops/services/tasks/migrate.py"; do
     if [ -f "$cand" ]; then MIGRATE_PY="$cand"; break; fi
   done
 
@@ -375,7 +375,7 @@ print(len([l for l in raw.splitlines() if l.strip()]))
     --status cancelled --no-notify >/dev/null 2>&1
 
   # 4d. no_agent identity resolution: no HERMES_PROFILE/AGENT_NAME env →
-  # task-db resolves from ~/.hermes-cortex/agent.env (Luke 2026-08-10), and
+  # task-db resolves from ~/.steadfaste-fleet/agent.env (Luke 2026-08-10), and
   # the DEFAULT role (mycortex_reader_<profile>) must satisfy RLS WITH
   # CHECK (created_by == profile_of(current_user)) — no role override.
   local na_out na_rid

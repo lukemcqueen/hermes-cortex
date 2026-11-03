@@ -1,4 +1,4 @@
-# Skills Manifest — Hermes Cortex
+# Skills Manifest — Steadfaste Fleet
 
 Skills in this repo auto-install via `install.sh` step 10, which
 recursively copies `skills/` to `~/.hermes/skills/`, preserving category
@@ -193,16 +193,16 @@ their domain.
 | `docker-management` | 1.0.0 | Manage Docker containers, images, volumes, and Compose. | `skill_view(name='docker-management')` |
 | `docker-test-isolation-harness` | 1.0.0 | Isolated throwaway containers for Docker test runs. | `skill_view(name='docker-test-isolation-harness')` |
 | `doctor-warning-resolution` | 1.0.0 | DEPRECATED alias — merged into maintenance-scan. Load maintenance-scan instead. | `skill_view(name='doctor-warning-resolution')` |
-| `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Hermes Cortex. Defines when and how to distinguish gen... | `skill_view(name='documentation-scope')` |
+| `documentation-scope` | 1.0.0 | Multi-audience documentation scoping conventions for Steadfaste Fleet. Defines when and how to distinguish... | `skill_view(name='documentation-scope')` |
 | `enforcement-change-safety` | 1.1.0 | Use before enforcement code changes or shared-repo commits. | `skill_view(name='enforcement-change-safety')` |
 | `enforcement-gate-migration` | 1.0.0 | Use when re-pointing a gate onto a new evidence store. | `skill_view(name='enforcement-gate-migration')` |
 | `enforcer-modification-considerations` | 1.0.0 | Use before modifying any enforcer/governance code. | `skill_view(name='enforcer-modification-considerations')` |
 | `env-aware-compose-wrapper` | 2 | Build an env-aware `_compose()` wrapper for `./run` CLI scripts that requires an explicit environment varia... | `skill_view(name='env-aware-compose-wrapper')` |
 | `eval-harness` | 1.0.0 | Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis | `skill_view(name='eval-harness')` |
-| `file-ownership-boundaries` | 1.0.0 | Know which files are yours to modify vs Hermes defaults. Covers the two-domain split (Hermes Agent vs herme... | `skill_view(name='file-ownership-boundaries')` |
+| `file-ownership-boundaries` | 1.0.0 | Know which files are yours to modify vs Hermes defaults. Covers the two-domain split (Hermes Agent vs stead... | `skill_view(name='file-ownership-boundaries')` |
 | `fix-without-asking` | 1.3.0 | When you discover an issue mid-task, the correct response is begin_change — not a question. | `skill_view(name='fix-without-asking')` |
 | `fleet-commands` | 1.6.0 | Send operational commands to fleet agents via the PGMQ bus — message format, delivery verification, bus_acc... | `skill_view(name='fleet-commands')` |
-| `fleet-management` | 1.0.0 | Fleet-level agent management for Hermes Cortex — agent registry, fleet ready score, fleet-audit CLI, adding... | `skill_view(name='fleet-management')` |
+| `fleet-management` | 1.0.0 | Fleet-level agent management for Steadfaste Fleet — agent registry, fleet ready score, fleet-audit CLI, add... | `skill_view(name='fleet-management')` |
 | `fresh-tomato-router` | 1.0.0 | Interact with FreshTomato/DD-WRT routers programmatically via curl — authentication, nvram access, port for... | `skill_view(name='fresh-tomato-router')` |
 | `git-deployment-workflow` | 1.0.0 | Deploy code by pushing to bare remote repositories (Capistrano-style deployment targets). Covers force push... | `skill_view(name='git-deployment-workflow')` |
 | `git-forensics` | 1.0.0 | Use when files vanished or uncommitted deletions appeared. | `skill_view(name='git-forensics')` |
@@ -219,11 +219,11 @@ their domain.
 | `hermes-cortex-maintenance` | 1.36.0 | Maintain an installed Hermes Cortex instance — update both the upstream Hermes Agent and the cortex repo la... | `skill_view(name='hermes-cortex-maintenance')` |
 | `hermes-cortex-repo-deploy` | 1.0.0 | Use when committing to the hermes-cortex repo. | `skill_view(name='hermes-cortex-repo-deploy')` |
 | `hermes-gateway-operations` | 1.0.0 | Diagnose, configure, and maintain Hermes messaging gateway platforms (Telegram, Discord, WhatsApp, etc.). C... | `skill_view(name='hermes-gateway-operations')` |
-| `hermes-home-cleanup` | 1.0.0 | Use when cleaning ~/.hermes or ~/.hermes-cortex. Verify. | `skill_view(name='hermes-home-cleanup')` |
+| `hermes-home-cleanup` | 1.0.0 | Use when cleaning ~/.hermes or ~/.steadfaste-fleet. Verify. | `skill_view(name='hermes-home-cleanup')` |
 | `hermes-model-config` | 1.0.0 | Use when sessions run the wrong model or config regresses. | `skill_view(name='hermes-model-config')` |
 | `hermes-recovery` | 1.0.0 | Server migration, disaster recovery, and restoration workflows for Hermes Agent — restoring from tar.gz arc... | `skill_view(name='hermes-recovery')` |
 | `hermes-s6-container-supervision` | 1.0.0 | Modify or debug s6 services in the Hermes Docker image. | `skill_view(name='hermes-s6-container-supervision')` |
-| `inbox-remediation` | 1.1.0 | Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus. Scans pending remediation ma... | `skill_view(name='inbox-remediation')` |
+| `inbox-remediation` | 1.1.0 | Auto-remediate steadfaste-fleet issues reported by peer agents via the Agent Bus. Scans pending remediation... | `skill_view(name='inbox-remediation')` |
 | `inference-sh-cli` | 1.0.0 | Run 150+ AI apps (image, video, LLM) via inference.sh CLI. | `skill_view(name='inference-sh-cli')` |
 | `installer-validation` | 1.0.0 | Validate installers and strip post-decommission stale refs. | `skill_view(name='installer-validation')` |
 | `integration-audit` | 1.0.0 | Comprehensive integration audit — runs all changed subsystems together before final commit to catch cross-s... | `skill_view(name='integration-audit')` |
@@ -235,7 +235,7 @@ their domain.
 | `linux-server-hardening` | 1.0.0 | Systematic Linux server hardening with tiered prioritization. Covers UFW firewall, SSH hardening (key-only... | `skill_view(name='linux-server-hardening')` |
 | `llm-cost-optimization` | 1.1.0 | Cut LLM API spend: cache-hit rate, thinking mode, telemetry. | `skill_view(name='llm-cost-optimization')` |
 | `llm-judge-scorer` | 1.0.0 | LLM-as-Judge trace quality scorer. Evaluates Hermes conversation traces in Langfuse using a local Ollama mo... | `skill_view(name='llm-judge-scorer')` |
-| `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/p... | `skill_view(name='loop-governance')` |
+| `loop-governance` | 1.5.0 | TDD cycle scoring, self-improvement, and governance system for Steadfaste Fleet. Scores completeness/qualit... | `skill_view(name='loop-governance')` |
 | `maintenance-scan` | 1.0.0 | Systematic system health survey run proactively when the user gives an open-ended directive to "find work"... | `skill_view(name='maintenance-scan')` |
 | `mcp-health-monitoring` | 1.0.0 | Probe MCP server health; extend the governance watchdog. | `skill_view(name='mcp-health-monitoring')` |
 | `messaging-gateway` | 1.0.0 | DEPRECATED alias — merged into hermes-gateway-operations. Load hermes-gateway-operations instead. | `skill_view(name='messaging-gateway')` |
@@ -613,8 +613,8 @@ their domain.
 | `react-view-transitions` | 1.0.0 | Implement smooth native-browser animations between UI states using React's ViewTransition component and doc... | `skill_view(name='react-view-transitions')` |
 | `reasoning-patterns` | 1.1.0 | DEPRECATED alias — merged into agent-flow (2026-08-20). Load agent-flow instead; its embedded reasoning-pat... | `skill_view(name='reasoning-patterns')` |
 | `reflexion-check` | 1.3.0 | Pre-delivery self-critique: eight-question audit to catch blind spots, verify claims, keep the operator inf... | `skill_view(name='reflexion-check')` |
-| `repo-organization` | 1.1.0 | Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit proce... | `skill_view(name='repo-organization')` |
-| `requirements-elicitation` | 1.2.0 | Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW pri... | `skill_view(name='requirements-elicitation')` |
+| `repo-organization` | 1.1.0 | Canonical repo organization for Steadfaste Fleet — structure, naming, consolidation, symlinks, and audit pr... | `skill_view(name='repo-organization')` |
+| `requirements-elicitation` | 1.2.0 | Requirements elicitation for Steadfaste Fleet (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |
 | `robust-code-design` | 1.0.0 | Use when hardening code against adversarial failure modes. | `skill_view(name='robust-code-design')` |
 | `role-gating-and-public-moderation` | 1.0.0 | Role gating, PII tiers, and UGC moderation patterns. | `skill_view(name='role-gating-and-public-moderation')` |
@@ -623,7 +623,7 @@ their domain.
 | `session-manager` | 1.1.0 | Session management skill — checkpoint/restore, context compression, progress tracking, and recovery for mai... | `skill_view(name='session-manager')` |
 | `session-orchestration` | 1.0.0 | Five-wave session orchestration: Discovery → Impl-Core → Impl-Polish → Quality → Finalization. Quality gate... | `skill_view(name='session-orchestration')` |
 | `software-factory` | 1.0.0 | Real features: 4-gate design with user approval per gate. | `skill_view(name='software-factory')` |
-| `state-orchestrator` | 1.0.0 | Information routing decision matrix for Hermes Cortex agents. Defines when to consult live context vs sessi... | `skill_view(name='state-orchestrator')` |
+| `state-orchestrator` | 1.0.0 | Information routing decision matrix for Steadfaste Fleet agents. Defines when to consult live context vs se... | `skill_view(name='state-orchestrator')` |
 | `steadfaste-design` | 1.0.0 | steadfaste design-doc and governance-cycle work. | `skill_view(name='steadfaste-design')` |
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories using vertical slicing patterns. | `skill_view(name='story-decomposition')` |
 | `storybook-setup` | 1.0.0 | Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patter... | `skill_view(name='storybook-setup')` |
@@ -719,7 +719,7 @@ references remain.
 | 2026-06-11 | TDD merged into change-test-loop (v1.1.0), writing-plans merged into plan (v2.1.0) |
 | 2026-06-09 | Added public-contribution, skill-from-lesson (software-development), nginx-web-app-deployment (devops), SOUL.md template, updated nginx template |
 | 2026-06-09 | Added pr-review (github), package-security (devops). skill-from-lesson absorbed into save-lesson (v1.1.0). documentation-maintenance-audit absorbed into project-readiness. |
-| 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate hermes-cortex issues from agent inbox messages |
+| 2026-06-15 | Added inbox-remediation devops skill v1.0.0 — auto-remediate steadfaste-fleet issues from agent inbox messages |
 | 2026-06-15 | orch-weekly-auto-fix v1.1.0 — added verification phase: each fix re-checks its condition post-fix with PASS/FAIL/WARN output |
 | 2026-06-17 | Added skill collection pipeline: collect-agent-skills.sh (agent-side reporter), request-skill-reports.sh (Moses orchestrator), process-skill-reports.py (digest compiler). Inbox server filename collision fix (microsecond precision). |
 || 2026-06-12 | **Memory That Compounds** — change-test-loop v2.0.0 adds LEARN phase (search lessons before every code change). New lesson-aware-agent skill for universal injection. Daily lesson auto-miner (02:00 KST). Compound stats dashboard (02:30 KST). Replaced weekly mining with daily mining. |

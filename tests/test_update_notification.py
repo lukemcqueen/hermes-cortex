@@ -28,7 +28,7 @@ def _load():
     # The handler imports hermes_paths, which lives in the scripts dir — the real
     # invocation has it on the path. Mirror that here.
     import os
-    for p in (REPO / "ops/scripts", Path(os.path.expanduser("~/.hermes-cortex/scripts"))):
+    for p in (REPO / "ops/scripts", Path(os.path.expanduser("~/.steadfaste-fleet/scripts"))):
         if p.is_dir() and str(p) not in sys.path:
             sys.path.insert(0, str(p))
     spec = importlib.util.spec_from_file_location(

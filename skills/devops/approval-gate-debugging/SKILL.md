@@ -2,7 +2,7 @@
 name: approval-gate-debugging
 description: "Use when a command is flagged as a security issue."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -16,7 +16,7 @@ metadata:
 ## When to Use
 
 - A terminal command is flagged: `Command was flagged (Security scan: security issue detected ...)`
-- A **sanctioned** command (e.g. `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`) still prompts for user approval
+- A **sanctioned** command (e.g. `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`) still prompts for user approval
 - Smart-approval escalates a routine command to the user, and the approval times out → deny
 - Any command that used to run clean suddenly needs approval
 
@@ -29,7 +29,7 @@ don't understand masks the defect and leaves every other command still broken.
 
 Terminal commands pass TWO independent gates:
 
-1. **Governance enforcer** (Hermes Cortex plugin) — governance-lock check. The
+1. **Governance enforcer** (Steadfaste Fleet plugin) — governance-lock check. The
    sanctioned `cortex-update.sh` invocation passes this without a lock.
 2. **Hermes smart approval** (`tools/approval.py`) — two sub-layers:
    - Regex `detect_dangerous_command()` — pattern matching (curl|sh, rm -rf, gateway restart, etc.)
@@ -55,12 +55,12 @@ approve/allowlist the command.
 ```python
 # 1. Regex layer passes?
 from tools.approval import detect_dangerous_command
-detect_dangerous_command("bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
+detect_dangerous_command("bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
 # → (False, None, None)  — regex layer is NOT the blocker
 
 # 2. Tirith layer blocks?
 from tools.tirith_security import check_command_security
-check_command_security("bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
+check_command_security("bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
 # → {"action": "block", "summary": "security issue detected (details unavailable)"}
 
 # 3. Which binary is resolved? PATH-shadowing check
@@ -141,7 +141,7 @@ the canonical case — the push carve-out authorises exactly that shape and noth
 give the session a RESOLVED GOVERNED REPO before any interpreter read — take the lock
 deliberately (`begin_change`) and close the cycle — because the deployed copy's LOCATION does not
 help: `python3 <script>` is write-class wherever the script lives, and a non-governed cwd such as
-`~` is refused with `No governed repo could be resolved for this call` (`~/.hermes-cortex` has no
+`~` is refused with `No governed repo could be resolved for this call` (`~/.steadfaste-fleet` has no
 `.git`, checked 2026-10-25), which is not the lock rule;
 
 The label is the **classifier's** claim, not a fact about your command: a read-only capture can

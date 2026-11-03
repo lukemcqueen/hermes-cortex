@@ -11,7 +11,7 @@ Resolve the store through the module's own accessor and open it READ-ONLY:
 ```python
 import importlib.util, sqlite3
 from pathlib import Path
-src = Path.home() / ".hermes-cortex/tools/loop-governance/loop-gov-mcp.py"   # the DEPLOYED copy
+src = Path.home() / ".steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"   # the DEPLOYED copy
 spec = importlib.util.spec_from_file_location("lg", src)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)          # import-time write is its own log file, nothing else

@@ -12,7 +12,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="$REPO/docs/evidence/cost4-host-cost-adapter"
 OUT="$OUTDIR/verify.txt"
-PY="$HOME/.hermes-cortex/venv/bin/python3"
+PY="$HOME/.steadfaste-fleet/venv/bin/python3"
 TESTFILE="tests/test_runtime/test_cron_cost_reporting.py"
 SCRIPT="ops/scripts/manage/cron-cost-metrics.py"
 
@@ -107,8 +107,8 @@ PYEOF
 
 # ── 5. static gates ──────────────────────────────────────────────────────────
 rule "5. static gates"
-say "\$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file $SCRIPT --level A4 --gate"
-python3 "$HOME/.hermes-cortex/scripts/adversarial-verify.py" --file "$REPO/$SCRIPT" --level A4 --gate >"$WT.a4.log" 2>&1
+say "\$ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file $SCRIPT --level A4 --gate"
+python3 "$HOME/.steadfaste-fleet/scripts/adversarial-verify.py" --file "$REPO/$SCRIPT" --level A4 --gate >"$WT.a4.log" 2>&1
 say "rc=$?"
 norm "$WT.a4.log" | tail -n 8
 say "\$ python3 -m py_compile $SCRIPT $TESTFILE"

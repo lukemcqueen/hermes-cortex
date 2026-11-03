@@ -48,7 +48,7 @@ RC_FULL=$?
 OUT_RULE="$(python3 - "${HANDLER}" <<'PY' 2>&1
 import importlib.util, sys
 from pathlib import Path
-sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts"))
+sys.path.insert(0, str(Path.home() / ".steadfaste-fleet" / "scripts"))
 handler = sys.argv[1]
 spec = importlib.util.spec_from_file_location("amh", handler)
 m = importlib.util.module_from_spec(spec)

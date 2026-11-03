@@ -59,7 +59,7 @@ def _find_manifest(explicit):
         base = os.environ.get(env_name)
         if base and (Path(base) / _MANIFEST_NAME).is_file():
             return Path(base) / _MANIFEST_NAME
-    home_default = Path.home() / ".hermes-cortex" / _MANIFEST_NAME
+    home_default = Path.home() / ".steadfaste-fleet" / _MANIFEST_NAME
     if home_default.is_file():
         return home_default
     return None
@@ -90,7 +90,7 @@ def main() -> int:
     manifest = _find_manifest(args.manifest)
     if manifest is None or not manifest.is_file():
         print(f"COULD NOT RESOLVE: no {_MANIFEST_NAME} found (looked at CORTEX_DEPLOY_HOME, "
-              f"HERMES_CORTEX_HOME, ~/.hermes-cortex/{_MANIFEST_NAME}"
+              f"HERMES_CORTEX_HOME, ~/.steadfaste-fleet/{_MANIFEST_NAME}"
               + (f", {args.manifest}" if args.manifest else "") + "). Nothing was checked.")
         return 2
 

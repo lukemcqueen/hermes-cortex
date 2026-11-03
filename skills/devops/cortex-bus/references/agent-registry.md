@@ -2,7 +2,7 @@
 
 ## Location
 
-`~/.hermes-cortex/state/agent-registry.json`
+`~/.steadfaste-fleet/state/agent-registry.json`
 
 The repo ships two templates:
 - `ops/install/deploy/agent-registry.json.example` — populated example with realistic data
@@ -197,7 +197,7 @@ See `docs/prd/PRD-005-enterprise-integration-v2.md` for full definitions.
 
 1. Add entry to the registry JSON with all fields including `capabilities`, `fleet_concerns`, `observability`, and `service_layer`
 2. Run `fleet-audit --level F1` to validate the entry
-3. Run: `python3 ~/.hermes-cortex/scripts/generate-bus-wrappers.py --apply-crons`
+3. Run: `python3 ~/.steadfaste-fleet/scripts/generate-bus-wrappers.py --apply-crons`
 
 ## Validating the Registry
 

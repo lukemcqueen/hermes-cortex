@@ -2,7 +2,7 @@
 
 Verifies the deterministic parts of the changes WITHOUT a governance lock
 (read-only assertion of module behaviour) and without touching the live
-~/.hermes-cortex DB (all state repointed at a temp sandbox):
+~/.steadfaste-fleet DB (all state repointed at a temp sandbox):
 
   A. loop-gov-mcp._db(): schema-init-once guard — the DDL write-commit runs
      exactly once per process; later _db() calls still work (pure reads) and

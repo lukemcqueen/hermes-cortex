@@ -29,13 +29,13 @@ if [ -z "$AGENT_NAME" ]; then
   exit 1
 fi
 
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 WORKER_SCRIPT_SRC="${CORTEX_REPO}/ops/scripts/agent/agent-worker.py"
 WORKER_SCRIPT_DST="${HERMES_HOME}/scripts/agent-worker.py"
 SERVICE_FILE="${HOME}/.config/systemd/user/hermes-agent-worker.service"
-CONFIG_FILE="${HOME}/hermes-cortex/.env"
+CONFIG_FILE="${HOME}/steadfaste-fleet/.env"
 
 # ── Grant bus permissions ──
 info "Granting bus permissions for ${CYAN}${AGENT_NAME}${RESET}..."

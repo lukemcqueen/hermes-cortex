@@ -3,7 +3,7 @@ name: offline-code
 version: 1.0.0
 category: devops
 description: "Offline code snippet search + generation using local Ollama models. Search a curated corpus (run `offline_code stats` for the live count) across 30+ topics and 25 languages with nomic-embed-text:v1.5, generate code with qwen2.5:3b (single fleet model, also used for judging; CODING_MODEL env pin wins). No internet needed."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -30,7 +30,7 @@ A two-tier local coding assistant: **search** a curated corpus of algorithms and
 
 ```bash
 # Step 1: Symlink the CLI wrapper
-ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code
+ln -sf ~/steadfaste-fleet/ops/offline/offline_code.sh ~/.hermes/bin/offline_code
 
 # Step 2: Verify CLI
 offline_code stats
@@ -126,13 +126,13 @@ The model **prefers an installed model** and **honors a `CODING_MODEL` env pin**
 offline_code gen "binary search tree" --model qwen2.5:3b
 ```
 
-The corpus lives at `~/hermes-cortex/ops/offline/code-corpus/` (per-language snippet modules in `code-corpus/snippets/`; regenerate `.md` files with `python3 ops/offline/code-corpus/generate.py` after editing modules). Index stored at `~/offline/code-index.json`. Run `offline_code stats` for the current snippet count — the corpus grows via `learn`, so never hardcode a count in scripts.
+The corpus lives at `~/steadfaste-fleet/ops/offline/code-corpus/` (per-language snippet modules in `code-corpus/snippets/`; regenerate `.md` files with `python3 ops/offline/code-corpus/generate.py` after editing modules). Index stored at `~/offline/code-index.json`. Run `offline_code stats` for the current snippet count — the corpus grows via `learn`, so never hardcode a count in scripts.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `offline_code: command not found` | `ln -sf ~/hermes-cortex/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` (and ensure `~/.hermes/bin` is on PATH) |
+| `offline_code: command not found` | `ln -sf ~/steadfaste-fleet/ops/offline/offline_code.sh ~/.hermes/bin/offline_code` (and ensure `~/.hermes/bin` is on PATH) |
 | `nomic-embed-text:v1.5 not found` | `ollama pull nomic-embed-text:v1.5` |
 | `qwen2.5 not found` | `ollama pull qwen2.5:3b` (single fleet model; `CODING_MODEL` env pin wins) |
 | `Index is current` on `--force` | Use `--force` flag to rebuild |

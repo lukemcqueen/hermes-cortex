@@ -13,7 +13,7 @@ the rest of the fleet.
 
 USAGE
   # see the block, change nothing (the default is a dry run):
-  python3 gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml --models a/b,c/d
+  python3 gateway-model-list.py --config ~/.steadfaste-fleet/gateway.yaml --models a/b,c/d
 
   # take the list from THIS host's pi:
   python3 gateway-model-list.py --config ... --from-pi 'openrouter/*'

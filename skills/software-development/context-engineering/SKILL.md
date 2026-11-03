@@ -2,7 +2,7 @@
 name: context-engineering
 description: "Context design for agents: pre-fetch, compaction, envelopes."
 version: 1.0.0
-author: Hermes Cortex (Esther, from verified 12-Factor Agents research, 2026-08-24)
+author: Steadfaste Fleet (Esther, from verified 12-Factor Agents research, 2026-08-24)
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -16,7 +16,7 @@ metadata:
 The context window is the ONLY primitive: tokens in → tokens out. Get the
 best inputs to get the best outputs. This skill captures the verified
 patterns from Dex Horthy's 12-Factor Agents (F3 own-your-context-window,
-F13 pre-fetch) and how they were implemented in Hermes Cortex.
+F13 pre-fetch) and how they were implemented in Steadfaste Fleet.
 
 Full research bank: `references/12-factor-agents.md`.
 
@@ -51,7 +51,7 @@ Don't tell the agent "you may want to fetch X" — fetch X and include the
 output. Free CPU ≠ inference tokens; pre-fetching costs CPU, letting the
 model fetch costs tokens + round-trips + drift.
 
-## Implemented pattern (Hermes Cortex, 2026-08-24)
+## Implemented pattern (Steadfaste Fleet, 2026-08-24)
 
 `ops/scripts/executor_context_builder.py` — deterministic pre-fetch into
 the execution_request envelope before dispatch. Sections in priority order,

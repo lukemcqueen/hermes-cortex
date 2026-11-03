@@ -11,7 +11,7 @@
 # Probes the probe: see test-verify-orch-skill-lifecycle.sh
 set -uo pipefail
 
-REPO="${REPO:-$HOME/hermes-cortex}"
+REPO="${REPO:-$HOME/steadfaste-fleet}"
 DEPLOYED="${DEPLOYED:-$HOME/.hermes/skills}"
 WINDOW_HOURS="${WINDOW_HOURS:-48}"
 SKILLS="${SKILLS:-}"
@@ -81,7 +81,7 @@ import json,glob,os,re,datetime
 pat=re.compile(r'Generated:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.\-+]+)')
 now=datetime.datetime.now(datetime.timezone.utc); names=set()
 hours=float(os.environ.get("WINDOW_HOURS","48"))
-for f in glob.glob(os.path.expanduser("~/.hermes-cortex/state/learning-reports/*.md")):
+for f in glob.glob(os.path.expanduser("~/.steadfaste-fleet/state/learning-reports/*.md")):
     raw=open(f,encoding='utf-8',errors='replace').read()
     try:
         j=raw.index('{'); text=json.loads(raw[j:]).get('text',raw)

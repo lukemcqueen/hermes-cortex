@@ -1,8 +1,8 @@
 # Setup Reference (Luke's Deployment)
 
-This document contains setup-specific guidance for deploying Hermes Cortex
+This document contains setup-specific guidance for deploying Steadfaste Fleet
 agents across Luke's multi-machine fleet. It was relocated from `AGENTS.md`
-to keep the root agent guidelines focused on general Hermes Cortex usage.
+to keep the root agent guidelines focused on general Steadfaste Fleet usage.
 
 ---
 
@@ -15,10 +15,10 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 > uses it, and how to install it. `install.sh --check` verifies the installer
 > essentials; the doctor checks the runtime tools.
 
-| Tool | Min version | Used by (hermes-cortex function) | Install |
+| Tool | Min version | Used by (steadfaste-fleet function) | Install |
 |------|-------------|----------------------------------|---------|
 | `bash` | 4.0+ | `cortex-update.sh` (all deploy logic) | Linux: package manager · macOS: `brew install bash` |
-| `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Cortex venv (`~/.hermes-cortex/venv/bin/python3`) or system |
+| `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Cortex venv (`~/.steadfaste-fleet/venv/bin/python3`) or system |
 | `git` | any | Repo pull/push, hooks, `git show` in scripts | Linux: `apt install git` · macOS: `brew install git` |
 | `curl` | any | `contact-orchestrator.sh`, `lib.cortex_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |
 | `jq` | — | **NOT required** — `contact-orchestrator.sh` uses `python3` for JSON (jq removed 2026-08-03). Only used ad-hoc in docs examples | `apt install jq` / `brew install jq` (optional, debugging only) |
@@ -42,7 +42,7 @@ to keep the root agent guidelines focused on general Hermes Cortex usage.
 
 ## Systemd Service Policy — User-Level Only
 
-**All Hermes Cortex services MUST be installed as user-level systemd units only.**
+**All Steadfaste Fleet services MUST be installed as user-level systemd units only.**
 
 | ✅ Correct | ❌ Wrong |
 |-----------|---------|
@@ -137,7 +137,7 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    ```
 2. Run health-vector server (port varies per agent):
    ```bash
-   python3 ~/hermes-cortex/ops/scripts/health/health-vector.py --serve <PORT>
+   python3 ~/steadfaste-fleet/ops/scripts/health/health-vector.py --serve <PORT>
    ```
 3. Install the systemd user service (Linux):
    ```bash
@@ -149,13 +149,13 @@ No authentication. No TLS. Plain HTTP — the vector contains no secrets, just b
    curl -s http://127.0.0.1:<PORT>/
    # → {"v":[...], "h":"hostname", "t":...}
    ```
-5. Moses' `orch-fleet-watchdog` picks it up automatically once the `health_url` is set in `~/.hermes-cortex/state/agent-registry.json`.
+5. Moses' `orch-fleet-watchdog` picks it up automatically once the `health_url` is set in `~/.steadfaste-fleet/state/agent-registry.json`.
 
 ### Deployment (Titus / macOS client-only)
 
 Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 
-1. **Pull hermes-cortex** and set up `~/hermes-cortex/.env` with his own credentials:
+1. **Pull steadfaste-fleet** and set up `~/steadfaste-fleet/.env` with his own credentials:
    ```ini
    CORTEX_BUS_FALLBACK_URL="https://your-domain.com:13004"
    CORTEX_BUS_AUTH="titus:<password>"
@@ -163,10 +163,10 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
    ```
 2. Install the launchd agent:
    ```bash
-   cp ~/hermes-cortex/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
+   cp ~/steadfaste-fleet/docs/templates/com.hermes.health-push.plist ~/Library/LaunchAgents/
    launchctl load ~/Library/LaunchAgents/com.hermes.health-push.plist
    ```
-3. Test: `AGENT_NAME=titus bash ~/hermes-cortex/ops/scripts/health/health-vector-push.sh`
+3. Test: `AGENT_NAME=titus bash ~/steadfaste-fleet/ops/scripts/health/health-vector-push.sh`
 
 ### Files
 
@@ -176,7 +176,7 @@ Titus cannot be polled (no inbound). Instead he pushes to Moses' inbox:
 | `ops/scripts/health/health-vector-push.sh` | Inbox push script for client-only agents |
 | `ops/scripts/agent/orch-fleet-watchdog.py` | Orchestrator fleet health poller (no_agent cron) |
 | `ops/scripts/agent/orch-health-report.py` | Health snapshot report — formatted for Telegram delivery |
-| `ops/install/deploy/agent-registry.template.json` | Agent registry template (fill during setup → `~/.hermes-cortex/state/agent-registry.json`) |
+| `ops/install/deploy/agent-registry.template.json` | Agent registry template (fill during setup → `~/.steadfaste-fleet/state/agent-registry.json`) |
 | `docs/templates/com.hermes.health-push.plist` | macOS launchd template for Titus |
 | `docs/templates/health-vector.service` | systemd user service template for server agents |
 
@@ -195,10 +195,10 @@ The script (`orch-health-report.py`) reads the agent registry with local overrid
 
 ```bash
 # 0. Set orchestrator flag in .env (required for orch crons installer)
-echo 'IS_ORCHESTRATOR=true' >> ~/hermes-cortex/.env
+echo 'IS_ORCHESTRATOR=true' >> ~/steadfaste-fleet/.env
 
 # 1. Copy the script
-cp ~/hermes-cortex/ops/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
+cp ~/steadfaste-fleet/ops/scripts/agent/orch-health-report.py ~/.hermes/scripts/orch-health-report.py
 
 # 2. Create the crons
 hermes cron create --name orch-health-report-weekday \
@@ -216,11 +216,11 @@ hermes cron create --name orch-health-report-saturday \
 
 ## Ollama Model Tier
 
-Hermes Cortex ships a **two-model stack** plus a unified env-var configuration system.
+Steadfaste Fleet ships a **two-model stack** plus a unified env-var configuration system.
 
-### Single Env File (`~/hermes-cortex/.env`)
+### Single Env File (`~/steadfaste-fleet/.env`)
 
-All environment variables live in `~/hermes-cortex/.env` (hidden, gitignored).
+All environment variables live in `~/steadfaste-fleet/.env` (hidden, gitignored).
 This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Agent's own config and is never touched by Cortex.
 
 | Env var | Purpose | Default |
@@ -234,7 +234,7 @@ This is the single source of truth for Cortex. ⚠ `~/.hermes/.env` is Hermes Ag
 
 Resolution priority (every script follows this):
 1. **Runtime env var** — `JUDGE_MODEL=mannix/qwen:7b python3 script.py`
-2. **`~/hermes-cortex/.env`** — persistent per-agent config, never overwritten
+2. **`~/steadfaste-fleet/.env`** — persistent per-agent config, never overwritten
 3. **Script's hardcoded default** — last resort fallback shipped with the repo
 
 ### Default Stack Values
@@ -294,7 +294,7 @@ Install: `bash ops/scripts/install-crons.sh`
 After a fresh clone + setup, seed the loop-governance DB with scored cycles from git history:
 
 ```bash
-cd ~/hermes-cortex && python3 ~/.hermes/scripts/populate-governance-db.py
+cd ~/steadfaste-fleet && python3 ~/.hermes/scripts/populate-governance-db.py
 ```
 
 This creates scored cycles from commits in the last 7 days so governance metrics (cycle counts, scoring activity, no_errored_crons) have baseline data from day one. **Only needed once per machine.**

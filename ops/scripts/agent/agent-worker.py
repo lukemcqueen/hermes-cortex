@@ -17,8 +17,8 @@ from pathlib import Path
 # (Luke directive 2026-08-14).
 AGENT_NAME = os.environ.get("AGENT_NAME", "").strip()
 if not AGENT_NAME:
-    for _idf in (Path.home() / ".hermes-cortex" / "agent.env",
-                 Path.home() / "hermes-cortex" / ".env"):
+    for _idf in (Path.home() / ".steadfaste-fleet" / "agent.env",
+                 Path.home() / "steadfaste-fleet" / ".env"):
         try:
             if _idf.is_file():
                 for _line in _idf.read_text().splitlines():
@@ -32,7 +32,7 @@ if not AGENT_NAME:
             continue
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 BUS_URL = os.environ.get("BUS_URL") or os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")

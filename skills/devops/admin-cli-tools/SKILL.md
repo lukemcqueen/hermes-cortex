@@ -2,7 +2,7 @@
 name: admin-cli-tools
 version: 1.0.0
 category: development
-tags: [cli, bus, postgres, admin, hermes-cortex]
+tags: [cli, bus, postgres, admin, steadfaste-fleet]
 trigger: building or maintaining CLI tools that interact with the agent bus, message queues, or Postgres backend
 description: Patterns and architecture for admin-level CLI tools that use direct DB access, not agent-level API auth.
 ---
@@ -131,4 +131,4 @@ html += secs;
 
 ## Related
 - `bus.recover_timeouts()` for stuck message cleanup
-- `~/.hermes-cortex/dashboard/` — the Cortex Dashboard (Flask app)
+- `~/.steadfaste-fleet/dashboard/` — the Cortex Dashboard (Flask app)

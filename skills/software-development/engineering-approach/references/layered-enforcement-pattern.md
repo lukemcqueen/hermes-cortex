@@ -59,7 +59,7 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 6. **Commit + push** — Push to origin/main so future installs get it
 7. **Deploy** — Run `cortex-update.sh ` then `install-score-hook.sh --all`
 
-## Files (from hermes-cortex repo)
+## Files (from steadfaste-fleet repo)
 
 | Layer | File | Location |
 |-------|------|----------|

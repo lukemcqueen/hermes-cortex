@@ -31,7 +31,7 @@ ENFORCER = REPO / "plugins" / "governance-enforcer" / "__init__.py"
 READS = [
     "mycortex list -n 20",
     'mycortex search "dream layer" --limit 3',
-    "mycortex search connection --source hermes-cortex",
+    "mycortex search connection --source steadfaste-fleet",
     "mycortex stats",
     "mycortex stats --json",
     "mycortex doctor",

@@ -50,7 +50,7 @@ spec = importlib.util.spec_from_file_location(
     "enf", "plugins/governance-enforcer/__init__.py")
 enf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(enf)
-args = {"path": "/home/<user>/hermes-cortex/docs/x.md",
+args = {"path": "/home/<user>/steadfaste-fleet/docs/x.md",
         "content": "Built by <term> in Seoul"}
 print(enf._check_pii_content_gate("write_file", args) is not None)   # expect True
 ```

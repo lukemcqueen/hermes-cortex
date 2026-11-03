@@ -1,4 +1,4 @@
-# The fleet's python dependency set for ~/.hermes-cortex/venv — the venv cortex-update.sh
+# The fleet's python dependency set for ~/.steadfaste-fleet/venv — the venv cortex-update.sh
 # registers every MCP server against.
 #
 # Declared because nothing was: the set was only knowable by grepping the repo, so a host

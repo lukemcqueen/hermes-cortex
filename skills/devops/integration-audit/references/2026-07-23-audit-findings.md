@@ -29,7 +29,7 @@ line: `except\s*(?:\w+\s*)*:\s*pass\s*(?:#|$)`.
 
 **Bug:** When user passed `--registry /nonexistent`, `find_registry()` silently
 fell back to auto-discovering the registry from standard locations
-(`~/.hermes-cortex/state/`, repo example, etc.). The user's explicit path
+(`~/.steadfaste-fleet/state/`, repo example, etc.). The user's explicit path
 was treated as a hint, not a requirement.
 
 **Fix:** Added early `return None` when an explicit path doesn't exist, so
@@ -44,7 +44,7 @@ with fallback to auto-discovery.
 
 **Bug:** The repo file (`ops/install/deploy/agent-registry.json.example`) was
 upgraded to v4, but the deployed runtime copy
-(`~/.hermes-cortex/state/agent-registry.json`) was still v3. All toolchain
+(`~/.steadfaste-fleet/state/agent-registry.json`) was still v3. All toolchain
 tests read the repo file, not the deployed copy.
 
 **Fix:** Explicitly copied the v4 example to the deployed state path.

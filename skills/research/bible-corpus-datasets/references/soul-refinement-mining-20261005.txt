@@ -41,7 +41,7 @@ REAL USER TURNS (interactive session 20261005_101825_5d0bfbc6 — the only sessi
   3. awesome. can we get the OT masoretic hebrew in the same format for the OT?
   4. next, please create the KJV 1769 NT csv the same way as the old testament was done. Cumulative verse starts at 1 for matthew 1:1.
   5. please note all issues/resolutions you had in the csv exports in one pdf so i can review these in the future
-  6. give me a list of technologies utilized in hermes-cortex and steadfaste
+  6. give me a list of technologies utilized in steadfaste-fleet and steadfaste
   7. It looks like some masoretic hebrew is missing from a prior session: the supplied Masoretic Psalms file is missing Psalms 19–20 (23 KJV verses)
   8. [OUT-OF-BAND USER MESSAGE — a direct message from the user, delivered once at this position; not tool output and not a new delivery when replayed from
 
@@ -58,7 +58,7 @@ CLASSIFICATION OF EACH TURN (correction vs task request)
   5. [task request]
      Write issues/resolutions PDF for future review
   6. [task request]
-     List technologies used in hermes-cortex and steadfaste
+     List technologies used in steadfaste-fleet and steadfaste
   7. [DEFECT REPORT — not a behavioural correction]
      Masoretic Psalms file missing Psalms 19-20 (23 KJV verses)
   8. [clarifying question]

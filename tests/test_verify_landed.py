@@ -37,7 +37,7 @@ def _fixture(tmp):
     """A checkout with a bare origin, one registered source, and a fixture deploy map."""
     tmp = Path(tmp)
     _git(tmp, "init", "--bare", "-q", "origin.git")
-    repo = tmp / "work" / "hermes-cortex"
+    repo = tmp / "work" / "steadfaste-fleet"
     repo.mkdir(parents=True)
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "config", "user.email", "test@example.com")

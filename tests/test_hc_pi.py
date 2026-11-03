@@ -248,8 +248,8 @@ def test_skills_works_without_pi_present_but_reports_the_missing_config(hc, tmp_
 # ── _resolve_script: repo before deployed, None when absent ───────────────
 
 def test_resolve_script_prefers_the_repo_checkout(hc, tmp_path, monkeypatch):
-    repo = tmp_path / "hermes-cortex" / "ops" / "scripts" / "install"
-    dep = tmp_path / ".hermes-cortex" / "scripts"
+    repo = tmp_path / "steadfaste-fleet" / "ops" / "scripts" / "install"
+    dep = tmp_path / ".steadfaste-fleet" / "scripts"
     repo.mkdir(parents=True); dep.mkdir(parents=True)
     (repo / "install-pi-mcp.sh").write_text("#!/bin/sh\n")
     (dep / "install-pi-mcp.sh").write_text("#!/bin/sh\n")
@@ -262,7 +262,7 @@ def test_resolve_script_falls_back_to_the_deployed_tree(hc, tmp_path):
     (The repo-side candidates are checked first and legitimately win when they exist —
     that is why this test uses a name the checkout cannot have.)
     """
-    dep = tmp_path / ".hermes-cortex" / "scripts"
+    dep = tmp_path / ".steadfaste-fleet" / "scripts"
     dep.mkdir(parents=True)
     name = "audit-not-in-the-checkout.sh"
     (dep / name).write_text("#!/bin/sh\n")

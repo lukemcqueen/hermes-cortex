@@ -15,7 +15,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-CORTEX_REPO="${HOME}/hermes-cortex"
+CORTEX_REPO="${HOME}/steadfaste-fleet"
 SCRIPTS_DIR="${CORTEX_REPO}/ops/scripts"
 
 # ── Canonical forbidden patterns — matched exactly, no false positives ──

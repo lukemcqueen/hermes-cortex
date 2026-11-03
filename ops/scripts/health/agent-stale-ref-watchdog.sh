@@ -2,7 +2,7 @@
 # stale-ref-watchdog — nightly stale-path scan across all deploy layers
 # SILENT on success (no output = no issue). Output only when stale refs found.
 # Checks for:
-#   1. Broken symlinks in ~/.hermes/ and ~/.hermes-cortex/
+#   1. Broken symlinks in ~/.hermes/ and ~/.steadfaste-fleet/
 #   2. Deployed scripts referenced by crons that don't exist
 #   3. Orphaned cron script paths
 set -euo pipefail
@@ -20,7 +20,7 @@ log "--- Deploy symlinks ---"
 DEPLOY_DIRS=(
   "$HOME/.hermes/scripts"
   "$HOME/.hermes/plugins"
-  "$HOME/.hermes-cortex/scripts"
+  "$HOME/.steadfaste-fleet/scripts"
 )
 for dir in "${DEPLOY_DIRS[@]}"; do
   if [ -d "$dir" ]; then
@@ -40,10 +40,10 @@ log ""
 # 2. Check registered script paths from cortex-update.sh MAP exist in repo
 log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
-  "$HOME/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
-  "$HOME/hermes-cortex/ops/scripts/health/agent-stale-ref-watchdog.sh"
-  "$HOME/hermes-cortex/ops/scripts/health/agent-cron-quality-watchdog.py"
-  "$HOME/hermes-cortex/ops/scripts/cron-failure-state.sh"
+  "$HOME/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+  "$HOME/steadfaste-fleet/ops/scripts/health/agent-stale-ref-watchdog.sh"
+  "$HOME/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py"
+  "$HOME/steadfaste-fleet/ops/scripts/cron-failure-state.sh"
 )
 for script in "${REGISTER_CHECK[@]}"; do
   if [ ! -f "$script" ]; then

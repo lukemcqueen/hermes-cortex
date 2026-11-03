@@ -7,8 +7,8 @@
 
 repos:
   # Moses — orchestrator, owns the cortex infrastructure
-  hermes-cortex: moses
-  hermes-cortex-private: moses
+  steadfaste-fleet: moses
+  steadfaste-fleet-private: moses
 
   # Titus — developer, macOS workstation
   # titus-webapp: titus

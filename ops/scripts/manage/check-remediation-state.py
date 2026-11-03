@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-DEPLOY = Path.home() / ".hermes-cortex"
+DEPLOY = Path.home() / ".steadfaste-fleet"
 DEPLOY_SCRIPTS = DEPLOY / "scripts"
 UPDATE_COMMIT = DEPLOY / "state" / "update-commit"
 SOURCE_HEADER = "# SOURCE:"

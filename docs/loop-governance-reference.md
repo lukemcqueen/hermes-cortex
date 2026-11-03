@@ -144,10 +144,10 @@ scoring the task's cycle. State what you actually verified.
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
 | `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
-| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
+| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.steadfaste-fleet/data/loop-governance.db-journal` |
 | `score-cycle not found` | Deprecated — MCP-based governance in use |
 | `warning: all tests failed — score may be inaccurate` | Test suite broken | Fix tests first, then re-score |
-| MCP tool returns `error` / `tool not found` | Server not registered, or the doc named the wrong prefix (lifecycle vs review) | See the MCP-server table above — register BOTH: `hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role loop-governance` and `hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role review` |
+| MCP tool returns `error` / `tool not found` | Server not registered, or the doc named the wrong prefix (lifecycle vs review) | See the MCP-server table above — register BOTH: `hermes mcp add loop-governance --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py --role loop-governance` and `hermes mcp add review --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py --role review` |
 
 **Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB corrupt, network unreachable):
 1. Fix the root cause (check Ollama, MCP server, etc.)
@@ -159,8 +159,8 @@ scoring the task's cycle. State what you actually verified.
 ```bash
 # Register BOTH role-distinct MCP servers (one loop-gov binary, two registrations):
 # lifecycle/lock (+ --role loop-governance) and review-only (+ --role review).
-hermes mcp add loop-governance --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role loop-governance
-hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py --role review
+hermes mcp add loop-governance --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py --role loop-governance
+hermes mcp add review --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py --role review
 
 # Pull embedding model (required for scoring)
 ollama pull nomic-embed-text:v1.5
@@ -175,7 +175,7 @@ bash ~/.hermes/scripts/install-score-hook.sh --all
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
-| **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/` + `/reset` | ⛔ No override mechanism — the enforcer is structural. (`allow_tool_override` is NOT present in the Hermes Cortex production config — the enforcer always blocks without a lock.) |
+| **Governance enforcer plugin** | **Primary** — blocks write tools at Hermes runtime via `pre_tool_call` hook | `ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/` + `/reset` | ⛔ No override mechanism — the enforcer is structural. (`allow_tool_override` is NOT present in the Steadfaste Fleet production config — the enforcer always blocks without a lock.) |
 | **Survey-before-cron gate** (enforcer plugin) | Blocks `cronjob(action='create')` unless `.cron-survey-done` marker exists. Agent must run `cronjob(list)` + `search_files()` + `skills_list()` first. | Ships with enforcer plugin. Activated on next `/reset` after git pull. | N/A (structural — cannot bypass mid-session) |
 | Pre-commit hook | Runs `score-cycle` on every `git commit` — now scores ALL staged files, not just the first. | `bash ~/.hermes/scripts/install-score-hook.sh --all` | `--no-verify` (logged to agent-no-verify-audit cron) |
 | **Syntax check gate** (pre-push hook) | Parses every changed `.py` (py_compile) and `.sh` (bash -n) file at push time. Cannot be skipped — the hook runs the checker itself. | Ships with pre-push hook (re-deployed by `cortex-update.sh`). | `--no-verify` |

@@ -51,11 +51,11 @@ StandardOutput=append:%h/.hermes/health-server/server.log
 
 ## Example: `com.hermes.health-server.service`
 
-From the public Hermes Cortex repo (`ops/scripts/com.hermes.health-server.service`):
+From the public Steadfaste Fleet repo (`ops/scripts/com.hermes.health-server.service`):
 
 ```ini
 [Unit]
-Description=Hermes Cortex Health Server — self-monitoring API
+Description=Steadfaste Fleet Health Server — self-monitoring API
 Documentation=https://github.com/lukemcqueen/steadfaste-fleet
 After=network.target
 

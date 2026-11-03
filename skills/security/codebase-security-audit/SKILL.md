@@ -11,7 +11,7 @@ description: |
   server-hardening `security-audit` skill.
 platforms: [linux, macos, windows]
 category: security
-author: Cloudflare, Inc. (upstream) — vendored by Hermes Cortex (esther)
+author: Cloudflare, Inc. (upstream) — vendored by Steadfaste Fleet (esther)
 license: MIT
 upstream_repo: https://github.com/cloudflare/security-audit-skill
 upstream_commit: c1c8a8c1471069fb0e188eeaff69b8e8db6564a8

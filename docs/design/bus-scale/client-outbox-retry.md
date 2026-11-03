@@ -16,14 +16,14 @@ the instruction. The server-side circuit breaker (gap #7) makes the bus return
 ## Solution
 
 A **durable outbox** on the sending side: `bus_send()` falls back to writing
-the message to `~/.hermes-cortex/bus-retry/` (atomic file) instead of dropping
+the message to `~/.steadfaste-fleet/bus-retry/` (atomic file) instead of dropping
 it. A no_agent cron (`agent-bus-retry-sweep`, every 15 min) re-sends queued
 messages with exponential backoff, dedup, and poison-pill quarantine.
 
 ```
 bus_send(queue, msg)
   ├─ bus reachable ──→ delivered (server queue)
-  └─ bus unreachable ──→ ~/.hermes-cortex/bus-retry/<queue>-<hash>.json
+  └─ bus unreachable ──→ ~/.steadfaste-fleet/bus-retry/<queue>-<hash>.json
                           └─ agent-bus-retry-sweep (*/15, no_agent)
                               ├─ backoff due? ──→ wait (2^attempts min ±20%)
                               ├─ duplicate already pending? ──→ delete file
@@ -89,14 +89,14 @@ immune to wall-clock races.
 
 | Env | Default | Purpose |
 |-----|---------|---------|
-| `CORTEX_BUS_RETRY_DIR` | `~/.hermes-cortex/bus-retry/` | Outbox location (tests override) |
+| `CORTEX_BUS_RETRY_DIR` | `~/.steadfaste-fleet/bus-retry/` | Outbox location (tests override) |
 | `CORTEX_BUS_NO_OUTBOX` | unset | `1` = hard-fail to `None` (no queueing) |
 
 ## Why files, not a DB or daemon
 
 - **Files are crash-safe** — one message = one durable file; `os.replace`
   is atomic. No schema, no lock tables, no daemon to supervise.
-- **Inspectable** — `ls ~/.hermes-cortex/bus-retry/` shows exactly what is
+- **Inspectable** — `ls ~/.steadfaste-fleet/bus-retry/` shows exactly what is
   undelivered; `cat` any file to see the message.
 - **Zero server changes** — this is purely client-side; the bus server is
   untouched, satisfying the "zero agent-side changes" principle from the

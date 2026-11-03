@@ -200,8 +200,8 @@ if [[ "${1:-}" == "--self-test" ]]; then
 fi
 
 HOME_DIR="${HOME:?}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
-REPO_DIR="${REPO_DIR:-${HOME_DIR}/hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.steadfaste-fleet}"
+REPO_DIR="${REPO_DIR:-${HOME_DIR}/steadfaste-fleet}"
 UNITS_DIR="${HOME_DIR}/.config/systemd/user"
 
 # Only a Linux host runs user systemd units; elsewhere there is nothing to

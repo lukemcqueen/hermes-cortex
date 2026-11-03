@@ -1,7 +1,7 @@
-# Stale-Path Audit Recipe — Hermes Cortex Docs
+# Stale-Path Audit Recipe — Steadfaste Fleet Docs
 
 > Session: 2026-07-20 — Fresh stale-paths audit after July 15 baseline.
-> Repo: ~/hermes-cortex/docs/ (83 .md files at time of audit)
+> Repo: ~/steadfaste-fleet/docs/ (83 .md files at time of audit)
 
 ## Context
 
@@ -31,17 +31,17 @@ Watch out for false positives from:
 
 ```bash
 # Check symlink status (critical — state changes between audits)
-ls -la ~/hermes-cortex/deploy
-test -d ~/hermes-cortex/deploy && echo "EXISTS" || echo "GONE"
+ls -la ~/steadfaste-fleet/deploy
+test -d ~/steadfaste-fleet/deploy && echo "EXISTS" || echo "GONE"
 
 # Check old path existence
-test -f ~/hermes-cortex/src/scripts/manage/cortex-doctor.py && echo "old path EXISTS" || echo "NOT FOUND"
+test -f ~/steadfaste-fleet/src/scripts/manage/cortex-doctor.py && echo "old path EXISTS" || echo "NOT FOUND"
 
 # Check canonical path existence
-test -f ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py && echo "canonical EXISTS" || echo "NOT FOUND"
+test -f ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py && echo "canonical EXISTS" || echo "NOT FOUND"
 
 # Check directory listing at canonical path
-ls ~/hermes-cortex/ops/install/deploy/nginx/ 2>&1
+ls ~/steadfaste-fleet/ops/install/deploy/nginx/ 2>&1
 ```
 
 ## Severity Classification

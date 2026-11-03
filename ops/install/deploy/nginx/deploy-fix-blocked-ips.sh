@@ -3,7 +3,7 @@
 # fix-blocked-ips.py from committed repo source.
 #
 # WHY: the sudoers NOPASSWD entry previously pointed at the USER-WRITABLE
-# repo working tree (~/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py).
+# repo working tree (~/steadfaste-fleet/ops/install/deploy/nginx/fix-blocked-ips.py).
 # Any agent could edit that file and get unconditional root code execution
 # (`sudo .../fix-blocked-ips.py` → arbitrary Python as root). This closes
 # that hole: the NOPASSWD target becomes a root-owned, immutable copy in

@@ -24,7 +24,7 @@ done
 
 # Locate cortex-doctor.py
 DOCTOR=""
-for candidate in cortex-doctor.py ~/.hermes-cortex/scripts/cortex-doctor.py ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py; do
+for candidate in cortex-doctor.py ~/.steadfaste-fleet/scripts/cortex-doctor.py ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py; do
   if resolved=$(command -v "$candidate" 2>/dev/null); then
     DOCTOR="$resolved"
     break

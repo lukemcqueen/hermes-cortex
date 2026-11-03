@@ -3,7 +3,7 @@
 # agent-setup-metrics.sh — Bootstrap metrics push on a fleet agent
 #
 # One-time setup script. Reads .env for the Moses host
-# and auth, configures hermes-cortex.env, creates the cron, and
+# and auth, configures steadfaste-fleet.env, creates the cron, and
 # does a test push. Reports results at each step.
 #
 # Run via EXEC after UPDATE_REQUEST deploys the latest scripts.
@@ -13,7 +13,7 @@ set -euo pipefail
 echo "[agent-setup-metrics] === Metrics push setup ==="
 
 # ── 1. Source .env ──
-bus_conf="${CORTEX_BUS_CONF:-${HOME}/hermes-cortex/.env}"
+bus_conf="${CORTEX_BUS_CONF:-${HOME}/steadfaste-fleet/.env}"
 if [ ! -f "$bus_conf" ]; then
   echo "[agent-setup-metrics] ❌ .env not found at $bus_conf"
   exit 1
@@ -30,8 +30,8 @@ bus_host=$(echo "$CORTEX_BUS_URL" | sed -E 's|^https?://([^:/]+).*|\1|')
 VM_URL="https://${CORTEX_BASIC_AUTH}@${bus_host}:13005/api/v1/import/prometheus"
 echo "[agent-setup-metrics] ✅ Derived VICTORIA_METRICS_URL from .env"
 
-# ── 2. Set env var in hermes-cortex.env ──
-env_file="${HOME}/.hermes-cortex/hermes-cortex.env"
+# ── 2. Set env var in steadfaste-fleet.env ──
+env_file="${HOME}/.steadfaste-fleet/steadfaste-fleet.env"
 if grep -q "VICTORIA_METRICS_URL" "$env_file" 2>/dev/null; then
   echo "[agent-setup-metrics] ⏭️  VICTORIA_METRICS_URL already in ${env_file}"
 else
@@ -55,8 +55,8 @@ fi
 
 # ── 4. Run setup-push-metrics-cron.sh ──
 echo "[agent-setup-metrics] Creating cron (if not exists)..."
-if [ -f "${HOME}/.hermes-cortex/scripts/setup-push-metrics-cron.sh" ]; then
-  bash "${HOME}/.hermes-cortex/scripts/setup-push-metrics-cron.sh" 2>&1
+if [ -f "${HOME}/.steadfaste-fleet/scripts/setup-push-metrics-cron.sh" ]; then
+  bash "${HOME}/.steadfaste-fleet/scripts/setup-push-metrics-cron.sh" 2>&1
   echo "[agent-setup-metrics] ✅ setup-push-metrics-cron.sh completed"
 else
   echo "[agent-setup-metrics] ⚠️  setup-push-metrics-cron.sh not found — may need UPDATE_REQUEST first"
@@ -64,8 +64,8 @@ fi
 
 # ── 5. Test push ──
 echo "[agent-setup-metrics] Testing metrics push..."
-if [ -f "${HOME}/.hermes-cortex/scripts/agent-push-metrics.sh" ]; then
-  if bash "${HOME}/.hermes-cortex/scripts/agent-push-metrics.sh" 2>&1; then
+if [ -f "${HOME}/.steadfaste-fleet/scripts/agent-push-metrics.sh" ]; then
+  if bash "${HOME}/.steadfaste-fleet/scripts/agent-push-metrics.sh" 2>&1; then
     echo "[agent-setup-metrics] ✅ Test push SUCCEEDED"
   else
     echo "[agent-setup-metrics] ❌ Test push FAILED"

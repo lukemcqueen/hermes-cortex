@@ -58,7 +58,7 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 1. Run the sanctioned recovery — the enforcer allows this EXACT command
    without a governance lock:
    ```bash
-   bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+   bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
    ```
    (No sudo, no chaining, no other flags beyond
    `--dry-run/--status/--delta/--clean-stale` — the
@@ -73,9 +73,9 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 
 ## 2a. Hooks Fire in Project Repos Too — Never Assume the Cortex Tree
 
-`core.hooksPath ~/.hermes-cortex/hooks` is global: the pre-commit/pre-push
+`core.hooksPath ~/.steadfaste-fleet/hooks` is global: the pre-commit/pre-push
 hooks run in EVERY git repo on the host, including project repos (client-alpha,
-client-works, and other client repos) that have no `ops/` tree and no `.hermes-cortex/`
+client-works, and other client repos) that have no `ops/` tree and no `.steadfaste-fleet/`
 directory inside them. Any hook/enforcer path built on `$REPO_ROOT` (the repo
 being committed IN) and assuming cortex layout will break every commit there.
 
@@ -83,13 +83,13 @@ being committed IN) and assuming cortex layout will break every commit there.
 hard-resolved to `$REPO_ROOT/ops/scripts/quality/adversarial-verify.py` —
 project repos lack that path, so ALL their commits failed fail-closed.
 Fix pattern: candidate loop, repo-local first, then the canonically-deployed
-copy at `$HOME/.hermes-cortex/scripts/` (registered by cortex-update.sh on
+copy at `$HOME/.steadfaste-fleet/scripts/` (registered by cortex-update.sh on
 both Linux and macOS). Fail closed only if BOTH are missing. See
 `enforcement-change-safety` Rule 6 for the full pattern and the 3-branch
 verification (cortex repo / project repo / tool-missing).
 
 When modifying hooks or the enforcer, test in a scratch project repo
-(`git init /tmp/t && git config core.hooksPath ~/.hermes-cortex/hooks`)
+(`git init /tmp/t && git config core.hooksPath ~/.steadfaste-fleet/hooks`)
 before shipping — a cortex-repo-only test proves nothing about project repos.
 
 ## 2b. Deploy ≠ Load — Settle It by OBSERVATION, Not by Assumption
@@ -108,7 +108,7 @@ allowed, with no restart) while the banner still read restart-required.
   that the process loaded it.
 - **The symptom that a restart really IS needed:** repo == deployed (SHA256 match)
   yet the changed behaviour simply never appears — the sanctioned
-  `bash ~/hermes-cortex/ops/scripts/cortex-update.sh --status` still returns
+  `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --status` still returns
   `GOVERNANCE LOCK REQUIRED`, or a new block-message string never shows.
 - **Fix when it is needed:** `hermes gateway restart` — agents cannot run it
   (lifecycle guard); the host operator must. Verify with the positive control
@@ -122,12 +122,12 @@ allowed, with no restart) while the banner still read restart-required.
 
 ## 3. The Skills-Loaded Marker Race (FIXED — per-session files, 2026-08-01)
 
-**The old design:** `.skills-loaded` at `~/.hermes-cortex/state/` was a single
+**The old design:** `.skills-loaded` at `~/.steadfaste-fleet/state/` was a single
 file. ALL concurrent Hermes sessions wrote to it. When session B loaded skills,
 it overwrote session A's marker. Session A's writes were then blocked because
 `_check_skills_loaded_marker()` saw session B's ID.
 
-**The fix:** per-session marker files at `~/.hermes-cortex/state/skills-loaded/<session_id>`,
+**The fix:** per-session marker files at `~/.steadfaste-fleet/state/skills-loaded/<session_id>`,
 plus per-session state at `state/skills-state/<session_id>.json`. Each session
 writes and reads only its OWN files — concurrent sessions (telegram, cli 1,
 cli 2 on one server) can never stomp each other. The daemon guard, subagent
@@ -135,7 +135,7 @@ guard, and sticky-marker-per-lock rules were removed; they're no longer needed.
 
 **If your writes are blocked (marker missing or wrong content):**
 ```
-cat ~/.hermes-cortex/state/skills-loaded/<your-session-id>
+cat ~/.steadfaste-fleet/state/skills-loaded/<your-session-id>
 # → session:<your-session-id>  (valid)
 # → empty / missing            (skills not loaded this session)
 ```
@@ -145,7 +145,7 @@ cat ~/.hermes-cortex/state/skills-loaded/<your-session-id>
    is auto-created
 2. Write tools unblocked
 
-**Legacy files:** the old `~/.hermes-cortex/state/.skills-loaded` and
+**Legacy files:** the old `~/.steadfaste-fleet/state/.skills-loaded` and
 `skills-state.json` files are inert — the enforcer no longer reads them. They
 can be deleted once all sessions have restarted with the new enforcer.
 
@@ -153,15 +153,15 @@ can be deleted once all sessions have restarted with the new enforcer.
 
 ## 4. Multiple Repos, One Hermes
 
-When a single Hermes installation manages multiple repos (e.g., hermes-cortex + other projects), the `repo_slug` field in governance lock files must be derived dynamically, not hardcoded.
+When a single Hermes installation manages multiple repos (e.g., steadfaste-fleet + other projects), the `repo_slug` field in governance lock files must be derived dynamically, not hardcoded.
 
 **The problem:**
-- Lock file at `~/.hermes-cortex/state/.governance-{session_id}.json` contains `"repo_slug": "hermes-cortex"`
-- The pre-push hook expects `"hermes-cortex"`
+- Lock file at `~/.steadfaste-fleet/state/.governance-{session_id}.json` contains `"repo_slug": "steadfaste-fleet"`
+- The pre-push hook expects `"steadfaste-fleet"`
 - If the agent cloned the repo as `hermes-agent` (different name), the slug won't match
 
 **Fix:**
-- Shell scripts that create manual locks: derive slug from `basename "${CORTEX_REPO:-${HOME}/hermes-cortex}"`
+- Shell scripts that create manual locks: derive slug from `basename "${CORTEX_REPO:-${HOME}/steadfaste-fleet}"`
 - Python/MCP: use `_derive_repo_slug()` which runs `git rev-parse --show-toplevel` and takes the directory basename
 
 **Files to check:**
@@ -240,7 +240,7 @@ classification that quietly stops enforcing is worse than the friction it remove
 
 **Quick test for per-session markers:**
 ```bash
-echo "session:test" > ~/.hermes-cortex/state/skills-loaded/test-session
+echo "session:test" > ~/.steadfaste-fleet/state/skills-loaded/test-session
 # Check: does _check_skills_loaded_marker("test-session") accept only exact content?
 ```
 
@@ -303,7 +303,7 @@ THEMSELVES. Three moves, in order:
    and its rationale in the same comment block is what keeps the next editor from
    widening it.
 2. **The refusal message must carry the exact self-serve command.** Deployed path
-   (`~/.hermes-cortex/scripts/...`, NOT the orchestrator-tree `ops/scripts/orch-bus/`
+   (`~/.steadfaste-fleet/scripts/...`, NOT the orchestrator-tree `ops/scripts/orch-bus/`
    path — that forces the worker into the wrong checkout), the `--material-file`
    form (never `--material "$(cat ...)"` — the `$(...)` is itself write-class and
    breaks the exact-match lane), and a plain statement that the agent runs it

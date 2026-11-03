@@ -3,7 +3,7 @@
 - Status: accepted
 - Date: 2026-08-24
 - Author: Esther (facts verified from
-  `~/hermes-cortex/.env`)
+  `~/steadfaste-fleet/.env`)
 
 ## Context
 
@@ -46,4 +46,4 @@ output billed at $0.66/1M; peak hours double the total.
 ## References
 
 - `docs/setup-reference.md` (run-type cost table)
-- `~/hermes-cortex/.env` (values — never committed)
+- `~/steadfaste-fleet/.env` (values — never committed)

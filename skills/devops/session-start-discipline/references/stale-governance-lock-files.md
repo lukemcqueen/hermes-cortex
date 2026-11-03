@@ -1,7 +1,7 @@
 # Stale Governance Lock Files — Pre-Commit Gate Failures
 
 Subagents (`delegate_task`) create their own governance lock files under
-`~/.hermes-cortex/state/.governance-*.json`. When the subagent completes
+`~/.steadfaste-fleet/state/.governance-*.json`. When the subagent completes
 but the lock file is not cleaned up, these accumulate.
 
 ## Symptom
@@ -36,10 +36,10 @@ didn't load `reflexion-check`.
 Remove stale subagent lock files, keeping only your own:
 
 ```bash
-ls ~/.hermes-cortex/state/.governance-*.json  # review all lock files
+ls ~/.steadfaste-fleet/state/.governance-*.json  # review all lock files
 rm -f \
-  ~/.hermes-cortex/state/.governance-<subagent1>.json \
-  ~/.hermes-cortex/state/.governance-<subagent2>.json
+  ~/.steadfaste-fleet/state/.governance-<subagent1>.json \
+  ~/.steadfaste-fleet/state/.governance-<subagent2>.json
 ```
 
 To identify your lock file: it contains your session_id. The lock file
@@ -49,7 +49,7 @@ your current session.
 After cleanup, load reflexion-check and commit:
 
 ```bash
-AGENT_ID=$(grep AGENT_NAME ~/hermes-cortex/.env | cut -d= -f2) \
+AGENT_ID=$(grep AGENT_NAME ~/steadfaste-fleet/.env | cut -d= -f2) \
   git commit -m "your message"
 ```
 
@@ -63,6 +63,6 @@ clean up stale lock files ensures the hook falls through to your session.
 When dispatching subagents, add cleanup instructions to the context:
 
 > After completing your file changes, delete any governance lock file you
-> created: `rm -f ~/.hermes-cortex/state/.governance-*.json` (only if
+> created: `rm -f ~/.steadfaste-fleet/state/.governance-*.json` (only if
 > the file contains your session_id — do not delete lock files from the
 > parent session).

@@ -280,11 +280,11 @@ gateway config (JSON — the gateway loads it with `json.loads`).
 
 ```bash
 # 1. see the block (dry run — writes nothing)
-python3 ops/scripts/manage/gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml \
+python3 ops/scripts/manage/gateway-model-list.py --config ~/.steadfaste-fleet/gateway.yaml \
     --from-pi 'openrouter/*'
 
 # 2. apply it: merges ONLY the models key, preserves every other key, idempotent
-python3 ops/scripts/manage/gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml \
+python3 ops/scripts/manage/gateway-model-list.py --config ~/.steadfaste-fleet/gateway.yaml \
     --from-pi 'openrouter/*' --write
 
 # 3. restart the gateway — it reads its config once, at startup
@@ -303,7 +303,7 @@ python3 ops/scripts/manage/gateway-model-list.py --config ~/.hermes-cortex/gatew
 Worked example — **Titus** (`pi`, macOS):
 
 ```bash
-python3 gateway-model-list.py --config ~/.hermes-cortex/gateway.yaml --from-pi 'openrouter/*' --write
+python3 gateway-model-list.py --config ~/.steadfaste-fleet/gateway.yaml --from-pi 'openrouter/*' --write
 ```
 
 A host whose backend cannot take a model at all (a shim, no `model_args`) is warned at
@@ -317,5 +317,5 @@ startup instead of silently serving a menu that stores an override nothing appli
   ids are personal identifiers and 10-digit unix timestamps read as phone numbers).
 - Gateway suites (executed): **111 passed** (106 pre-existing + 5 new).
 - Incumbent: `hermes-agent/plugins/platforms/telegram/adapter.py`.
-- Target: `hermes-cortex/ops/scripts/cortex_gateway/{transport,daemon}.py`;
+- Target: `steadfaste-fleet/ops/scripts/cortex_gateway/{transport,daemon}.py`;
   design `docs/design/cortex-gateway.md` (CR1–CR4 ✅, CR5 pi pending).

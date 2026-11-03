@@ -37,7 +37,7 @@ _make_service("health-server", label="com.hermes.health-server", pgrep="health-s
 ### How to check if a service is in the recovery list
 
 ```bash
-grep '_make_service' ~/.hermes-cortex/scripts/service-recovery.py
+grep '_make_service' ~/.steadfaste-fleet/scripts/service-recovery.py
 ```
 
 Each `_make_service` call is one monitored service. Missing = not monitored.

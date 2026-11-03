@@ -25,10 +25,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
-LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
-SESSION_DIR = HOME / ".hermes-cortex" / "sessions"
-SKILLS_DIR = HOME / ".hermes-cortex" / "skills" / "software-development"
+CACHE_DB = HOME / ".steadfaste-fleet" / "data" / "session-embeddings.db"
+LOOP_DB = HOME / ".steadfaste-fleet" / "data" / "loop-governance.db"
+SESSION_DIR = HOME / ".steadfaste-fleet" / "sessions"
+SKILLS_DIR = HOME / ".steadfaste-fleet" / "skills" / "software-development"
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 
 # hermes_models.py lives in the deployed scripts dir (and ops/scripts in the
@@ -37,8 +37,8 @@ OLLAMA_URL = "http://localhost:11434/api/embeddings"
 # ModuleNotFoundError and the whole build died before doing any work.
 for _cand in (
     Path(__file__).resolve().parent,
-    HOME / ".hermes-cortex" / "scripts",
-    HOME / "hermes-cortex" / "ops" / "scripts",
+    HOME / ".steadfaste-fleet" / "scripts",
+    HOME / "steadfaste-fleet" / "ops" / "scripts",
 ):
     if (_cand / "hermes_models.py").is_file() and str(_cand) not in sys.path:
         sys.path.insert(0, str(_cand))
@@ -98,7 +98,7 @@ def init_db():
 # ── Data Sources ───────────────────────────────────────────────
 
 def embed_sessions(conn):
-    """Embed session files from .hermes-cortex/sessions/"""
+    """Embed session files from .steadfaste-fleet/sessions/"""
     count = 0
     if not SESSION_DIR.exists():
         return count

@@ -6,14 +6,14 @@ Drives the real scenario against THREE revisions of the server module:
             LOOP_GOV_PRE_FIX_REV (default HEAD~1) — name it explicitly so the
             comparison cannot silently drift to the wrong revision.
   CURRENT   the working-tree module.
-  DEPLOYED  ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py — the copy a
+  DEPLOYED  ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py — the copy a
             harness actually runs. A green check on the repo copy proves nothing
             about the deployed one, so it is checked separately (and reported as
             SKIPPED, not passed, when this host has nothing deployed).
 
 Scenario (exactly the reported one): a NON-Hermes caller (no injected repo —
 pi / Claude Code / the CLI) calls begin_change while sitting in a project repo on
-a host that also holds the canonical ~/hermes-cortex; the work lands in the
+a host that also holds the canonical ~/steadfaste-fleet; the work lands in the
 project repo; the cycle is scored; end_change is called.
 
 The tool ASSERTS, and exits non-zero when an expectation is violated, so a
@@ -36,7 +36,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 MCP_REL = "mcp-servers/loop-gov-mcp.py"
-DEPLOYED = Path.home() / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+DEPLOYED = Path.home() / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
 ARTIFACT = REPO / "tests" / "artifacts" / "non-hermes-repo-identity-repro.txt"
 
 
@@ -63,19 +63,19 @@ def _mkrepo(path: Path) -> Path:
 def scenario(mod) -> dict:
     """Run the reported flow once against `mod`; return what happened."""
     home = Path(tempfile.mkdtemp(prefix="rg-home-"))
-    _mkrepo(home / "hermes-cortex")                     # host-canonical, EMPTY
+    _mkrepo(home / "steadfaste-fleet")                     # host-canonical, EMPTY
     proj = _mkrepo(home / "projects" / "proj")
     (proj / "work.txt").write_text("x\n")
     subprocess.run(["git", "-C", str(proj), "add", "work.txt"], capture_output=True)
     subprocess.run(["git", "-C", str(proj), "commit", "-q", "-m", "seed"],
                    capture_output=True)
 
-    state = home / ".hermes-cortex" / "state"
+    state = home / ".steadfaste-fleet" / "state"
     state.mkdir(parents=True, exist_ok=True)
     mod.HOME = home
     mod.SESSION_FILE = home / ".hermes" / "session.id"
     mod.GOVERNANCE_STATE_DIR = state
-    mod.LOOP_DB = home / ".hermes-cortex" / "data" / "loop-governance.db"
+    mod.LOOP_DB = home / ".steadfaste-fleet" / "data" / "loop-governance.db"
     mod._PROCESS_SESSION_ID = ""                        # non-Hermes caller
 
     prev = os.getcwd()
@@ -132,7 +132,7 @@ def main() -> int:
     # PRE-FIX half compared fixed code with itself — a tautology wearing a PASS, then failing with
     # "expected the pre-fix refusal WITH the lock left behind, got released=True refused=False".
     # d2efa6fd is the PARENT of 6c61ef57 (the fix): at it, `_derive_slug(None)` returns
-    # hermes-cortex, end_change refuses and the lock is left behind.
+    # steadfaste-fleet, end_change refuses and the lock is left behind.
     base_rev = os.environ.get("LOOP_GOV_PRE_FIX_REV", "d2efa6fd")
     out: list = []
     failures: list = []
@@ -170,7 +170,7 @@ def main() -> int:
     emit("=" * 68)
     emit("Report: a pi session working in a project repo opens a governance lock and the")
     emit("lock is NEVER released — the operator must delete")
-    emit("~/.hermes-cortex/state/.governance-sess_*.json by hand.")
+    emit("~/.steadfaste-fleet/state/.governance-sess_*.json by hand.")
     emit()
     emit(f"revision under test   : {head}  (branch {branch}) — HEAD when this ran. The artifact")
     emit("                        is committed BY the change it measures, so the file under")
@@ -210,9 +210,9 @@ def main() -> int:
 
     emit("Reading of the transcript")
     emit("-" * 68)
-    emit("PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (hermes-cortex) because a")
+    emit("PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (steadfaste-fleet) because a")
     emit("caller with no injector fell through to Priority 1 in _derive_slug(). The close gate")
-    emit("then looks for this session's work in ~/hermes-cortex, cannot find it, and REFUSES —")
+    emit("then looks for this session's work in ~/steadfaste-fleet, cannot find it, and REFUSES —")
     emit("a refusal leaves the lock held by design, and the remedy it prints (a governance-")
     emit("enforcer injection) does not exist on a non-Hermes harness. The lock file is left on")
     emit("disk: the reported symptom, in the same file-name shape (sess_<12 hex>) the report cites.")

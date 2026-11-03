@@ -58,7 +58,7 @@ PASS  regression test file rc=0 — rc=0
 PASS  regression test names all present (13) — PASS(13)=True
 
 ========================================================================
-2. DEPLOYED MODULE — ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py loaded and driven
+2. DEPLOYED MODULE — ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py loaded and driven
 ========================================================================
 PASS  _derive_repo_path accepts an injected nested repo
 PASS  _derive_repo_path refuses a non-repo path
@@ -82,8 +82,8 @@ PASS  deployed matches repo: governance-enforcer/__init__.py
 ========================================================================
 deploy mtime (newest of the two deployed files): 2026-10-07T10:32:17
   2081004 Wed Oct 7 08:55:45 2026 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 … run
-  2081319 Wed Oct 7 08:55:52 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-  2522618 Wed Oct 7 10:35:06 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+  2081319 Wed Oct 7 08:55:52 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py
+  2522618 Wed Oct 7 10:35:06 2026 ~/.hermes/hermes-agent/venv/bin/python3 … ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py
 Verdict: a start time BEFORE the deploy mtime means the new code is on disk but
 NOT in memory (MCP child needs a kill; enforcer needs a gateway /reset).
 

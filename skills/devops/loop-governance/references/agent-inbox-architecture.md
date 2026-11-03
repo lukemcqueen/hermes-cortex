@@ -4,7 +4,7 @@
 
 | Repo | Purpose | Access |
 |------|---------|--------|
-| `hermes-cortex` (public) | Code, skills, docs | Everyone (public) |
+| `steadfaste-fleet` (public) | Code, skills, docs | Everyone (public) |
 | `private-data` (local) | Luke's + Amy's personal data | Luke + Amy only |
 
 ## Message Addressing (Legacy — File-Based Inbox)

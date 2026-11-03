@@ -12,7 +12,7 @@
 #   bash scripts/test-post-commit-sentinel-matrix.sh \
 #       [PATH_TO_POST_COMMIT_AUDIT] [PATH_TO_PRE_COMMIT_SCORE]
 #
-# Defaults: repo copies at ~/hermes-cortex/ops/scripts/.
+# Defaults: repo copies at ~/steadfaste-fleet/ops/scripts/.
 #
 # Expectation table (the contract):
 #   path                    | must log? | reflog prefix
@@ -34,11 +34,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
-POST_COMMIT="${1:-$HOME/hermes-cortex/ops/scripts/post-commit-audit}"
-PRE_COMMIT="${2:-$HOME/hermes-cortex/ops/scripts/pre-commit-score}"
+POST_COMMIT="${1:-$HOME/steadfaste-fleet/ops/scripts/post-commit-audit}"
+PRE_COMMIT="${2:-$HOME/steadfaste-fleet/ops/scripts/pre-commit-score}"
 WORK="$(mktemp -d /tmp/sentinel-matrix.XXXXXX)"
 export HOME="$WORK/home"
-mkdir -p "$HOME/.hermes-cortex/state"
+mkdir -p "$HOME/.steadfaste-fleet/state"
 
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
@@ -60,7 +60,7 @@ touch "\$SENTINEL"
 EOF
 chmod +x .git/hooks/pre-commit
 
-LOG="$HOME/.hermes-cortex/state/no-verify-log.json"
+LOG="$HOME/.steadfaste-fleet/state/no-verify-log.json"
 count_entries() {
   python3 -c "
 import json, os

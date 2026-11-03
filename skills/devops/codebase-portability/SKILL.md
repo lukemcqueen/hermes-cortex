@@ -33,8 +33,8 @@ grep -rn '/home/moses' . 2>/dev/null
 grep -rn '/Users/' . 2>/dev/null
 
 # ~/repo-name assumptions (breaks if cloned elsewhere)
-grep -rn '~/hermes-cortex' . 2>/dev/null
-grep -rn '~/hermes-cortex-private' . 2>/dev/null
+grep -rn '~/steadfaste-fleet' . 2>/dev/null
+grep -rn '~/steadfaste-fleet-private' . 2>/dev/null
 
 # Hardcoded binary paths (breaks if OS/pkg-manager differs)
 grep -rn '/usr/local/bin/docker' . 2>/dev/null
@@ -65,7 +65,7 @@ Sort into tiers before fixing:
 |------|------|----------|--------|
 | **1 — Critical** | Executable scripts with absolute paths | `~/...`, `/usr/local/bin/docker` | Fix immediately — blocks other users |
 | **2 — Portability** | OS-specific paths in scripts | macOS-only nginx paths | Add OS-aware dispatch |
-| **3 — Docs/Skills** | Instructional `~/repo/` paths | `cd ~/hermes-cortex` in SKILL.md | Use `$CORTEX_REPO` fallback pattern |
+| **3 — Docs/Skills** | Instructional `~/repo/` paths | `cd ~/steadfaste-fleet` in SKILL.md | Use `$CORTEX_REPO` fallback pattern |
 | **4 — Stale** | Docs describing only one OS | macOS-only setup instructions | Add Linux notes or platform table |
 
 ## Fix Patterns
@@ -175,15 +175,15 @@ for the tool's known OS-specific install locations.
 Replace bare `~/repo-name` with env-var fallback pattern:
 
 ```markdown
-cd "${CORTEX_REPO:-$HOME/hermes-cortex}"
+cd "${CORTEX_REPO:-$HOME/steadfaste-fleet}"
 ```
 
-This works unset (defaults to `~/hermes-cortex`) or with `CORTEX_REPO` override.
+This works unset (defaults to `~/steadfaste-fleet`) or with `CORTEX_REPO` override.
 
 For private repos with no env var convention:
 
 ```markdown
-cd "${CORTEX_REPO:-$HOME/hermes-cortex}-private"
+cd "${CORTEX_REPO:-$HOME/steadfaste-fleet}-private"
 ```
 
 ### Pattern E: macOS-only config paths
@@ -267,7 +267,7 @@ Repo-discovery candidates like `HOME / "src" / "repo-name"` are
 
 ```python
 # ✅ LEGITIMATE — repo discovery, not stale internal reference
-for candidate in [HOME / "hermes-cortex", HOME / "src" / "hermes-cortex"]:
+for candidate in [HOME / "steadfaste-fleet", HOME / "src" / "steadfaste-fleet"]:
 ```
 
 **Verify with compile check:**
@@ -311,18 +311,18 @@ Then verify the actual imported modules still exist at the new location:
 ```bash
 # Check that the module the script tries to import actually exists
 # under the new path, not the old one
-find ~/hermes-cortex/core -name 'sla_watchdog.py' 2>/dev/null
+find ~/steadfaste-fleet/core -name 'sla_watchdog.py' 2>/dev/null
 ```
 
 **Fix — update the path string in sys.path.insert:**
 
 ```python
 # Before
-sys.path.insert(0, "~/hermes-cortex/runtime")
+sys.path.insert(0, "~/steadfaste-fleet/runtime")
 from cortex_bus.workflow.sla_watchdog import main
 
 # After
-sys.path.insert(0, "~/hermes-cortex/core")
+sys.path.insert(0, "~/steadfaste-fleet/core")
 from cortex_bus.workflow.sla_watchdog import main
 ```
 
@@ -330,8 +330,8 @@ from cortex_bus.workflow.sla_watchdog import main
 
 | Where | Why |
 |-------|-----|
-| Repo source (`hermes-cortex/ops/scripts/...`) | Upstream — survives next `cortex-update.sh` |
-| Deployed copy (`~/.hermes-cortex/scripts/...`) | Runtime — runs right now |
+| Repo source (`steadfaste-fleet/ops/scripts/...`) | Upstream — survives next `cortex-update.sh` |
+| Deployed copy (`~/.steadfaste-fleet/scripts/...`) | Runtime — runs right now |
 
 The repo source comes first (upstream before one-off). If the deployed
 copy and repo share the same inode (hard-linked), the first edit already
@@ -356,8 +356,8 @@ script with `sys.path.insert` pointing at any former directory name.
 If the repo restructure renamed multiple dirs, check for each one:
 
 ```text
-search_files(pattern='hermes-cortex/runtime')
-search_files(pattern='hermes-cortex/src.*scripts')
+search_files(pattern='steadfaste-fleet/runtime')
+search_files(pattern='steadfaste-fleet/src.*scripts')
 ```
 
 A batch of 3+ scripts with the same stale prefix means the scan was
@@ -442,7 +442,7 @@ management repeatedly (start/stop/check) and don't want OS branches scattered
 through the main logic.
 
 **Concrete reference:** `ops/scripts/manage/mycortex-wrapper.sh` in the
-hermes-cortex repo uses this exact pattern — 3 helpers, clean business logic,
+steadfaste-fleet repo uses this exact pattern — 3 helpers, clean business logic,
 no platform branches outside the helpers.
 
 ### Pattern H: Cross-file terminology rename
@@ -586,13 +586,13 @@ This catches:
 
 ### Hard-linked script dirs
 
-On Hermes deployments, `~/.hermes/scripts/` and `~/.hermes-cortex/scripts/` may
+On Hermes deployments, `~/.hermes/scripts/` and `~/.steadfaste-fleet/scripts/` may
 share the same inode (hard-linked copies). Editing one modifies both
 automatically — no need to patch separately. Verify with:
 
 ```bash
-stat -c '%i' ~/.hermes/scripts/some-script.sh ~/.hermes-cortex/scripts/some-script.sh 2>/dev/null \
-  || stat -f '%i' ~/.hermes/scripts/some-script.sh ~/.hermes-cortex/scripts/some-script.sh
+stat -c '%i' ~/.hermes/scripts/some-script.sh ~/.steadfaste-fleet/scripts/some-script.sh 2>/dev/null \
+  || stat -f '%i' ~/.hermes/scripts/some-script.sh ~/.steadfaste-fleet/scripts/some-script.sh
 # Same inode → same file
 ```
 
@@ -612,7 +612,7 @@ grep -rc 'old-deploy-dir/' target-dir/ 2>/dev/null | grep -v ':0$'
 |------|--------|
 | `references/systemd-percent-h-specifier.md` | systemd `%h` vs `%u` specifier nuances |
 | `references/macos-memory-service-detection.md` | macOS-specific memory + service detection |
-| `references/hermes-cortex-path-audit.md` | Full path audit of the hermes-cortex repo |
+| `references/steadfaste-fleet-path-audit.md` | Full path audit of the steadfaste-fleet repo |
 | `references/mycortex-wrapper-crossplatform.md` | Concrete Pattern F example — mycortex-wrapper.sh |
 | `references/gh-cli-headless-install.md` | Install gh CLI without sudo + OAuth device-code flow |
 | `references/cortex-path-migration-july2026.md` | Stale pathlib path migration after `src/` → `ops/` restructure (Pattern G) |

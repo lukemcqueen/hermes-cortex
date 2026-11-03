@@ -2,7 +2,7 @@
 
 ## The Rule
 
-Interactive sessions: you must NEVER `touch ~/.hermes-cortex/state/.skills-loaded`.
+Interactive sessions: you must NEVER `touch ~/.steadfaste-fleet/state/.skills-loaded`.
 The enforcer auto-creates this marker when all 8 always-section skills have
 been loaded via actual `skill_view()` calls. A bare `touch` creates an empty
 file that fails content verification.
@@ -13,7 +13,7 @@ file that fails content verification.
 differently. The enforcer's `_on_session_start` hook auto-creates the
 `.skills-loaded` marker at session initialization — before any tool call — by:
 
-1. Reading `~/.hermes-cortex/skills.yaml` for the `always` section
+1. Reading `~/.steadfaste-fleet/skills.yaml` for the `always` section
 2. Verifying each required skill has a `SKILL.md` file on disk under
    `~/.hermes/skills/`
 3. If all skills are present, calling `_auto_create_skills_marker()` with the

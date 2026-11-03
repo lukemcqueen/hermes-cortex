@@ -54,7 +54,7 @@ def isolated():
         # diffs this working tree (its 20-file mid-session diff made the
         # review fail on unrelated evidence-mismatch findings).
         import subprocess as sp
-        repo = tmp / "hermes-cortex"
+        repo = tmp / "steadfaste-fleet"
         repo.mkdir()
         env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}

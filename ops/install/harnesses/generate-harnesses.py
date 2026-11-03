@@ -128,9 +128,9 @@ def derived_run_line(h: dict) -> str | None:
         return None
     harness_py = next((p for p in [
         HERE.parent.parent / "scripts" / "hc" / "harness.py",          # repo: ops/scripts/hc
-        Path.home() / "hermes-cortex" / "ops" / "scripts" / "hc" / "harness.py",
-        Path.home() / ".hermes-cortex" / "scripts" / "hc-harness.py",  # deployed (flat)
-        Path.home() / ".hermes-cortex" / "scripts" / "hc" / "harness.py",
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "hc" / "harness.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "hc-harness.py",  # deployed (flat)
+        Path.home() / ".steadfaste-fleet" / "scripts" / "hc" / "harness.py",
     ] if p.is_file()), None)
     if harness_py is None:
         return None

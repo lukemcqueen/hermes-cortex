@@ -3,7 +3,7 @@
 > ⚠️ **PARTIALLY SUPERSEDED (2026-08-04).** The immutable unlock→copy→re-lock
 > cycle below still runs inside `cortex-update.sh` itself, but the
 > agent-facing recovery claims are OUTDATED: today the enforcer sanctions the
-> EXACT `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` invocation
+> EXACT `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` invocation
 > (allowlisted flags only) WITHOUT a governance lock — that is the
 > self-recovery path. Manual `sudo hermes-plugin-lock unlock` without the
 > `--orchestrator` token, chained forms (`cd … && bash …`), and direct `cp` of
@@ -27,12 +27,12 @@ User: "pull latest and cortex update!" → `git pull --rebase origin main` faile
 3. **`cortex-update.sh` printed 7 FAILED lines:**
    ```
    FAILED: /home/user/.hermes/plugins/governance-enforcer/__init__.py
-   FAILED: /home/user/.hermes-cortex/scripts/pre-commit-score
-   FAILED: /home/user/.hermes-cortex/scripts/pre-push-pull
-   FAILED: /home/user/.hermes-cortex/scripts/post-commit-audit
-   FAILED: /home/user/.hermes-cortex/scripts/post-push-audit
-   FAILED: /home/user/.hermes-cortex/hooks/post-merge
-   FAILED: /home/user/.hermes-cortex/scripts/hermes-plugin-lock
+   FAILED: /home/user/.steadfaste-fleet/scripts/pre-commit-score
+   FAILED: /home/user/.steadfaste-fleet/scripts/pre-push-pull
+   FAILED: /home/user/.steadfaste-fleet/scripts/post-commit-audit
+   FAILED: /home/user/.steadfaste-fleet/scripts/post-push-audit
+   FAILED: /home/user/.steadfaste-fleet/hooks/post-merge
+   FAILED: /home/user/.steadfaste-fleet/scripts/hermes-plugin-lock
    cp: cannot create regular file '.../hermes-plugin-lock': Operation not permitted
    ```
 
@@ -58,10 +58,10 @@ sudo -n hermes-plugin-lock unlock
 #    UNLOCKED: ...pre-commit-score  (etc.)
 
 # 4. Re-run deploy
-cd ~/hermes-cortex && bash ops/scripts/cortex-update.sh
+cd ~/steadfaste-fleet && bash ops/scripts/cortex-update.sh
 
 # 5. Verify
-diff ~/hermes-cortex/plugins/governance-enforcer/__init__.py ~/.hermes/plugins/governance-enforcer/__init__.py   # empty
+diff ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py ~/.hermes/plugins/governance-enforcer/__init__.py   # empty
 hermes plugins list | grep governance    # enabled
 lsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← re-locked
 grep -n "adversarial\|pycache" ~/.hermes/plugins/governance-enforcer/__init__.py   # new features present

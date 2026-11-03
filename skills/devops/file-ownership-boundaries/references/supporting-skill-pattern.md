@@ -23,8 +23,8 @@ When a Hermes default skill is missing functionality we need, **we do not edit t
 
 1. Identify the Hermes default skill that's missing a check you need
 2. **Do NOT edit it** — it's read-only
-3. Create a new skill in `~/hermes-cortex/skills/<category>/cortex-<domain>/SKILL.md`
-4. Set `author: Moses (Hermes Cortex)` in the frontmatter
+3. Create a new skill in `~/steadfaste-fleet/skills/<category>/cortex-<domain>/SKILL.md`
+4. Set `author: Moses (Steadfaste Fleet)` in the frontmatter
 5. Add the Hermes default to your skill's `related_skills` field
 6. Document the new skill in its own SKILL.md — or, if the supplement is small and tightly coupled to an always-skill, propose folding it into that skill during the next curation pass
 7. Ensure the skill's SKILL.md has a "When to load" section explaining where it fits in the task sequence

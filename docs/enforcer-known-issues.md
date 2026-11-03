@@ -20,7 +20,7 @@
 > the record.
 
 **Symptom.** `mcp__loop_governance__check_lock` returns `{"active": false, "lock": null}` even
-though a `~/.hermes-cortex/state/.governance-*.json` lock file exists, is non-stale, and its
+though a `~/.steadfaste-fleet/state/.governance-*.json` lock file exists, is non-stale, and its
 task still has a PENDING cycle in the loop-governance DB. An agent (or the operator) reading
 `check_lock` concludes "no governance lock is held" and, combined with a PENDING cycle in
 `cycle_query`, reads it as "governance is broken / leaked."
@@ -58,7 +58,7 @@ the doctor's PENDING-cycle check passes it as "current task (lock held)", `check
 **Verified reproduction (2026-09-17):**
 - Session `…754ab805` was **dead**: only one gateway process ran (the live session's). The dead
   session's context ended ~18:57 (skills-state mtime) — its gateway was not in the process list.
-- Its lock file still sat in `~/.hermes-cortex/state/` (heartbeat 09:57:44Z, ~35 min old at
+- Its lock file still sat in `~/.steadfaste-fleet/state/` (heartbeat 09:57:44Z, ~35 min old at
   check time → **under** the default TTL).
 - Cycle 2682 for that session stayed PENDING.
 - Because the lock is under TTL, `_purge_stale_locks()` correctly does **not** unlink it
@@ -96,11 +96,11 @@ is still invisible for the TTL window.
 
 ## 3. Hundreds of stale PID-scoped session-marker files accumulate with no cleanup
 
-**Symptom.** `~/.hermes-cortex/state/` contains a very large number of
+**Symptom.** `~/.steadfaste-fleet/state/` contains a very large number of
 `.hermes-session-{PID}.id` marker files (observed: 200+), each written by the enforcer's legacy
 PID-scoped bridge. They are never removed.
 
-**Verified (2026-09-17):** `ls ~/.hermes-cortex/state/.hermes-session-*.id` returned hundreds of
+**Verified (2026-09-17):** `ls ~/.steadfaste-fleet/state/.hermes-session-*.id` returned hundreds of
 files spanning PIDs from the low hundreds to the millions. The current-session markers
 (`.hermes-session-current.id`, `~/.hermes/session.id`) hold the live session ID; the PID-scoped
 ones are inert fallbacks.
@@ -178,7 +178,7 @@ check's 24h rule or the >TTL purge finally classifies it.
 
 > **FIXED 2026-10-13.** Reported by kustos: his session's cwd `/home/app/mwi/koscap-mwi` is a
 > working copy, not a repo (`git status` is fatal there), and its lock came out with
-> `repo_slug: hermes-cortex` and an empty `repo_path`.
+> `repo_slug: steadfaste-fleet` and an empty `repo_path`.
 
 **Symptom.** The lock names a repo the session never touched, and nothing anywhere says so. The
 only clue is the empty `repo_path`.
@@ -186,13 +186,13 @@ only clue is the empty `repo_path`.
 **What happens.** `_stamp_repo_into_payload()` (ops/scripts/loop-gov.py) resolves the cwd's git
 root with `git rev-parse --show-toplevel` so the lock cannot claim another repo. When the cwd is
 genuinely not a repo the call returns rc≠0 → status `"no-repo"` → **nothing is stamped** → the
-server's `_derive_slug` falls to Priority 1, the host-canonical `~/hermes-cortex`, with
+server's `_derive_slug` falls to Priority 1, the host-canonical `~/steadfaste-fleet`, with
 `repo_path` left empty. The `"unexpected"` case (git missing/hung) already failed closed for
 `begin_change` (ADV-4479-1); the `"no-repo"` case printed **nothing at all**.
 
 **Why it mattered.** Benign only while the session changes nothing in that tree — which is what
 kustos reported, so nothing broke. But it is the wrong-repo bug (Titus cycle 5742) with the
-signal removed: a CLOSE would compose review material from `~/hermes-cortex`, a tree that cannot
+signal removed: a CLOSE would compose review material from `~/steadfaste-fleet`, a tree that cannot
 contain the work, and the cycle would be uncloseable — with no earlier indication why.
 
 **Fix (FIXED 2026-10-13).** `_repo_identity_note()` decides what to say and whether to refuse,
@@ -202,7 +202,7 @@ and both ways out (`--repo <path>`, or run inside a repo). Non-fatal — the doc
 stays usable — and it goes to stderr so the tool's stdout contract is untouched. `"unexpected"`
 still fails closed for `begin_change` (exit 1) and is now reported for every other tool too.
 Evidence: `docs/evidence/lock-truth-2026-10-13.txt` (a real non-repo cwd, git's own "fatal: not a
-git repository", and the note naming both the cwd and `'hermes-cortex'`). Tests:
+git repository", and the note naming both the cwd and `'steadfaste-fleet'`). Tests:
 `tests/test_lock_truth.py`.
 
 ---
@@ -222,7 +222,7 @@ ONLY, and then constructed `Server("loop-governance", on_list_tools=…, on_call
 level. Those kwargs are the 2.0 constructor API, so an older SDK raises `TypeError` THERE — at
 import. `ops/scripts/loop-gov.py` loads the module with `exec_module`, so the CLI adapter, which
 never needs to SERVE MCP, died with it. The registered MCP server runs on a different interpreter
-(`~/.hermes-cortex/venv/bin/python3`, mcp 2.0.0) and stayed healthy — which is why the same
+(`~/.steadfaste-fleet/venv/bin/python3`, mcp 2.0.0) and stayed healthy — which is why the same
 agent's MCP calls succeeded while its write gate refused everything.
 
 **Why the first diagnosis went the wrong way.** The message reads as "the SDK is NEWER than the
@@ -247,7 +247,7 @@ working). Tests: `tests/test_loop_gov_cli.py` (both SDK generations fabricated i
 
 ## Self-check any host
 
-`~/.hermes-cortex/scripts/probe-gate-logic.py` (repo:
+`~/.steadfaste-fleet/scripts/probe-gate-logic.py` (repo:
 `ops/scripts/quality/probe-gate-logic.py`) loads the ACTIVE enforcer module in a
 throwaway state dir and asserts the gate behaviour end-to-end — marker timing,
 block-message contents, the read-only classifier matrix, the credit journal, and
@@ -255,8 +255,8 @@ the no-session-id fail-closed path. Run it when an agent claims a gate is
 "stuck", after a deploy, or when a peer host behaves differently:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/probe-gate-logic.py            # active copy
-python3 ~/.hermes-cortex/scripts/probe-gate-logic.py --json     # machine-readable
+python3 ~/.steadfaste-fleet/scripts/probe-gate-logic.py            # active copy
+python3 ~/.steadfaste-fleet/scripts/probe-gate-logic.py --json     # machine-readable
 ```
 
 Exit 0 = the enforcer on this host behaves as documented.

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-cortex-doctor.py — Hermes Cortex installation health check
+cortex-doctor.py — Steadfaste Fleet installation health check
 
-Like 'brew doctor' for Hermes Cortex: single command that checks
+Like 'brew doctor' for Steadfaste Fleet: single command that checks
 and fixes your entire installation — repo, crons, scripts,
 services, system, config, governance (MCP servers, hooks), and
 install footprint.
@@ -26,7 +26,7 @@ import subprocess
 import sys
 
 # Ensure the package directory AND the scripts parent are on the path.
-# This handles both deployment (~/.hermes-cortex/scripts/) and in-repo
+# This handles both deployment (~/.steadfaste-fleet/scripts/) and in-repo
 # (ops/scripts/manage/) layouts so that hermes_paths and lib.cortex_bus
 # are importable regardless of CWD.
 _this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -93,14 +93,14 @@ def candidate_interpreters():
     """Interpreters to try, in preference order, excluding the current one.
 
     `CORTEX_PYTHON` is the host's own declaration (written by cortex-update.sh
-    into ~/.hermes-cortex/agent.env) and wins — an operator who points it
+    into ~/.steadfaste-fleet/agent.env) and wins — an operator who points it
     somewhere else must not be overruled. The fleet venv is the fallback, and a
     `PYTHON=`-style override is deliberately NOT invented here: one declaration
     per host is the rule.
     """
     declared = os.environ.get("CORTEX_PYTHON", "")
     if not declared:
-        env_file = os.path.join(os.path.expanduser("~"), ".hermes-cortex", "agent.env")
+        env_file = os.path.join(os.path.expanduser("~"), ".steadfaste-fleet", "agent.env")
         try:
             with open(env_file) as fh:
                 for line in fh:
@@ -109,7 +109,7 @@ def candidate_interpreters():
                         break
         except OSError:
             pass
-    fleet = os.path.join(os.path.expanduser("~"), ".hermes-cortex", "venv", "bin", "python3")
+    fleet = os.path.join(os.path.expanduser("~"), ".steadfaste-fleet", "venv", "bin", "python3")
     current = os.path.realpath(sys.executable)
     out = []
     for cand in (declared, fleet):
@@ -151,7 +151,7 @@ def reexec_if_degraded():
             "cortex-doctor: running under %s, which cannot import %s — the checks "
             "that depend on them will be WEAKER than reported and will say so.\n"
             "  repair: python3 ops/scripts/manage/fix-cortex-venv.py\n"
-            "  or run: ~/.hermes-cortex/venv/bin/python3 %s\n"
+            "  or run: ~/.steadfaste-fleet/venv/bin/python3 %s\n"
             % (sys.executable, ", ".join(DECLARED_MODULES), os.path.abspath(__file__)))
     return None
 

@@ -20,7 +20,7 @@ import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 # Mirror the deployed layout: gateway_envelope.py lives next to the MCP
-# servers on the fleet (~/.hermes-cortex/scripts/); in-repo it's
+# servers on the fleet (~/.steadfaste-fleet/scripts/); in-repo it's
 # ops/scripts/. Both must import.
 import sys
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))

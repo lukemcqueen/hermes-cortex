@@ -54,9 +54,9 @@ what is missing (`NO INTERPRETER at <path>`, `NOT DEPLOYED at <path>`) and exits
 failing generically:
 
 ```bash
-. "$HOME/.hermes-cortex/scripts/lib/require-fleet-venv.sh"
-require_fleet_venv "$HOME/.hermes-cortex/<payload>"
-exec "$HOME/.hermes-cortex/venv/bin/python3" "$HOME/.hermes-cortex/<payload>"
+. "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"
+require_fleet_venv "$HOME/.steadfaste-fleet/<payload>"
+exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/<payload>"
 ```
 
 ## Keep templates portable mechanically, not by review

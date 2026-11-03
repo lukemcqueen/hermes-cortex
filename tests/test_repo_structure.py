@@ -1,4 +1,4 @@
-"""Tests for Hermes Cortex repo structure integrity.
+"""Tests for Steadfaste Fleet repo structure integrity.
 
 Validates:
   - No dead files (files not referenced anywhere)

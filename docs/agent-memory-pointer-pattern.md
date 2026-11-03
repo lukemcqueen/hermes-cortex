@@ -1,7 +1,7 @@
 # Memory Architecture: The Pointer Pattern
 
 > **Version 1.0.0** — Published 2026-06-05
-> Part of the [Hermes Cortex](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
+> Part of the [Steadfaste Fleet](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
 
 **Keep your agent's short-term memory lean while preserving full detail on demand.**
 
@@ -178,7 +178,7 @@ python3 ~/.hermes/scripts/memory-compress.py
 **Before** (98% — 2,174 chars):
 
 ```
-Repos: public hermes-cortex (open-source skills/docs/scripts), private
+Repos: public steadfaste-fleet (open-source skills/docs/scripts), private
 private-data (system config + brain-* branches). Brain data ONLY
 on brain-* branches. PII scrubbed.
 Active crons: conversation-export (6h→legacy brain)... [keeps going]

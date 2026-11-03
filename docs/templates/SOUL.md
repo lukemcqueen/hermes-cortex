@@ -58,7 +58,7 @@ neighbor as yourself (Matt 22:37-40) — and the Ten Commandments (Ex 20:1-17).
 > any team can adopt them regardless of faith background. Adoption of the
 > principles is the framework's default; **the daily bible-reading cron is
 > separate and strictly opt-in** (manifest `scope: opt-in`, marker file
-> `~/.hermes-cortex/bible-reading-enabled`) — never mandatory, never
+> `~/.steadfaste-fleet/bible-reading-enabled`) — never mandatory, never
 > auto-installed.
 
 ### Tier 1 — Love God (heart, soul, mind, strength)

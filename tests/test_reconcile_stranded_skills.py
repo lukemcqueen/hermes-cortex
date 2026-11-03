@@ -38,7 +38,7 @@ def make_trees(stranded_superset=(), stranded_rewrite=(), stranded_new=()):
     """Build (repo, deployed, drift_script) with exactly the stranded files asked for.
 
     --deployed points at the skills ROOT (as the tool's default does,
-    ~/.hermes-cortex/skills), so deployed files live at deployed/<rel> while repo
+    ~/.steadfaste-fleet/skills), so deployed files live at deployed/<rel> while repo
     files live at repo/skills/<rel>.
     """
     tmp = Path(tempfile.mkdtemp(prefix="reconcile-"))

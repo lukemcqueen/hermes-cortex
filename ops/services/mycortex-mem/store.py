@@ -48,12 +48,12 @@ _MAX_SESSION_KEY = 200
 def _canonical_mem_env_paths() -> list[Path]:
     """Canonical cortex config files that may carry MYCORTEX_MEM_PASSWORD.
 
-    `~/hermes-cortex/.env` is the repo/dev secrets file (gitignored); the deployed
-    form is `~/.hermes-cortex/.env`. Resolution order mirrors how every harness
+    `~/steadfaste-fleet/.env` is the repo/dev secrets file (gitignored); the deployed
+    form is `~/.steadfaste-fleet/.env`. Resolution order mirrors how every harness
     reaches the store.
     """
-    return [Path.home() / "hermes-cortex" / ".env",
-            Path.home() / ".hermes-cortex" / ".env"]
+    return [Path.home() / "steadfaste-fleet" / ".env",
+            Path.home() / ".steadfaste-fleet" / ".env"]
 
 
 def resolve_mem_password(env_paths: Optional[list[Path]] = None) -> str:
@@ -68,7 +68,7 @@ def resolve_mem_password(env_paths: Optional[list[Path]] = None) -> str:
     Returns "" when neither source holds a value; the psql ``-w`` path then fails fast
     with "no password supplied" instead of prompting (see the fail-open contract).
 
-    Decoupling note: launchd/systemd gateway services do not inherit ~/hermes-cortex/.env,
+    Decoupling note: launchd/systemd gateway services do not inherit ~/steadfaste-fleet/.env,
     so the read-from-disk fallback is what makes the provider available there WITHOUT any
     service-specific environment injection. Hermes-specific env wiring is intentionally
     NOT used — the store resolves its own config from the cortex home.

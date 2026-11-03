@@ -2,7 +2,7 @@
 name: installer-validation
 description: "Validate installers and strip post-decommission stale refs."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:

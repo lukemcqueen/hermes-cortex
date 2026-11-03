@@ -70,7 +70,7 @@ LAYERS = ("mcp", "cli-extension", "cli-hook", "none")
 def registry_dir() -> Path:
     """Where registry.yaml lives: override, repo layout, or deployed layout.
 
-    The deployed harness.py is FLAT (`~/.hermes-cortex/scripts/hc-harness.py`)
+    The deployed harness.py is FLAT (`~/.steadfaste-fleet/scripts/hc-harness.py`)
     because `scripts/hc` is the launcher file — so this must not assume a
     directory shape. Every candidate is checked, and the last one is only a
     fallback for the error message.
@@ -79,10 +79,10 @@ def registry_dir() -> Path:
     candidates = [
         Path(override) if override else None,
         HERE.parents[1] / "install" / "harnesses",                        # repo: ops/install/harnesses
-        Path.home() / "hermes-cortex" / "ops" / "install" / "harnesses",
-        Path.home() / "hermes-cortex" / "harnesses",
-        Path.home() / ".hermes-cortex" / "ops" / "install" / "harnesses",
-        Path.home() / ".hermes-cortex" / "harnesses",                     # deployed
+        Path.home() / "steadfaste-fleet" / "ops" / "install" / "harnesses",
+        Path.home() / "steadfaste-fleet" / "harnesses",
+        Path.home() / ".steadfaste-fleet" / "ops" / "install" / "harnesses",
+        Path.home() / ".steadfaste-fleet" / "harnesses",                     # deployed
     ]
     for c in candidates:
         if c and (c / "registry.yaml").is_file():
@@ -95,8 +95,8 @@ def contract_tools_py() -> Path | None:
     candidates = [
         Path(os.environ["CORTEX_CONTEXT_TOOLS"]) if os.environ.get("CORTEX_CONTEXT_TOOLS") else None,
         HERE.parents[1] / "services" / "mycortex-mem" / "context_tools.py",   # repo: ops/services
-        Path.home() / "hermes-cortex" / "ops" / "services" / "mycortex-mem" / "context_tools.py",
-        Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "context_tools.py",
+        Path.home() / "steadfaste-fleet" / "ops" / "services" / "mycortex-mem" / "context_tools.py",
+        Path.home() / ".steadfaste-fleet" / "services" / "mycortex-mem" / "context_tools.py",
     ]
     for p in candidates:
         if p and p.is_file():
@@ -109,8 +109,8 @@ def context_cli() -> Path | None:
     candidates = [
         Path(os.environ["CORTEX_CONTEXT_CLI"]) if os.environ.get("CORTEX_CONTEXT_CLI") else None,
         HERE.parents[1] / "cortex-context.py",                                # repo: ops/scripts
-        Path.home() / "hermes-cortex" / "ops" / "scripts" / "cortex-context.py",
-        Path.home() / ".hermes-cortex" / "scripts" / "cortex-context.py",
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "cortex-context.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "cortex-context.py",
     ]
     for p in candidates:
         if p and p.is_file():

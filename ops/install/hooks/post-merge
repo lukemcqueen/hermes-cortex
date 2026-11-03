@@ -20,13 +20,13 @@ fi
 # EVERY git repo on the host — including oh-my-zsh's own auto-update repo.
 # A full cortex-update deploy for an unrelated repo pull is wasteful and
 # confusing (observed: oh-my-zsh update triggered a cortex-update run).
-# Only auto-deploy when the pull/merge happened inside ~/hermes-cortex.
+# Only auto-deploy when the pull/merge happened inside ~/steadfaste-fleet.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
-if [[ "${REPO_ROOT}" != "${HOME}/hermes-cortex" ]]; then
+if [[ "${REPO_ROOT}" != "${HOME}/steadfaste-fleet" ]]; then
   exit 0
 fi
 
-UPDATE_SCRIPT="${HOME}/hermes-cortex/ops/scripts/cortex-update.sh"
+UPDATE_SCRIPT="${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"
 if [[ ! -f "$UPDATE_SCRIPT" ]]; then
   echo "⚠️  post-merge: cortex-update.sh not found at $UPDATE_SCRIPT"
   echo "   Clone the repo first: cd ~ && git clone https://github.com/lukemcqueen/steadfaste-fleet.git"

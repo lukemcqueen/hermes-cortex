@@ -58,7 +58,7 @@ def run_check(rows: list[str] | None) -> dict:
     tmp = Path(tempfile.mkdtemp(prefix="taskidhyg-"))
     try:
         home = tmp / "home"
-        data = home / ".hermes-cortex" / "data"
+        data = home / ".steadfaste-fleet" / "data"
         data.mkdir(parents=True)
         if rows is not None:
             con = sqlite3.connect(data / "loop-governance.db")
@@ -89,7 +89,7 @@ def run_check(rows: list[str] | None) -> dict:
 
 
 def test_malformed_ids_warn_and_name_the_repair() -> None:
-    r = run_check([MALFORMED, "clean-task/one", "precommit-hermes-cortex-main/fix"])
+    r = run_check([MALFORMED, "clean-task/one", "precommit-steadfaste-fleet-main/fix"])
     check("error" not in r, f"the probe failed: {r.get('error')}")
     check(r.get("status") == "WARN",
           f"a ledger holding a newline id must WARN, got {r.get('status')!r}")
@@ -102,7 +102,7 @@ def test_malformed_ids_warn_and_name_the_repair() -> None:
 
 
 def test_clean_ledger_passes() -> None:
-    r = run_check(["clean-task/one", "precommit-hermes-cortex-main/fix"])
+    r = run_check(["clean-task/one", "precommit-steadfaste-fleet-main/fix"])
     check(r.get("status") == "PASS",
           f"a clean ledger must PASS, got {r.get('status')!r}: {r.get('detail')!r}")
     check("spaces" not in r.get("detail", ""),

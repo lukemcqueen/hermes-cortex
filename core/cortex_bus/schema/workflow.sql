@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Hermes Cortex Agent Bus — Workflow + A2A Schema
+-- Steadfaste Fleet Agent Bus — Workflow + A2A Schema
 --
 -- Durable workflow engine for deterministic agent orchestration.
 -- A2A (Agent-to-Agent) task management.

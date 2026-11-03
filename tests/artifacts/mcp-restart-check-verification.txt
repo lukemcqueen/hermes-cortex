@@ -3,7 +3,7 @@ Verification for the restart-needed check now covering the loop-governance MCP.
 $ bash -n ops/scripts/cortex-update.sh
 exit=0
 
-$ bash ~/.hermes-cortex/scripts/cortex-update.sh      # deploy; MCP source changed
+$ bash ~/.steadfaste-fleet/scripts/cortex-update.sh      # deploy; MCP source changed
 [1;33m⚠[0m   Restart check: cannot determine gateway start time — UNVERIFIABLE, treating as restart required
 [1;33m⚠[0m ⚠ COULD NOT VERIFY restart state (see warnings above) — treat as restart required.
 [1;33m⚠[0m The new enforcement chain activates ONLY after the gateway process restarts.

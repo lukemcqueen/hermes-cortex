@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hermes-cortex-sync.sh — no_agent watchdog: pull latest hermes-cortex + re-sync tools
+# steadfaste-fleet-sync.sh — no_agent watchdog: pull latest steadfaste-fleet + re-sync tools
 #
 # Watchdog pattern:
 #   Empty stdout → silent (already up-to-date)
@@ -17,7 +17,7 @@ ts() {
 # Schedule: daily (recommended 22:33 KST, 10 min after hermes-update)
 set -euo pipefail
 
-CORTEX_REPO="$HOME/hermes-cortex"
+CORTEX_REPO="$HOME/steadfaste-fleet"
 
 # timeout: linux=timeout, mac=gtimeout (brew coreutils). Never assume the
 # binary exists — fail with a clear message instead of a cryptic 127.
@@ -162,7 +162,7 @@ DEPLOY_OUTPUT=$("$TIMEOUT_CMD" 600 bash "$CORTEX_REPO/ops/scripts/cortex-update.
 
 # Deploy skills manifest from template
 SKILLS_TEMPLATE="$CORTEX_REPO/skills.yaml"
-SKILLS_DEST="$HOME/.hermes-cortex/skills.yaml"
+SKILLS_DEST="$HOME/.steadfaste-fleet/skills.yaml"
 if [ -f "$SKILLS_TEMPLATE" ]; then
     if [ ! -f "$SKILLS_DEST" ] || ! diff -q "$SKILLS_TEMPLATE" "$SKILLS_DEST" >/dev/null 2>&1; then
         cp "$SKILLS_TEMPLATE" "$SKILLS_DEST"
@@ -170,4 +170,4 @@ if [ -f "$SKILLS_TEMPLATE" ]; then
     fi
 fi
 
-echo "[$(ts) cortex-sync] hermes-cortex updated, tools re-synced."
+echo "[$(ts) cortex-sync] steadfaste-fleet updated, tools re-synced."

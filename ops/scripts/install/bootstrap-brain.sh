@@ -21,7 +21,7 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BOLD='\033[1m'; RESET='\033[0m'
 BRAIN_DIR="${HOME}/brain"
-MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="${HOME}/.steadfaste-fleet/scripts/mycortex"
 BUN_PATH="${HOME}/.bun/bin"
 CHECK_ONLY=false
 REINDEX=false
@@ -151,7 +151,7 @@ for source in "${BRAIN_SOURCES[@]}"; do
       warn "  .gitignore missing"
     else
       cat > "${source_dir}/.gitignore" <<'GITEOF'
-# Hermes Cortex brain source — never commit per-instance memory or secrets
+# Steadfaste Fleet brain source — never commit per-instance memory or secrets
 MEMORY.md
 USER.md
 .env

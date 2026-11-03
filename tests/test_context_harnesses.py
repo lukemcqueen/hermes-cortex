@@ -357,7 +357,7 @@ def test_pi_extension_keeps_routine_output_off_the_prompt_area(tmp_path):
 def test_pi_extension_traces_routine_output_to_a_bounded_cortex_log(tmp_path):
     """Routine diagnostics belong in the cortex tree's log dir, not the prompt area.
 
-    Mirrors `mcp-servers/loop-gov-mcp.py`: a bounded file under `~/.hermes-cortex/logs/`
+    Mirrors `mcp-servers/loop-gov-mcp.py`: a bounded file under `~/.steadfaste-fleet/logs/`
     (here overridden by CORTEX_CONTEXT_LOG), stderr kept for failures, and a logging
     failure that can never break the hook.
     """

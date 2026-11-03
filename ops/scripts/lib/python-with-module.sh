@@ -8,7 +8,7 @@
 #   * the fallback is usually the one interpreter known to lack it.
 #
 # Measured on esther:
-#   ~/.hermes-cortex/venv/bin/python3      exists, imports yaml=NO  mcp=NO
+#   ~/.steadfaste-fleet/venv/bin/python3      exists, imports yaml=NO  mcp=NO
 #   ~/.hermes/hermes-agent/venv/bin/python3 exists, imports yaml=YES mcp=YES
 #   python3 (the Hermes tools python on the cron PATH)  yaml=NO
 #
@@ -47,7 +47,7 @@ declared_python() {
   # than seven: on 2026-10-13 seven scripts each needed their own clean-env probe because the
   # agent session exported a foreign site-packages AND put a 3.14 tools python ahead of /usr/bin.
   [[ -n "${CORTEX_PYTHON:-}" ]] && printf '%s\n' "${CORTEX_PYTHON}"
-  local f="${CORTEX_ENV_FILE:-${HOME}/.hermes-cortex/agent.env}"
+  local f="${CORTEX_ENV_FILE:-${HOME}/.steadfaste-fleet/agent.env}"
   [[ -f "$f" ]] && sed -n 's/^CORTEX_PYTHON=//p' "$f" | head -1
 }
 
@@ -56,7 +56,7 @@ candidates() {
   # its services with (cortex-update.sh points every MCP registration at it) — then the Hermes
   # venv, then whatever is on PATH, then versioned names.
   #
-  # Measured on esther 2026-10-13: ~/.hermes-cortex/venv imports yaml + mcp (and pytest once
+  # Measured on esther 2026-10-13: ~/.steadfaste-fleet/venv imports yaml + mcp (and pytest once
   # installed there); ~/.hermes/hermes-agent/venv imports all three; the Hermes tools python
   # imports none. The ORDER only breaks ties — a module only the Hermes venv has still
   # resolves, because a candidate must import the module to be chosen. Putting the cortex
@@ -65,7 +65,7 @@ candidates() {
   [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
   declared_python
   [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
-  printf '%s\n' "${HOME}/.hermes-cortex/venv/bin/python3"
+  printf '%s\n' "${HOME}/.steadfaste-fleet/venv/bin/python3"
   printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3"
   command -v python3 2>/dev/null || true
   local v
@@ -110,7 +110,7 @@ done < <(candidates)
   if [[ -n "$_decl" ]]; then
     echo "  Declared CORTEX_PYTHON: ${_decl}"
     echo "    it cannot import '${module}' — a declaration is a promise. Fix it, or unset"
-    echo "    CORTEX_PYTHON in ~/.hermes-cortex/agent.env to fall back to the built-in order."
+    echo "    CORTEX_PYTHON in ~/.steadfaste-fleet/agent.env to fall back to the built-in order."
   fi
   echo "  Fix one of:"
   echo "    - install ${module} for one of them        (e.g. python3 -m pip install ${module})"

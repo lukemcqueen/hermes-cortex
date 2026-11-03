@@ -34,7 +34,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
 BLOCKED="${1:-${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add}"
 OUT_DIR="$(dirname "$BLOCKED")"
 REVIEW="${OUT_DIR}/blocked_ips.review"

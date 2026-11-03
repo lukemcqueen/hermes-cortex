@@ -15,7 +15,7 @@
  *
  * WHY THIS FILE NO LONGER REGISTERS TOOLS (2026-10-03):
  *   The memory/session TOOLS come from the shared MCP server
- *   (`~/.hermes-cortex/scripts/cortex-context-mcp.py`, registered for Pi by
+ *   (`~/.steadfaste-fleet/scripts/cortex-context-mcp.py`, registered for Pi by
  *   `install-pi-mcp.sh`) — the SAME server Claude Code and Codex use, with
  *   schemas DERIVED from `ops/services/mycortex-mem/context_tools.py`.
  *
@@ -40,7 +40,7 @@
  *      the gateway pins _KEY per chat so separate chats never share a
  *      checkpoint), CORTEX_CONTEXT_CLI to override the CLI path,
  *      CORTEX_CONTEXT_LOG + CORTEX_CONTEXT_LOG_MAX_BYTES (routine trace sink,
- *      bounded, defaults to ~/.hermes-cortex/logs/pi-context.log) and
+ *      bounded, defaults to ~/.steadfaste-fleet/logs/pi-context.log) and
  *      CORTEX_CONTEXT_DEBUG=1 to also echo the routine trace to stderr.
  *
  * EVERY call is fail-open — but a failure is REPORTED on stderr (a silent
@@ -57,7 +57,7 @@ const run = promisify(execFile);
 
 const CLI =
   process.env.CORTEX_CONTEXT_CLI ??
-  `${process.env.HOME}/.hermes-cortex/scripts/cortex-context.py`;
+  `${process.env.HOME}/.steadfaste-fleet/scripts/cortex-context.py`;
 
 /**
  * The GOVERNANCE CLI. The reflexion gate keys its question to the ACTIVE
@@ -67,7 +67,7 @@ const CLI =
  */
 const GOV_CLI =
   process.env.CORTEX_GOVERNANCE_CLI ??
-  `${process.env.HOME}/.hermes-cortex/scripts/loop-gov.py`;
+  `${process.env.HOME}/.steadfaste-fleet/scripts/loop-gov.py`;
 
 /**
  * The interpreter. macOS matters here: `python3` may not be on Pi's PATH (a
@@ -143,7 +143,7 @@ type Restored = {
 // trace to stderr for live debugging.
 const LOG_PATH =
   process.env.CORTEX_CONTEXT_LOG ??
-  `${process.env.HOME ?? ""}/.hermes-cortex/logs/pi-context.log`;
+  `${process.env.HOME ?? ""}/.steadfaste-fleet/logs/pi-context.log`;
 const LOG_MAX_BYTES = Number(process.env.CORTEX_CONTEXT_LOG_MAX_BYTES ?? 1_048_576);
 const DEBUG = process.env.CORTEX_CONTEXT_DEBUG === "1";
 

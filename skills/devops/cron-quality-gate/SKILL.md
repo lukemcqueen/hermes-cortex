@@ -3,7 +3,7 @@ name: cron-quality-gate
 version: 1.0.0
 category: devops
 description: "Prevents LLM cron jobs from delivering garbage with a self-check quality gate and automated watchdog."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -62,11 +62,11 @@ If all YES → deliver as normal.
 
 ## Watchdog Script
 
-Location: `~/.hermes-cortex/scripts/agent-cron-quality-watchdog.py`
+Location: `~/.steadfaste-fleet/scripts/agent-cron-quality-watchdog.py`
 
 If you edit the script, edit the REPO SOURCE first:
-`~/hermes-cortex/ops/scripts/health/agent-cron-quality-watchdog.py`, commit,
-then run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` to redeploy.
+`~/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py`, commit,
+then run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` to redeploy.
 Editing the deployed copy directly gets overwritten on the next update.
 (The script is also mirrored at `~/.hermes/scripts/agent-cron-quality-watchdog.py`; if only that copy differs from the repo, redeploy rather than hand-editing.)
 
@@ -107,7 +107,7 @@ Runs as `no_agent=True` cron on schedule `*/10 * * * *`. Delivers to origin.
 
 ## Installation
 
-1. Verify the script is deployed: `ls ~/.hermes-cortex/scripts/agent-cron-quality-watchdog.py`
+1. Verify the script is deployed: `ls ~/.steadfaste-fleet/scripts/agent-cron-quality-watchdog.py`
 2. Create the cron: `*/10 * * * *`, no_agent=True, script=agent-cron-quality-watchdog.py
 3. Append the quality gate block to every LLM cron prompt
 
@@ -138,18 +138,18 @@ Always pin LLM crons explicitly (`provider=openrouter model=...`) so the drift g
 
 To update the watchdog script (edit REPO SOURCE first, then deploy):
 ```bash
-$EDITOR ~/hermes-cortex/ops/scripts/health/agent-cron-quality-watchdog.py
-git -C ~/hermes-cortex add -A && git -C ~/hermes-cortex commit -m "update quality watchdog"
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+$EDITOR ~/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py
+git -C ~/steadfaste-fleet add -A && git -C ~/steadfaste-fleet commit -m "update quality watchdog"
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
-Rollback if a watchdog change breaks alerts: `git -C ~/hermes-cortex revert HEAD` + re-run `cortex-update.sh`.
+Rollback if a watchdog change breaks alerts: `git -C ~/steadfaste-fleet revert HEAD` + re-run `cortex-update.sh`.
 
 To check watchdog health (manual smoke run — note this does NOT update the cron scheduler's `last_status`):
 ```bash
-python3 ~/.hermes-cortex/scripts/agent-cron-quality-watchdog.py; echo "exit=$?"
+python3 ~/.steadfaste-fleet/scripts/agent-cron-quality-watchdog.py; echo "exit=$?"
 ```
 Exit 0 + no alerts = clean. To refresh the scheduler's health record after a fix, run the cron via the scheduler (`cronjob action='run' job_id=<watchdog-id>`), then run the doctor:
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
 ```

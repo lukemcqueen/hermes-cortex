@@ -17,7 +17,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape leg
 
 | Layer | Choice | Why it is durable |
 |---|---|---|
-| Source of truth | Markdown in git (`~/brain/*`, `~/hermes-cortex`) | Most portable format; survives any engine, any machine loss. Already true today. |
+| Source of truth | Markdown in git (`~/brain/*`, `~/steadfaste-fleet`) | Most portable format; survives any engine, any machine loss. Already true today. |
 | Index store | Shared `legacy Postgres` :15432 (pgvector) | Already running; already the fleet's durable store (bus lives there). Zero new infra. |
 | Search | Postgres FTS + pg_texample (v1); pgvector (v1.1 slice) | Same DB, same tables; semantic is a column + query path, never a second system. |
 | Plumbing | Cron sync, no daemon, no bun | 30-second cron is trivially replaceable forever; the 248 MB daemon was the breakage source. |
@@ -69,7 +69,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape leg
 - **Per-page ownership:** `pages.author` (agent name) column.
 - **Embedding metadata (v1.1):** `content_chunks.embedding vector(768)`, `embedding_model`, `embedding_dim` — unique `(chunk_id, model, dim)` for non-destructive model change.
 - **Staleness alerting:** doctor flags `sources.last_sync_at` older than 2× interval.
-- **`hermes-cortex` repo = registered source** (1,340 pages — the only source actually used today; required for parity).
+- **`steadfaste-fleet` repo = registered source** (1,340 pages — the only source actually used today; required for parity).
 - **Built-in `default` source invariant** carried over: unremovable, federated.
 - **Query audit:** `query_log` table (agent, source, query, n_results) — detection for isolated-source exfiltration.
 - **Prompt injection:** `/brain` + MCP delimit retrieved chunks as data, always cite source+path, never follow instructions embedded in chunk text (guardrail in plugin + skill).
@@ -92,7 +92,7 @@ CREATE SCHEMA IF NOT EXISTS mycortex;
 
 CREATE TABLE IF NOT EXISTS mycortex.sources (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name          TEXT NOT NULL UNIQUE,          -- 'hermes-cortex', 'moses', 'shared', 'lessons'
+    name          TEXT NOT NULL UNIQUE,          -- 'steadfaste-fleet', 'moses', 'shared', 'lessons'
     local_path    TEXT,                           -- absolute path (scrubbed from logs)
     host          TEXT NOT NULL DEFAULT current_setting('hostname', true), -- owning host
     sync_mode     TEXT NOT NULL DEFAULT 'git',    -- 'git' | 'local'
@@ -251,11 +251,11 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 - **cortex-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh`.
 - **Cron:** `agent-mycortex-sync` — every 15 min, jittered per host, **per-host (NOT orchestrator-only — D4)**: shared sources sync from the orchestrator host, host-local sources sync on their own host (advisory lock makes multi-host safe). Registered in `install-crons.sh` (+ uninstall array).
 - **/brain command:** rewrite `legacy brain command` plugin → `mycortex-command` (name + aliases), presets rebuilt from `mycortex sources list` (fixes the NameError/broken-presets bug), output delimited as data + source cited, instruction-shaped content neutralized in code (not prose) — prompt-injection guardrail with a failure-mode test.
-- **install.sh:** step 3 legacy → mycortex (copy CLI, run migrate.py v001, register default sources: hermes-cortex + local brain dirs).
+- **install.sh:** step 3 legacy → mycortex (copy CLI, run migrate.py v001, register default sources: steadfaste-fleet + local brain dirs).
 
 ### 3.3 Slices
 
-- **v1 (text-first):** schema v001 (fail-closed RLS), migrate.py, sync, FTS+trigram search, CLI, /brain rewrite, sources (hermes-cortex + moses + shared + default), lessons backup+PII-gate+git-init, deploy, parity gate, legacy brain decommission steps 1–4.
+- **v1 (text-first):** schema v001 (fail-closed RLS), migrate.py, sync, FTS+trigram search, CLI, /brain rewrite, sources (steadfaste-fleet + moses + shared + default), lessons backup+PII-gate+git-init, deploy, parity gate, legacy brain decommission steps 1–4.
 - **v1.1 (semantic, hard date ≤30 days after v1 GA):** migration v004 (embedding column), `mycortex ask`, hybrid FTS+vector, embed cron (ollama nomic-embed-text:v1.5). **Pre-sliced stories** shipped with v1 so it cannot be silently deferred.
 - **v1.2 (could):** mycortex MCP server (localhost, agent token), `links` table + wikilink extractor (migration v005), query_log dashboards.
 
@@ -265,7 +265,7 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 
 ```
 Phase 0  PREP        Capture legacy brain baseline (golden query set → legacy brain results → file, pinned to source SHAs)
-                    Week-1 PILOT: mycortex search live on hermes-cortex + moses, /brain preset fix on one host
+                    Week-1 PILOT: mycortex search live on steadfaste-fleet + moses, /brain preset fix on one host
                     → Luke uses mycortex daily during the whole parity window (visible value from day 1)
 Phase 1  PARALLEL    Ship mycortex v1; migrate.py applies v001 (fail-closed RLS); register sources;
                     lessons: cp -a backup → PII scan gate → git-init; sync; doctor clean

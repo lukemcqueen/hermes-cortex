@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLASSIFIER=""
 for cand in \
   "$SCRIPT_DIR/autonomy-classifier.py" \
-  "$HOME/hermes-cortex/ops/scripts/manage/autonomy-classifier.py"; do
+  "$HOME/steadfaste-fleet/ops/scripts/manage/autonomy-classifier.py"; do
   if [ -f "$cand" ]; then CLASSIFIER="$cand"; break; fi
 done
 

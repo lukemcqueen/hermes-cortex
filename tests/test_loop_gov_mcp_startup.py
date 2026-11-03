@@ -5,7 +5,7 @@ crashed at module import with "subprocess 'loop-governance' has exited",
 locking the agent out of write tools (no begin_change possible).
 
 Root cause: module-level `from hermes_models import get_model` resolves ONLY
-via the ~/.hermes/scripts -> ~/.hermes-cortex/scripts symlink. On hosts where
+via the ~/.hermes/scripts -> ~/.steadfaste-fleet/scripts symlink. On hosts where
 that symlink is missing (macOS Titus), the import raises ModuleNotFoundError
 at line ~80 and the entire MCP server dies before serving any tool.
 
@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 SERVER_PATH = Path(
-    os.environ.get("LOOP_GOV_MCP", "~/hermes-cortex/mcp-servers/loop-gov-mcp.py")
+    os.environ.get("LOOP_GOV_MCP", "~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py")
 ).expanduser()
 
 
@@ -91,7 +91,7 @@ def test_server_starts_without_hermes_models_symlink():
         home = Path(tmp)
         # Sanity: the fake HOME must NOT accidentally contain the real scripts
         assert not (home / ".hermes" / "scripts").exists()
-        assert not (home / ".hermes-cortex" / "scripts").exists()
+        assert not (home / ".steadfaste-fleet" / "scripts").exists()
 
         proc = _run_server_with_home(home)
 

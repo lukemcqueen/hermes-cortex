@@ -12,7 +12,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="$REPO/docs/evidence/cost4-host-cost-adapter"
 OUT="$OUTDIR/dispatch-2026-10-24.txt"
-PY="$HOME/.hermes-cortex/venv/bin/python3"
+PY="$HOME/.steadfaste-fleet/venv/bin/python3"
 
 mkdir -p "$OUTDIR"
 exec >"$OUT" 2>&1
@@ -33,7 +33,7 @@ say "asked (ops/scripts/agent/commands.py:113-134)."
 "$PY" - <<'PYEOF'
 import json
 import sys
-sys.path.insert(0, str(__import__("pathlib").Path.home() / "hermes-cortex" / "ops" / "scripts"))
+sys.path.insert(0, str(__import__("pathlib").Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
 from lib.cortex_bus import bus_peek, bus_archives, bus_list_queues
 
 SELFTEST = "cost4-selftest-8c8c62176e3a"

@@ -1,4 +1,4 @@
-# FrontierAgent Gap Analysis → Hermes Cortex
+# FrontierAgent Gap Analysis → Steadfaste Fleet
 
 **Status:** Recommendations | **Scope:** public framework doc — inference-aware runtime, bounded orchestration, sandbox safety, SDK interface lessons
 **Source analyzed:** `ApodexAI/FrontierAgent` (Apache-2.0, ~27K lines Python), commit 2026-09-14

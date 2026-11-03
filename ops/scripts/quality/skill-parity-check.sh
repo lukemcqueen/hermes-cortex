@@ -10,7 +10,7 @@
 #   with no argument it checks every skill in skills/hermes-agent/ that exists in both trees.
 
 set -uo pipefail
-REPO="${CORTEX_REPO:-/home/esther/hermes-cortex}"
+REPO="${CORTEX_REPO:-/home/esther/steadfaste-fleet}"
 DEPLOYED="${HERMES_HOME:-$HOME/.hermes}/skills"
 
 pairs=("$@")

@@ -42,7 +42,7 @@ def _deploy_in_progress(max_age_s: int = 1800) -> bool:
   Bounded on purpose. The marker is trusted only while FRESH, so a deploy killed
   hard enough to strand it cannot silence this check indefinitely.
   """
-  marker = Path.home() / ".hermes-cortex" / "state" / "deploy-in-progress"
+  marker = Path.home() / ".steadfaste-fleet" / "state" / "deploy-in-progress"
   try:
     age = time.time() - marker.stat().st_mtime
   except OSError:
@@ -56,18 +56,18 @@ MAX_FILES_SHOWN = 15
 DB_PATH = os.path.expanduser(
   os.environ.get(
     "SCORE_DB_PATH",
-    "~/.hermes-cortex/data/loop-governance.db"
+    "~/.steadfaste-fleet/data/loop-governance.db"
   )
 )
 SCANNED_DIRS = [
   os.path.expanduser("~/Developer"),
-  os.path.expanduser("~/hermes-cortex"),
+  os.path.expanduser("~/steadfaste-fleet"),
   os.path.expanduser("~/Sites"),
   os.path.expanduser("~/Documents/ACME"),
 ]
 EXCLUDE_PATTERNS = [
   "__pycache__", ".venv", "node_modules", ".git",
-  ".hermes", ".hermes-cortex", ".next", "target",
+  ".hermes", ".steadfaste-fleet", ".next", "target",
   "vendor", ".bun", ".cache", "go/pkg",
   "test-results", "playwright-report",
 ]
@@ -196,7 +196,7 @@ def get_scored_tasks() -> set[str]:
     return set()
 
 # ── Stale lock cleanup ────────────────────────────────────────
-GOVERNANCE_STATE_DIR = os.path.expanduser("~/.hermes-cortex/state")
+GOVERNANCE_STATE_DIR = os.path.expanduser("~/.steadfaste-fleet/state")
 LOCK_MAX_AGE_HOURS = 12
 
 
@@ -255,7 +255,7 @@ def _check_infrastructure() -> list[str]:
   # ── 1. Plugin deployment — prefer copy over symlink ──
   plugin_link = os.path.expanduser("~/.hermes/plugins/governance-enforcer")
   plugin_target = os.path.expanduser(
-    "~/hermes-cortex/plugins/governance-enforcer"
+    "~/steadfaste-fleet/plugins/governance-enforcer"
   )
 
   if os.path.islink(plugin_link):
@@ -286,11 +286,11 @@ def _check_infrastructure() -> list[str]:
     )
 
   # ── 2. Hook symlinks ──
-  hooks_dir = os.path.expanduser("~/.hermes-cortex/hooks")
+  hooks_dir = os.path.expanduser("~/.steadfaste-fleet/hooks")
   expected_hooks = {
-    "pre-commit": os.path.expanduser("~/.hermes-cortex/scripts/pre-commit-score"),
-    "pre-push": os.path.expanduser("~/.hermes-cortex/scripts/pre-push-pull"),
-    "post-commit": os.path.expanduser("~/.hermes-cortex/scripts/post-commit-audit"),
+    "pre-commit": os.path.expanduser("~/.steadfaste-fleet/scripts/pre-commit-score"),
+    "pre-push": os.path.expanduser("~/.steadfaste-fleet/scripts/pre-push-pull"),
+    "post-commit": os.path.expanduser("~/.steadfaste-fleet/scripts/post-commit-audit"),
   }
   for hook_name, expected_target in expected_hooks.items():
     hook_path = os.path.join(hooks_dir, hook_name)
@@ -311,7 +311,7 @@ def _check_infrastructure() -> list[str]:
   # ── 3. hooksPath config ──
   try:
     r = subprocess.run(
-      ["git", "-C", os.path.expanduser("~/hermes-cortex"),
+      ["git", "-C", os.path.expanduser("~/steadfaste-fleet"),
        "config", "--get", "core.hooksPath"],
       capture_output=True, text=True, timeout=5,
     )

@@ -21,7 +21,7 @@ needed) and asserts:
   2. Second tick: dest copy archived by the consumer, source copy lingers
      (the warm-standby mirror) → must NOT re-forward (dkey in seen).
 
-Run: cd hermes-cortex && python3 tests/test-bus-forwarder-dedup.py
+Run: cd steadfaste-fleet && python3 tests/test-bus-forwarder-dedup.py
 """
 
 import importlib.util

@@ -14,9 +14,9 @@
 #
 # Requires:
 #  - Hermes CLI (hermes cron create)
-#  - ~/hermes-cortex/.env with CORTEX_INBOX_AUTH
+#  - ~/steadfaste-fleet/.env with CORTEX_INBOX_AUTH
 #  - curl (for API calls)
-#  - Pulled hermes-cortex (for bus-watch.sh)
+#  - Pulled steadfaste-fleet (for bus-watch.sh)
 #
 # After setup:
 #  hermes cron list | grep -E 'bus-watch|cortex-bus'
@@ -84,20 +84,20 @@ if [ -z "$HERMES_CMD" ]; then
 fi
 
 # Check bus-watch.sh exists
-WATCH_SCRIPT="${HOME}/.hermes-cortex/scripts/bus-watch.sh"
+WATCH_SCRIPT="${HOME}/.steadfaste-fleet/scripts/bus-watch.sh"
 if [ ! -f "$WATCH_SCRIPT" ]; then
  warn "bus-watch.sh not found — running cortex-update.sh..."
- if [ -f "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh" ]; then
-  bash "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh" 2>/dev/null || true
+ if [ -f "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh" ]; then
+  bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh" 2>/dev/null || true
  fi
  if [ ! -f "$WATCH_SCRIPT" ]; then
-  warn "Still not found. Run: cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh "
+  warn "Still not found. Run: cd ~/steadfaste-fleet && git pull && bash ops/scripts/cortex-update.sh "
   exit 1
  fi
 fi
 
 # Check auth config
-AUTH_FILE="${HOME}/hermes-cortex/.env"
+AUTH_FILE="${HOME}/steadfaste-fleet/.env"
 AUTH_OK=false
 if [ -f "$AUTH_FILE" ]; then
  # shellcheck disable=SC1090
@@ -108,7 +108,7 @@ if [ -f "$AUTH_FILE" ]; then
  fi
 fi
 if ! $AUTH_OK; then
- warn "No auth credentials found in ~/hermes-cortex/.env"
+ warn "No auth credentials found in ~/steadfaste-fleet/.env"
  warn "Create it with:"
  echo "  CORTEX_INBOX_URL=\"https://your-domain.com:13004\""
  echo "  CORTEX_INBOX_AUTH=\"user:pass\""
@@ -187,7 +187,7 @@ For each unread message:
 
 1. Fetch the full message via the inbox API:
   \`\`\`bash
-  source ~/hermes-cortex/.env
+  source ~/steadfaste-fleet/.env
   curl -s -u \"\$CORTEX_BASIC_AUTH\" \\
    \"${INBOX_URL}/api/pgmq/read\" -d '{\"queue\":\"inbox_${AGENT}\",\"vt\":30}'
   \`\`\`

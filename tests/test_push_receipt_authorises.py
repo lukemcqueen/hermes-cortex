@@ -101,29 +101,29 @@ def rule_checks(rrc, tmp):
     check("scan_covering has no rule of its own (uses authorises)",
           hasattr(rrc, "scan_covering"), True)
 
-    _write_receipt(state, "hermes-cortex", covering)
-    ok, path = rrc.scan_covering(state, "hermes-cortex", tip, base, repo=repo)
+    _write_receipt(state, "steadfaste-fleet", covering)
+    ok, path = rrc.scan_covering(state, "steadfaste-fleet", tip, base, repo=repo)
     check("a covering receipt authorises", ok, True)
     check("scan names the receipt it used", bool(path) and str(path).endswith(".json"), True)
 
     # Fail-closed directions.
-    ok, _ = rrc.scan_covering(state, "hermes-cortex", tip, base, repo=repo)
+    ok, _ = rrc.scan_covering(state, "steadfaste-fleet", tip, base, repo=repo)
     check("CONTROL: the same call is the one that passed", ok, True)
     ok2, _ = rrc.scan_covering(state, "other-repo", tip, base, repo=repo)
     check("a receipt for another repo never authorises", ok2, False)
     empty = Path(tmp) / "empty-state"
     empty.mkdir()
-    ok3, _ = rrc.scan_covering(empty, "hermes-cortex", tip, base, repo=repo)
+    ok3, _ = rrc.scan_covering(empty, "steadfaste-fleet", tip, base, repo=repo)
     check("no receipt at all refuses", ok3, False)
-    ok4, _ = rrc.scan_covering(state, "hermes-cortex", "0" * 40, base, repo=repo)
+    ok4, _ = rrc.scan_covering(state, "steadfaste-fleet", "0" * 40, base, repo=repo)
     check("an unresolvable range refuses", ok4, False)
 
     # An EMPTY range (tip == base) never authorises: there is nothing to push, and
     # a receipt naming tip==base would otherwise pass the exact-match rule.
     empty_range = {"verdict": "CLEAN", "tip_sha": tip, "base_sha": tip,
                    "reviewed_blobs": blobs}
-    _write_receipt(Path(tmp) / "state-empty", "hermes-cortex", empty_range)
-    ok_e, _ = rrc.scan_covering(Path(tmp) / "state-empty", "hermes-cortex", tip, tip, repo=repo)
+    _write_receipt(Path(tmp) / "state-empty", "steadfaste-fleet", empty_range)
+    ok_e, _ = rrc.scan_covering(Path(tmp) / "state-empty", "steadfaste-fleet", tip, tip, repo=repo)
     check("a receipt for an EMPTY range never authorises", ok_e, False)
 
     # The range GAINS an unreviewed file → the receipt no longer covers it.
@@ -131,26 +131,26 @@ def rule_checks(rrc, tmp):
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "unreviewed addition")
     tip2 = _git(repo, "rev-parse", "HEAD").stdout.strip()
-    ok5, _ = rrc.scan_covering(state, "hermes-cortex", tip2, base, repo=repo)
+    ok5, _ = rrc.scan_covering(state, "steadfaste-fleet", tip2, base, repo=repo)
     check("a range that gained an uncovered file refuses", ok5, False)
 
     # The CLI the HOOK calls — same module, so the two can never disagree.
     out = subprocess.run([sys.executable, str(CHECK), "--scan", str(state),
-                          "hermes-cortex", tip2, base, "--repo", str(repo)],
+                          "steadfaste-fleet", tip2, base, "--repo", str(repo)],
                          capture_output=True, text=True)
     check("--scan CLI refuses an uncovered range", (out.stdout.strip() or "0").split()[0], "0")
     out = subprocess.run([sys.executable, str(CHECK), "--scan", str(empty),
-                          "hermes-cortex", tip2, base, "--repo", str(repo)],
+                          "steadfaste-fleet", tip2, base, "--repo", str(repo)],
                          capture_output=True, text=True)
     check("--scan CLI on an empty state dir refuses", (out.stdout.strip() or "0").split()[0], "0")
-    ok6, path = rrc.scan_covering(state, "hermes-cortex", tip2, base, repo=repo)
+    ok6, path = rrc.scan_covering(state, "steadfaste-fleet", tip2, base, repo=repo)
     check("CONTROL: uncovered really is uncovered", ok6, False)
     blobs2 = rrc.range_blobs(repo, base, tip2)
-    _write_receipt(Path(tmp) / "state2", "hermes-cortex",
+    _write_receipt(Path(tmp) / "state2", "steadfaste-fleet",
                    {"verdict": "CLEAN", "tip_sha": tip2, "base_sha": base,
                     "reviewed_blobs": blobs2})
     out = subprocess.run([sys.executable, str(CHECK), "--scan", str(Path(tmp) / "state2"),
-                          "hermes-cortex", tip2, base, "--repo", str(repo)],
+                          "steadfaste-fleet", tip2, base, "--repo", str(repo)],
                          capture_output=True, text=True)
     fields = (out.stdout.strip() or "0").split()
     check("--scan CLI allows a covering receipt", fields[0] if fields else "0", "1")
@@ -176,7 +176,7 @@ def hook_live_range_check():
     """The one dynamic hook check — and it REPORTS when it cannot run.
 
     The lock carve-out is only reachable for a NON-EMPTY unpushed range, and the
-    hook gates only $HOME/hermes-cortex, so this cannot be made ambient-state free.
+    hook gates only $HOME/steadfaste-fleet, so this cannot be made ambient-state free.
     It is a real end-to-end assertion when the repo is ahead of origin/main (the
     normal condition while work is being pushed) and an explicit SKIP when it is
     level — never a silent pass.

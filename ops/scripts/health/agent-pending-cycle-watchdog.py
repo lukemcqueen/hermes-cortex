@@ -37,7 +37,7 @@ from pathlib import Path
 from state_tracker import StateTracker
 from hermes_tz import format_timestamp
 
-CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".hermes-cortex")))
+CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".steadfaste-fleet")))
 DB_PATH = Path(os.environ.get("PENDING_DB_PATH", str(CORTEX_HOME / "data" / "loop-governance.db")))
 STATE_DIR = CORTEX_HOME / "state"
 STALE_SECONDS = 86400  # 24h — same threshold as the doctor

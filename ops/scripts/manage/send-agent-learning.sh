@@ -24,7 +24,7 @@ set -euo pipefail
 # ── Config: source inbox credentials ──
 INBOX_URL="https://your-domain.com:13004/send"
 INBOX_AUTH=""
-CONFIG_FILE="${HOME}/hermes-cortex/.env"
+CONFIG_FILE="${HOME}/steadfaste-fleet/.env"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
     INBOX_URL="${CORTEX_BUS_FALLBACK_URL:-${CORTEX_INBOX_URL:-$INBOX_URL}}/send"
@@ -32,10 +32,10 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 AGENT_NAME="${HOSTNAME%%.*}"
-STATE_DIR="${HOME}/.hermes-cortex/state"
+STATE_DIR="${HOME}/.steadfaste-fleet/state"
 LAST_SENT_FILE="${STATE_DIR}/agent-learning-last-sent"
 INTERVAL_SECONDS="${AGENT_LEARNING_INTERVAL:-21600}"  # default 6h
-SESSION_DIR="${HOME}/.hermes-cortex/sessions"
+SESSION_DIR="${HOME}/.steadfaste-fleet/sessions"
 BRAIN_LESSONS_DIR="${HOME}/brain/${AGENT_NAME}/lessons"
 
 mkdir -p "${STATE_DIR}"
@@ -87,10 +87,10 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
 fi
 
 # From script changes (if this agent runs install.sh/cortex-update.sh)
-CUSTOM_SCRIPTS="${HOME}/.hermes-cortex/scripts"
+CUSTOM_SCRIPTS="${HOME}/.steadfaste-fleet/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     # Check for any custom scripts not from the repo
-    REPO_SCRIPTS="${HOME}/hermes-cortex/ops/scripts"
+    REPO_SCRIPTS="${HOME}/steadfaste-fleet/ops/scripts"
     CUSTOM_COUNT=0
     for f in "${CUSTOM_SCRIPTS}"/*.sh "${CUSTOM_SCRIPTS}"/*.py; do
         [[ -f "$f" ]] || continue
@@ -101,7 +101,7 @@ if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     done
     if [[ ${CUSTOM_COUNT} -gt 0 ]]; then
         SNIPPETS+="=== ${AGENT_NAME} — Custom scripts (${CUSTOM_COUNT}) ===\n"
-        SNIPPETS+="Found ${CUSTOM_COUNT} scripts not in hermes-cortex repo.\n\n"
+        SNIPPETS+="Found ${CUSTOM_COUNT} scripts not in steadfaste-fleet repo.\n\n"
     fi
 fi
 

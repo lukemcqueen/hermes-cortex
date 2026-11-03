@@ -7,18 +7,18 @@ component requires the Hermes runtime to resolve it (component-hermes-separation
 S1c). `hermes_models` remains as a thin re-export shim.
 
 All Ollama model names used across the project are configured in
-~/hermes-cortex/.env (preferred) or ~/.hermes/models.env (legacy fallback),
+~/steadfaste-fleet/.env (preferred) or ~/.hermes/models.env (legacy fallback),
 which survive cortex-update.sh (they're outside the repo).
 This module provides a single importable function that every script uses,
 replacing scattered hardcoded constants with a unified lookup.
 
 Resolution priority (highest to lowest):
   1. Runtime environment variable (os.environ) — for one-off overrides
-  2. ~/hermes-cortex/.env — unified config file (new, preferred)
+  2. ~/steadfaste-fleet/.env — unified config file (new, preferred)
   3. ~/.hermes/models.env — legacy model-only config (fallback)
   4. Hardcoded default — shipped with the repo, always the last fallback
 
-Defined env vars (see ~/hermes-cortex/.env for current values):
+Defined env vars (see ~/steadfaste-fleet/.env for current values):
   JUDGE_MODEL       — LLM-as-judge scorer (default: qwen2.5:3b)
   EMBEDDING_MODEL   — Text embeddings (default: nomic-embed-text)
   CODING_MODEL      — Code generation via offline_code (default: auto-detected)
@@ -36,7 +36,7 @@ Usage:
 import os
 import sys
 
-_HERMES_CORTEX_ENV = os.path.expanduser("~/hermes-cortex/.env")
+_HERMES_CORTEX_ENV = os.path.expanduser("~/steadfaste-fleet/.env")
 _LEGACY_MODELS_ENV = os.path.expanduser("~/.hermes/models.env")
 _CACHE = None
 
@@ -64,7 +64,7 @@ def _load_env_file(path: str) -> dict[str, str]:
 
 
 def load_models_env() -> dict[str, str]:
-    """Load model env vars from ~/hermes-cortex/.env (preferred),
+    """Load model env vars from ~/steadfaste-fleet/.env (preferred),
     falling back to ~/.hermes/models.env (legacy).
 
     Returns a dict of KEY=value pairs.  Results are cached after first read.
@@ -101,7 +101,7 @@ def qualify_model(value: str, default: str, *, endpoint: str = "") -> str:
 
     CREATIVE_MODEL is the fleet's *creative* text path and its consumer reaches a remote
     OpenAI-compatible endpoint (agent-daily-bible-reading.py). Its value lives in a
-    per-host ``~/hermes-cortex/.env``, so a host may carry a *bare* Ollama-style id
+    per-host ``~/steadfaste-fleet/.env``, so a host may carry a *bare* Ollama-style id
     (``deepseek-v4-flash``) that the endpoint cannot resolve. Rather than send an
     unusable id upstream and fail the run, fall back to ``default`` and say so on
     stderr — a silent substitution would hide a real config mistake.
@@ -129,6 +129,6 @@ def qualify_model(value: str, default: str, *, endpoint: str = "") -> str:
 
 
 def _clear_cache() -> None:
-    """Clear the cached hermes-cortex.env contents (for testing)."""
+    """Clear the cached steadfaste-fleet.env contents (for testing)."""
     global _CACHE
     _CACHE = None

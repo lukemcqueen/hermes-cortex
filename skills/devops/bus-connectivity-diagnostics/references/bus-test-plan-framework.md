@@ -19,7 +19,7 @@ A structured framework for formulating a bus test plan by surveying the live sys
 
 ```bash
 # Who are the agents, what role, what bus_access?
-cat ~/.hermes-cortex/state/agent-registry.json | python3 -c "
+cat ~/.steadfaste-fleet/state/agent-registry.json | python3 -c "
 import json,sys; reg=json.load(sys.stdin)
 for k,v in reg.get('agents',{}).items():
     caps = v.get('capabilities', {})
@@ -38,7 +38,7 @@ curl -s http://127.0.0.1:8903/health
 # Expected: {"status":"ok","backend":"pgmq","queues":NN,"timestamp":"..."}
 
 # Can we authenticate?
-TOKEN=$(grep CORTEX_BUS_TOKEN ~/hermes-cortex/.env | cut -d= -f2)
+TOKEN=$(grep CORTEX_BUS_TOKEN ~/steadfaste-fleet/.env | cut -d= -f2)
 curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8903/health
 # Expected: same as above
 ```
@@ -90,7 +90,7 @@ From the survey output, construct concrete test commands:
 ```bash
 hc exec moses cortex-doctor.py --json
 # Then manually run handler:
-cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
+cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
 
 **Level 2 — Test to host agent (Esther):**
@@ -108,7 +108,7 @@ hc exec gisu -- uname -a
 
 **Level 4 — External path verification (simulate remote agent):**
 ```bash
-TOKEN=$(grep CORTEX_BUS_TOKEN ~/hermes-cortex/.env | cut -d= -f2)
+TOKEN=$(grep CORTEX_BUS_TOKEN ~/steadfaste-fleet/.env | cut -d= -f2)
 curl -s -X POST https://example.com:13004/api/pgmq/send \
   -u "bus_user:password" \
   -H "Authorization: Bearer $TOKEN" \

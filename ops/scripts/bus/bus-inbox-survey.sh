@@ -31,7 +31,7 @@
 set -euo pipefail
 
 BUS_BASE="${CORTEX_BUS_LOCAL_URL:-http://127.0.0.1:8903}"
-ENV_FILE="${HOME}/hermes-cortex/.env"
+ENV_FILE="${HOME}/steadfaste-fleet/.env"
 PEEK_LIMIT="${BUS_SURVEY_PEEK_LIMIT:-500}"
 
 if [[ -z "${BUS_SURVEY_FIXTURE:-}" && -z "${CORTEX_BUS_TOKEN:-}" && -r "$ENV_FILE" ]]; then

@@ -38,7 +38,7 @@ def handler_module(monkeypatch):
     spec = importlib.util.spec_from_file_location("agent_message_handler_mint", src)
     amh = importlib.util.module_from_spec(spec)
     backup = list(sys.path)
-    sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts"))
+    sys.path.insert(0, str(Path.home() / ".steadfaste-fleet" / "scripts"))
     spec.loader.exec_module(amh)
     sys.path[:] = backup
     return amh

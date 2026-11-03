@@ -3,7 +3,7 @@ name: governance-closeout
 version: 1.0.0
 category: devops
 description: "Use when a governed change will not close."
-author: Hermes Cortex curator
+author: Steadfaste Fleet curator
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -201,7 +201,7 @@ single finding is `info` `unverified-claim` saying the window held only a path i
 means quoting a paid pass on an empty review. Read the stored row before relying on it:
 
 ```bash
-sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+sqlite3 ~/.steadfaste-fleet/data/loop-governance.db \
   "SELECT reviewer_model, verdict, findings_json FROM adversarial_reviews WHERE cycle_id=<N>"
 ```
 
@@ -320,7 +320,7 @@ orchestrator-owned trigger described above holds for the CLOSE-TIME reviewer
 PLAN-REVIEW-before-slice gate changed: Luke's directive ("adversarial review
 must NOT be orchestrator gated; automatic for the agent; a review before
 building is always better") made the plan-review RECORD worker-invocable — a
-worker runs `python3 ~/.hermes-cortex/scripts/adversarial-review.py --cycle-id N
+worker runs `python3 ~/.steadfaste-fleet/scripts/adversarial-review.py --cycle-id N
 --material-file <plan> --review --reviewer-id plan-<slug>` (sanctioned lock-free
 write). Independence there is the fixed prompt + distinct model + recorded
 reviewer_id, NOT who runs the script. The close-time reviewer is unchanged.
@@ -525,7 +525,7 @@ repo state, audited range, the task's description, the diff stat, and the diff:
     the complaint is about the window, not the change. Diagnose before shortening the range:
 
     ```bash
-    sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+    sqlite3 ~/.steadfaste-fleet/data/loop-governance.db \
       "SELECT findings_json FROM adversarial_reviews WHERE cycle_id=<N>"
     ```
 
@@ -819,7 +819,7 @@ repo state, audited range, the task's description, the diff stat, and the diff:
 A close that succeeds may mean the review passed, or that the review never ran.
 Only the gate's own log separates those, and the gate writes **two** places:
 
-- **`~/.hermes-cortex/logs/loop-governance.log`** — the cortex-owned record
+- **`~/.steadfaste-fleet/logs/loop-governance.log`** — the cortex-owned record
   (bounded: rotates at 5 MB, 3 backups). **Read this one first**: it is ours, it
   sits with the other cortex logs, and it does not depend on Hermes's rotation.
 - `~/.hermes/logs/mcp-stderr.log` — stderr, captured by the harness. Useful for
@@ -871,7 +871,7 @@ because the commit itself succeeded locally and the tree looks clean.
 ### Push order: PUSH BEFORE `end_change`, because the push gate needs the lock
 
 The pre-push hook requires an ACTIVE lock — it refuses with *"the lock file must exist at
-`~/.hermes-cortex/state/.governance-*.json`"*. `end_change` RELEASES that lock, so closing
+`~/.steadfaste-fleet/state/.governance-*.json`"*. `end_change` RELEASES that lock, so closing
 first strands the push and you need a fresh cycle just to publish work that is already
 reviewed. The operator's standing preference — **review precedes push** — lands the same
 order from the other side:
@@ -971,7 +971,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
 
 - **A fix to the close-out path is not live until the MCP daemon restarts.** The
   loop-governance MCP server is a LONG-LIVED process that loads
-  `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py` once — the same
+  `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py` once — the same
   "deploy ≠ load" trap as the gateway holding the old enforcer. The CLI
   (`ops/scripts/loop-gov.py`) imports the server module fresh on every call, so it
   runs the repo code right now: use it to verify a close-out fix without waiting.
@@ -1095,7 +1095,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
     call can hit the MCP client's ~300 s ceiling while the reviewer is still working.
     Retrying then answers `No governance session active. Nothing to release.` — the same
     wording as an expired TTL, which reads like a lost close. Confirm from the gate's own
-    record before saying either way: `grep '<cycle id>' ~/.hermes-cortex/logs/loop-governance.log`
+    record before saying either way: `grep '<cycle id>' ~/.steadfaste-fleet/logs/loop-governance.log`
     showing `<…> review: cycle N CLEAN` plus the cycle's stored decision means the close
     landed and the lock was released.
 
@@ -1146,7 +1146,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   enforcer's observed absolute path, but a slug resolver that validates the injected slug
   only as `HOME/<slug>` — which fails for any checkout nested deeper than a HOME child —
   SKIPS it and falls back to the host-canonical repo. The lock then lands with a canonical
-  slug beside an observed path (observed: `repo_slug: "hermes-cortex"` + `repo_path:
+  slug beside an observed path (observed: `repo_slug: "steadfaste-fleet"` + `repo_path:
   "~/.hermes/hermes-agent"`). The fix, when you own the resolver, is to derive the slug
   FROM the same accepted path — one resolution, one repo — never a canonical slug beside an
   observed path. A session repo-hint that merely DRIFTED (it records whichever repo the
@@ -1160,7 +1160,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
     shared cortex checkout. The close gate then refuses with *"the lock's repo cannot contain
     this session's work"*, there is no injector to repair it, and every `end_change` retry
     re-runs the whole review; in practice the OPERATOR deletes
-    `~/.hermes-cortex/state/.governance-<session>.json` by hand. The rule: resolve the repo from
+    `~/.steadfaste-fleet/state/.governance-<session>.json` by hand. The rule: resolve the repo from
     the CALLER's own evidence — an explicit env hint (`CORTEX_SESSION_REPO`) first, else the MCP
     child's cwd — and keep the Hermes path excluded from that fallback so an injected identity
     still wins. Test the matrix both ways: a project-repo caller resolves its OWN tree, and a
@@ -1172,7 +1172,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   Check the lock BEFORE reworking anything:
 
   ```bash
-  python3 -c "import glob,json;print([(json.load(open(p)).get('repo_slug'),json.load(open(p)).get('repo_path')) for p in glob.glob('$HOME/.hermes-cortex/state/.governance-*.json')])"
+  python3 -c "import glob,json;print([(json.load(open(p)).get('repo_slug'),json.load(open(p)).get('repo_path')) for p in glob.glob('$HOME/.steadfaste-fleet/state/.governance-*.json')])"
   ```
 
   Disagreeing values, or a `repo_path` that is not the tree you edited (`git rev-parse
@@ -1182,10 +1182,10 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   unrelated commit there (a peer's, a pipeline's), which is exactly how a wrong-repo
   close gets as far as permanent findings. Key such a guard on AUTHORSHIP (does the
   lock's repo hold any commit this session authored), never on an empty change count.
-- **The wrong-repo refusal is the MCP guard; the CORRECT tagging is the enforcer plugin — separate lifetimes, so seeing the NEW refusal text does NOT mean the injection is loaded.** The refusal you get on a wrong-repo close comes from `loop-gov-mcp.py`, which is spawned FRESH per call and therefore always runs current code. The thing that tags the lock with the session's real repo (`_inject_session_context` / `_note_session_repo` in `plugins/governance-enforcer/__init__.py`) is a PLUGIN loaded ONCE into the long-lived gateway process (`PluginManager.discover_and_load` at process start). So a host with current code on disk and current guard text can STILL produce an old `hermes-cortex`-tagged lock — the running gateway holds the pre-injection enforcer. The guard even says it: "once that is deployed AND the gateway has reloaded it". The fix for the affected host (dev macOS = Titus) is NOT another deploy; it is reloading the gateway so the enforcer rebuilds: `hermes gateway restart` (macOS launchctl; Linux systemd `hermes gateway restart`). There is also a hot control-socket verb `reload-plugins` (gateway/run_plugin_rewire.py) that rebuilds plugins WITHOUT a process restart — prefer it for a minimal blast radius. Do not keep re-deploying files; reload the loaded plugin.
+- **The wrong-repo refusal is the MCP guard; the CORRECT tagging is the enforcer plugin — separate lifetimes, so seeing the NEW refusal text does NOT mean the injection is loaded.** The refusal you get on a wrong-repo close comes from `loop-gov-mcp.py`, which is spawned FRESH per call and therefore always runs current code. The thing that tags the lock with the session's real repo (`_inject_session_context` / `_note_session_repo` in `plugins/governance-enforcer/__init__.py`) is a PLUGIN loaded ONCE into the long-lived gateway process (`PluginManager.discover_and_load` at process start). So a host with current code on disk and current guard text can STILL produce an old `steadfaste-fleet`-tagged lock — the running gateway holds the pre-injection enforcer. The guard even says it: "once that is deployed AND the gateway has reloaded it". The fix for the affected host (dev macOS = Titus) is NOT another deploy; it is reloading the gateway so the enforcer rebuilds: `hermes gateway restart` (macOS launchctl; Linux systemd `hermes gateway restart`). There is also a hot control-socket verb `reload-plugins` (gateway/run_plugin_rewire.py) that rebuilds plugins WITHOUT a process restart — prefer it for a minimal blast radius. Do not keep re-deploying files; reload the loaded plugin.
 - **A wrong-repo lock could leave DEBRIS in the other repo, and that debris blocked the
   push.** A mis-tagged lock wrote its secondary marker to
-  `<repo_path>/.hermes-cortex/.governance-lock`, dropping governance state into a repo it
+  `<repo_path>/.steadfaste-fleet/.governance-lock`, dropping governance state into a repo it
   did not govern — including the upstream Hermes checkout, which the pre-push dogfood gate
   then fails on (`Cortex must not edit ~/.hermes/hermes-agent`), blocking a push for a
   change that is otherwise fine.
@@ -1196,7 +1196,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   returns `None` on BOTH sides (the MCP server and the enforcer plugin), so nothing may
   write governance state inside a repository; `plugins/governance-enforcer/README.md`
   documents the phase as removed. Both git hooks were unaffected either way — they scan
-  `~/.hermes-cortex/state/.governance-*.json` directly — so dropping it cost no
+  `~/.steadfaste-fleet/state/.governance-*.json` directly — so dropping it cost no
   enforcement. If you DO find stray debris, it predates the drop or the daemon still
   holds pre-drop code (see the daemon pitfall: the reload is the fix, and until it
   restarts a fresh `begin_change` can re-create the marker). Clearing it is DESTRUCTIVE
@@ -1252,7 +1252,7 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   review cannot run"*, and there is no diff to judge, so no retry can ever satisfy it. Found on the
   promote path: turning a recorded issue into a tracked task wrote exactly such a lock, leaving an
   unclosable cycle AND a repo write-blocked for the rest of the TTL. Two habits: read the lock FILE
-  (`grep repo_path ~/.hermes-cortex/state/.governance-*.json`) after ANY tool other than
+  (`grep repo_path ~/.steadfaste-fleet/state/.governance-*.json`) after ANY tool other than
   `begin_change` creates a cycle, not just after a suspicious refusal; and expect the STATE MACHINE
   to be the exit rather than `end_change` — from `executing`, `advance_task_state(new_state="blocked")`
   is accepted and records the real reason, so the cycle stops being an unexplained PENDING one.

@@ -17,7 +17,7 @@ registers it to the SAME location on both OSes:
 ```bash
 for candidate in score-cycle ~/.local/bin/score-cycle \
     "$HOME/.local/bin/score-cycle" \
-    "$HOME/.hermes-cortex/tools/loop-governance/score_cycle.py"; do
+    "$HOME/.steadfaste-fleet/tools/loop-governance/score_cycle.py"; do
   if resolved=$(command -v "$candidate" 2>/dev/null); then
     SCORE_CYCLE="$resolved"
     break
@@ -29,7 +29,7 @@ Verify with an emptied PATH (proves the deployed-path candidate, not PATH):
 
 ```bash
 PATH=/nonexistent bash -c '...search loop...; echo "SCORER:[${SCORE_CYCLE}]"'
-# → SCORER:[$HOME/.hermes-cortex/tools/loop-governance/score_cycle.py]
+# → SCORER:[$HOME/.steadfaste-fleet/tools/loop-governance/score_cycle.py]
 ```
 
 ## Problem 2: macOS has no `timeout` (needs `gtimeout`)
@@ -76,7 +76,7 @@ NOT safe (check the whole hook, not just your edit): `grep -P`, `mapfile`/
 3. `git pull --rebase origin main` then `git push origin main`
 4. `bash ops/scripts/cortex-update.sh` (purges your governance
    lock — re-acquire with `begin_change` after)
-5. Verify deployed == repo: `diff <(sed '1,2d' ~/.hermes-cortex/scripts/pre-commit-score) <(sed '1,2d' ops/scripts/pre-commit-score)`
+5. Verify deployed == repo: `diff <(sed '1,2d' ~/.steadfaste-fleet/scripts/pre-commit-score) <(sed '1,2d' ops/scripts/pre-commit-score)`
 6. Grep deployed copy for the fail-closed block + `gtimeout` + the
    deployed-path candidate; confirm scoring anchors still present
    (`SCORE_OUTPUT=`, `ALL_CODE_FILE=`, `PREV_FILE=`, `SCORE_STDERR`).

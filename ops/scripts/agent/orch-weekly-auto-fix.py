@@ -30,7 +30,7 @@ import sys
 import time
 
 HOME = os.path.expanduser("~")
-REPO_DIR = os.path.join(HOME, "hermes-cortex")
+REPO_DIR = os.path.join(HOME, "steadfaste-fleet")
 BRAIN_DIR = os.path.join(HOME, "brain")
 SCRIPTS_DIR = os.path.join(HOME, ".hermes", "scripts")
 CRON_OUTPUT_DIR = os.path.join(HOME, ".hermes", "cron", "output")

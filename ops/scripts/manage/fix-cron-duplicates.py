@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-REPO = Path(os.environ.get("CORTEX_REPO", HOME / "hermes-cortex"))
+REPO = Path(os.environ.get("CORTEX_REPO", HOME / "steadfaste-fleet"))
 CRON_JOBS = HOME / ".hermes" / "cron" / "jobs.json"
 INSTALL_CRONS = REPO / "ops" / "scripts" / "install-crons.sh"
 INSTALL_ORCH_CRONS = REPO / "ops" / "scripts" / "install" / "install-orch-crons.sh"
@@ -292,7 +292,7 @@ def gc_orphans(dry_run: bool, do_prune: bool = False) -> int:
         is_local = name.startswith("local-")
         script = job.get("script", "") or ""
         # Check if deployed script file exists
-        deploy_home = HOME / ".hermes-cortex"
+        deploy_home = HOME / ".steadfaste-fleet"
         script_path = deploy_home / "scripts" / script if script else None
         script_exists = script_path.exists() if script_path else False
 
@@ -407,7 +407,7 @@ def main():
     if fixed_dupes > 0 or fixed_arrays > 0:
         print(f"  Fixed: {fixed_dupes} duplicate(s) removed, {fixed_arrays} install array(s) aligned")
         print(f"  Next steps:")
-        print(f"    1. Run: python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet")
+        print(f"    1. Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet")
         print(f"    2. Commit and push the install script changes")
         print(f"    3. On each agent, run this script again to verify")
     else:

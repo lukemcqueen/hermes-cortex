@@ -17,7 +17,7 @@ description: |
   Use before attempting to debug: search lessons first to see if the fix is
   already known.
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 platforms: [linux, macos, windows]
 related_skills: [offline-knowledge, offline-code-corpus]
 ---
@@ -99,7 +99,7 @@ grep -rli "database is locked" ~/brain/lessons/
 grep -rl '^title:.*422' ~/brain/lessons/
 
 # Read the match, then if the fix applies:
-bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "<basename>.md"   # increments success_count
+bash ~/.steadfaste-fleet/scripts/lesson-hit.sh --by-id "<basename>.md"   # increments success_count
 ```
 
 ### Agent Workflow
@@ -109,7 +109,7 @@ bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "<basename>.md"   # incremen
 2. grep -rli "<error keyword>" ~/brain/lessons/   (or mycortex search)
 3. If a matching lesson found:
    a. Apply known fix from the lesson
-   b. bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "<basename>.md"
+   b. bash ~/.steadfaste-fleet/scripts/lesson-hit.sh --by-id "<basename>.md"
 4. If no match:
    a. Debug and fix as normal
    b. After fix is verified, write a lesson file per the template above
@@ -131,7 +131,7 @@ grep -rli "database is locked" ~/brain/lessons/
 # ... (fix applied and verified)
 
 # Step 3: Increment success count (proves the lesson was useful)
-bash ~/.hermes-cortex/scripts/lesson-hit.sh --by-id "2026-07-22_20260713-102221-e19f923c.md"
+bash ~/.steadfaste-fleet/scripts/lesson-hit.sh --by-id "2026-07-22_20260713-102221-e19f923c.md"
 ```
 
 ## Auto-Save Hook (Recommended)

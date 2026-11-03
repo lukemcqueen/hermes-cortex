@@ -16,7 +16,7 @@ description: >
 
 # Build with TypeSafe
 
-**Fleet usage:** used in two projects — **hermes-cortex** and **steadfaste**. When working on either, load this skill before designing any LLM prompt-and-parse step; consider replacing it with a typed Jev judgment. API key: `TYPESAFE_API_KEY` in `~/.hermes/.env` (never print; subshell-read only).
+**Fleet usage:** used in two projects — **steadfaste-fleet** and **steadfaste**. When working on either, load this skill before designing any LLM prompt-and-parse step; consider replacing it with a typed Jev judgment. API key: `TYPESAFE_API_KEY` in `~/.hermes/.env` (never print; subshell-read only).
 
 TypeSafe makes units of AI intelligence usable like programming primitives: small
 judgments you can compose into larger capabilities. Its **System One models** return

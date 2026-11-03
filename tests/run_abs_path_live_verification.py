@@ -24,7 +24,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 ARTIFACT = REPO / "tests" / "artifacts" / "abs-path-live-verification.txt"
 
-DEPLOYED_MCP = Path.home() / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+DEPLOYED_MCP = Path.home() / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
 DEPLOYED_ENFORCER = Path.home() / ".hermes" / "plugins" / "governance-enforcer" / "__init__.py"
 REPO_MCP = REPO / "mcp-servers" / "loop-gov-mcp.py"
 REPO_ENFORCER = REPO / "plugins" / "governance-enforcer" / "__init__.py"
@@ -116,7 +116,7 @@ try:
     nested = tmp / "x" / "y" / "proj"           # deeper than a HOME child
     (nested / ".git").mkdir(parents=True, exist_ok=True)
     not_a_repo = tmp / "x"
-    home_repo = Path.home() / "hermes-cortex"   # slug fallback target, already a repo
+    home_repo = Path.home() / "steadfaste-fleet"   # slug fallback target, already a repo
 
     spec = importlib.util.spec_from_file_location("deployed_loop_gov", DEPLOYED_MCP)
     assert spec is not None and spec.loader is not None, f"cannot load {DEPLOYED_MCP}"
@@ -130,15 +130,15 @@ try:
             mod._derive_repo_path({"repo_path": str(not_a_repo)}) is None)
     _assert("_lock_repo prefers repo_path over the slug",
             str(mod._lock_repo({"repo_path": str(nested),
-                                "repo_slug": "hermes-cortex"})) == str(nested))
+                                "repo_slug": "steadfaste-fleet"})) == str(nested))
     _assert("_lock_repo keeps the legacy slug-only fallback",
-            str(mod._lock_repo({"repo_slug": "hermes-cortex"})) == str(home_repo))
+            str(mod._lock_repo({"repo_slug": "steadfaste-fleet"})) == str(home_repo))
     _assert("_lock_repo fails closed when neither resolves",
             mod._lock_repo({}) is None)
     _assert("_secondary_lock_path puts the marker inside the nested repo",
             str(mod._secondary_lock_path({"repo_path": str(nested),
-                                          "repo_slug": "hermes-cortex"}))
-            == str(nested / ".hermes-cortex" / ".governance-lock"))
+                                          "repo_slug": "steadfaste-fleet"}))
+            == str(nested / ".steadfaste-fleet" / ".governance-lock"))
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 say()
@@ -175,7 +175,7 @@ say()
 say("=" * 72)
 say("5. LIVENESS WITNESS — this session's lock payload")
 say("=" * 72)
-locks = sorted((Path.home() / ".hermes-cortex" / "state").glob(".governance-*.json"),
+locks = sorted((Path.home() / ".steadfaste-fleet" / "state").glob(".governance-*.json"),
                key=lambda p: p.stat().st_mtime)
 locks = [p for p in locks if p.stat().st_mtime > deploy_mtime - 86400]
 for lock in locks[-3:]:

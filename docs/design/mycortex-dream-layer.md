@@ -41,7 +41,7 @@ reference its predecessors — the brain's memory of its own dreaming.
   surface recurring patterns; `~/brain/<agent>/bible/INDEX.md` + the
   week's scripture note for the soul-level connection (graceful skip if
   no bible dir — makes Tier 2 portable to non-Esther agents).
-- **Tier 3:** `git -C ~/hermes-cortex log --since="30 days"` for the
+- **Tier 3:** `git -C ~/steadfaste-fleet log --since="30 days"` for the
   work arc; `ls ~/brain/lessons/ | wc -l` + `mycortex stats` for
   scale; and a knowledge-gap probe — take 3-5 topics the week's work
   touched and `mycortex search` each; topics with zero/no strong hits
@@ -73,8 +73,8 @@ The whole layer is **optional and removable per-agent**:
   (own create_cron blocks + own uninstall array). They are NOT in
   `install-crons.sh` / `install-orch-crons.sh`, so the doctor does not
   expect them fleet-wide and non-participating agents never get them.
-- **Install:** `bash ~/hermes-cortex/ops/scripts/install/install-dream-crons.sh`
-- **Remove:** `bash ~/hermes-cortex/ops/scripts/install/install-dream-crons.sh --uninstall`
+- **Install:** `bash ~/steadfaste-fleet/ops/scripts/install/install-dream-crons.sh`
+- **Remove:** `bash ~/steadfaste-fleet/ops/scripts/install/install-dream-crons.sh --uninstall`
   (removes the three crons; dream files in `~/brain/<profile>/dreams/`
   are kept — they're knowledge, not cruft).
 - The doctor expects the dream crons ONLY when the layer marker is set

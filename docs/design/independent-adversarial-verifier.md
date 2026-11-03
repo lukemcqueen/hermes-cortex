@@ -1,4 +1,4 @@
-# Independent Adversarial Verifier — Spec + Build Plan (Hermes Cortex)
+# Independent Adversarial Verifier — Spec + Build Plan (Steadfaste Fleet)
 
 > **Status:** DESIGN (spec + story/slice). **Pairs with:**
 > `docs/design/moral-architecture-adaptation.md` (M6 — the independent
@@ -26,7 +26,7 @@ with three hard properties:
    orchestrator-owned artifact the worker **cannot edit**.
 3. **Orchestrator-triggered** — the worker **cannot invoke** the reviewer.
 
-Everything below uses Hermes Cortex's **existing infrastructure** — no new
+Everything below uses Steadfaste Fleet's **existing infrastructure** — no new
 subsystem, no new service. The pieces already exist and are only wired together.
 
 ---

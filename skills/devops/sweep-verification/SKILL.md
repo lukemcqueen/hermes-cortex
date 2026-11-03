@@ -20,10 +20,10 @@ the independent verification pass that finds the leftovers the sweep missed.
 1. **Repo tracked content**: `git grep -il <token> -- .` (count + list)
 2. **Repo tracked file NAMES**: `git ls-files | grep -i <token>`
 3. **Repo worktree** (incl. untracked): `grep -rli` excluding `.git/__pycache__/.venv/node_modules`, plus `find . -iname '*<token>*'`
-4. **Deployed tree** `~/.hermes-cortex`: grep excluding logs/__pycache__/backups. Deploy never prunes → stale files linger here (see pitfall 1)
+4. **Deployed tree** `~/.steadfaste-fleet`: grep excluding logs/__pycache__/backups. Deploy never prunes → stale files linger here (see pitfall 1)
 5. **~/.hermes live config**: `cron/jobs.json` (0 expected), `cron/scripts`, `plugins/`, `config.yaml`, `memories/`, `SOUL.md`, `AGENTS.md`, `skills/` (deployed copies), **`agent-profiles/*/SOUL.md`** (profile templates seed other hosts' SOULs — a stale ref here ships to the fleet)
 6. **~/.hermes historical** (count, do NOT delete): logs, `sessions/`, `state-snapshots/`, `cron/output/` (old run records)
-7. **~/.hermes-cortex/data + state**: `loop-events/*.jsonl`, `loop-governance.db` (audit trail — task IDs legitimately mention the token), `state/` (dead state files with old keys, e.g. agent-health-data.json — check readers before deleting)
+7. **~/.steadfaste-fleet/data + state**: `loop-events/*.jsonl`, `loop-governance.db` (audit trail — task IDs legitimately mention the token), `state/` (dead state files with old keys, e.g. agent-health-data.json — check readers before deleting)
 8. **~/brain**: lesson files (historical knowledge — keep)
 9. **Tasks DB**: `SELECT ... WHERE content ILIKE '%<token>%' AND status IN ('pending','in_progress')` (active rows should be 0)
 10. **Bus archives** (primary host): count of subjects/bodies mentioning token (historical messages — keep)
@@ -57,7 +57,7 @@ committing). Prefer the repo's existing artifact extension (`.txt` here) and che
 `git check-ignore -v <path>` when a file mysteriously does not stage. (all hit in real sweeps)
 
 1. **Deploy registers but NEVER prunes.** Files removed from the repo stay
-   deployed forever: `~/.hermes-cortex/services/mycortex/import-<legacy>.py`,
+   deployed forever: `~/.steadfaste-fleet/services/mycortex/import-<legacy>.py`,
    stale skill `references/*.md`, old `__pycache__/*.pyc`. Find them with
    `comm -13 <(ls repo-dir | sort) <(ls deployed-dir | sort)` — deployed-only
    extras are stale unless proven otherwise. Delete stale deployed files even
@@ -152,7 +152,7 @@ discovering them in a later grep.
    and a note — it's drift from an intentional change, not a regression.
 6. **Validation tests exercise the DEPLOYED copy.** L2 fleet tests
    (test-task-fleet.sh, test-mycortex-schema.sh) run against
-   `~/.hermes-cortex/scripts/`, not the repo. Unit tests pass against repo
+   `~/.steadfaste-fleet/scripts/`, not the repo. Unit tests pass against repo
    source while L2 fails → the fix isn't deployed. Run `cortex-update.sh`
    (ops/scripts/) before L2, then re-run.
 

@@ -35,7 +35,7 @@ def test_the_bus_core_the_gateway_loads_is_registered_at_the_path_it_probes():
     """The second half of the same class of bug, found by starting the deployed gateway.
 
     `bot_locks._connect` (used by the gateway and by msg-gateway) probes
-    `~/.hermes-cortex/queue.py` FIRST, then a repo-relative path that does not exist on a
+    `~/.steadfaste-fleet/queue.py` FIRST, then a repo-relative path that does not exist on a
     host. So the file must be deployed at exactly that destination: the loader's probe and
     the register's destination have to agree, which is what this asserts.
     """
@@ -49,8 +49,8 @@ def test_the_bus_core_the_gateway_loads_is_registered_at_the_path_it_probes():
         f"the bus core must deploy to ${{CORTEX_DEPLOY_HOME}}/queue.py (what bot_locks probes), "
         f"not {dests['queue.py']}")
     loader = (REPO / "ops" / "scripts" / "bot_locks.py").read_text()
-    assert '".hermes-cortex" / "queue.py"' in loader, \
-        "bot_locks no longer probes ~/.hermes-cortex/queue.py — re-derive this guard"
+    assert '".steadfaste-fleet" / "queue.py"' in loader, \
+        "bot_locks no longer probes ~/.steadfaste-fleet/queue.py — re-derive this guard"
     print("  the bus core deploys to the exact path bot_locks probes ✓")
 
 
@@ -93,7 +93,7 @@ def test_the_agent_reply_entrypoint_is_registered_for_deploy():
     `agent-reply.py` is the fleet's agent-side reply primitive (docs/design/gateway-reply-path.md
     names it as the supported producer for `out_<agent>`), and it imports the SAME repo tree the
     directory guard above covers. It sat in the repo, deployed nowhere: the host had no
-    `~/.hermes-cortex/scripts/agent-reply.py`, so the one documented way for an agent to answer a
+    `~/.steadfaste-fleet/scripts/agent-reply.py`, so the one documented way for an agent to answer a
     human did not exist on the deployed path — while every repo test passed, because they load it
     by repo path (`tests/test_agent_reply_cli.py`).
     """

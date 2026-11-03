@@ -1,6 +1,6 @@
-# Contributing to Hermes Cortex
+# Contributing to Steadfaste Fleet
 
-> **Written for agents, by agents.** This guide tells any Hermes Cortex agent how
+> **Written for agents, by agents.** This guide tells any Steadfaste Fleet agent how
 > to make changes, add features, fix bugs, and improve the shared repo so every
 > agent benefits.
 
@@ -10,11 +10,11 @@
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
 
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 ## Overview
 
-**Hermes Cortex** is a public GitHub repo (`lukemcqueen/hermes-cortex`) containing:
+**Steadfaste Fleet** is a public GitHub repo (`lukemcqueen/steadfaste-fleet`) containing:
 
 - **Source scripts** in `ops/scripts/` — watchdogs, installers, utilities
 - **Canonical skills** in `skills/` — organized by domain
@@ -48,8 +48,8 @@ Before writing anything new, search for existing tools:
 
 ```bash
 # Search scripts
-search_files(pattern="<topic>", path="~/hermes-cortex/ops/scripts/", target="files")
-search_files(pattern="<topic>", path="~/.hermes-cortex/scripts/", target="files")
+search_files(pattern="<topic>", path="~/steadfaste-fleet/ops/scripts/", target="files")
+search_files(pattern="<topic>", path="~/.steadfaste-fleet/scripts/", target="files")
 
 # Search skills
 skills_list()
@@ -58,9 +58,9 @@ skills_list()
 cronjob(action="list")
 
 # Search documentation
-search_files(pattern="<topic>", path="~/hermes-cortex/docs/", target="content")
-search_files(pattern="<topic>", path="~/hermes-cortex/AGENTS.md", target="content")
-search_files(pattern="<topic>", path="~/hermes-cortex/README.md", target="content")
+search_files(pattern="<topic>", path="~/steadfaste-fleet/docs/", target="content")
+search_files(pattern="<topic>", path="~/steadfaste-fleet/AGENTS.md", target="content")
+search_files(pattern="<topic>", path="~/steadfaste-fleet/README.md", target="content")
 ```
 
 If something exists that covers 80%+ of the need: **patch it, don't replace it.**
@@ -69,7 +69,7 @@ documented reason existing resources don't fit.
 
 **Corollary — check for naming collisions:**
 ```bash
-search_files(target="files", path="~/hermes-cortex", pattern="<proposed-name>*")
+search_files(target="files", path="~/steadfaste-fleet", pattern="<proposed-name>*")
 ```
 If a file with your proposed name already exists in a different location, you may
 be duplicating functionality. Investigate before writing.
@@ -118,7 +118,7 @@ this same turn, you can skip this step.
 
 #### Service Layer Policy — Critical
 
-All Hermes Cortex agent services MUST run at user level:
+All Steadfaste Fleet agent services MUST run at user level:
 
 | Platform | Agent Services | System Services (remain) |
 |----------|---------------|------------------------|
@@ -150,7 +150,7 @@ Platform guides: [`docs/linux-service-layer.md`](docs/linux-service-layer.md), [
 
 #### Cortex-Update.sh MAP Registration
 
-If you add a script that needs deployment to `~/.hermes-cortex/scripts/`, register
+If you add a script that needs deployment to `~/.steadfaste-fleet/scripts/`, register
 it in `cortex-update.sh`:
 
 ```bash
@@ -239,7 +239,7 @@ did you only stare at the diff? If only looked — stop. Go run it.
 ### Step 7: Commit
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git add -A
 ```
 
@@ -318,7 +318,7 @@ mcp__loop_governance__end_change(task_id="<your-task-id>")
 
 **If `end_change` rejects** (no cycle auto-created for this tool type):
 1. **Confess clearly** — "end_change rejected — no cycle auto-created. Force-clearing."
-2. `rm -f ~/.hermes-cortex/state/.governance-<repo-slug>.json`
+2. `rm -f ~/.steadfaste-fleet/state/.governance-<repo-slug>.json`
 3. Document the missed auto-cycle gap
 
 ## What You Can Contribute
@@ -365,14 +365,14 @@ that needs to be installed on agent machines, register it here:
 
 | Repo path → | Installed path |
 |-------------|---------------|
-| `ops/scripts/<name>` | `~/.hermes-cortex/scripts/<name>` |
-|| `ops/services/<service>/` files | `~/.hermes-cortex/<service>/` |
-| `ops/services/dashboard/` files | `~/.hermes-cortex/dashboard/` |
+| `ops/scripts/<name>` | `~/.steadfaste-fleet/scripts/<name>` |
+|| `ops/services/<service>/` files | `~/.steadfaste-fleet/<service>/` |
+| `ops/services/dashboard/` files | `~/.steadfaste-fleet/dashboard/` |
 || `skills/<category>/<name>/` | `~/.hermes/skills/<category>/<name>/` (via symlink) |
-| `ops/scripts/manage/` files | `~/.hermes-cortex/scripts/` |
-| `ops/install/deploy/nginx/` files | `~/.hermes-cortex/nginx/` |
+| `ops/scripts/manage/` files | `~/.steadfaste-fleet/scripts/` |
+| `ops/install/deploy/nginx/` files | `~/.steadfaste-fleet/nginx/` |
 | `docs/` | Read from repo (no deployment needed) |
-| `install.sh` | `~/.hermes-cortex/install.sh` |
+| `install.sh` | `~/.steadfaste-fleet/install.sh` |
 
 > **Note:** Skills from `skills/` are symlinked during `cortex-update.sh` to
 > `~/.hermes/skills/<category>/<name>/`. The skill_loader loads from
@@ -380,7 +380,7 @@ that needs to be installed on agent machines, register it here:
 
 ## The Spirit of This Document
 
-Hermes Cortex is an open-source community project. Every agent contributing to
+Steadfaste Fleet is an open-source community project. Every agent contributing to
 it is helping every other agent run better. The standards here exist not to be
 bureaucratic, but to ensure that:
 

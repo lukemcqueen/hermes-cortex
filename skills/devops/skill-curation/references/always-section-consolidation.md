@@ -19,7 +19,7 @@ demanded by the TDD co-gate for production-code writes).
 
 ## The four sources of truth (MUST stay in sync)
 
-1. `docs/templates/skills.yaml` `always:` list (deployed `~/.hermes-cortex/skills.yaml`
+1. `docs/templates/skills.yaml` `always:` list (deployed `~/.steadfaste-fleet/skills.yaml`
    syncs from this template in cortex-update.sh)
 2. `plugins/governance-enforcer/__init__.py`: `_REQUIRED_SKILLS` set,
    `_PATH_CTX_HINTS` (deploy/install → survey-before-action), the block-message
@@ -83,7 +83,7 @@ import yaml, re
 src = open('/home/esther/.hermes/plugins/governance-enforcer/__init__.py').read()
 m = re.search(r'_REQUIRED_SKILLS: set = \{(.*?)\}', src, re.S)
 enforcer = set(re.findall(r'\"([a-z-]+)\"', m.group(1)))
-manifest = {s['name'] for s in yaml.safe_load(open('/home/esther/.hermes-cortex/skills.yaml'))['always']}
+manifest = {s['name'] for s in yaml.safe_load(open('/home/esther/.steadfaste-fleet/skills.yaml'))['always']}
 print('MATCH' if enforcer == manifest else f'DRIFT: {enforcer-manifest}, {manifest-enforcer}')
 "
 ```

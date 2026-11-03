@@ -6,10 +6,10 @@ Exact text used in the June 22 documentation scope update. Copy-paste these for 
 
 ```
 > **🪪 Scope:** This file serves two audiences:
-> - **General agents** — the Architecture Principles, Agent Execution Contract, and Structured Development Pipeline below are universal to Hermes Cortex and recommended for every agent.
+> - **General agents** — the Architecture Principles, Agent Execution Contract, and Structured Development Pipeline below are universal to Steadfaste Fleet and recommended for every agent.
 > - **Luke's deployment (Moses server)** — sections marked with a `⚡` tag are specific to Luke's multi-machine, multi-agent orchestration setup. They describe how Moses (the orchestrator agent) coordinates with peer agents Titus, Gisu, and Joseph. If you are not running Luke's setup, treat these as examples you can adapt.
 >
-> Everything unmarked is general Hermes Cortex guidance — apply it to any project using this repo.
+> Everything unmarked is general Steadfaste Fleet guidance — apply it to any project using this repo.
 ```
 
 ## cron-job-recipes.md — recipe cookbook
@@ -23,7 +23,7 @@ Exact text used in the June 22 documentation scope update. Copy-paste these for 
 ```
 ### 7.5 Operator Notification Protocol
 
-When any Hermes Cortex agent receives a task from an upstream orchestrator
+When any Steadfaste Fleet agent receives a task from an upstream orchestrator
 agent, it MUST notify its human operator before executing the task. This
 ensures the operator is aware of what the agent is doing and can intervene
 if needed.

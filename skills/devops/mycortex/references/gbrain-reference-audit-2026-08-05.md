@@ -9,7 +9,7 @@ remains.
 ## Live runtime state (Esther host, 2026-08-05)
 
 - **mycortex is fully functional**: schema_version=3, 6 RLS policies, doctor
-  green; sources `default` (git, 28 pages) + `hermes-cortex` (local, 1644
+  green; sources `default` (git, 28 pages) + `steadfaste-fleet` (local, 1644
   pages), both federated; crons `agent-mycortex-sync` (*/15) +
   `agent-mycortex-retention` (daily 06:00) live. **No gbrain crons remain**
   (jobs.json grep = 0).
@@ -27,7 +27,7 @@ remains.
   tombstoned tables). Total 183 MB.
 - **Bus server** = `cortex-bus.service` (systemd user, uvicorn
   cortex_bus.server:app :8903) connects as `gbrain`/`gbrain` via
-  `CORTEX_BUS_PG_*` from `~/hermes-cortex/.env` (PORT=15432, DB=gbrain,
+  `CORTEX_BUS_PG_*` from `~/steadfaste-fleet/.env` (PORT=15432, DB=gbrain,
   USER=gbrain). The ONLY live `gbrain|gbrain` backend is the bus.
 
 ## FUNCTIONAL gbrain references (fix during decouple)
@@ -37,7 +37,7 @@ remains.
 | `ops/scripts/manage/mycortex` (CLI) | `DB_DEFAULT = "gbrain"`; Linux psql via `docker exec gbrain-postgres psql -U <role> -d <db>`; macOS fallback reads `~/.gbrain/config.json` |
 | `ops/services/mycortex/migrate.py` | `DEFAULT_DB = "gbrain"`, `docker exec gbrain-postgres`, url default `postgresql://gbrain:@127.0.0.1:15432/...` |
 | `core/cortex_bus/queue.py` | bus PG defaults: `db="gbrain"`, `user` fallback `POSTGRES_USER` or `gbrain` |
-| `~/hermes-cortex/.env` | `CORTEX_BUS_PG_DB=gbrain`, `CORTEX_BUS_PG_USER=gbrain`, `CORTEX_BUS_PG_PASS=gbrain_pg_pass` |
+| `~/steadfaste-fleet/.env` | `CORTEX_BUS_PG_DB=gbrain`, `CORTEX_BUS_PG_USER=gbrain`, `CORTEX_BUS_PG_PASS=gbrain_pg_pass` |
 | `.env.example` | `CORTEX_BUS_PG_*` (only comment refs gbrain embedding model) |
 | `ops/scripts/hc/hc.py` | `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
 | `ops/scripts/orch-bus/orch-bus-recover-timeouts.sh`, `ops/scripts/hc/recover-bus-timeouts.sh` | same exec pattern |
@@ -78,7 +78,7 @@ remains.
 
 ## Decouple target (agreed with Luke 2026-08-05) — ✅ DONE same day
 
-hermes-cortex-owned compose file, container `mycortex-postgres`, db `mycortex`,
+steadfaste-fleet-owned compose file, container `mycortex-postgres`, db `mycortex`,
 role `mycortex` (superuser), volume `mycortex-postgres-data`, port 15432
 unchanged. Migrate all 3 schemas (bus + mycortex + public legacy) via
 pg_dump/restore; update every FUNCTIONAL reference above; keep old container

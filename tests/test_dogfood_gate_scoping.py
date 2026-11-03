@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression test: the DOGFOOD gate must be scoped to the hermes-cortex repo.
+"""Regression test: the DOGFOOD gate must be scoped to the steadfaste-fleet repo.
 
 Bug (Titus, reported 2026-10-01): Pi hit
 
@@ -7,15 +7,15 @@ Bug (Titus, reported 2026-10-01): Pi hit
 
 when pushing from a REGULAR NON-CORTEX repo.
 
-Why it happened: `core.hooksPath` is set GLOBALLY (~/.hermes-cortex/hooks), so
+Why it happened: `core.hooksPath` is set GLOBALLY (~/.steadfaste-fleet/hooks), so
 `pre-commit-score` runs in EVERY repo on the host. The DOGFOOD check compares
-the hermes-cortex repo's HEAD enforcer against the DEPLOYED copy — a
+the steadfaste-fleet repo's HEAD enforcer against the DEPLOYED copy — a
 cortex-internal sync state that no other repo can act on. It ran before the
 `IS_CORTEX_REPO` guard (computed much later in the script), so one stale
 deploy on one host hard-blocked every ordinary commit in every unrelated repo.
 That is the "gates must be scoped to what they govern" rule.
 
-The fix: the DOGFOOD block is guarded by the same `${HOME}/hermes-cortex`
+The fix: the DOGFOOD block is guarded by the same `${HOME}/steadfaste-fleet`
 comparison the IS_CORTEX_REPO guard uses.
 
 Run: python3 -m pytest tests/test_dogfood_gate_scoping.py -q
@@ -31,18 +31,18 @@ _REPO = Path(__file__).resolve().parent.parent
 _HOOK = (_REPO / "ops" / "scripts" / "pre-commit-score").read_text()
 
 _GUARD_LINE = '_DOGFOOD_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")'
-_BLOCK_COND = 'if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" && -n "$DOGFOOD_HEAD"'
+_BLOCK_COND = 'if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/steadfaste-fleet" && -n "$DOGFOOD_HEAD"'
 
 # The guard expression, isolated so it can be executed for real.
-_GUARD_EXPR = _GUARD_LINE + '\n[[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" ]]'
+_GUARD_EXPR = _GUARD_LINE + '\n[[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/steadfaste-fleet" ]]'
 
 
 # ── Structural: the guard exists and wraps the block ──────────
 
 def test_dogfood_block_is_scoped_to_cortex_repo():
-    """The DOGFOOD `if` must require the repo to be ${HOME}/hermes-cortex."""
+    """The DOGFOOD `if` must require the repo to be ${HOME}/steadfaste-fleet."""
     assert _BLOCK_COND in _HOOK, (
-        "DOGFOOD block is not scoped to the hermes-cortex repo — a stale deploy "
+        "DOGFOOD block is not scoped to the steadfaste-fleet repo — a stale deploy "
         "would block commits in every unrelated repo (the Titus bug)")
 
 
@@ -68,10 +68,10 @@ def _run_guard(cwd: Path) -> int:
 
 
 def test_scope_guard_passes_in_the_cortex_repo():
-    """In the real hermes-cortex repo the guard is satisfied (rc 0)."""
+    """In the real steadfaste-fleet repo the guard is satisfied (rc 0)."""
     if not (_REPO / ".git").exists():
         pytest.skip("not a git checkout")
-    assert _run_guard(_REPO) == 0, "guard must be true in ~/hermes-cortex"
+    assert _run_guard(_REPO) == 0, "guard must be true in ~/steadfaste-fleet"
 
 
 def test_scope_guard_rejects_a_foreign_repo():

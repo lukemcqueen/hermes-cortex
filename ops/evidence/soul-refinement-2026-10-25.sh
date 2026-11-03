@@ -5,7 +5,7 @@
 # window held no operator corrections (11 cron sessions, 13 machine-authored
 # rows, 0 operator prose), so the work was the wrong instruction the day's own
 # activity exposed — four places teaching that a DEPLOYED script copy is
-# lock-free because `~/.hermes-cortex` is not a git repo. It is not a git repo,
+# lock-free because `~/.steadfaste-fleet` is not a git repo. It is not a git repo,
 # and that is not why it ever worked. This generator re-measures every claim the
 # cycle note makes and writes docs/evidence/soul-refinement-2026-10-25.txt
 # itself, so `generated-by` is a fact about the file rather than a claim about
@@ -36,7 +36,7 @@ export WIN_START WIN_END
 # on when this pass began.
 BASE_SHA="${BASE_SHA:-3d6d20c4}"
 # The marker the fix ADDED, asserted against BOTH the repo copy and the deployed
-# copy: the deployed skills root on this host is ~/.hermes-cortex/skills/ (read
+# copy: the deployed skills root on this host is ~/.steadfaste-fleet/skills/ (read
 # off the doctor's own paths, not assumed). The installer's deployed path is NOT
 # derived here — the doctor's Checksum check owns that claim and its verdict is
 # printed below, so this loop asserts only paths it can resolve.
@@ -228,22 +228,22 @@ PY
 
   rule
   say "## 4. The mechanism, measured — the old reason refuted"
-  say "a) '~/.hermes-cortex is not a git repo' is TRUE, and irrelevant:"
-  say "   cmd: git -C ~/.hermes-cortex rev-parse --show-toplevel"
-  R1="$(git -C "$HOME/.hermes-cortex" rev-parse --show-toplevel 2>&1)"
+  say "a) '~/.steadfaste-fleet is not a git repo' is TRUE, and irrelevant:"
+  say "   cmd: git -C ~/.steadfaste-fleet rev-parse --show-toplevel"
+  R1="$(git -C "$HOME/.steadfaste-fleet" rev-parse --show-toplevel 2>&1)"
   RC1=$?
   printf '%s\n' "$R1" | norm
   say "   rc=$RC1  (128 = not a repository, so the deployed path resolves no repo"
   say "   and cannot be the reason any call ever passed)"
   if [[ "$RC1" != 128 ]]; then
-    fails "~/.hermes-cortex now resolves as a repository (rc=$RC1) — the refutation of the old mechanism does not hold"
+    fails "~/.steadfaste-fleet now resolves as a repository (rc=$RC1) — the refutation of the old mechanism does not hold"
   fi
   say ""
   say "b) the deployed-copy read DOES pass from a non-governed cwd — with a cycle"
   say "   open, which is what gives the SESSION its repo:"
-  say "   cmd: python3 ~/.hermes-cortex/scripts/task-db.py list --repo ALL --claimable --limit 3"
+  say "   cmd: python3 ~/.steadfaste-fleet/scripts/task-db.py list --repo ALL --claimable --limit 3"
   say "   (from cwd=~, run while this cycle holds its lock)"
-  R2="$(cd "$HOME" && python3 "$HOME/.hermes-cortex/scripts/task-db.py" list --repo ALL --claimable --limit 3 2>&1)"
+  R2="$(cd "$HOME" && python3 "$HOME/.steadfaste-fleet/scripts/task-db.py" list --repo ALL --claimable --limit 3 2>&1)"
   RC2=$?
   printf '%s\n' "$R2" | norm
   say "   rc=$RC2"
@@ -295,7 +295,7 @@ PY
   fi
   say ""
   say "cmd: adversarial-verify.py --file ops/scripts/install/install-orch-crons.sh --level A4 --gate"
-  AV_OUT="$(python3 "$HOME/.hermes-cortex/scripts/adversarial-verify.py" \
+  AV_OUT="$(python3 "$HOME/.steadfaste-fleet/scripts/adversarial-verify.py" \
               --file ops/scripts/install/install-orch-crons.sh --level A4 --gate 2>&1)"
   AV_RC=$?
   printf '%s\n' "$AV_OUT" | norm | grep -E 'Summary|GATE|finding' || printf '%s\n' "$AV_OUT" | norm
@@ -358,7 +358,7 @@ PY
   say "## 6. Post-deploy state — the deploy is a MANUAL step, this asserts its result"
   say "Manual step, run OUTSIDE this generator before the capture (so the checks"
   say "below describe a state this script did not create):"
-  say "   bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force"
+  say "   bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force"
   say "Its own verdict was DOGFOOD PASSED with 0 fail; that line is not quoted"
   say "here as a measurement, because a reader can re-run the command — what is"
   say "asserted instead is the CONTENT the deploy was supposed to deliver."
@@ -373,7 +373,7 @@ PY
     rel="${pair%%|*}"
     mk="${pair#*|}"
     repo_n="$(grep -cF "$mk" "$rel" 2>/dev/null)"
-    dep_n="$(grep -cF "$mk" "$HOME/.hermes-cortex/$rel" 2>/dev/null)"
+    dep_n="$(grep -cF "$mk" "$HOME/.steadfaste-fleet/$rel" 2>/dev/null)"
     say "   $rel :: repo=${repo_n:-0}  deployed=${dep_n:-0}   (marker: ${mk:0:40})"
     if [[ "${repo_n:-0}" -lt 1 || "${dep_n:-0}" -lt 1 ]]; then
       fails "the deployed copy does not carry this pass's marker: $rel"

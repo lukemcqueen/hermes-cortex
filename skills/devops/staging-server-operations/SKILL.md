@@ -2,7 +2,7 @@
 name: staging-server-operations
 description: "Safe operational practices for Docker-based staging servers — volume management, change verification, and database recovery patterns."
 version: 1.19.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -13,7 +13,7 @@ metadata:
 # Staging Server Operations
 
 This skill covers the recurring maintenance operations for the client staging
-server: hermes-cortex pull-and-integrate, Docker volume management, cron
+server: steadfaste-fleet pull-and-integrate, Docker volume management, cron
 auditing, database recovery, and change verification.
 
 ## Principle: No Cutting Corners
@@ -26,10 +26,10 @@ don't silently skip it.
 
 ## Core Operations
 
-### 1. Pull and integrate hermes-cortex
+### 1. Pull and integrate steadfaste-fleet
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull --ff-only origin main
 bash ops/scripts/cortex-update.sh
 python3 ops/scripts/manage/cortex-doctor.py --quiet

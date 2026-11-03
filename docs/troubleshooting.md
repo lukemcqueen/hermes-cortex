@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 
 > **Version 1.0.0** — Published 2026-06-05
-> Common issues and fixes for Hermes Cortex installation and operation.
+> Common issues and fixes for Steadfaste Fleet installation and operation.
 
 ---
 
@@ -11,7 +11,7 @@
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 ---
 
@@ -150,11 +150,11 @@ LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE=true
 
 **Fix — create a virtual environment:**
 ```bash
-python3 -m venv ~/.hermes-cortex/dashboard/.venv
-source ~/.hermes-cortex/dashboard/.venv/bin/activate
+python3 -m venv ~/.steadfaste-fleet/dashboard/.venv
+source ~/.steadfaste-fleet/dashboard/.venv/bin/activate
 pip install flask
 # Run the dashboard from within the venv:
-python3 ~/.hermes-cortex/dashboard/server.py
+python3 ~/.steadfaste-fleet/dashboard/server.py
 ```
 
 Or use the system Python with pip install:
@@ -205,8 +205,8 @@ source ~/.zshrc
 
 **Fix:**
 ```bash
-chmod +x ${CORTEX_REPO:-$HOME/hermes-cortex}/install.sh
-bash ${CORTEX_REPO:-$HOME/hermes-cortex}/install.sh   # Run with bash, not ./
+chmod +x ${CORTEX_REPO:-$HOME/steadfaste-fleet}/install.sh
+bash ${CORTEX_REPO:-$HOME/steadfaste-fleet}/install.sh   # Run with bash, not ./
 ```
 
 ### 11. Ollama blocked by macOS Gatekeeper
@@ -328,12 +328,12 @@ seeds, registers, or checksums memory files at all (removed 2026-08-05):
 - The doctor never content-compares memory files.
 
 **If your memory was wiped:** restore from
-`~/.hermes-cortex/state/deploy-backups/MEMORY.md.<ts>.bak` (deploy backups
+`~/.steadfaste-fleet/state/deploy-backups/MEMORY.md.<ts>.bak` (deploy backups
 the file before overwriting). After the fix deploys, no further backups of
 that path will be created because the file is no longer touched.
 
 **Legacy leftover:** an inert copy may exist at
-`~/.hermes-cortex/memories/MEMORY.md` from before the fix. Leave it in
+`~/.steadfaste-fleet/memories/MEMORY.md` from before the fix. Leave it in
 place — it is not loaded by Hermes and deleting it risks destroying data on
 a host where it was once live.
 
@@ -386,7 +386,7 @@ systemctl --user daemon-reload && systemctl --user start ollama
 > ⚠️ If you have a stale system-level ollama.service in `/etc/systemd/system/`, remove it:
 > `sudo systemctl disable --now ollama && sudo rm /etc/systemd/system/ollama.service`
 > See [`docs/linux-service-layer.md`](linux-service-layer.md) (private repo:
-> `hermes-cortex-private/docs/linux-service-layer.md`) for details.
+> `steadfaste-fleet-private/docs/linux-service-layer.md`) for details.
 
 **Verify:** Run `lsof -i -P | grep ollama` — it should show `localhost:11434`, not `*:11434`.
 
@@ -493,7 +493,7 @@ launchctl unload ~/Library/LaunchAgents/ollama.plist
 launchctl load ~/Library/LaunchAgents/ollama.plist
 ```
 
-**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/hermes-cortex/ops/scripts/install/install-ollama.sh` to regenerate the service file.
+**On fresh install:** `install-ollama.sh` now includes these env vars by default (macOS and Linux service writers). Run `bash ~/steadfaste-fleet/ops/scripts/install/install-ollama.sh` to regenerate the service file.
 
 ---
 
@@ -506,7 +506,7 @@ docker compose -f ops/install/deploy/docker-compose.langfuse.yml logs -f langfus
 docker compose -f ops/install/deploy/docker-compose.langfuse.yml down && docker compose -f ops/install/deploy/docker-compose.langfuse.yml up -d
 
 # Dashboard
-cd ~/.hermes-cortex/dashboard && source .venv/bin/activate && python3 server.py
+cd ~/.steadfaste-fleet/dashboard && source .venv/bin/activate && python3 server.py
 
 # nginx
 nginx -t              # Test config
@@ -533,7 +533,7 @@ hermes cron run <id>  # Test a job immediately
 
 **Root cause:** Langfuse v3.178+ requires `fromTimestamp` on trace API queries. The dashboard's `_lf()` function must auto-append it.
 
-**Fix — ensure `_lf()` in `~/.hermes-cortex/dashboard/server.py` appends `fromTimestamp={iso_7days_ago}` when missing from the path. Then restart: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
+**Fix — ensure `_lf()` in `~/.steadfaste-fleet/dashboard/server.py` appends `fromTimestamp={iso_7days_ago}` when missing from the path. Then restart: `launchctl kickstart gui/$(id -u)/com.hermes.cortex-dashboard`
 
 **Alternative:** Add `LANGFUSE_API_TRACES_REJECT_NO_DATE_RANGE=false` to `~/langfuse/.env` and recreate Docker containers (less secure).
 
@@ -731,7 +731,7 @@ The `loop-gov-mcp.py` server blocks `write_file`, `patch`, `terminal`, `skill_ma
 hermes mcp list | grep loop-governance
 
 # 2. If not registered, add it:
-hermes mcp add review --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
+hermes mcp add review --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py
 
 # 3. Restart the Hermes session for the MCP server to load
 #    → Exit and re-enter the chat session
@@ -745,7 +745,7 @@ This happens when you call `end_change()` but no cycle was logged with your task
 # 1. Check recent cycles for your task
 python3 -c "
 import sqlite3, os
-db = os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')
+db = os.path.expanduser('~/.steadfaste-fleet/data/loop-governance.db')
 c = sqlite3.connect(db)
 r = c.execute('SELECT id, task_id, composite FROM loop_cycles ORDER BY id DESC LIMIT 10').fetchall()
 c.close()
@@ -766,12 +766,12 @@ lock, and closing is refused with
 
 ```
 ❌ Cannot close: the lock's repo cannot contain this session's work.
-  Lock repo_slug : 'hermes-cortex'  ->  ~/hermes-cortex
+  Lock repo_slug : 'steadfaste-fleet'  ->  ~/steadfaste-fleet
 ```
 
 The lock is held by design (a refusal never releases it), so the agent cannot
 close and cannot start a fresh cycle — the operator has to delete
-`~/.hermes-cortex/state/.governance-<session>.json` by hand.
+`~/.steadfaste-fleet/state/.governance-<session>.json` by hand.
 
 **Root cause — a lock tagged with the host-canonical repo.** The lock's repo is
 resolved by `_derive_slug()` / `_derive_repo_path()` in `mcp-servers/loop-gov-mcp.py`.
@@ -779,9 +779,9 @@ resolved by `_derive_slug()` / `_derive_repo_path()` in `mcp-servers/loop-gov-mc
 - A **Hermes** caller has its repo INJECTED by `plugins/governance-enforcer/`, so
   it is tagged correctly.
 - A **non-Hermes** caller — pi, Claude Code, Codex, the `loop-gov` CLI — has no
-  injector. It used to fall through to the host-canonical `~/hermes-cortex`, which
+  injector. It used to fall through to the host-canonical `~/steadfaste-fleet`, which
   exists on every dev host, so a session in `~/projects/proj` was locked as
-  `hermes-cortex` and the close gate then looked for the work in a tree that
+  `steadfaste-fleet` and the close gate then looked for the work in a tree that
   cannot contain it. The refusal's prescribed remedy (an enforcer injection) does
   not exist on those harnesses, and nothing but an operator could release the lock.
 
@@ -792,7 +792,7 @@ the shared daemon's cwd.
 
 ```bash
 # The harness runs the DEPLOYED copy, so the fix needs a deploy, not just a pull:
-bash ~/.hermes-cortex/scripts/cortex-update.sh   # deploys tools/loop-governance/loop-gov-mcp.py
+bash ~/.steadfaste-fleet/scripts/cortex-update.sh   # deploys tools/loop-governance/loop-gov-mcp.py
 ```
 
 - A lock mis-tagged by the OLD code: the deploy purges lock files (stale-lock
@@ -831,7 +831,7 @@ collide:
 
 **Root cause.** `get_session_id()` in `mcp-servers/loop-gov-mcp.py` had no
 per-session input from a non-Hermes caller, so it fell back to ONE id persisted
-per REPO (`~/.hermes-cortex/state/.session-<slug>.id`). A Hermes caller is
+per REPO (`~/.steadfaste-fleet/state/.session-<slug>.id`). A Hermes caller is
 unaffected: the enforcer injects its session id on every call.
 
 **Fix (deployed 2026-10-27).** Resolution step 0e reads a session id the caller's
@@ -843,7 +843,7 @@ fallback (restart stability for the CLI), so the sharing can still occur there.
 
 ```bash
 # Which id did this session get? One clean read, no lock needed:
-ls ~/.hermes-cortex/state/.governance-*.json
+ls ~/.steadfaste-fleet/state/.governance-*.json
 ```
 
 - Still shared? Pass a session id explicitly per call
@@ -876,10 +876,10 @@ calls) → `CORTEX_SESSION_REPO` → the git repo at the process's cwd.
 This is not an empty database. Diagnose it in that order:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/task-db.py pending --repo <your-repo>   # explicit works?
+python3 ~/.steadfaste-fleet/scripts/task-db.py pending --repo <your-repo>   # explicit works?
 echo "$CORTEX_SESSION_REPO"; git -C "$PWD" rev-parse --show-toplevel    # a lever? a git cwd?
-python3 ~/.hermes-cortex/scripts/task-db.py list --status pending --repo <your-repo> --include-untagged
-python3 ~/.hermes-cortex/scripts/task-db.py list --status pending --repo ALL   # fleet view
+python3 ~/.steadfaste-fleet/scripts/task-db.py list --status pending --repo <your-repo> --include-untagged
+python3 ~/.steadfaste-fleet/scripts/task-db.py list --status pending --repo ALL   # fleet view
 ```
 
 An explicable empty answer is always accompanied by a `repo unknown —` line on
@@ -898,7 +898,7 @@ session repo, but rows written earlier stayed untagged — they show up under
 A stale lock file can persist if a session was interrupted:
 
 ```bash
-rm -f ~/.hermes-cortex/state/.governance-*
+rm -f ~/.steadfaste-fleet/state/.governance-*
 # Then call begin_change() again
 ```
 
@@ -921,9 +921,9 @@ mcp__loop_governance__end_change(task_id="direct-commit")
 
 ```bash
 # Re-install loop-governance tools
-bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only
+bash ~/steadfaste-fleet/core/governance/setup.sh --symlinks-only
 # Or re-run install.sh step 11:
-bash ~/hermes-cortex/install.sh
+bash ~/steadfaste-fleet/install.sh
 ```
 
 ### Template drift detected after cortex update
@@ -932,7 +932,7 @@ The `template-diff-check.py` script runs after every `cortex-update.sh` pull. It
 
 ```bash
 # See what's different:
-diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md
+diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
 # Merge changes into your SOUL.md
 # Re-run cortex-update to verify:
 cortex-update --status
@@ -990,18 +990,18 @@ fi
 ```
 chflags: /usr/local/bin/hermes-plugin-lock: Permission denied
 FAILED: /usr/local/bin/hermes-plugin-lock
-LOCKED: /Users/<user>/.hermes-cortex/scripts/hermes-plugin-lock
+LOCKED: /Users/<user>/.steadfaste-fleet/scripts/hermes-plugin-lock
 ```
 
 The doctor still passes this check (`Plugin lock helper ✅`) — it is cosmetic, not fatal.
 
-**Root cause:** `deploy_system_scripts()` deployed the system copy to `/usr/local/bin/hermes-plugin-lock` with `sudo` earlier, so it is `root:homebrew`-owned. `chflags uchg` on a **root-owned** file requires root even on macOS. The user-owned home copy (`~/.hermes-cortex/scripts/hermes-plugin-lock`) locks fine — that is the copy the enforcer uses.
+**Root cause:** `deploy_system_scripts()` deployed the system copy to `/usr/local/bin/hermes-plugin-lock` with `sudo` earlier, so it is `root:homebrew`-owned. `chflags uchg` on a **root-owned** file requires root even on macOS. The user-owned home copy (`~/.steadfaste-fleet/scripts/hermes-plugin-lock`) locks fine — that is the copy the enforcer uses.
 
 **Fix (optional):** make the system copy user-owned so `chflags` works:
 
 ```bash
 sudo chown "$USER":staff /usr/local/bin/hermes-plugin-lock
-~/hermes-cortex/ops/scripts/cortex-update.sh   # direct path — re-locks cleanly
+~/steadfaste-fleet/ops/scripts/cortex-update.sh   # direct path — re-locks cleanly
 ```
 
 Or accept the `FAILED:` line; the home copy is the protected one.
@@ -1032,7 +1032,7 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 
 > ✅ **Fixed (2026-08-01):** `_feedback_override` in `mcp-servers/loop-gov-mcp.py` now sets the `decision` column (`UPDATE … SET user_overrode=1, decision=?, outcome_note=?`), so PENDING cycles become `MOVE_ON` on override and the doctor clears. Workaround below kept for reference on older deployed copies:
 > ```bash
-> sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+> sqlite3 ~/.steadfaste-fleet/data/loop-governance.db \
 >   "UPDATE loop_cycles SET decision='MOVE_ON' WHERE id=<id> AND user_overrode=1 AND decision='PENDING';"
 > ```
 
@@ -1040,7 +1040,7 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 
 **Symptom:** you ran `cortex-update.sh`, repo and deployed copies match
 (`sha256sum` equal), yet the sanctioned
-`bash ~/hermes-cortex/ops/scripts/cortex-update.sh --status` still returns
+`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --status` still returns
 `GOVERNANCE LOCK REQUIRED` — the OLD behavior.
 
 **Root cause:** `cortex-update.sh` copies the new enforcer to disk, but the
@@ -1059,13 +1059,13 @@ pending restart, not a code bug — do not loop re-running the deploy.
 
 **Symptom:** `hermes mcp test loop-governance` fails. The `mcp__loop_governance__*` tools (begin_change, cycle_query, feedback_accept, etc.) don't appear in the agent's tool list.
 
-**Root cause:** The deployed `loop-gov-mcp.py` adds the wrong directory to `sys.path`. It looks for `hermes_models.py` in `~/.hermes-cortex/scripts/` but the file is deployed to `~/.hermes/scripts/hermes_models.py` by `install.sh`.
+**Root cause:** The deployed `loop-gov-mcp.py` adds the wrong directory to `sys.path`. It looks for `hermes_models.py` in `~/.steadfaste-fleet/scripts/` but the file is deployed to `~/.hermes/scripts/hermes_models.py` by `install.sh`.
 
 **Fix — update the import path resolver in both the deployed and source copies:**
 
 ```python
-# In ~/hermes-cortex/mcp-servers/loop-gov-mcp.py
-# AND deployed: ~/.hermes-cortex/scripts/loop-gov-mcp.py
+# In ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py
+# AND deployed: ~/.steadfaste-fleet/scripts/loop-gov-mcp.py
 
 # Ensure hermes_models.py is importable from any Hermes deployment
 _HERMES_HOME = Path.home() / ".hermes"
@@ -1128,7 +1128,7 @@ ls -la ~/.hermes/plugins/governance-enforcer/  # should show plugin.yaml, __init
 ```bash
 session-cache-build build
 # or, explicitly against the canonical builder:
-python3 ~/.hermes-cortex/scripts/agent-session_cache.py build
+python3 ~/.steadfaste-fleet/scripts/agent-session_cache.py build
 ```
 
 Requires:
@@ -1140,15 +1140,15 @@ Requires:
 
 **Symptom:**
 ```
-scoring-activity-watchdog: DB not found at ~/.hermes-cortex/state/loop-governance.db
+scoring-activity-watchdog: DB not found at ~/.steadfaste-fleet/state/loop-governance.db
 ```
 
-**Root cause:** The actual loop-governance DB lives at `~/.hermes-cortex/data/` but scripts referenced `~/.hermes-cortex/state/`. This affected 17 files across docs, core governance scripts, cron scripts, and the pre-commit hook.
+**Root cause:** The actual loop-governance DB lives at `~/.steadfaste-fleet/data/` but scripts referenced `~/.steadfaste-fleet/state/`. This affected 17 files across docs, core governance scripts, cron scripts, and the pre-commit hook.
 
 **Fix applied 2026-07-13:** All references corrected from `state/` to `data/` in:
 - `core/governance/score_cycle.py`, `loop_evaluator.py`, `loop_db.py`, `loop_feedback.py`, `loop_config.py`, `auto_apply.py`, `verify.sh`
 - `ops/scripts/health/scoring-activity-watchdog.py`, `ops/scripts/manage/governance-auditor.py`
-- `~/.hermes-cortex/hooks/pre-commit`
+- `~/.steadfaste-fleet/hooks/pre-commit`
 - `docs/git-enforcement.md`, `docs/loop-governance-reference.md`
 - `skills/devops/loop-governance/SKILL.md`
 
@@ -1166,9 +1166,9 @@ Always three, always the same three: `~/.hermes/plugins/governance-enforcer/__in
 
 **Root cause:** a RACE, not a break. `cortex-update.sh` unlocks the immutable enforcement files early in its run and relocks them at the END, so that tree is legitimately writable for the whole deploy — and those three files are exactly the three the auditor samples. An auditor run landing inside that window reports an unlocked gate that the deploy is about to relock itself. Observed 2026-10-03: the deploy wrote its manifest at 16:30:04, the alert is stamped 16:30.
 
-Confirm before touching anything: compare the alert timestamp with the deploy's writes (`stat -c '%y %n' ~/.hermes-cortex/deploy-manifest.tsv`) and check `hermes-plugin-lock status`. If every target shows `----i`, nothing is broken and the "fix" the auditor printed is the relock that already ran.
+Confirm before touching anything: compare the alert timestamp with the deploy's writes (`stat -c '%y %n' ~/.steadfaste-fleet/deploy-manifest.tsv`) and check `hermes-plugin-lock status`. If every target shows `----i`, nothing is broken and the "fix" the auditor printed is the relock that already ran.
 
-**Fix (repo, 2026-10-03):** the deploy publishes its window as `~/.hermes-cortex/state/deploy-in-progress` (written at start, removed by the EXIT trap AFTER the relock), and the auditor defers the immutability check while that marker is fresh (< 30 min). The staleness bound is load-bearing: without it, a deploy killed hard enough to strand the marker would silence the check forever.
+**Fix (repo, 2026-10-03):** the deploy publishes its window as `~/.steadfaste-fleet/state/deploy-in-progress` (written at start, removed by the EXIT trap AFTER the relock), and the auditor defers the immutability check while that marker is fresh (< 30 min). The staleness bound is load-bearing: without it, a deploy killed hard enough to strand the marker would silence the check forever.
 
 Do NOT "fix" this by deleting the check or by relocking during a deploy — relocking mid-run breaks the deploy, and removing the check removes the detection that catches a genuine unlock.
 
@@ -1181,7 +1181,7 @@ fails on its `exec` line with bash's own `No such file or directory` — naming 
 path nor the cause.
 
 **Read the error before you search.** On an `exec` line that message means the **executable**
-is missing: the fleet interpreter `~/.hermes-cortex/venv/bin/python3`, or its
+is missing: the fleet interpreter `~/.steadfaste-fleet/venv/bin/python3`, or its
 `python3 → python` symlink target. If the interpreter were fine and only the server script
 were gone, bash would exec python successfully and *python* would complain
 (`can't open file '…': [Errno 2]`) instead.
@@ -1189,9 +1189,9 @@ were gone, bash would exec python successfully and *python* would complain
 **Three causes, three fixes** — check in this order (lock-free, read-only):
 
 ```bash
-ls -l ~/.hermes-cortex/venv/bin/python3                         # 1. the interpreter
-ls -l ~/.hermes-cortex/venv/bin/                                #    python3 -> python: a dangling target breaks it too
-ls -l ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py    # 2. the payload (deploy never ran)
+ls -l ~/.steadfaste-fleet/venv/bin/python3                         # 1. the interpreter
+ls -l ~/.steadfaste-fleet/venv/bin/                                #    python3 -> python: a dangling target breaks it too
+ls -l ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py    # 2. the payload (deploy never ran)
 ```
 
 3. **Both present** → it is `$HOME`. Launchers resolve both paths relative to it, so a client
@@ -1201,8 +1201,8 @@ ls -l ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py    # 2. the payload
 **Fix**
 
 ```bash
-python3 -m venv ~/.hermes-cortex/venv
-~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/fix-cortex-venv.py   # declared set
+python3 -m venv ~/.steadfaste-fleet/venv
+~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py   # declared set
 ```
 If the payload is missing instead, run `cortex-update.sh` (its register entry installs it).
 
@@ -1234,19 +1234,19 @@ NAME only — and a name can match a *filename* in the args, so a dead registrat
 **Check, in this order** (read-only; nothing below changes state):
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py     # paths + interpreter per server
+python3 ~/steadfaste-fleet/ops/scripts/manage/mcp_wiring.py     # paths + interpreter per server
 hermes mcp list                                              # what THIS host registers
-ls -l ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+ls -l ~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py
 ```
 
 **Fix by branch**
 
 | What the check says | Fix |
 |---|---|
-| the entry is missing | `hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/<script>` |
-| paths do NOT exist | deploy them: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`, then re-check |
-| the fleet venv cannot import `mcp` | `~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/fix-cortex-venv.py` |
-| command is the HERMES venv or a bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/mcp-servers/<script>` |
+| the entry is missing | `hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
+| paths do NOT exist | deploy them: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`, then re-check |
+| the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py` |
+| command is the HERMES venv or a bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
 
 There is **no `hermes mcp update`** — `hermes mcp` offers `add`/`remove`/`list`/`test`/
 `configure` (checked 2026-10-13), so a wrong interpreter is fixed by removing and re-adding the
@@ -1275,8 +1275,8 @@ absent package. Every probe the tooling ran inherited it.
 **Confirm in two commands** (nothing changes):
 
 ```bash
-~/.hermes-cortex/venv/bin/python3 -c "import sys; [print(p) for p in sys.path]"
-env -u PYTHONPATH ~/.hermes-cortex/venv/bin/python3 -c "import mcp, fastapi; print('venv OK')"
+~/.steadfaste-fleet/venv/bin/python3 -c "import sys; [print(p) for p in sys.path]"
+env -u PYTHONPATH ~/.steadfaste-fleet/venv/bin/python3 -c "import mcp, fastapi; print('venv OK')"
 ```
 
 If the first lists a `.hermes/installs/…` site-packages and the second prints `venv OK`, the venv
@@ -1309,7 +1309,7 @@ unattended session could never seed or prune the brain at all.
 
 **Second, independent cause on the same path:** a cron whose `enabled_toolsets` allowlist omits
 the `skills` toolset relies on `_bootstrap_cron_skills()` to satisfy gate 1 — and that bootstrap
-parses `~/.hermes-cortex/skills.yaml` with a YAML library. See the next section: on a runtime with
+parses `~/.steadfaste-fleet/skills.yaml` with a YAML library. See the next section: on a runtime with
 neither PyYAML nor ruamel it returned False, so gate 1 blocked the write before the lock gate was
 ever reached. Both causes had to be fixed; either one alone still leaves the dream silent.
 

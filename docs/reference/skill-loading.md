@@ -6,21 +6,21 @@
 
 **Before any coding work, every agent MUST:**
 
-1. Read the deployed skills manifest at `~/.hermes-cortex/skills.yaml` — the copy
+1. Read the deployed skills manifest at `~/.steadfaste-fleet/skills.yaml` — the copy
    the governance enforcer actually enforces.
 2. Load each skill in the `always` section via `skill_view(name)`.
 3. Classify the current task using the `agent-flow` skill (12 patterns).
 4. Load skills in the `on_task` section matching the classification.
 
-A **seeded project** also gets a repo-local `.hermes-cortex/` overlay of its own
+A **seeded project** also gets a repo-local `.steadfaste-fleet/` overlay of its own
 (written by `seed-project.sh`). That is a DIFFERENT directory from the runtime
-infra dir `~/.hermes-cortex/` — same name, two scopes, and the confusion between
+infra dir `~/.steadfaste-fleet/` — same name, two scopes, and the confusion between
 them is a known trap (see [`docs/skills-manifest-reference.md`](../skills-manifest-reference.md)).
 Treat the project overlay as a project-level hint; the `always` set that binds is
 the deployed one.
 
-This replaces the old file-copy approach (repo-local `.hermes-cortex/skills/<name>/SKILL.md`).
-If no manifest exists, fall back to scanning the project's `.hermes-cortex/skills/`
+This replaces the old file-copy approach (repo-local `.steadfaste-fleet/skills/<name>/SKILL.md`).
+If no manifest exists, fall back to scanning the project's `.steadfaste-fleet/skills/`
 for embedded SKILL.md files (backward compatibility).
 
 **Why:** Skills stay in one global location (`~/.hermes/skills/`). No copies, no

@@ -46,7 +46,7 @@ Exit code 1 triggers a warning in the `cortex-update.sh` output. Silent (exit 0)
 
 **To resolve drift:**
 ```bash
-diff ~/.hermes/SOUL.md ~/hermes-cortex/docs/templates/SOUL.md
+diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
 # Merge changes, then re-run cortex-update to confirm
 cortex-update --status
 ```
@@ -77,7 +77,7 @@ On first install, `install.sh` Step 9 copies `docs/templates/SOUL.md` to `~/.her
 
 **Size gate:** the doctor size-checks `~/.hermes/AGENTS.md` exactly like
 SOUL.md — WARN >15K, FAIL >20K (`check_repo` in cortex_doctor/checks.py).
-Only the hermes-cortex fleet constitution is gated; other repos' AGENTS.md
+Only the steadfaste-fleet fleet constitution is gated; other repos' AGENTS.md
 have no size limit. A WARN here can't be cleared by re-syncing (repo and
 deployed are the same size) — it needs a real trim of the repo source, or a
 deliberate threshold re-baseline. Trimming is orchestrator-owned
@@ -145,9 +145,9 @@ cronjob action=update job_id=9dd475df2ed1 \
 ### 1. Weekly Audit
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agents-doc-audit.py
+python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py
 # → report with ✅/⚠️/❌ per file
-python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --json
+python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py --json
 # → machine-readable for cron
 ```
 
@@ -165,7 +165,7 @@ The same `agents-doc-audit.py` tool doubles as a pre-commit gate. The
 pre-commit hook (`pre-commit-score`) calls it on every commit:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo /path/to/repo --json
+python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py --repo /path/to/repo --json
 ```
 
 **Exit codes:**
@@ -188,7 +188,7 @@ for all AGENTS.md + SOUL.md auditing.
 
 **Config:** Default config checks:
 - `~/.hermes/SOUL.md` (Moses)
-- `~/hermes-cortex/AGENTS.md` (hermes-cortex)
+- `~/steadfaste-fleet/AGENTS.md` (steadfaste-fleet)
 
 **Extending the config:**
 Pass a custom YAML config with `--config path/to/config.yaml`:
@@ -203,8 +203,8 @@ soul_files:
       - Communication Style
       - Scripture Insights
 agents_files:
-  - path: "~/hermes-cortex/AGENTS.md"
-    repo: "hermes-cortex"
+  - path: "~/steadfaste-fleet/AGENTS.md"
+    repo: "steadfaste-fleet"
     mandatory_sections:
       - Agent Execution Contract
       - Loop Governance
@@ -227,11 +227,11 @@ When AGENTS.md or SOUL.md changes, notify all agents:
 
 ```bash
 # Dry run first
-python3 ~/hermes-cortex/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
+python3 ~/steadfaste-fleet/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
   "Added Inbox Message Decision Framework section" --dry-run
 
 # Then actually broadcast (produces structured output for agent to send via inbox)
-python3 ~/hermes-cortex/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
+python3 ~/steadfaste-fleet/ops/scripts/agent/agents-doc-broadcast.py AGENTS.md \
   "Added Inbox Message Decision Framework section"
 ```
 
@@ -294,7 +294,7 @@ Then:
 
 ### 4. Extending to Other Projects
 
-**Other repos are NOT the fleet constitution.** Only `hermes-cortex/AGENTS.md`
+**Other repos are NOT the fleet constitution.** Only `steadfaste-fleet/AGENTS.md`
 is synced to every agent's `~/.hermes/AGENTS.md` (cortex-update.sh),
 orchestrator-owned (`docs/orchestrator-only-paths.txt`), and size-gated by the
 doctor (WARN >15K, FAIL >20K). Every other repo's AGENTS.md = the **mandatory
@@ -319,7 +319,7 @@ The cron script needs updating too if you want those paths checked in the automa
 
 The canonical SOUL.md template lives at:
 ```
-~/hermes-cortex/docs/templates/SOUL.md
+~/steadfaste-fleet/docs/templates/SOUL.md
 ```
 
 It includes all mandatory sections with placeholder text. New agents should copy this to `~/.hermes/SOUL.md` and customize.

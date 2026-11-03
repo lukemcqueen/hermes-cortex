@@ -86,10 +86,10 @@ rec_pid=$!
 sleep 1
 
 SCRATCH_HOME="$WORK/home"
-mkdir -p "$SCRATCH_HOME/.hermes/cron" "$SCRATCH_HOME/.hermes-cortex/scripts"
+mkdir -p "$SCRATCH_HOME/.hermes/cron" "$SCRATCH_HOME/.steadfaste-fleet/scripts"
 ln -sf "$HOME/.hermes/cron/usage_audit.jsonl" "$SCRATCH_HOME/.hermes/cron/usage_audit.jsonl"
 ln -sf "$HOME/.hermes/state.db" "$SCRATCH_HOME/.hermes/state.db"
-ln -sf "$REPO/ops/scripts/manage/cron-cost-metrics.py" "$SCRATCH_HOME/.hermes-cortex/scripts/cron-cost-metrics.py"
+ln -sf "$REPO/ops/scripts/manage/cron-cost-metrics.py" "$SCRATCH_HOME/.steadfaste-fleet/scripts/cron-cost-metrics.py"
 
 HOME="$SCRATCH_HOME" AGENT_NAME=esther \
   VICTORIA_METRICS_URL="http://127.0.0.1:${PORT}/api/v1/import/prometheus" \

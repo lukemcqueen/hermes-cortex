@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Hermes Cortex — Dashboard Launchd Plist Template
+  Steadfaste Fleet — Dashboard Launchd Plist Template
 
   Two common configurations:
 
   1. DEDICATED VENV (recommended for production/isolated setups):
      Keeps dashboard deps separate from gateway deps.
-     Create venv: python3 -m venv ~/.hermes-cortex/dashboard/venv
-     Install:     ~/.hermes-cortex/dashboard/venv/bin/pip install flask
+     Create venv: python3 -m venv ~/.steadfaste-fleet/dashboard/venv
+     Install:     ~/.steadfaste-fleet/dashboard/venv/bin/pip install flask
 
-  2. THE FLEET VENV (~/.hermes-cortex/venv) — for a host that already has it;
+  2. THE FLEET VENV (~/.steadfaste-fleet/venv) — for a host that already has it;
      `fix-cortex-venv.py` fills it from the declared requirements.
 
   PORTABLE (2026-10-13). This template used to say "Replace CORTEX_HOME with
@@ -32,12 +32,12 @@
     <string>com.hermes.cortex-dashboard</string>
 
     <!-- OPTION A: dedicated venv (shown). OPTION B: fleet venv — swap the
-         interpreter for "$HOME/.hermes-cortex/venv/bin/python3" below. -->
+         interpreter for "$HOME/.steadfaste-fleet/venv/bin/python3" below. -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/.hermes-cortex/logs"; cd "$HOME/.hermes-cortex/dashboard" || exit 78; exec "$HOME/.hermes-cortex/dashboard/venv/bin/python3" "$HOME/.hermes-cortex/dashboard/server.py" >>"$HOME/.hermes-cortex/logs/cortex-dashboard.log" 2>&amp;1</string>
+        <string>mkdir -p "$HOME/.steadfaste-fleet/logs"; cd "$HOME/.steadfaste-fleet/dashboard" || exit 78; exec "$HOME/.steadfaste-fleet/dashboard/venv/bin/python3" "$HOME/.steadfaste-fleet/dashboard/server.py" >>"$HOME/.steadfaste-fleet/logs/cortex-dashboard.log" 2>&amp;1</string>
     </array>
 
     <key>RunAtLoad</key>

@@ -26,7 +26,7 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────
 HOME = os.path.expanduser("~")
-CORTEX_HOME = os.environ.get("CORTEX_DEPLOY_HOME", f"{HOME}/.hermes-cortex")
+CORTEX_HOME = os.environ.get("CORTEX_DEPLOY_HOME", f"{HOME}/.steadfaste-fleet")
 CRON_OUTPUT_DIR = f"{HOME}/.hermes/cron/output"
 SESSION_DIR = f"{CORTEX_HOME}/sessions"
 STATE_FILE = f"{CORTEX_HOME}/state/.secret-leak-watchdog-state.json"

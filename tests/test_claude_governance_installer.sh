@@ -80,7 +80,7 @@ d = json.load(open(sys.argv[1]))
 # with the args that identify the probe binary (the drop condition matches on args).
 d["mcpServers"]["loop-governance"] = {
     "command": "python3",
-    "args": ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
+    "args": ["~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"],
 }
 json.dump(d, open(sys.argv[1], "w"))
 EOF

@@ -58,7 +58,7 @@ Do NOT restart the service, do NOT raise an alert. Report SILENT.
 > systemd drop-in on Linux, `~/.hermes/.env` on macOS, activates on the next
 > gateway restart). The limit is gateway-process env — not per-job, no
 > config.yaml key. A repeat `idle for Ns (limit Xs)` timeout means tune the
-> timeout (per-machine override in `~/hermes-cortex/.env`) or redesign the
+> timeout (per-machine override in `~/steadfaste-fleet/.env`) or redesign the
 > job — never "fix" it by just re-running the cron to clear its doctor status.
 
 ## What to watch for

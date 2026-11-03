@@ -22,7 +22,7 @@ Registration policy: this is a REPO-LOCAL evidence generator and is
 deliberately NOT registered in cortex-update.sh's register() map, matching its
 sibling ops/scripts/manage/task-queue-evidence.py. It reads git history with
 ``git show <sha>:<path>`` and resolves the repo root from its own location, so
-a deployed copy under ~/.hermes-cortex/scripts/ would resolve the wrong root
+a deployed copy under ~/.steadfaste-fleet/scripts/ would resolve the wrong root
 and fail. No runtime path consumes it.
 """
 from __future__ import annotations

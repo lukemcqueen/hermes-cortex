@@ -6,9 +6,9 @@ set -euo pipefail
 
 # ── Config ──
 HOME="${HOME:-/home/$(whoami)}"
-CONFIG_FILE="$HOME/hermes-cortex/.env"
-ENV_FILE="$HOME/hermes-cortex/.env"
-ERROR_LOG="$HOME/.hermes-cortex/logs/health-push-errors.log"
+CONFIG_FILE="$HOME/steadfaste-fleet/.env"
+ENV_FILE="$HOME/steadfaste-fleet/.env"
+ERROR_LOG="$HOME/.steadfaste-fleet/logs/health-push-errors.log"
 mkdir -p "$(dirname "$ERROR_LOG")"
 
 # ── Load config from env, then config files ──
@@ -38,7 +38,7 @@ AGENT_NAME="${AGENT_NAME:-$(load_var AGENT_NAME)}"
 # identity must fail loudly, not impersonate another agent (Luke
 # directive 2026-08-14).
 if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] AGENT_NAME not configured — set AGENT_NAME= in .env / hermes-cortex/.env or export AGENT_NAME" >> "$ERROR_LOG"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] AGENT_NAME not configured — set AGENT_NAME= in .env / steadfaste-fleet/.env or export AGENT_NAME" >> "$ERROR_LOG"
   exit 1
 fi
 
@@ -89,7 +89,7 @@ fi
 SVC_OK=0
 command -v pgrep &>/dev/null && pgrep -x ollama >/dev/null 2>&1 && SVC_OK=1
 command -v pgrep &>/dev/null && pgrep nginx >/dev/null 2>&1 && SVC_OK=1
-command -v test &>/dev/null && test -x "${HOME}/.hermes-cortex/scripts/mycortex" && SVC_OK=1
+command -v test &>/dev/null && test -x "${HOME}/.steadfaste-fleet/scripts/mycortex" && SVC_OK=1
 [[ "$SVC_OK" -eq 0 ]] && V_SERVICES=-1
 
 # [2] no_errored_crons — check push error log for RECENT failures (6h).
@@ -124,7 +124,7 @@ else
 fi
 
 # [6] mycortex — mycortex CLI presence is the signal
-if [[ -x "${HOME}/.hermes-cortex/scripts/mycortex" ]]; then
+if [[ -x "${HOME}/.steadfaste-fleet/scripts/mycortex" ]]; then
     V_MYCORTEX=1
 else
     V_MYCORTEX=-1

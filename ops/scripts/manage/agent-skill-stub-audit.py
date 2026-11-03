@@ -26,15 +26,15 @@ from pathlib import Path
 
 HOME = Path.home()
 HERMES_SKILLS = HOME / ".hermes" / "skills"
-CORTEX_SKILLS = HOME / ".hermes-cortex" / "skills"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+CORTEX_SKILLS = HOME / ".steadfaste-fleet" / "skills"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 
 # Agent identity — env → agent.env → .env. NEVER hostname: a machine name
 # is not an agent name and would send recovery messages under the wrong
 # identity (Luke directive 2026-08-14). Missing identity fails loudly.
 AGENT_NAME = os.environ.get("AGENT_NAME", "").strip()
 if not AGENT_NAME:
-    for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+    for _idf in (HOME / ".steadfaste-fleet" / "agent.env", HOME / "steadfaste-fleet" / ".env"):
         try:
             if _idf.is_file():
                 for _line in _idf.read_text().splitlines():
@@ -48,7 +48,7 @@ if not AGENT_NAME:
             continue
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 
@@ -143,7 +143,7 @@ def main():
         try:
             from lib.cortex_bus import bus_send  # deployed alongside
         except ImportError:
-            sys.path.insert(0, str(HOME / ".hermes-cortex" / "scripts"))
+            sys.path.insert(0, str(HOME / ".steadfaste-fleet" / "scripts"))
             try:
                 from lib.cortex_bus import bus_send
             except ImportError:

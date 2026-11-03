@@ -90,7 +90,7 @@ Triage is inert until a model is named. All three steps are required:
    `TYPESAFE_API_KEY` — the Jev judge credential. Without it, `review-triage`
    cannot run and triage stays off.
 2. **Name the model:** set `ADVERSARIAL_TRIAGE_MODEL` in the host's env
-   (`~/hermes-cortex/.env`).
+   (`~/steadfaste-fleet/.env`).
 3. **Confirm the class exists:** `review-triage` in `judgment-providers.yaml`
    (deployed beside `judgment.py` by `cortex-update.sh` — the client resolves it
    as `Path(__file__).parent/"judgment-providers.yaml"`, or `JUDGMENT_CONFIG_PATH`).
@@ -100,7 +100,7 @@ Verify with the host env applied:
 ```bash
 python3 - <<'PY'
 import importlib.util, os
-spec = importlib.util.spec_from_file_location("j", os.path.expanduser("~/.hermes-cortex/scripts/judgment.py"))
+spec = importlib.util.spec_from_file_location("j", os.path.expanduser("~/.steadfaste-fleet/scripts/judgment.py"))
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 print(m.decide("review-triage", {"material": "", "findings": []}, {})["status"])
 PY
@@ -222,7 +222,7 @@ The gate is a cortex component, so it resolves its own configuration itself — 
 does **not** depend on Hermes, and it does not need Hermes to pass the values in:
 
 1. the **process** environment (wins, so an explicit export always overrides);
-2. `$CORTEX_ENV_FILE`, else `$CORTEX_REPO/.env` (default `~/hermes-cortex/.env`);
+2. `$CORTEX_ENV_FILE`, else `$CORTEX_REPO/.env` (default `~/steadfaste-fleet/.env`);
 3. the deploy root (`$CORTEX_DEPLOY_HOME/.env`);
 4. `~/.hermes/.env` — **last resort only**, kept so a host whose credential happens
    to live there keeps working. It is not the source of truth for cortex config.
@@ -237,7 +237,7 @@ Two properties that matter operationally:
   needed for is deploying this code in the first place: a running server keeps the
   module it imported.)
 
-Practical consequence: setting `ADVERSARIAL_TRIAGE_MODEL` in `~/hermes-cortex/.env`
+Practical consequence: setting `ADVERSARIAL_TRIAGE_MODEL` in `~/steadfaste-fleet/.env`
 is enough for the gate to see it — no `config.yaml` change and no Hermes env block.
 
 ## Failure is fail-safe — by construction

@@ -11,7 +11,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-STATE_DIR="${HOME}/.hermes-cortex/state"
+STATE_DIR="${HOME}/.steadfaste-fleet/state"
 REMEDIATE_DIR="${STATE_DIR}/remediate"
 DONE_DIR="${REMEDIATE_DIR}/done"
 

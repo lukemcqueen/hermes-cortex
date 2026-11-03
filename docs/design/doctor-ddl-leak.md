@@ -32,11 +32,11 @@ Transcript produced by `docs/evidence/doctor-ddl-leak/probe-doctor-apply-schema.
 
 | Fact | Measured |
 |---|---|
-| The doctor runs `--apply-schema` as a **health check** | `~/.hermes-cortex/scripts/cortex_doctor/checks.py:5357`: `ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"], …)`. The doctor runs on every `agent-message-handler` tick (~5 min). |
+| The doctor runs `--apply-schema` as a **health check** | `~/.steadfaste-fleet/scripts/cortex_doctor/checks.py:5357`: `ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"], …)`. The doctor runs on every `agent-message-handler` tick (~5 min). |
 | `cmd_apply_schema` resolves `migrate.py` by candidate list | `ops/scripts/manage/task-db.py:1563-1569` |
 | Candidate 1 is **`Path(os.environ.get("CORTEX_REPO", ""))/…`** | With `CORTEX_REPO` unset (measured: `CORTEX_REPO env = None`) that expression is the **relative** path `ops/services/tasks/migrate.py`. The probe reported `1. exists=True` only because its **cwd** was the repo. So the resolved migration authority depends on the *caller's working directory* — a second defect in the same function, independent of the repo-vs-deployed question. |
-| Candidate 2 is the repo working tree (home prefix shown as `$HOME`, normalized for PII hygiene per commit 93029175) | `exists=True  $HOME/hermes-cortex/ops/services/tasks/migrate.py` — picked whenever candidate 1 misses (the doctor's own cwd). |
-| Candidate 4 is the DEPLOYED tree | `exists=True  $HOME/.hermes-cortex/services/tasks/migrate.py` — **last**, so it is never reached while a repo tree exists. |
+| Candidate 2 is the repo working tree (home prefix shown as `$HOME`, normalized for PII hygiene per commit 93029175) | `exists=True  $HOME/steadfaste-fleet/ops/services/tasks/migrate.py` — picked whenever candidate 1 misses (the doctor's own cwd). |
+| Candidate 4 is the DEPLOYED tree | `exists=True  $HOME/.steadfaste-fleet/services/tasks/migrate.py` — **last**, so it is never reached while a repo tree exists. |
 | `cortex-update.sh` applies the DEPLOYED copy | `cortex-update.sh:3298`: `local tasks_migrate="${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"`. The deploy path and the doctor path resolve to *different* files. |
 | The register map IS the deploy (stated contract) | `cortex-update.sh:446`: *"The register map IS the deploy. migrate.py discovers migrations by FILE — the repo applying cleanly proves nothing about any other host."* |
 | Currently latent on this host, not active | live `tasks.schema_version` = **16**; deployed schema dir also reaches **v016**; `task_upsert` count = **1**, 21 args (`p_plan` last). The 10-27 deploy repaired the *state*; the code path that caused it is unchanged, so a **new uncommitted** migration file would still reach the live `mycortex` DB within ~5 minutes. |
@@ -94,8 +94,8 @@ allowed to close it.
 `ops/scripts/manage/task-db.py:1561-1569` becomes:
 
 ```
-deploy_home = Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex"))
-repo_home   = Path(os.environ.get("CORTEX_REPO") or (Path.home() / "hermes-cortex"))
+deploy_home = Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".steadfaste-fleet"))
+repo_home   = Path(os.environ.get("CORTEX_REPO") or (Path.home() / "steadfaste-fleet"))
 candidates = [
     deploy_home / "services/tasks/migrate.py",                 # deployed (reg-map target)
     deploy_home / "scripts/ops/services/tasks/migrate.py",     # deployed (legacy shape)
@@ -108,7 +108,7 @@ Two fixes in that list, both measured in §2:
 1. **Order:** the deployed copy is what `cortex-update.sh:3298` runs and what the
    register map maintains; the repo tree is only a fallback for a host with
    nothing deployed.
-2. **The relative-path defect:** `or (Path.home() / "hermes-cortex")` replaces
+2. **The relative-path defect:** `or (Path.home() / "steadfaste-fleet")` replaces
    the `""` default, so an unset `CORTEX_REPO` can no longer resolve candidate 1
    against the caller's cwd. The same `or` default is applied to
    `CORTEX_DEPLOY_HOME`.

@@ -6,7 +6,7 @@
 
 ## The requirement
 
-Give both agent systems a way to search: hermes-cortex (Python) and steadfaste (Rust). The stated
+Give both agent systems a way to search: steadfaste-fleet (Python) and steadfaste (Rust). The stated
 constraint was resource-shaped — SearXNG was the candidate and is heavier than a single coding
 agent needs — with a preference for a minimal MCP tool, SQLite for caching, and SearXNG as an
 *optional external provider rather than a permanent dependency*.
@@ -132,7 +132,7 @@ than to a coding agent: one implementation, adapters with no semantics.
 
 ## Wiring into each system (the part that is NOT done)
 
-**hermes-cortex (Python).** Two adapters, both thin:
+**steadfaste-fleet (Python).** Two adapters, both thin:
 - register the binary in `mcp_servers` so cortex agents get `web_search` / `web_fetch` /
   `web_search_local` as ordinary MCP tools;
 - call the CLI from crons where a process per run is the natural shape.

@@ -199,7 +199,7 @@ def main() -> int:
         changed = []
     else:
         changed = [n for n in range_names.splitlines() if n.strip()]
-    receipt_dir = Path(args.receipt_dir) if args.receipt_dir else Path.home() / ".hermes-cortex" / "state"
+    receipt_dir = Path(args.receipt_dir) if args.receipt_dir else Path.home() / ".steadfaste-fleet" / "state"
     slug = repo.name
     patterns = _always_review_patterns(repo)
     if patterns is None:

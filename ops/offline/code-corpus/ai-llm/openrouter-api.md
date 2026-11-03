@@ -15,7 +15,7 @@ client = openai.OpenAI(
     # Identify your app (optional, for rankings)
     default_headers={
         "HTTP-Referer": "https://github.com/your-project",
-        "X-Title": "Hermes Cortex",
+        "X-Title": "Steadfaste Fleet",
     }
 )
 

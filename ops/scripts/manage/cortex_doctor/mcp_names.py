@@ -112,9 +112,9 @@ def check_mcp_role_names(res) -> None:
             "FAIL",
             f"no MCP server runs {PROBE_BINARY} — governance is unreachable",
             fix="hermes mcp add loop-governance --command $(command -v python3) --args "
-                f"$HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY} --role loop-governance "
+                f"$HOME/.steadfaste-fleet/tools/loop-governance/{PROBE_BINARY} --role loop-governance "
                 "&& hermes mcp add review --command $(command -v python3) --args "
-                f"$HOME/.hermes-cortex/tools/loop-governance/{PROBE_BINARY} --role review")
+                f"$HOME/.steadfaste-fleet/tools/loop-governance/{PROBE_BINARY} --role review")
         return
     bad = []
     for n in sorted(role_by_name):

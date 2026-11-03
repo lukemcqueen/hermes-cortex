@@ -8,7 +8,7 @@ agent-model-health-watchdog, agent-service-recovery, etc.
 
 Canonical example in the repo: `tests/test_mcp_health_watchdog.py` (7
 scenarios). Run it against the deployed copy with
-`WD_WATCHDOG_PATH=~/.hermes-cortex/scripts/agent-mcp-health-watchdog.py`.
+`WD_WATCHDOG_PATH=~/.steadfaste-fleet/scripts/agent-mcp-health-watchdog.py`.
 
 ## The recipe
 
@@ -53,7 +53,7 @@ scenarios). Run it against the deployed copy with
    an env override — it should FAIL there until `cortex-update.sh` runs.
    That green-on-deployed result is the evidence the cron actually runs the
    fixed code (the doctor's checksum check compares repo vs deployed, but a
-   suite run against `~/.hermes-cortex/scripts/...` proves behavior).
+   suite run against `~/.steadfaste-fleet/scripts/...` proves behavior).
 
 ## Pitfalls discovered while building it
 

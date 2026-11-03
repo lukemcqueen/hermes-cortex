@@ -44,7 +44,7 @@ Behaviour when agent type doesn't match:
 ## Setting Up a New Agent
 
 ```bash
-# In ~/hermes-cortex/.env:
+# In ~/steadfaste-fleet/.env:
 AGENT_TYPE=orchestrator   # or server, dev
 ```
 

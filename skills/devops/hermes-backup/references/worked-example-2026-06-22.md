@@ -14,8 +14,8 @@ This is a reference from the actual backup run on moses (Linux Mint 22, 109 GB /
 | `~/.ollama/` | 262 MB | Skipped (re-pullable) |
 | `~/.legacy-brain/` | 90 MB | Backed up |
 | `~/.config/` | 55 MB | Skipped (system configs) |
-| `hermes-cortex-public` | 11 MB | Git bundle |
-| `hermes-cortex-private` | 1.9 MB | Git bundle |
+| `steadfaste-fleet-public` | 11 MB | Git bundle |
+| `steadfaste-fleet-private` | 1.9 MB | Git bundle |
 | `brain/` | 3.9 MB | Backed up |
 | `langfuse/` | 16 KB | Backed up |
 | **Total home** | **7.9 GB** | |
@@ -45,8 +45,8 @@ This is a reference from the actual backup run on moses (Linux Mint 22, 109 GB /
 
 | Repo | Bundle Size |
 |------|------------|
-| hermes-cortex-public | 2.4 MB |
-| hermes-cortex-private | 304 KB |
+| steadfaste-fleet-public | 2.4 MB |
+| steadfaste-fleet-private | 304 KB |
 | hermes-agent (NousResearch) | 173 MB |
 
 The hermes-agent source at `~/.hermes/hermes-agent/` is a 2.4 GB checkout (with node_modules, venv, etc.) but the git bundle captures only the 173 MB of tracked objects.

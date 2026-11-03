@@ -8,10 +8,10 @@ Non-orchestrator agents must have ZERO direct update/unlock capability.
 ## Files in the immutable chain (hermes-plugin-lock TARGETS)
 
 - `~/.hermes/plugins/governance-enforcer/__init__.py` (chmod 444 + chattr +i)
-- `~/.hermes-cortex/scripts/pre-commit-score`, `pre-push-pull`, `post-commit-audit`,
+- `~/.steadfaste-fleet/scripts/pre-commit-score`, `pre-push-pull`, `post-commit-audit`,
   `post-push-audit`
-- `~/.hermes-cortex/hooks/post-merge`
-- `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`
+- `~/.steadfaste-fleet/hooks/post-merge`
+- `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py`
 - `hermes-plugin-lock` itself (self-protection)
 
 ## Complete write-path inventory

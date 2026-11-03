@@ -3,7 +3,7 @@ name: change-checklist
 version: 2.3.0
 category: software-development
 description: "Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi-OS, multi-role, docs, final verification, and reflexion. Every governance cycle must run this before closing."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -85,12 +85,12 @@ Load this before end_change() on any script, deploy-config, cron, shared-doc, or
 - [ ] Cron manifest — install-crons.sh AND install-orch-crons.sh: uninstall arrays, create_cron blocks, guards.
 - [ ] Updater — cortex-update.sh register() calls.
 - [ ] Doctor — cortex-doctor.py parse_expected_crons() / parse_orch_crons() read the uninstall arrays.
-- [ ] Deployed path — verify ~/.hermes-cortex/scripts/<script> exists at runtime, not just the repo.
+- [ ] Deployed path — verify ~/.steadfaste-fleet/scripts/<script> exists at runtime, not just the repo.
 - [ ] Category — orchestrator-only (orch-* in install-orch-crons.sh) vs all-agents (agent-* in install-crons.sh). Update the fleet-reference.md cron table.
-- [ ] Install array sync — create_cron block name must match the uninstall array entry EXACTLY. Run python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py (zero issues = in sync).
+- [ ] Install array sync — create_cron block name must match the uninstall array entry EXACTLY. Run python3 ~/steadfaste-fleet/ops/scripts/manage/fix-cron-duplicates.py (zero issues = in sync).
 - [ ] Old cron cleanup — crons don't self-destruct; confirm the old name was removed.
-- [ ] Governance lock — after begin_change(), confirm with check_lock. **Pass the session context:** a bare `check_lock()` with no args cannot resolve the session and reads a FALSE "inactive" while your lock is live — the enforcer then blocks the very next write. Trust the lock FILE (`ls ~/.hermes-cortex/state/.governance-*.json`) over a no-arg reading, and when the two disagree, the file is right and your close is still permitted. (Observed 2026-10-10: a no-arg `check_lock` reported inactive, the operator-visible file was active, and the close then succeeded — the false reading had nearly cost a needless re-acquire and a second cycle.)
-- [ ] PII scan — bash ~/hermes-cortex/ops/scripts/secret-leak-detector.sh before pushing.
+- [ ] Governance lock — after begin_change(), confirm with check_lock. **Pass the session context:** a bare `check_lock()` with no args cannot resolve the session and reads a FALSE "inactive" while your lock is live — the enforcer then blocks the very next write. Trust the lock FILE (`ls ~/.steadfaste-fleet/state/.governance-*.json`) over a no-arg reading, and when the two disagree, the file is right and your close is still permitted. (Observed 2026-10-10: a no-arg `check_lock` reported inactive, the operator-visible file was active, and the close then succeeded — the false reading had nearly cost a needless re-acquire and a second cycle.)
+- [ ] PII scan — bash ~/steadfaste-fleet/ops/scripts/secret-leak-detector.sh before pushing.
 
 ## Phase 1: Test the Change (no simulated output)
 
@@ -226,7 +226,7 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       range, fix the genuine defect it names (a duplicate section, a self-contradiction) as
       its own commit so the new blob is judged clean — but never fold unrelated stranded
       content into your own commit to satisfy a close.
-- [ ] Static gate on every changed script: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <file> --level A2 --gate. A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, cortex_doctor/, quality/, tests/, and enforcement scripts. Critical/high → block. No --no-verify.
+- [ ] Static gate on every changed script: python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <file> --level A2 --gate. A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, cortex_doctor/, quality/, tests/, and enforcement scripts. Critical/high → block. No --no-verify.
 - [ ] **Pin a before/after comparison to an immutable revision, and name both revisions in the
       artifact.** A baseline recorded as "HEAD", "the working tree", or a stash is unrepeatable the
       moment your own commit lands — HEAD then IS the change, so the comparison can never be
@@ -726,7 +726,7 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
 - [ ] Symptom proof — the specific error/alert/blocker is gone (not just code compiles + doctor passes). Show evidence in the cycle note.
 - [ ] Stale expected-list cleanup — removed crons also removed from uninstall arrays (doctor reads them as expected list).
 - [ ] Stale bus/state cleanup — delete test bus messages and stale state-file entries before end_change().
-- [ ] Doctor clean — python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+- [ ] Doctor clean — python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
       (✅ Crons registered / Orch crons / Crons total). Record its EXIT CODE and warning count,
       not just the ✅ lines: a non-zero rc with warnings is NOT a clean doctor, and reporting it
       as one is the failure the close review catches.
@@ -791,7 +791,7 @@ Enforced at 3 layers: pre-commit hook (static gate), enforcer (blocks commit unt
       does NOT need another deploy — re-deploying for it multiplies deploy windows on a shared
       tree for no gain. Confirm which side you are on before deploying again: the gate names the
       undeployed file when it does refuse.
-      Run it as one step: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` and then
+      Run it as one step: `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` and then
       `git push origin main`. A close-time review receipt is bound to the
       RANGE, and the gate accepts it when the receipt's reviewed blobs COVER every blob that
       range changes — so a rebase that rewrites the tip of identical content no longer

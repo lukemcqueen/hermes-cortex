@@ -73,7 +73,7 @@ never inherited) and sets a session-scoped identity.
 git worktree list
 git -C <primary>   config user.name && git -C <primary>   config user.email
 git -C <worktree>  config user.name && git -C <worktree>  config user.email   # must differ
-grep AGENT_NAME ~/.hermes-cortex/agent.env                                    # must be UNCHANGED
+grep AGENT_NAME ~/.steadfaste-fleet/agent.env                                    # must be UNCHANGED
 ```
 
 A commit made in each tree must be authored by its own identity — check with

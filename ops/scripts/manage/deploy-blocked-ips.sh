@@ -21,15 +21,15 @@ ts() {
 # which is user-writable and would be an arbitrary-root-code-execution hole):
 #   moses ALL=(root) NOPASSWD: /usr/local/sbin/fix-blocked-ips.py
 # Deploy the root copy with:
-#   sudo bash ~/hermes-cortex/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh
+#   sudo bash ~/steadfaste-fleet/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Resolve repo root robustly: env → git toplevel → 3-up (repo layout) →
-# canonical $HOME/hermes-cortex. Each candidate is VALIDATED against the
+# canonical $HOME/steadfaste-fleet. Each candidate is VALIDATED against the
 # actual fix-blocked-ips.py path, so the script works identically from the
 # repo location (ops/scripts/manage/) and the DEPLOYED location
-# (~/.hermes-cortex/scripts/), where git rev-parse fails and ../../.. lands
+# (~/.steadfaste-fleet/scripts/), where git rev-parse fails and ../../.. lands
 # on /home (regression 2026-08-05: pipeline deploy step failed with
 # "fix-blocked-ips.py not found at a /home/<user>/... path").
 CORTEX_REPO="${CORTEX_REPO:-}"
@@ -40,7 +40,7 @@ if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-bl
   CORTEX_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd 2>/dev/null || true)"
 fi
 if [ -z "$CORTEX_REPO" ] || [ ! -f "$CORTEX_REPO/ops/install/deploy/nginx/fix-blocked-ips.py" ]; then
-  CORTEX_REPO="${HOME}/hermes-cortex"
+  CORTEX_REPO="${HOME}/steadfaste-fleet"
 fi
 
 # P1-A hardening (2026-07-31): prefer the root-owned immutable deployed copy
@@ -49,7 +49,7 @@ FIX_SCRIPT="/usr/local/sbin/fix-blocked-ips.py"
 if [ ! -f "$FIX_SCRIPT" ]; then
   FIX_SCRIPT="${CORTEX_REPO}/ops/install/deploy/nginx/fix-blocked-ips.py"
   echo "[deploy-blocked-ips] ⚠ using repo copy — deploy the root-owned copy:" >&2
-  echo "[deploy-blocked-ips]   sudo bash ~/hermes-cortex/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh" >&2
+  echo "[deploy-blocked-ips]   sudo bash ~/steadfaste-fleet/ops/install/deploy/nginx/deploy-fix-blocked-ips.sh" >&2
 fi
 
 if [ ! -f "$FIX_SCRIPT" ]; then

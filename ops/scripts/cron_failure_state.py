@@ -17,7 +17,7 @@ Usage:
     # On success:
     fs.record_success()
 
-State file: ~/.hermes-cortex/state/<script-name>.json
+State file: ~/.steadfaste-fleet/state/<script-name>.json
 """
 
 import hashlib
@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
 
-DEFAULT_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+DEFAULT_STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 DEFAULT_COOLDOWN = 30  # minutes
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Offline Bible Downloader
+#  Steadfaste Fleet — Offline Bible Downloader
 #  Downloads Bible translations in plain text for offline use.
 #  Integrates with the offline_knowledge cascade.
 #
@@ -245,7 +245,7 @@ if ! command -v curl &>/dev/null; then error "curl required"; exit 1; fi
 
 mkdir -p "$BIBLE_DIR"
 
-header "Hermes Cortex — Offline Bible Downloader"
+header "Steadfaste Fleet — Offline Bible Downloader"
 
 # Check if kiwix-tools is available for ZIM creation
 KIWIX_TOOLS=0
@@ -288,7 +288,7 @@ done
 
 # ── Post-process: Parse to JSON ────────────────────────────
 header "PARSING TO STRUCTURED JSON"
-PARSE_SCRIPT="$HOME/hermes-cortex/ops/offline/bible-parse.py"
+PARSE_SCRIPT="$HOME/steadfaste-fleet/ops/offline/bible-parse.py"
 parse_ok=0
 parse_fail=0
 

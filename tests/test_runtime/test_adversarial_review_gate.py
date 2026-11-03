@@ -77,7 +77,7 @@ def git_repo(tmp_path):
     r = tmp_path / "repo"
     r.mkdir()
     subprocess.run(["git", "init", "-q", str(r)], check=True)
-    # Isolate from the global hermes-cortex hooksPath — test commits must not
+    # Isolate from the global steadfaste-fleet hooksPath — test commits must not
     # run the real pre-commit hook (which writes state artifacts into the repo).
     subprocess.run(["git", "-C", str(r), "config", "core.hooksPath", "/dev/null"], check=True)
     subprocess.run(["git", "-C", str(r), "config", "user.email", "test@example.com"], check=True)
@@ -198,7 +198,7 @@ def _isolate_state_dir(monkeypatch, tmp_path):
     """Point the module's GOVERNANCE STATE DIR at a temp dir and hand back the REAL one.
 
     Patching `mod.HOME` does NOT redirect the lock files: GOVERNANCE_STATE_DIR is computed from
-    HOME at IMPORT time, so a later monkeypatch leaves the real ~/.hermes-cortex/state in effect.
+    HOME at IMPORT time, so a later monkeypatch leaves the real ~/.steadfaste-fleet/state in effect.
     That is exactly how this file wrote a REAL lock into the live shared state dir — measured
     2026-10-21: running it left `.governance-sess_51739fa82ecb.json` behind, and the NEXT run of
     tests/test_repo_less_lock_handling.py then failed ("the handler must still write a lock"),

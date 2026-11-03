@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Repair ~/.hermes-cortex/venv on ANY host — one command, verified by import.
+"""Repair ~/.steadfaste-fleet/venv on ANY host — one command, verified by import.
 
-WHY THIS EXISTS. `~/.hermes-cortex/venv` is the fleet venv (cortex-update.sh registers every
+WHY THIS EXISTS. `~/.steadfaste-fleet/venv` is the fleet venv (cortex-update.sh registers every
 MCP server against it), but nothing declared what it should CONTAIN, so a host whose venv was
 empty or partial could only be fixed by someone reading the source to work out the
 dependencies. Found the hard way on esther: the venv could not collect a test module (no
@@ -44,7 +44,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_VENV = "~/.hermes-cortex/venv"
+DEFAULT_VENV = "~/.steadfaste-fleet/venv"
 #: Distribution name -> module name, where they differ. Importing "PyYAML" is not a thing.
 MODULE_ALIASES = {"pyyaml": "yaml", "pillow": "PIL", "psycopg2-binary": "psycopg2",
                   "python-dateutil": "dateutil", "beautifulsoup4": "bs4"}

@@ -67,8 +67,8 @@ except ImportError:  # pragma: no cover - standalone fallback only on missing li
 
 
 HOME = Path.home()
-DEPLOYED_MCP = HOME / ".hermes-cortex" / "tools" / "loop-governance" / "loop-gov-mcp.py"
-DB_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
+DEPLOYED_MCP = HOME / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py"
+DB_PATH = HOME / ".steadfaste-fleet" / "data" / "loop-governance.db"
 # begin_change uses busy_timeout 5000; our probe must exceed it so a genuinely
 # stuck txn is detected (healthy in-flight writes commit in <ms).
 PROBE_TIMEOUT_MS = 10_000

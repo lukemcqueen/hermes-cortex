@@ -49,7 +49,7 @@ hosts that had no fallback configured.
 * The client's failure accounting is bounded: first failure of an outage alerts (exit 1,
   self-diagnosing, names this runbook); later ticks inside the cooldown exit 0 with a
   suppressed line; the cooldown (6h) re-alerts; recovery clears the state. State:
-  `~/.hermes-cortex/state/push-metrics.state`. A `000` alert therefore no longer means
+  `~/.steadfaste-fleet/state/push-metrics.state`. A `000` alert therefore no longer means
   288 error-ticks a day, and the cron-failure watchdog never sees 3 consecutive errors.
 * Unwritable state file fails closed: it alerts every run rather than silently suppressing.
 
@@ -95,8 +95,8 @@ curl -s http://127.0.0.1:8428/-/healthy        # expect "OK"
 
 # 3. Apply. HERMES_SERVICES is no longer required for metrics — the gate
 #    auto-detects the backend. Set it only to be explicit.
-sudo python3 ~/.hermes-cortex/scripts/hermes-services-apply.py
-#    …or explicitly:  sudo env HERMES_SERVICES=all python3 ~/.hermes-cortex/scripts/hermes-services-apply.py
+sudo python3 ~/.steadfaste-fleet/scripts/hermes-services-apply.py
+#    …or explicitly:  sudo env HERMES_SERVICES=all python3 ~/.steadfaste-fleet/scripts/hermes-services-apply.py
 
 # 4. Validate BEFORE reloading — never reload a config that fails the check.
 sudo nginx -t && sudo systemctl reload nginx
@@ -119,7 +119,7 @@ should list the agents that have pushed since.
    Fix that host's `VICTORIA_METRICS_FALLBACK_URL` or drop it — a wrong fallback makes a
    working primary look broken.
 3. **A host with no sink at all is not broken.** Either deploy one, or unset
-   `VICTORIA_METRICS_URL` in `~/hermes-cortex/.env`: the client then exits 0 with
+   `VICTORIA_METRICS_URL` in `~/steadfaste-fleet/.env`: the client then exits 0 with
    "metrics push disabled (this is optional)" and records nothing.
 4. `401`/`403` from the sink in the client alert is an **auth** problem (htpasswd), not a
    dead sink — the alert text says so.

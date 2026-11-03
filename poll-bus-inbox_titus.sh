@@ -7,7 +7,7 @@
 # missing/unreadable config, missing URL/AUTH, or malformed JSON payload.
 # Prints the message count so callers/crons can branch on it.
 set -euo pipefail
-CONF="${HC_INBOX_CONF:-$HOME/.hermes-cortex/hermes-inbox.conf}"
+CONF="${HC_INBOX_CONF:-$HOME/.steadfaste-fleet/hermes-inbox.conf}"
 [ -r "$CONF" ] || { echo "ERROR: cannot read $CONF" >&2; exit 1; }
 # Parse key=value taking everything after the first '=' (values may contain '=').
 URL="$(awk -F= '/^CORTEX_BUS_URL=/{sub(/^[^=]*=/,""); print}' "$CONF")"

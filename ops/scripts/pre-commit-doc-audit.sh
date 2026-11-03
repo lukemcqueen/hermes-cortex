@@ -11,12 +11,12 @@
 # No_agent watchdog pattern: stay quiet when clean.
 #
 # Install:
-#   ln -sf ~/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh \
-#     ~/hermes-cortex/.git/hooks/pre-commit-doc-audit
-#   echo 'bash .git/hooks/pre-commit-doc-audit' >> ~/hermes-cortex/.git/hooks/pre-commit
+#   ln -sf ~/steadfaste-fleet/ops/scripts/pre-commit-doc-audit.sh \
+#     ~/steadfaste-fleet/.git/hooks/pre-commit-doc-audit
+#   echo 'bash .git/hooks/pre-commit-doc-audit' >> ~/steadfaste-fleet/.git/hooks/pre-commit
 #
 # Or call manually before git commit:
-#   bash ~/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh
+#   bash ~/steadfaste-fleet/ops/scripts/pre-commit-doc-audit.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -64,9 +64,9 @@ fi
 SKILLS_CHANGED=$(echo "$STAGED" | grep -c '^skills/' 2>/dev/null || true)
 
 if [[ "$SKILLS_CHANGED" -gt 0 ]]; then
-    GEN="${CORTEX_DEPLOY_HOME:-$HOME/hermes-cortex}/ops/scripts/manage/gen-skills-manifest.sh"
+    GEN="${CORTEX_DEPLOY_HOME:-$HOME/steadfaste-fleet}/ops/scripts/manage/gen-skills-manifest.sh"
     if [[ ! -f "$GEN" ]]; then
-        GEN="$HOME/hermes-cortex/ops/scripts/manage/gen-skills-manifest.sh"
+        GEN="$HOME/steadfaste-fleet/ops/scripts/manage/gen-skills-manifest.sh"
     fi
     if [[ ! -f "$GEN" ]]; then
         echo "⚠️  DOCS AUDIT: COULD NOT VERIFY SKILLS-MANIFEST.md — generator not found"
@@ -99,12 +99,12 @@ fi
 
 # ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
 # Fixed 2026-08-24 (TitusClaude finding, verified): the registration check
-# only applies to the hermes-cortex repo. In project/client repos (client-av
+# only applies to the steadfaste-fleet repo. In project/client repos (client-av
 # etc.), ops/scripts/*.sh are read DIRECTLY by pre-commit-score from
 # $REPO_ROOT/ops/scripts/ — nothing is deployed fleet-wide, so demanding a
 # cortex-update.sh MAP entry is a false warning.
 IS_HC_REPO=0
-if [[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "${HOME}/hermes-cortex" ]]; then
+if [[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "${HOME}/steadfaste-fleet" ]]; then
   IS_HC_REPO=1
 fi
 SCRIPTS_CHANGED=0

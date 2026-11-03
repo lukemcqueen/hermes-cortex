@@ -1,4 +1,4 @@
-# Moral Architecture Adaptation — Applying the Report to Hermes Cortex
+# Moral Architecture Adaptation — Applying the Report to Steadfaste Fleet
 
 > **Status:** DESIGN PROPOSAL — analysis + prioritized changes. No code changed yet;
 > each item below is gated on operator approval before implementation.
@@ -6,7 +6,7 @@
 > **Pairs with:** `docs/reference/moral-architecture/README.md` (the faithful
 > digest) and `Moral-Architecture-for-Autonomous-Systems.pdf` (the full report).
 > This document is the *translation*: the report's L0–L7 stack, mapped onto
-> Hermes Cortex's actual architecture, adapted for the one thing the report
+> Steadfaste Fleet's actual architecture, adapted for the one thing the report
 > treats as a corner case but which is our entire domain — **an LLM agent is a
 > model and its harness fused, with no physical layer beneath them.**
 
@@ -14,7 +14,7 @@
 
 ## 0. The one-line verdict
 
-Hermes Cortex is already a **harness-first** system — which is exactly what the
+Steadfaste Fleet is already a **harness-first** system — which is exactly what the
 report argues for ("the harness is more decisive than the soul"; thesis 10).
 The report is not a critique of our architecture; it is a **gap map**. It names
 three places where we still rely on the model (L3) for something a harness rule
@@ -31,7 +31,7 @@ left in the "encouraged" tier.
 
 ## 1. The stack mapping
 
-The report's seven layers, mapped to what Hermes Cortex actually has:
+The report's seven layers, mapped to what Steadfaste Fleet actually has:
 
 | Report layer | Cortex component | What it guarantees | Note |
 |---|---|---|---|
@@ -236,7 +236,7 @@ latency** rather than asserting a human is in the loop.
 
 ---
 
-## 5. What Hermes Cortex already does right (do not regress these)
+## 5. What Steadfaste Fleet already does right (do not regress these)
 
 The report validates, more than it critiques, our existing design. These are the
 structures to *keep* — they are exactly the "structure over virtue" the report

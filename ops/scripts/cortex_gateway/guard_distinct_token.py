@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Refuse to start a gateway that would poll the LIVE bot's token.
 
-Both gateway units read the SAME canonical env (`~/hermes-cortex/.env`). What
+Both gateway units read the SAME canonical env (`~/steadfaste-fleet/.env`). What
 separates them is only the ``token_ref`` in their config:
 
     gateway.yaml                token_ref: TELEGRAM_BOT_TOKEN    <- the LIVE bot

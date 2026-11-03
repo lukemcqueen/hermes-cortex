@@ -24,10 +24,10 @@
 
 set -euo pipefail
 
-# ── Source env (deploy-root .env preferred; old hermes-cortex.env fallback) ──
-ENV_FILE="${HOME}/hermes-cortex/.env"
+# ── Source env (deploy-root .env preferred; old steadfaste-fleet.env fallback) ──
+ENV_FILE="${HOME}/steadfaste-fleet/.env"
 if [ ! -f "$ENV_FILE" ]; then
-  ENV_FILE="${HOME}/.hermes-cortex/hermes-cortex.env"
+  ENV_FILE="${HOME}/.steadfaste-fleet/steadfaste-fleet.env"
 fi
 if [ -f "$ENV_FILE" ]; then
   set -a; source "$ENV_FILE" 2>/dev/null || true; set +a
@@ -37,21 +37,21 @@ fi
 # Agent identity — env → agent.env → .env. NEVER hostname: a machine name is
 # not an agent name and would misattribute metrics (Luke directive 2026-08-14).
 AGENT_NAME="${AGENT_NAME:-}"
-if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/.hermes-cortex/agent.env" ]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/.steadfaste-fleet/agent.env" ]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
-if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/hermes-cortex/.env" ]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [ -z "$AGENT_NAME" ] && [ -f "${HOME}/steadfaste-fleet/.env" ]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
 if [ -z "$AGENT_NAME" ] || [ "$AGENT_NAME" = "unknown" ]; then
-  echo "[push-metrics] ❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  echo "[push-metrics] ❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
   exit 1
 fi
 
 # ── Source environment (already sourced above; kept for cron clarity) ──
 # Cron scheduler does not source the env file before running no_agent
 # scripts, so the script sources it itself (deploy-repo .env preferred,
-# old hermes-cortex.env fallback).
+# old steadfaste-fleet.env fallback).
 if [ -f "$ENV_FILE" ]; then
   # shellcheck source=/dev/null
   set -a; source "$ENV_FILE"; set +a
@@ -84,7 +84,7 @@ OS="$(uname)"
 #   - recovery                    → exit 0 + recovery line, state cleared
 # Fail-closed: if the state file cannot be written we CANNOT prove we already
 # alerted, so we alert on every run rather than silently suppressing.
-STATE_FILE="${PUSH_METRICS_STATE_FILE:-${HOME}/.hermes-cortex/state/push-metrics.state}"
+STATE_FILE="${PUSH_METRICS_STATE_FILE:-${HOME}/.steadfaste-fleet/state/push-metrics.state}"
 ALERT_COOLDOWN_S="${PUSH_METRICS_ALERT_COOLDOWN_S:-21600}"   # 6h
 CURL_BIN="${PUSH_METRICS_CURL:-curl}"
 LAST_STATUS=""
@@ -290,7 +290,7 @@ collect_cost_metrics
 # must never change this push's outcome — and must never be read as $0 spend: an
 # absent series is visible, a false zero is not. Override in tests with
 # PUSH_METRICS_COST_BIN.
-COST_METRICS_BIN="${PUSH_METRICS_COST_BIN:-${HOME}/.hermes-cortex/scripts/cron-cost-metrics.py}"
+COST_METRICS_BIN="${PUSH_METRICS_COST_BIN:-${HOME}/.steadfaste-fleet/scripts/cron-cost-metrics.py}"
 
 collect_cost_metrics() {
   [ -f "$COST_METRICS_BIN" ] || return 0

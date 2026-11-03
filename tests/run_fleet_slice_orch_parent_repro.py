@@ -75,7 +75,7 @@ def main() -> int:
     ap.add_argument("--db", default="tasks_fleetslice_repro",
                     help="scratch DB name (must NOT be 'mycortex')")
     ap.add_argument("--check-live", action="store_true",
-                    help="also run the local ~/.hermes-cortex/scripts/task-db.py "
+                    help="also run the local ~/.steadfaste-fleet/scripts/task-db.py "
                          "--apply-schema check (environment-dependent: does not "
                          "apply on another host and is not needed to re-verify "
                          "the committed artifact; self-contained runs should "
@@ -136,11 +136,11 @@ def main() -> int:
     # --- 4 (optional): deployed runner converges on v13 -----------------------
     if args.check_live:
         applied = _run(["python3",
-                        str(Path.home() / ".hermes-cortex/scripts/task-db.py"),
+                        str(Path.home() / ".steadfaste-fleet/scripts/task-db.py"),
                         "--apply-schema"], env)
         applied_body = (applied.stdout or "") + (applied.stderr or "")
         chunks.append(
-            "\n===== deployed runner: python3 ~/.hermes-cortex/scripts/task-db.py "
+            "\n===== deployed runner: python3 ~/.steadfaste-fleet/scripts/task-db.py "
             "--apply-schema ====\n"
             f"% d: rc={applied.returncode}\n% {applied_body}"
         )

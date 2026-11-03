@@ -143,7 +143,7 @@ report a gate that isn't there nor assume one that is.
 
 | Lesson | Evidence |
 |---|---|
-| Note-without-root-cause on the reappearing repo-local dir | commit `aba6850` `fix(doctor): fail on a repo-local .hermes-cortex, and record why it returns` — adds a doctor check (`ops/scripts/manage/cortex_doctor/checks.py`) + a test |
+| Note-without-root-cause on the reappearing repo-local dir | commit `aba6850` `fix(doctor): fail on a repo-local .steadfaste-fleet, and record why it returns` — adds a doctor check (`ops/scripts/manage/cortex_doctor/checks.py`) + a test |
 | 300 s `execute_code` ceiling | commit `63e4cf1` `docs(skills): where long work belongs, and why the 300s cell ceiling is hit` |
 | `git add -A` ≠ committed · question the probe first | deployed skill `~/.hermes/skills/software-development/adversarial-review-passoff/SKILL.md` lines 250, 258 |
 

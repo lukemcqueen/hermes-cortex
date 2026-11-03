@@ -6,9 +6,9 @@ things that actually differ off this host:
 * **macOS** ships bash **3.2** and BSD userland. No `declare -A`, no `mapfile`, no `${var,,}`, no
   GNU-only flags (`readlink -f`, `date -d`, `sed -i` without a suffix, `grep -P`). A script that
   silently needs bash 4 breaks on Titus.
-* **multi-repo sessions**: the wrapper must not assume it is in hermes-cortex, must not read another
+* **multi-repo sessions**: the wrapper must not assume it is in steadfaste-fleet, must not read another
   repo's state, and must not depend on a fleet install being present at all.
-* **non-cortex repos**: no `ops/scripts/lib/python-with-module.sh`, no `~/.hermes-cortex` — the
+* **non-cortex repos**: no `ops/scripts/lib/python-with-module.sh`, no `~/.steadfaste-fleet` — the
   interpreter then has to be found by CAPABILITY on PATH, and if nothing can import pytest the
   wrapper must say so (rc=3) rather than run something that cannot test.
 """
@@ -49,7 +49,7 @@ def _run(fake: Path, home: Path, bindir: Path, *args: str) -> subprocess.Complet
 
 
 def test_it_works_in_a_repo_with_no_cortex_and_no_fleet_install(tmp_path):
-    """No ops/scripts/lib, no ~/.hermes-cortex: resolve by capability on PATH and run."""
+    """No ops/scripts/lib, no ~/.steadfaste-fleet: resolve by capability on PATH and run."""
     fake = _fake_repo(tmp_path)
     home = tmp_path / "empty-home"
     home.mkdir()
@@ -110,7 +110,7 @@ def test_the_wrapper_is_bash_3_2_and_bsd_safe():
 def test_it_is_not_tied_to_this_repo_path():
     """Portable paths: the repo root is derived from the script's own location, never hardcoded.
 
-    (An earlier draft asserted `"hermes-cortex" not in src` and failed — correctly. The wrapper DOES
+    (An earlier draft asserted `"steadfaste-fleet" not in src` and failed — correctly. The wrapper DOES
     name the deployed cortex resolver, as its last-resort fallback by way of `$HOME`. Referring to a
     fleet install is not the same as REQUIRING one; what must never appear is an absolute path that
     only exists on one host.)
@@ -120,7 +120,7 @@ def test_it_is_not_tied_to_this_repo_path():
     assert 'dirname "${BASH_SOURCE[0]}"' in src, "derive REPO from the script's own location"
     # Any reference to the fleet install must go through $HOME, so it stays host-independent.
     for i, line in enumerate(src.splitlines(), 1):
-        if "hermes-cortex" in line:
+        if "steadfaste-fleet" in line:
             assert "$HOME" in line or "${HOME}" in line, (
                 f"line {i} names the fleet install without $HOME: {line!r}"
             )

@@ -63,9 +63,9 @@ def test_a_sibling_directory_is_not_sanctioned():
 
 
 @pytest.mark.parametrize("target", [
-    "hermes-cortex/docs/troubleshooting.md",
+    "steadfaste-fleet/docs/troubleshooting.md",
     ".hermes/cache/scratch/probe.txt",
-    ".hermes-cortex/skills.yaml",
+    ".steadfaste-fleet/skills.yaml",
     ".hermes/cron/jobs.json",
     "some-repo/plugins/governance-enforcer/__init__.py",
 ])

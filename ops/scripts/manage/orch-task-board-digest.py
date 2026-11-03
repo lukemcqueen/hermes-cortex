@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-TASK_DB = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "task-db.py"
+TASK_DB = HOME / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "task-db.py"
 
 
 def q(query: str, params: list | None = None) -> str:

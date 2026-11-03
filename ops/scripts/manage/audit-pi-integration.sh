@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# audit-pi-integration.sh — verify the Pi ⇄ Hermes Cortex integration on THIS host.
+# audit-pi-integration.sh — verify the Pi ⇄ Steadfaste Fleet integration on THIS host.
 #
 # WHY VERSION-AWARE. The integration has TWO routes and the correct checks differ:
 #
@@ -27,8 +27,8 @@ PI_DIR="${PI_DIR:-$HOME/.pi/agent}"
 SETTINGS="$PI_DIR/settings.json"
 MCP_JSON="$PI_DIR/mcp.json"
 SKILLS_LINKS="$PI_DIR/cortex-skills"
-AGENT_ENV="$HOME/.hermes-cortex/agent.env"
-DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+AGENT_ENV="$HOME/.steadfaste-fleet/agent.env"
+DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 MANIFEST="${CORTEX_SKILLS_MANIFEST:-}"
 
 _fail=0
@@ -207,7 +207,7 @@ else
   else
     # The curated list comes from the skills MANIFEST (`always:`), never hardcoded here.
     WANT=""
-    for m in "$MANIFEST" "$HOME/.hermes-cortex/skills.yaml" "${CORTEX_REPO:-$HOME/hermes-cortex}/skills.yaml"; do
+    for m in "$MANIFEST" "$HOME/.steadfaste-fleet/skills.yaml" "${CORTEX_REPO:-$HOME/steadfaste-fleet}/skills.yaml"; do
       [[ -n "$m" && -f "$m" ]] || continue
       WANT="$(awk '/^always:/{f=1;next} /^[a-z]/{f=0} f && /- name:/{sub(/.*- name:[ ]*/,""); print}' "$m")"
       break
@@ -232,7 +232,7 @@ fi
 # ── Layer 3: session/memory extension ──
 EXT_OK=0
 for c in "$DEPLOY/harnesses/pi/extensions/cortex-context.ts" \
-         "${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/harnesses/pi/extensions/cortex-context.ts"; do
+         "${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/install/harnesses/pi/extensions/cortex-context.ts"; do
   [[ -f "$c" ]] && EXT_OK=1 && break
 done
 if [[ "$EXT_OK" == "1" ]]; then
@@ -257,7 +257,7 @@ else
 fi
 # The cortex venv is a PREFERENCE: install-pi-mcp.sh falls back to PATH python3 if the
 # MCP extra is importable there. Reporting it as a hard failure would be wrong.
-if [[ -x "$HOME/.hermes-cortex/venv/bin/python3" ]]; then
+if [[ -x "$HOME/.steadfaste-fleet/venv/bin/python3" ]]; then
   _line 5 PASS "cortex venv python present (install-pi-mcp.sh prefers it)"
 else
   _line 5 NA "no cortex venv — install-pi-mcp.sh falls back to python3 on PATH (fine if 'mcp' is importable there)"

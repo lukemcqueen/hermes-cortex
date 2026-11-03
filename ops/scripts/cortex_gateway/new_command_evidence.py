@@ -27,7 +27,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEPLOY = Path.home() / ".hermes-cortex"
+DEPLOY = Path.home() / ".steadfaste-fleet"
 sys.path.insert(0, str(DEPLOY / "scripts"))
 
 import cortex_gateway.agents as AGENTS      # noqa: E402

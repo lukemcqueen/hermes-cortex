@@ -40,7 +40,7 @@ def _stub_curl(tmp: Path, code: str) -> Path:
 
 def _run(tmp: Path, code: str, *, cooldown=None, state=None, env_extra=None):
     home = tmp / "home"
-    (home / ".hermes-cortex").mkdir(parents=True, exist_ok=True)
+    (home / ".steadfaste-fleet").mkdir(parents=True, exist_ok=True)
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "HOME": str(home),
@@ -110,7 +110,7 @@ def test_unwritable_state_fails_closed(tmp_path):
 def test_no_sink_configured_is_silent_success(tmp_path):
     """Pushing is optional: an unset URL means the feature is off, not broken."""
     home = tmp_path / "home"
-    (home / ".hermes-cortex").mkdir(parents=True, exist_ok=True)
+    (home / ".steadfaste-fleet").mkdir(parents=True, exist_ok=True)
     env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "HOME": str(home),

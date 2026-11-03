@@ -21,10 +21,10 @@ rules in the SKILL.md.
 
 | File | Why |
 |---|---|
-| `~/.hermes-cortex/services/mycortex/import-gbrain.py` | stale deployed orphan — repo stopped shipping it, nothing called it |
+| `~/.steadfaste-fleet/services/mycortex/import-gbrain.py` | stale deployed orphan — repo stopped shipping it, nothing called it |
 | `__pycache__/import-gbrain.cpython-311.pyc` (repo + deployed) | stale bytecode of the deleted module |
-| `~/.hermes-cortex/state/agent-health-data.json` | dead Jul-15 state file (pre-sweep), no readers, held `"gbrain"`/`"gbrain_sources_ok"` keys |
-| 6 stale skill reference files (hermes-cortex skill ×4: `gbrain-cron-maintenance.md`, `gbrain-npm-collision.md`, `gbrain-source-migration-export.md`, `pglite-lock-contention.md`; hermes-cortex-setup ×2: `gbrain-squatter.md`, `health-server-external.md`) | old skill versions the repo no longer carries |
+| `~/.steadfaste-fleet/state/agent-health-data.json` | dead Jul-15 state file (pre-sweep), no readers, held `"gbrain"`/`"gbrain_sources_ok"` keys |
+| 6 stale skill reference files (steadfaste-fleet skill ×4: `gbrain-cron-maintenance.md`, `gbrain-npm-collision.md`, `gbrain-source-migration-export.md`, `pglite-lock-contention.md`; steadfaste-fleet-setup ×2: `gbrain-squatter.md`, `health-server-external.md`) | old skill versions the repo no longer carries |
 | `~/.hermes/agent-profiles/titus/SOUL.md` line: "Ollama, gbrain, inbox" → mycortex | profile template seeds Titus's host SOUL |
 | banner cache, pytest cache nodeids | regenerable |
 
@@ -58,7 +58,7 @@ rules in the SKILL.md.
 
 - `git grep -il gbrain` (tracked), `git ls-files | grep -i` (names),
   `find . -iname '*gbrain*'` (any file name), `grep -rli --exclude-dir=...`
-  per tree (repo worktree, `~/.hermes-cortex`, `~/.hermes`, `~/brain`)
+  per tree (repo worktree, `~/.steadfaste-fleet`, `~/.hermes`, `~/brain`)
 - Category rollups via `sed 's|<prefix>||' | cut -d/ -f1 | sort | uniq -c`
 - Deployed-only skill extras: `comm -13 <(ls repo/refs | sort) <(ls deployed/refs | sort)`
 - Key-consistency: `grep -n "sources_ok"` across registry template + watchdog

@@ -1,4 +1,4 @@
-# Port Allocation — Hermes Cortex Services
+# Port Allocation — Steadfaste Fleet Services
 
 Health endpoints use a **two-layer pattern**: nginx SSL termination on the
 external port, health-vector process on an internal port (typically 8905)

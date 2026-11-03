@@ -28,8 +28,8 @@ def _load_checks():
     by file path alone raises "attempted relative import with no known parent
     package" — import the package instead.
     """
-    manage_dir = str(CHECKS.parent.parent)      # ~/hermes-cortex/ops/scripts/manage
-    scripts_dir = str(CHECKS.parent.parent.parent)  # ~/hermes-cortex/ops/scripts
+    manage_dir = str(CHECKS.parent.parent)      # ~/steadfaste-fleet/ops/scripts/manage
+    scripts_dir = str(CHECKS.parent.parent.parent)  # ~/steadfaste-fleet/ops/scripts
     for p in (manage_dir, scripts_dir):
         if p not in sys.path:
             sys.path.insert(0, p)

@@ -242,7 +242,7 @@ Reclaims stale swap pages by cycling swapoff/swapon. Safety-guarded: only runs w
 
 ```bash
 # 1. Deploy the script
-cp ~/hermes-cortex/ops/scripts/health/agent-swap-refresh.py ~/.hermes/scripts/agent-swap-refresh.py
+cp ~/steadfaste-fleet/ops/scripts/health/agent-swap-refresh.py ~/.hermes/scripts/agent-swap-refresh.py
 chmod +x ~/.hermes/scripts/agent-swap-refresh.py
 
 # 2. Add sudoers entry (NOPASSWD for swapoff/swapon)
@@ -713,7 +713,7 @@ If nothing needed fixing: exit silently (no output).
 
 ```bash
 # 1. Deploy companion script
-cp hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
+cp steadfaste-fleet/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
 
 # 2. Create the cron
 hermes cron create \
@@ -889,12 +889,12 @@ when something actually changes.
 
 **Schedule:** Weekly on Sunday at 09:00
 
-**Script:** Save `hermes-cortex/ops/offline/auto-update.sh` to `~/.hermes/scripts/auto-update.sh`
+**Script:** Save `steadfaste-fleet/ops/offline/auto-update.sh` to `~/.hermes/scripts/auto-update.sh`
 
 **Setup:**
 
 ```bash
-cp "${CORTEX_REPO:-$HOME/hermes-cortex}/ops/offline/auto-update.sh" ~/.hermes/scripts/auto-update.sh
+cp "${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/offline/auto-update.sh" ~/.hermes/scripts/auto-update.sh
 chmod +x ~/.hermes/scripts/auto-update.sh
 ```
 
@@ -970,7 +970,7 @@ as a safety net for mechanical patterns.
 Run:
   mkdir -p ~/.hermes/state/remediate/done
   mv <marker_file> ~/.hermes/state/remediate/done/
-  cd ${CORTEX_REPO:-$HOME/hermes-cortex}-private && git add -A && git commit -m "remediation: ..." && git push
+  cd ${CORTEX_REPO:-$HOME/steadfaste-fleet}-private && git add -A && git commit -m "remediation: ..." && git push
 
 ## Step 5: Report compact summary — what was fixed and whether it succeeded.
 ```
@@ -979,7 +979,7 @@ Run:
 
 ```bash
 # 1. Deploy companion scripts
-cp hermes-cortex/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
+cp steadfaste-fleet/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/orch-inbox-remediate.sh
 
 # 2. Create the cron
@@ -1087,7 +1087,7 @@ crons (agent-fixer/cortex-bus/agent-inbox/soul-refinement): heavy
 non-streaming deepseek calls on accumulated daily workload exceeded 5
 minutes, killing 9/9 runs with 'idle for 300s'. 600s restores known-good
 behavior.
-Override per machine with `HERMES_CRON_TIMEOUT` in `~/hermes-cortex/.env`.
+Override per machine with `HERMES_CRON_TIMEOUT` in `~/steadfaste-fleet/.env`.
 If a cron legitimately needs long single API calls (non-streaming), either
 tune the value or enable streaming for that job — don't just re-run the cron
 to clear its error status.

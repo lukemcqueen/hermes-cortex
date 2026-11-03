@@ -3,8 +3,8 @@
 #  agent-collect-skills.sh — Agent-side skill manifest reporter
 #
 #  Scans BOTH ~/.hermes/skills/ (Hermes native) AND
-#  ~/.hermes-cortex/skills/ (cortex deploy) for SKILL.md files
-#  that are NOT from the upstream hermes-cortex repo and
+#  ~/.steadfaste-fleet/skills/ (cortex deploy) for SKILL.md files
+#  that are NOT from the upstream steadfaste-fleet repo and
 #  reports them as custom skills to Moses via inbox.
 #
 #  The entire scan + JSON build is done in Python to correctly
@@ -12,7 +12,7 @@
 #
 #  no_agent-safe: silent exit (0) when nothing new to report.
 #
-#  Requires (from ~/hermes-cortex/.env):
+#  Requires (from ~/steadfaste-fleet/.env):
 #    CORTEX_BUS_URL      — Moses Agent Bus URL
 #    CORTEX_BUS_TOKEN    — Bearer token for bus auth
 #
@@ -20,31 +20,31 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_DIR="${CORTEX_REPO:-$HOME/hermes-cortex}"
+REPO_DIR="${CORTEX_REPO:-$HOME/steadfaste-fleet}"
 HERMES_SKILLS_DIR="$HOME/.hermes/skills"
-CORTEX_SKILLS_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/skills"
-REPO_SKILLS_DIR="$REPO_DIR/.hermes-cortex/skills"
+CORTEX_SKILLS_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}/skills"
+REPO_SKILLS_DIR="$REPO_DIR/.steadfaste-fleet/skills"
 # Also check bundled Hermes Agent skills (not truly "custom")
 HERMES_BUNDLED_SKILLS_DIR="$HOME/.hermes/hermes-agent/skills"
-STATE_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}/state"
+STATE_DIR="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}/state"
 MANIFEST_FILE="$STATE_DIR/skills-manifest.json"
 
 # ── Source config ───────────────────────────────────────────
-if [[ -f "${HOME}/hermes-cortex/.env" ]]; then
-  set -a; source "${HOME}/hermes-cortex/.env"; set +a
-elif [[ -f "${HOME}/hermes-cortex/.env" ]]; then
-  source "${HOME}/hermes-cortex/.env"
+if [[ -f "${HOME}/steadfaste-fleet/.env" ]]; then
+  set -a; source "${HOME}/steadfaste-fleet/.env"; set +a
+elif [[ -f "${HOME}/steadfaste-fleet/.env" ]]; then
+  source "${HOME}/steadfaste-fleet/.env"
 fi
 
 # ── Agent identity — fail loud, NEVER hostname ─────────────
 # A machine name is not an agent name; reporting under the OS hostname
 # silently breaks the receiver's agent whitelist (Luke directive 2026-08-14).
 AGENT_NAME="${AGENT_NAME:-}"
-if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.steadfaste-fleet/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
 if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
-  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
   exit 1
 fi
 export AGENT_NAME

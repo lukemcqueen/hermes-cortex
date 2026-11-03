@@ -19,7 +19,7 @@ but NOT:
   keeps re-loading skills and re-stomping the marker
 
 **Structural fix (2026-08-01): per-session marker files.** Each session writes
-its own proof at `~/.hermes-cortex/state/skills-loaded/<session_id>` (content
+its own proof at `~/.steadfaste-fleet/state/skills-loaded/<session_id>` (content
 `session:<session_id>`, atomic temp+rename). `_check_skills_loaded_marker()`
 reads ONLY the calling session's file. No session can ever touch another's
 marker — the shared file (and every guard bolted onto it: daemon guard,
@@ -64,7 +64,7 @@ differentiation existed.
 ## Detection recipe
 
 ```bash
-cat ~/.hermes-cortex/state/.skills-loaded          # shows whose session owns marker
-ls ~/.hermes-cortex/state/.governance-*.json       # lock files present?
+cat ~/.steadfaste-fleet/state/.skills-loaded          # shows whose session owns marker
+ls ~/.steadfaste-fleet/state/.governance-*.json       # lock files present?
 # begin_change OK → check_lock inactive seconds later → purge stole the lock
 ```

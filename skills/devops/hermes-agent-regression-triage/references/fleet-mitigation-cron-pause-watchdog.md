@@ -36,8 +36,8 @@ tool's list action is the source of truth: it reports `state: paused,
 enabled: false` for the paused job. Always verify with the cronjob tool,
 never with the CLI grep.
 
-**Pitfall C — don't over-pause:** the adjacent `agent-hermes-cortex-sync`
-cron (22:33) pulls the hermes-cortex repo, NOT hermes-agent — safe to
+**Pitfall C — don't over-pause:** the adjacent `agent-steadfaste-fleet-sync`
+cron (22:33) pulls the steadfaste-fleet repo, NOT hermes-agent — safe to
 leave running. And `agent-hermes-update.sh` is the only deployed script
 that runs `hermes update`; grep `~/.hermes/scripts/` to confirm no other
 update vector exists.
@@ -52,7 +52,7 @@ A silent-until-fixed no_agent cron (zero tokens per tick) that fetches the
 live origin/main file and greps for the buggy symbol:
 
 ```python
-# ~/.hermes-cortex/scripts/check-hermes-upstream-fix.py (shape)
+# ~/.steadfaste-fleet/scripts/check-hermes-upstream-fix.py (shape)
 import os, re, urllib.request
 URL = "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/tools/mcp_tool.py"
 MARKER = os.path.expanduser("~/.hermes/state/upstream-hermes-fix-notified")

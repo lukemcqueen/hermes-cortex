@@ -16,7 +16,7 @@ REPO = Path(__file__).resolve().parents[1]
 GUARD = "ops/scripts/lib/require-fleet-venv.sh"
 GUARD_MARKERS = ("require-fleet-venv.sh", "require_fleet_venv")
 ALLOW = {GUARD}
-VENV_REF = re.compile(r"hermes-cortex/venv|fleet_venv_python|FLEET_VENV_DIR")
+VENV_REF = re.compile(r"steadfaste-fleet/venv|fleet_venv_python|FLEET_VENV_DIR")
 EXEC_LINE = re.compile(r"\bexec\b")
 #: BOTH layouts. /Users/ was missing here, so the first run PASSED over a plist hardcoding
 #: /Users/luke — a probe bug. Check the probe before believing a green result.
@@ -67,7 +67,7 @@ def test_the_known_launcher_is_guarded():
 
 def test_the_sweep_would_catch_a_bare_exec():
     """Prove the detector fires, so a green sweep means something."""
-    sample = 'set -u\nexec "$HOME/.hermes-cortex/venv/bin/python3" "$HOME/x.py" "$@"\n'
+    sample = 'set -u\nexec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/x.py" "$@"\n'
     assert VENV_REF.search(sample) and any(
         EXEC_LINE.search(l) and VENV_REF.search(l) for l in sample.splitlines())
     assert not any(m in sample for m in GUARD_MARKERS), "a bare exec is what it must flag"

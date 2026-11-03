@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Code Corpus Generator
+Steadfaste Fleet — Code Corpus Generator
 ──────────────────────────────────────
 Generates the offline code snippet corpus as structured markdown files.
 Each snippet has YAML frontmatter (language, tags, title) and a code block.

@@ -3,7 +3,7 @@ name: psql-automation
 version: 1.0.0
 category: devops
 description: "psql from scripts — error propagation, docker wrappers."
-author: Hermes Cortex (curator)
+author: Steadfaste Fleet (curator)
 license: MIT
 platforms: [linux, macos]
 ---
@@ -214,7 +214,7 @@ docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A \
 docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A \
   -c "SELECT proname FROM pg_proc WHERE proname LIKE '%todo%';"
 # migration dump (if one exists) — pg_restore -l lists objects; grep for the table
-pg_restore -l ~/.hermes-cortex/backups/*.dump | grep -i todo
+pg_restore -l ~/.steadfaste-fleet/backups/*.dump | grep -i todo
 ```
 
 If the table/function is missing from BOTH the current DB and the migration

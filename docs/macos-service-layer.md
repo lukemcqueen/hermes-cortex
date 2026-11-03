@@ -16,7 +16,7 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Label | What it runs | Notes |
 |---|---|---|---|
-| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `~/hermes-cortex/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
+| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
 | `com.hermes.gateway.plist` | `com.hermes.gateway` | the **Hermes** runtime gateway (`hermes_agent.gateway.run`) | The one service that legitimately uses the Hermes venv (the module lives there). Candidates for decommission as hosts migrate. |
 | `com.hermes.cortex-dashboard.plist` | `com.hermes.cortex-dashboard` | the cortex dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
 | `com.hermes.health-push.plist` | `com.hermes.health-push` | `ops/scripts/health/health-vector-push.sh` every 10 min | **Client-only agents (Titus, Gisu, Joseph) install this.** Set `AGENT_NAME` per host. |
@@ -36,21 +36,21 @@ docs audit, which both pointed at this file before it existed.
    `/bin/bash -lc '…exec "$HOME/…"'`.
 2. **`StandardOutPath` / `StandardErrorPath` must be literal paths** — so log files that live
    under a home directory are created and appended *inside* the shell command instead
-   (`… >>"$HOME/.hermes-cortex/logs/x.log" 2>&1`), not via those keys.
+   (`… >>"$HOME/.steadfaste-fleet/logs/x.log" 2>&1`), not via those keys.
 3. **An XML comment may not contain a double hyphen.** `--unattended` in a comment makes the
    plist unparseable and `launchctl` rejects the file without explaining why.
 
 ## Interpreter convention
 
-- Cortex-side services run the **fleet venv** (`~/.hermes-cortex/venv/bin/python3`), the
+- Cortex-side services run the **fleet venv** (`~/.steadfaste-fleet/venv/bin/python3`), the
   interpreter `cortex-update.sh` registers every MCP server against. **Never `/usr/bin/python3`**
   for a cortex service, and never the Hermes venv.
 - A service that needs the fleet venv sources the shared launcher guard first, so a missing
   venv/daemon lands in its log as `NO INTERPRETER at <path> …` with the fix (rc 78) instead of
   an unexplained exec failure:
   ```bash
-  . "$HOME/.hermes-cortex/scripts/lib/require-fleet-venv.sh"
-  require_fleet_venv "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py"
+  . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"
+  require_fleet_venv "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py"
   ```
   If the venv is missing, `cortex-update.sh` now creates and fills it on the host's next
   update. See `docs/troubleshooting.md` ("The fleet venv: a launcher dies with …").
@@ -79,6 +79,6 @@ leading `/bin/bash -lc`, or when a plist does not parse (Label + ProgramArgument
 ## Linux
 
 See [`docs/linux-service-layer.md`](linux-service-layer.md) for the systemd map. The two layers
-are deliberately parallel: same env file (`~/hermes-cortex/.env`), same guard, same fleet venv,
+are deliberately parallel: same env file (`~/steadfaste-fleet/.env`), same guard, same fleet venv,
 different supervisor — and `/restart` returns **exit 75 (EX_TEMPFAIL)** under launchd's
 `SuccessfulExit=false` policy where systemd's `Restart=always` relaunches on any exit.

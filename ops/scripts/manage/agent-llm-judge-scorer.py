@@ -7,10 +7,10 @@ Configurable via JUDGE_MODEL constant at the top of this file and checked
 at startup via _check_ollama_model().
 
 Usage:
-  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py
-  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --trace-id <id>
-  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
-  python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --env-path ~/langfuse/.env
+  python3 ~/.steadfaste-fleet/scripts/llm-judge-scorer.py
+  python3 ~/.steadfaste-fleet/scripts/llm-judge-scorer.py --trace-id <id>
+  python3 ~/.steadfaste-fleet/scripts/llm-judge-scorer.py --dry-run
+  python3 ~/.steadfaste-fleet/scripts/llm-judge-scorer.py --env-path ~/langfuse/.env
 """
 
 import json, os, re, sys, time, urllib.request, urllib.error

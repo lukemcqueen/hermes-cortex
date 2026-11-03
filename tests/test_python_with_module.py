@@ -4,7 +4,7 @@
 Why: a script that picks its python by PATH EXISTENCE and falls back to a bare
 `python3` breaks twice — the file existing says nothing about the module, and the
 fallback is usually the interpreter that lacks it. Measured on this host (2026-10-08),
-`~/.hermes-cortex/venv/bin/python3` existed but imported neither `yaml` nor `mcp`, so
+`~/.steadfaste-fleet/venv/bin/python3` existed but imported neither `yaml` nor `mcp`, so
 `orch-daily-regression-gate.sh`'s `if [[ ! -x $PY ]]` guard never fired and the gate
 failed every day with "PyYAML is not installed".
 
@@ -28,7 +28,7 @@ REPO = Path(__file__).resolve().parents[1]
 HELPER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
 # A name that cannot be importable anywhere, so the branch is reachable on ANY host.
 ABSENT_MODULE = "no_such_module_zzz_for_this_test"
-VENV = Path.home() / ".hermes-cortex" / "venv"
+VENV = Path.home() / ".steadfaste-fleet" / "venv"
 
 
 class NotRun(Exception):
@@ -146,7 +146,7 @@ def test_the_cortex_venv_is_preferred_over_the_hermes_venv():
     Guarded rather than constructed: the comparison needs BOTH venvs, so it skips on a host
     that has one.
     """
-    cortex = Path.home() / ".hermes-cortex" / "venv" / "bin" / "python3"
+    cortex = Path.home() / ".steadfaste-fleet" / "venv" / "bin" / "python3"
     hermes = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
     if not (cortex.exists() and hermes.exists()):
         print("  skip: needs both venvs to compare them (this host has one) — not a failure")

@@ -66,7 +66,7 @@ def test_a_worktree_of_the_cortex_repo_is_not_a_dev_repo(tmp_path, monkeypatch):
     Treating it as a dev repo warns about a block that belongs to the cortex repo (enforced by
     the repo check) and points the fix command at a session branch — measured 2026-10-14 with
     ~/hc-session2. Its `.git` FILE names the real gitdir."""
-    cortex = tmp_path / "hermes-cortex"
+    cortex = tmp_path / "steadfaste-fleet"
     (cortex / ".git" / "worktrees" / "wt").mkdir(parents=True)
     (cortex / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
     (cortex / "AGENTS.md").write_text("# cortex\n")
@@ -86,7 +86,7 @@ def test_a_worktree_of_the_cortex_repo_is_not_a_dev_repo(tmp_path, monkeypatch):
 
 def test_a_worktree_of_another_repo_is_still_a_dev_repo(tmp_path, monkeypatch):
     """The narrow rule must not swallow unrelated worktrees."""
-    cortex = tmp_path / "hermes-cortex"
+    cortex = tmp_path / "steadfaste-fleet"
     (cortex / ".git").mkdir(parents=True)
     (cortex / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
     (cortex / "AGENTS.md").write_text("# cortex\n")

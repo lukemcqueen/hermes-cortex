@@ -47,11 +47,11 @@ def _is_orchestrator() -> bool:
 
 
 def _repo() -> Path:
-    return Path(os.environ.get("CORTEX_REPO", Path.home() / "hermes-cortex"))
+    return Path(os.environ.get("CORTEX_REPO", Path.home() / "steadfaste-fleet"))
 
 
 def _deploy() -> Path:
-    return Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
+    return Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
 
 
 def _registered_schema() -> set:
@@ -136,7 +136,7 @@ def check_task_model_integrity(res: "Results") -> None:            # noqa: F821
                 res.add("Task schema version", "WARN",
                         f"the DB is at version {m.group(1)} but the repo has "
                         f"unapplied migration(s)",
-                        "Run: python3 ~/.hermes-cortex/scripts/task-db.py --apply-schema")
+                        "Run: python3 ~/.steadfaste-fleet/scripts/task-db.py --apply-schema")
             elif m:
                 res.add("Task schema version", "PASS",
                         f"DB at version {m.group(1)}, no pending migrations")

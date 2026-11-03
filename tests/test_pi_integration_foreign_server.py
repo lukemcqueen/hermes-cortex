@@ -54,7 +54,7 @@ def _path_without_pi() -> str:
 
 def _host(home: Path, *, foreign_script_missing: bool = False) -> Path:
     """A healthy Pi host (five cortex servers, correct identity) plus ONE foreign entry."""
-    dep = home / ".hermes-cortex"
+    dep = home / ".steadfaste-fleet"
     agent = home / ".pi" / "agent"
     (agent / "install" / "1.0.0-parent").mkdir(parents=True, exist_ok=True)
     (agent / "install" / "current-version").write_text("1.0.0\n")

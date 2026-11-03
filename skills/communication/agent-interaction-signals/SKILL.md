@@ -3,7 +3,7 @@ name: agent-interaction-signals
 description: "Use when user says stop/forget it. Stop, do not persist."
 version: 1.0.0
 category: communication
-author: Hermes Cortex (Esther)
+author: Steadfaste Fleet (Esther)
 license: MIT
 platforms: [linux, macos]
 ---

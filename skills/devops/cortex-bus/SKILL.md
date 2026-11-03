@@ -4,11 +4,11 @@ version: 1.3.0
 category: devops
 description: "Agent Bus (PGMQ) operations — queue inspection, DLQ management, message recovery, auth, and health diagnostics. Covers the Postgres-backed message queue that replaces the legacy file inbox."
 platforms: [linux]
-author: Hermes Cortex
+author: Steadfaste Fleet
 metadata:
   hermes:
     tags: [bus, pgmq, dlq, messaging, queue, postgres, recovery]
-    related_skills: [system-remediation, hermes-cortex-deployment]
+    related_skills: [system-remediation, steadfaste-fleet-deployment]
 ---
 
 # Agent Bus — PGMQ Operations
@@ -17,7 +17,7 @@ metadata:
 
 The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with `SKIP LOCKED`) running on port `:8903`, proxied through nginx. All inter-agent communication flows through it. It replaces the old file-based agent inbox.
 
-> **📐 Architecture reference:** `docs/reference/cortex-bus-config.md`, `docs/bus-architecture.md`, `docs/orch-bus-setup.md`, `docs/esther-bus-setup.md` — these live on the **orchestrator hosts' private repo** (moses/esther) and may NOT exist on this host or in the public repo. Check before opening: `ls ~/hermes-cortex/docs/reference/cortex-bus-config.md 2>/dev/null || echo "not on this host — request from orchestrator via inbox_orchestrator"`. This skill covers operational diagnostics only.
+> **📐 Architecture reference:** `docs/reference/cortex-bus-config.md`, `docs/bus-architecture.md`, `docs/orch-bus-setup.md`, `docs/esther-bus-setup.md` — these live on the **orchestrator hosts' private repo** (moses/esther) and may NOT exist on this host or in the public repo. Check before opening: `ls ~/steadfaste-fleet/docs/reference/cortex-bus-config.md 2>/dev/null || echo "not on this host — request from orchestrator via inbox_orchestrator"`. This skill covers operational diagnostics only.
 
 > **⚠️ Postgres access (post-2026-08-05 migration):** the `legacy Postgres`
 > container was replaced by **`mycortex-postgres`** (role/db **`mycortex`**,
@@ -27,8 +27,8 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 > with `FATAL: role "mycortex" does not exist`.
 
 Key architectural facts:
-- **Bus server** processes at `~/hermes-cortex/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
-- **Queue module** at `~/hermes-cortex/core/cortex_bus/queue.py`
+- **Bus server** processes at `~/steadfaste-fleet/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
+- **Queue module** at `~/steadfaste-fleet/core/cortex_bus/queue.py`
 - **Postgres schema** `bus.*` in the shared mycortex database (`:15432`)
 - **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
 - **Health check**: `curl http://127.0.0.1:8903/health` returns 200
@@ -369,7 +369,7 @@ Working ungated alternatives:
   without creds the dashboard shows `ERROR Cannot read properties of undefined
   (reading 'total')`, which is an auth artifact, NOT a bus fault. `/metrics` is 404.
 - Read-only primitives (`ls`, `cat`, `grep`, `find`, `git status/log/diff`) stay
-  lock-free for state files, e.g. `~/.hermes-cortex/state/bus-forwarder-state.json`
+  lock-free for state files, e.g. `~/.steadfaste-fleet/state/bus-forwarder-state.json`
   — check `last_run` and `total_local_to_peer`/`total_peer_to_local` to prove the
   LOCAL write path is alive.
 - **Do not `read_file` `bus-forwarder-state.json`** in full: it is ~770 KB of dedup
@@ -461,7 +461,7 @@ FROM bus.tokens ORDER BY agent_name;
 \""
 
 # Verify your .env token matches
-grep CORTEX_BUS_TOKEN ~/hermes-cortex/.env
+grep CORTEX_BUS_TOKEN ~/steadfaste-fleet/.env
 ```
 
 ### Bus Unreachable (Connection Refused)
@@ -513,11 +513,11 @@ exactly one rejection and zero outbox writes (US-001, 8/8 tests, commit
 - On **Moses**: peer = Esther = `CORTEX_BUS_FALLBACK_URL` (`:14004`)
 - `PEER_AUTH` falls back to `CORTEX_BASIC_AUTH` (nginx Basic creds — external peer = nginx, Bearer gets 401)
 
-**Verify:** run the forwarder; state file `~/.hermes-cortex/state/bus-forwarder-state.json` should show `peer_downed_at` cleared and "Peer recovered — drained N→local, N→peer".
+**Verify:** run the forwarder; state file `~/.steadfaste-fleet/state/bus-forwarder-state.json` should show `peer_downed_at` cleared and "Peer recovered — drained N→local, N→peer".
 
 **Config resolution (commit `c8c54b4b`, 2026-08-05):** the forwarder reads its
 config (LOCAL_URL/TOKEN, PEER_URL/AUTH/TOKEN) in **env → `.env` →
-`~/hermes-cortex/.env`** order. Before this fix it read `os.environ` ONLY
+`~/steadfaste-fleet/.env`** order. Before this fix it read `os.environ` ONLY
 despite the docstring claiming conf/.env fallback — so cron runs (no env)
 resolved empty `PEER_URL`/`PEER_AUTH`/`LOCAL_TOKEN` and the LOCAL→PEER drain
 failed silently (failover messages sat on the backup bus even after the primary
@@ -572,7 +572,7 @@ fleet view.
 
 **Inspect for duplicates** (per-agent, recent window):
 ```bash
-cd ~/hermes-cortex/ops/scripts && python3 -c "
+cd ~/steadfaste-fleet/ops/scripts && python3 -c "
 import sys, json; sys.path.insert(0, '.')
 from lib.cortex_bus import bus_archives
 for a in ('gisu','joseph','kustos','titus','moses'):
@@ -590,9 +590,9 @@ for a in ('gisu','joseph','kustos','titus','moses'):
 ## Token rotation (Bearer, `hbus_*`)
 
 - **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/cortex_bus/auth.py hash_token`).
-- **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/hermes-cortex/.env` AND `~/hermes-cortex/.env` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
+- **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/steadfaste-fleet/.env` AND `~/steadfaste-fleet/.env` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
 - **Verify Bearer on the LOCAL bus only.** Testing Bearer against the external nginx port (`:13004`/`:14004`) is meaningless — nginx validates Basic auth and sets `X-Forwarded-User`; a Bearer header sent through nginx is ignored (401 for missing Basic). A token that "401s" through nginx can still be LIVE on the local bus.
-- **Never delete `CORTEX_BUS_TOKEN` from `.env` because Bearer "401s through nginx".** The local raw bus (`127.0.0.1:8903`) REQUIRES that Bearer token; a 401 through nginx only proves the request lacked Basic auth. Removing it silently breaks every local-bus consumer — `orch-bus-forwarder` exits 1 with `LOCAL_URL and LOCAL_TOKEN required`, `orch-bus-inbox-relay` prints `cannot relay`, the confirmation-poller goes deaf. The systemd bridge runner (`cortex-bus-bridge-run.py`) returns 0 regardless of the script's exit code, so the timer shows `success` while the job crashes — the tells are a FROZEN `~/.hermes-cortex/state/bus-forwarder-state.json` `last_run` and a growing BACKUP-bus `inbox_orchestrator` depth (stale-mirror sweep stopped). Restore the token (verify against `127.0.0.1:8903` → 200), then re-run the forwarder.
+- **Never delete `CORTEX_BUS_TOKEN` from `.env` because Bearer "401s through nginx".** The local raw bus (`127.0.0.1:8903`) REQUIRES that Bearer token; a 401 through nginx only proves the request lacked Basic auth. Removing it silently breaks every local-bus consumer — `orch-bus-forwarder` exits 1 with `LOCAL_URL and LOCAL_TOKEN required`, `orch-bus-inbox-relay` prints `cannot relay`, the confirmation-poller goes deaf. The systemd bridge runner (`cortex-bus-bridge-run.py`) returns 0 regardless of the script's exit code, so the timer shows `success` while the job crashes — the tells are a FROZEN `~/.steadfaste-fleet/state/bus-forwarder-state.json` `last_run` and a growing BACKUP-bus `inbox_orchestrator` depth (stale-mirror sweep stopped). Restore the token (verify against `127.0.0.1:8903` → 200), then re-run the forwarder.
 - **Identity mapping pitfall:** a token found in another agent's docs/config may be a DIFFERENT agent's row — the esther setup guide carried MOSES' token (esther's `.env` seeded with it), so it authenticated as moses with full queue privileges. Before rotating, look up the identity by hash: `SELECT agent_name FROM bus.tokens WHERE token_hash='<pbkdf2(leaked)>' AND is_active=true`. Rotate the MAPPED row (or sync it to the owner's real token hash).
 - **Peer-bus consistency:** each orchestrator's Postgres is independent; if the peer's token row on your bus doesn't match his real token, sync it from his bus (`SELECT token_hash FROM bus.tokens WHERE agent_name='moses'` on his host, then UPDATE your row) so a leaked token dies on your bus too.
 - **Rotation order (configs first):** update consumer configs (`.env`, `.env`) BEFORE the token table so the forwarder/MCP never hit a dead token mid-rotation.
@@ -639,7 +639,7 @@ forwards Moses' messages, it authenticates as `esther` but sends `from: moses`.
 **Fix:** two changes in `orch-bus-forwarder.py`:
 
 1. **Resolve `LOCAL_AGENT` from `agent.env`** at module load — reads
-   `~/.hermes-cortex/agent.env` for `AGENT_NAME=`. Falls back to `"unknown"`
+   `~/.steadfaste-fleet/agent.env` for `AGENT_NAME=`. Falls back to `"unknown"`
    if the file is missing.
 
 2. **Before `_send_bus()`**, rewrite `body["from"]` to `LOCAL_AGENT` and
@@ -731,7 +731,7 @@ WHERE agent_name = '<agent>' RETURNING agent_name, expires_at;
 Verify: Bearer `GET /api/pgmq/queues` → 200, then run the deployed forwarder via
 `cortex-bus-bridge-run.py --name orch-bus-forwarder-sync --script
 orch-bus-forwarder.py --deliver local` and confirm `total_local_to_peer`
-advances in `~/.hermes-cortex/state/bus-forwarder-state.json` (proves the LOCAL
+advances in `~/.steadfaste-fleet/state/bus-forwarder-state.json` (proves the LOCAL
 write path, not just the DB row). Real fix for the class: add
 `expires_at = now() + INTERVAL '90 days'` to the `ON CONFLICT` clause, and
 schedule `token-expiry-alert.py` daily.

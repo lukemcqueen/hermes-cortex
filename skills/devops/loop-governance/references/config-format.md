@@ -72,10 +72,10 @@ Safety bounds for automatic config changes from the weekly evaluation.
 loop-config
 
 # View as JSON
-python3 ~/.hermes-cortex/tools/loop-governance/loop_config.py --show
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_config.py --show
 
 # Set a value
-python3 ~/.hermes-cortex/tools/loop-governance/loop_config.py --set weights.completeness 0.45
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_config.py --set weights.completeness 0.45
 
 # Or edit directly
 vim ~/.hermes/data/loop-governance-config.json

@@ -15,16 +15,16 @@ HOME = Path.home()
 IS_MAC = sys.platform == "darwin"
 IS_LINUX = sys.platform == "linux"
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", HOME / ".hermes"))
-CORTEX_HOME = Path(os.environ.get("HERMES_CORTEX_HOME", HOME / ".hermes-cortex"))
+CORTEX_HOME = Path(os.environ.get("HERMES_CORTEX_HOME", HOME / ".steadfaste-fleet"))
 JOBS_FILE = HERMES_HOME / "cron" / "jobs.json"
-CORTEX_ENV = HOME / "hermes-cortex" / ".env"
+CORTEX_ENV = HOME / "steadfaste-fleet" / ".env"
 LEGACY_MODELS_ENV = HERMES_HOME / "models.env"
 CONFIG_FILE = HERMES_HOME / "config.yaml"
 
 # ── Cortex repo discovery ───────────────────────────────────────
 CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", ""))
 if not CORTEX_REPO.is_dir() or not (CORTEX_REPO / "AGENTS.md").exists():
-    for candidate in [HOME / "hermes-cortex", HOME / "src" / "hermes-cortex"]:
+    for candidate in [HOME / "steadfaste-fleet", HOME / "src" / "steadfaste-fleet"]:
         if candidate.is_dir() and (candidate / "AGENTS.md").exists():
             CORTEX_REPO = candidate
             break
@@ -73,7 +73,7 @@ def resolve_external_base() -> str:
         return base.rstrip("/")
 
     # Also check .env file (sourced by cortex-update.sh but not always in env)
-    _env_file = Path.home() / "hermes-cortex" / ".env"
+    _env_file = Path.home() / "steadfaste-fleet" / ".env"
     try:
         for _line in _env_file.read_text().splitlines():
             _line = _line.strip()
@@ -92,7 +92,7 @@ def resolve_external_base() -> str:
             if parsed.scheme and parsed.hostname:
                 return f"{parsed.scheme}://{parsed.hostname}"
 
-    bus_conf = Path.home() / "hermes-cortex" / ".env"
+    bus_conf = Path.home() / "steadfaste-fleet" / ".env"
     if bus_conf.exists():
         try:
             for line in bus_conf.read_text().splitlines():
@@ -113,7 +113,7 @@ def resolve_external_base() -> str:
 EXTERNAL_BASE = resolve_external_base()
 
 # ── Port prefix ─────────────────────────────────────────────────
-_PORT_PREFIX_ENV = Path.home() / "hermes-cortex" / ".env"
+_PORT_PREFIX_ENV = Path.home() / "steadfaste-fleet" / ".env"
 _PORT_PREFIX = "13"
 try:
     for _line in _PORT_PREFIX_ENV.read_text().split("\n"):
@@ -159,12 +159,12 @@ CORE_FOOTPRINT = [
     (".hermes/cron", "d", "Cron jobs directory"),
     (".hermes/skills", "d", "Skills directory"),
     (".hermes/config.yaml", "f", "Hermes configuration"),
-    (".hermes-cortex", "d", "Cortex home directory"),
-    (".hermes-cortex/scripts", "d", "Deployed scripts"),
-    (".hermes-cortex/sessions", "d", "Session archive"),
-    (".hermes-cortex/hooks", "d", "Shared hooks directory"),
-    (".hermes-cortex/state", "d", "State directory"),
-    (".hermes-cortex/memory", "d", "Agent memory directory"),
+    (".steadfaste-fleet", "d", "Cortex home directory"),
+    (".steadfaste-fleet/scripts", "d", "Deployed scripts"),
+    (".steadfaste-fleet/sessions", "d", "Session archive"),
+    (".steadfaste-fleet/hooks", "d", "Shared hooks directory"),
+    (".steadfaste-fleet/state", "d", "State directory"),
+    (".steadfaste-fleet/memory", "d", "Agent memory directory"),
     (".local/bin/hermes", "f", "Hermes CLI binary"),
     ("brain", "d", "Knowledge brain root"),
     ("brain/lessons", "d", "Lessons directory"),
@@ -174,7 +174,7 @@ CORE_FOOTPRINT = [
 REPO_OWNERS_PATH = CORTEX_HOME / "config" / "repo-owners.yaml"
 REPO_OWNERS_TEMPLATE = CORTEX_REPO / "docs" / "templates" / "repo-owners.yaml"
 BUS_CONFIG_PATHS = [
-    HOME / "hermes-cortex" / ".env",
+    HOME / "steadfaste-fleet" / ".env",
 ]
 
 

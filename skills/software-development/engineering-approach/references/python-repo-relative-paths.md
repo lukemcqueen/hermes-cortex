@@ -11,7 +11,7 @@ from pathlib import Path
 HOME = Path.home()
 
 # BAD — only works on Luke's machine layout
-OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "hermes-cortex" / "src" / "offline" / "offline_knowledge.py"
+OFFLINE_KNOWLEDGE = HOME / "Developer" / "AI" / "steadfaste-fleet" / "src" / "offline" / "offline_knowledge.py"
 ```
 
 Symptoms: the script runs fine for the author but breaks for anyone else

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The doctor must FAIL on a repo-local .hermes-cortex/ — both ways (no pytest).
+"""The doctor must FAIL on a repo-local .steadfaste-fleet/ — both ways (no pytest).
 
     python3 tests/test_repo_local_cortex_dir_check.py     # exit 0 = pass
 
@@ -48,21 +48,21 @@ def main():
         mod.CORTEX_REPO = tmp
 
         res = Res(); mod.check_repo_local_cortex_dir(res)
-        s, d = status_of(res, "Repo-local .hermes-cortex")
+        s, d = status_of(res, "Repo-local .steadfaste-fleet")
         ok = (s == "PASS")
         print(f"{'PASS' if ok else 'FAIL'}  absent directory -> {s}: {d}")
         if not ok: failures.append("absent-case")
 
-        (tmp / ".hermes-cortex").mkdir()
+        (tmp / ".steadfaste-fleet").mkdir()
         res = Res(); mod.check_repo_local_cortex_dir(res)
-        s, d = status_of(res, "Repo-local .hermes-cortex")
+        s, d = status_of(res, "Repo-local .steadfaste-fleet")
         ok = (s == "FAIL")
         print(f"{'PASS' if ok else 'FAIL'}  empty directory -> {s}: {d}")
         if not ok: failures.append("present-case")
 
-        (tmp / ".hermes-cortex" / ".governance-lock").write_text("{}")
+        (tmp / ".steadfaste-fleet" / ".governance-lock").write_text("{}")
         res = Res(); mod.check_repo_local_cortex_dir(res)
-        s, d = status_of(res, "Repo-local .hermes-cortex")
+        s, d = status_of(res, "Repo-local .steadfaste-fleet")
         ok = (s == "FAIL" and "governance-lock" in (d or ""))
         print(f"{'PASS' if ok else 'FAIL'}  lock marker named -> {s}: {d}")
         if not ok: failures.append("marker-case")

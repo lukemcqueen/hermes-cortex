@@ -3,7 +3,7 @@
 ## Self-Referencing Symlinks from rsync -a
 
 **Problem:** After cortex-update.sh --force-all deploys scripts to
-~/.hermes-cortex/scripts/, syncing to ~/.hermes/scripts/ with rsync -a
+~/.steadfaste-fleet/scripts/, syncing to ~/.hermes/scripts/ with rsync -a
 preserves symlinks as-is. When the symlink target path doesn't resolve
 correctly, it creates self-referencing symlinks like
 hermes_tz.py pointing to itself. Python errors with
@@ -15,10 +15,10 @@ ModuleNotFoundError.
   find ~/.hermes/scripts/ -type l -ls     # all symlinks
 
 **Fix:**
-  cp -rL ~/.hermes-cortex/scripts/ ~/.hermes/scripts/  # dereference
+  cp -rL ~/.steadfaste-fleet/scripts/ ~/.hermes/scripts/  # dereference
   # Or fix individual files:
   rm -f ~/.hermes/scripts/hermes_tz.py
-  cp ~/hermes-cortex/ops/scripts/hermes_tz.py ~/.hermes/scripts/
+  cp ~/steadfaste-fleet/ops/scripts/hermes_tz.py ~/.hermes/scripts/
   # Same for hermes_models.py, platform_utils.py, hermes_paths.py
 
 ## Python ModuleNotFoundError in no_agent Cron Scripts

@@ -49,7 +49,7 @@ judges. Three facts, all from the shipped code:
    budget only.
 
 3. **The volume is pro-sized.** `blob_reviews` in the live store
-   (`~/.hermes-cortex/data/loop-governance.db`) holds **940 `deepseek/deepseek-v4-pro` verdict rows**
+   (`~/.steadfaste-fleet/data/loop-governance.db`) holds **940 `deepseek/deepseek-v4-pro` verdict rows**
    since 2026-10-18 (the store's recorded model is pro on every one). Daily cycle creation over the
    same 14-day window ranged **5–286 per day**: the two incident days of the review-cost
    investigation — 10-18 (286) and 10-17 (285) — were the outliers, and a typical working day was

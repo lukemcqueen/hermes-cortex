@@ -78,12 +78,12 @@ to your orchestrator (Moses/Esther). Never hand-write a lock file.
 
 1. Cache search — `mcp__review__cache_search(query="<the user's request>")`
 2. Begin governance — `mcp__loop_governance__begin_change(task_id="<short-name>", description="<what you are about to do>")` — mandatory before any write; write tools block without it.
-3. Load always skills — `skill_view(name)` for every skill in the always section of `~/.hermes-cortex/skills.yaml` (7 skills; do all 7 in one turn).
+3. Load always skills — `skill_view(name)` for every skill in the always section of `~/.steadfaste-fleet/skills.yaml` (7 skills; do all 7 in one turn).
 4. Load domain skills — run survey-before-action Phase 0a (operation × extension mapping); load every matching skill; discovery via skills_list(category=<domain>).
 5. Choose reasoning pattern — from `agent-flow`'s table (Plan-Execute-Verify default; ReAct for debug; Reflexion for quality; Tree of Thoughts for trade-offs). State it explicitly.
 6. Classify — match the request against agent-flow's 12 workflow patterns (sets toolset + output format).
 7. Load on-task skills — from the on_task manifest section, then skills_list() for the category.
-8. Restore todos — ~/.hermes-cortex/scripts/task-db.py pending → todo(todos=<items>, merge=true)
+8. Restore todos — ~/.steadfaste-fleet/scripts/task-db.py pending → todo(todos=<items>, merge=true)
 9. Survey — run `survey-before-action`'s checklist before creating/writing anything.
 10. Work — execute using the loaded skills.
 11. Reflexion — reflexion-check EIGHT-question audit; if LOW/ZERO, fix before delivering.
@@ -92,9 +92,9 @@ to your orchestrator (Moses/Esther). Never hand-write a lock file.
 
 ## Marker Mechanics
 
-The enforcer auto-creates `~/.hermes-cortex/state/skills-loaded/<session-id>` once
+The enforcer auto-creates `~/.steadfaste-fleet/state/skills-loaded/<session-id>` once
 all 7 always-skills have been loaded via real `skill_view()` calls in THIS session
-(`~/.hermes-cortex/state/skills-state/<session-id>.json` records which). The loaded
+(`~/.steadfaste-fleet/state/skills-state/<session-id>.json` records which). The loaded
 set is per-session and **accumulates across turns; batched loads in a single turn
 count too**. The marker appears the moment the 7th one lands — any order, any turn,
 batched or serial. Never touch the marker yourself: a bare file (or a directly
@@ -107,7 +107,7 @@ If write tools block with "session skills not fully loaded":
   skills whose CONTENT changed need re-loading, and the block message names them
   (`skill_view(name='<skill>')` per line) — credit is kept per skill (content-hashed
   since 2026-09-23), so a deploy that rewrote identical files costs you nothing. The
-  per-session credit journal (`~/.hermes-cortex/state/skills-credit/<session-id>.json`)
+  per-session credit journal (`~/.steadfaste-fleet/state/skills-credit/<session-id>.json`)
   rehydrates your loaded-set after a plugin reload.
 - On-demand skill credit works the same way: a domain skill (`codebase-design`,
   `documentation-auditing`, `cron-job-management`, …) or `adversarial-verifier` only

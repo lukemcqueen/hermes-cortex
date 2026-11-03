@@ -60,7 +60,7 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
   "SELECT value FROM system.metrics WHERE metric='TotalMergeFailures'"
 
 # 8. Reset watchdog state file
-echo "0" > ~/.hermes-cortex/state/langfuse-ch-merge.state
+echo "0" > ~/.steadfaste-fleet/state/langfuse-ch-merge.state
 ```
 
 ## Verification

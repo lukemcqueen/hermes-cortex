@@ -12,9 +12,9 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="$REPO/docs/evidence/cost4-host-cost-adapter"
 OUT="$OUTDIR/deployed-check.txt"
-PY="$HOME/.hermes-cortex/venv/bin/python3"
+PY="$HOME/.steadfaste-fleet/venv/bin/python3"
 REL="ops/scripts/manage/cron-cost-metrics.py"
-DEPLOYED="$HOME/.hermes-cortex/scripts/cron-cost-metrics.py"
+DEPLOYED="$HOME/.steadfaste-fleet/scripts/cron-cost-metrics.py"
 SCRATCH="$(mktemp -d "$HOME/.hermes/cache/scratch/cost4-dep-XXXXXX")"
 
 mkdir -p "$OUTDIR"
@@ -58,7 +58,7 @@ PYEOF
 say "rc=$? (0 = the running copy IS this change)"
 
 rule "2. the DEPLOYED copy, --json-summary, on this host's live log"
-say "\$ python3 ~/.hermes-cortex/scripts/cron-cost-metrics.py --json-summary --since 2026-10-06"
+say "\$ python3 ~/.steadfaste-fleet/scripts/cron-cost-metrics.py --json-summary --since 2026-10-06"
 "$PY" "$DEPLOYED" --json-summary --since 2026-10-06 >"$SCRATCH/dep.json" 2>"$SCRATCH/dep.err"
 say "rc=$?"
 say "stderr bytes: $(wc -c < "$SCRATCH/dep.err")   stdout bytes: $(wc -c < "$SCRATCH/dep.json")"

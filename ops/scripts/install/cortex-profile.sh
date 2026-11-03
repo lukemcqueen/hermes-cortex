@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Project Profile Creator
+#  Steadfaste Fleet — Project Profile Creator
 #  Creates a hermetic project profile with isolated brain,
 #  Hermes profile, and mycortex source.
 #
@@ -17,7 +17,7 @@ PROJECT_PATH="${2:-${DEV_DIR:-${HOME}/Developer/AI}/${PROJECT_NAME}}"
 BRAIN_BASE="${HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 PROFILES_DIR="${HERMES_HOME}/profiles"
-MYCORTEX_CLI="${HOME}/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="${HOME}/.steadfaste-fleet/scripts/mycortex"
 
 # Resolve absolute path for PROJECT_PATH
 PROJECT_PATH="$(cd "$(dirname "$PROJECT_PATH")" 2>/dev/null && echo "$PWD/$(basename "$PROJECT_PATH")")"

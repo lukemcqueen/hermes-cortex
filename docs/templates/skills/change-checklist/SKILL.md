@@ -3,7 +3,7 @@ name: change-checklist-template
 version: 1.0.0
 category: governance
 description: "Mandatory verification checklist that every agent MUST load before closing a governance cycle (end_change). Referenced by AGENTS.md as a pre-close requirement."
-author: Titus (Hermes Cortex)
+author: Titus (Steadfaste Fleet)
 license: MIT
 metadata:
   hermes:
@@ -75,16 +75,16 @@ metadata:
 
 ## If Scoring Is Blocked
 
-1. Run `bash ~/.hermes-cortex/tools/loop-governance/verify.sh` if it exists, or `python3 -c "from loop_db import LoopDB; db = LoopDB(); print(db.get_summary_stats())"`
+1. Run `bash ~/.steadfaste-fleet/tools/loop-governance/verify.sh` if it exists, or `python3 -c "from loop_db import LoopDB; db = LoopDB(); print(db.get_summary_stats())"`
 2. If fix takes > 2 min, record manually later
 3. **Never skip entirely** — governance-auditor cron flags unscored changes
 4. `SKIP_SCORE=1` has been **removed** — the bypass no longer exists. `git commit --no-verify` is a logged, audited bypass — fix the blocker and commit through the hook instead.
 
 ## Install
 
-To install this skill (after cloning hermes-cortex):
+To install this skill (after cloning steadfaste-fleet):
 ```bash
 mkdir -p ~/.hermes/skills/governance
-cp -r ~/hermes-cortex/docs/templates/skills/change-checklist ~/.hermes/skills/governance/
+cp -r ~/steadfaste-fleet/docs/templates/skills/change-checklist ~/.hermes/skills/governance/
 ```
 Then `/reset` to pick it up, or load with `skill_view(name="change-checklist")`.

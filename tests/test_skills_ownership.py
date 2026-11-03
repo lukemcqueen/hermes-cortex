@@ -2,7 +2,7 @@
 """Tests for skills-tree ownership inversion (cycle 13491).
 
 The migration tool runs against FABRICATED trees only — never the live
-~/.hermes or ~/.hermes-cortex paths. Every case asserts that no tree is
+~/.hermes or ~/.steadfaste-fleet paths. Every case asserts that no tree is
 DELETED: the non-winner is preserved by rename.
 
 Exit-code contract under test:

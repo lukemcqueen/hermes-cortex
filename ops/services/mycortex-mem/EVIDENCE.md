@@ -18,7 +18,7 @@ f7eee0669c7a645ffb70225e1fb57d8903f924f0742a8fc387126130accd629e  ops/services/m
 ```
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: $HOME/hermes-cortex
+rootdir: $HOME/steadfaste-fleet
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 5 items

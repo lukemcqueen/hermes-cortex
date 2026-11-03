@@ -60,7 +60,7 @@ ORPHAN_REAPER_TAG = "[orphan-reaper]"
 
 # The ONE canonical cortex env (gitignored). Module-level so tests can
 # redirect it: monkeypatch.setattr(checks, "CORTEX_ENV_FILE", tmp_path / ".env").
-CORTEX_ENV_FILE = Path.home() / "hermes-cortex" / ".env"
+CORTEX_ENV_FILE = Path.home() / "steadfaste-fleet" / ".env"
 
 
 def _read_config_from_bus_conf(key: str) -> str:
@@ -133,7 +133,7 @@ def check_repo(res: "Results") -> None:
   if not CORTEX_REPO.is_dir():
     res.add(
       "Repo exists", "FAIL", f"Not found at {CORTEX_REPO}",
-      "Set CORTEX_REPO env var or clone to ~/hermes-cortex",
+      "Set CORTEX_REPO env var or clone to ~/steadfaste-fleet",
     )
     return
   if not (CORTEX_REPO / ".git").is_dir():
@@ -228,19 +228,19 @@ def check_repo(res: "Results") -> None:
   hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
   if not hermes_agents.exists():
     res.add("AGENTS.md (~/.hermes)", "FAIL", "~/.hermes/AGENTS.md missing",
-        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Merges local-only content — check diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md before overwriting")
+        "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Merges local-only content — check diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md before overwriting")
     return
   # Size check: warn if >15K, fail if >20K (like SOUL.md does)
   agents_size = hermes_agents.stat().st_size
   if agents_size > 20480:
     res.add("AGENTS.md size", "FAIL",
         f"{agents_size/1024:.0f}K — exceeds 20K maximum",
-        "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
+        "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
     return
   elif agents_size > 15360:
     res.add("AGENTS.md size", "WARN",
         f"{agents_size/1024:.0f}K — target <15K for optimal loading",
-        "Run: diff ~/.hermes/AGENTS.md ~/hermes-cortex/AGENTS.md | head -50  then cp if safe  (⚠️  preserves customizations)")
+        "Run: diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md | head -50  then cp if safe  (⚠️  preserves customizations)")
   # Content check: extract all bold markers for comparison (like SOUL.md does)
   # ~/.hermes/AGENTS.md guides agent behavior — when working in this repo,
   # it should have the same content rules as the repo copy.
@@ -258,20 +258,20 @@ def check_repo(res: "Results") -> None:
       res.add("AGENTS.md sync", "FAIL",
           f"Local missing {len(missing)} content markers from template — "
           f"e.g. '{list(sorted(missing))[:3]}'",
-          "REQUIRED: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
+          "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
     else:
       res.add("AGENTS.md sync", "PASS")
 
   # Private repo migration check
-  _private = HOME / "hermes-cortex-private"
+  _private = HOME / "steadfaste-fleet-private"
   _agent_inbox = HOME / "agent-inbox-private"
   if _private.is_dir():
     if (_private / ".git").is_dir():
       res.add("Private repo", "WARN",
-          "~/hermes-cortex-private still has .git — migrate to ~/private-data/",
-          "mv ~/hermes-cortex-private ~/private-data && rm -rf ~/private-data/.git")
+          "~/steadfaste-fleet-private still has .git — migrate to ~/private-data/",
+          "mv ~/steadfaste-fleet-private ~/private-data && rm -rf ~/private-data/.git")
     else:
-      res.add("Private repo", "INFO", "~/hermes-cortex-private migrated (no .git)")
+      res.add("Private repo", "INFO", "~/steadfaste-fleet-private migrated (no .git)")
   if _agent_inbox.is_dir():
     res.add("Private repo", "WARN",
         "~/agent-inbox-private still exists — file-based inbox is dead",
@@ -318,7 +318,7 @@ def check_deployed_gate_smoke(res: "Results") -> None:
       except _json.JSONDecodeError:
         res.add("Deployed gate smoke", "FAIL",
                 "deployed verifier JSON output unparseable",
-                "Check: python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file X --level A2 --json")
+                "Check: python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file X --level A2 --json")
         return
       patterns = [f.get("pattern") for f in data.get("findings", [])]
       if "malformed-toon" in patterns:
@@ -328,7 +328,7 @@ def check_deployed_gate_smoke(res: "Results") -> None:
         res.add("Deployed gate smoke", "FAIL",
                 "deployed verifier did NOT flag malformed TOON — TOON check "
                 "silently disabled (lib resolution broken?)",
-                "Check ~/.hermes-cortex/scripts/lib/toon_parse.py exists; "
+                "Check ~/.steadfaste-fleet/scripts/lib/toon_parse.py exists; "
                 "adversarial-verify.py lib path must resolve in deployed layout")
     finally:
       tmp_fixture.unlink(missing_ok=True)
@@ -399,7 +399,7 @@ def check_adversarial_review(res: "Results") -> None:
             f"(exit {_se.code}) — usually the 'mcp' package is missing from "
             "this interpreter; review helpers unverifiable here",
             "Run the doctor with the cortex venv python "
-            "(~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/scripts/cortex-doctor.py) "
+            "(~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py) "
             "so the MCP SDK imports and the gate can be verified")
   except Exception as _e:
     res.add("Self-adversarial review gate", "FAIL",
@@ -449,7 +449,7 @@ def check_stale_loop_gov_daemon(res: "Results") -> None:
 
     The daemon loads loop-gov-mcp.py ONCE at startup and keeps running that code
     until a real restart — so a deploy that replaces the module (cortex-update
-    registers mcp-servers/loop-gov-mcp.py -> ~/.hermes-cortex/tools/...) leaves the
+    registers mcp-servers/loop-gov-mcp.py -> ~/.steadfaste-fleet/tools/...) leaves the
     daemon serving the OLD logic from the file that is now newer on disk. Measured
     symptom (Titus/pi, 2026-10-14, recurring): feedback_accept writes MOVE_ON and
     reports success, but the first end_change() still reads the cycle as PENDING —
@@ -514,7 +514,7 @@ def check_stale_loop_gov_daemon(res: "Results") -> None:
     import json as _json
     stamp = {}
     try:
-        stamp = _json.loads((Path.home() / ".hermes-cortex" / "state"
+        stamp = _json.loads((Path.home() / ".steadfaste-fleet" / "state"
                              / "loop-gov-daemon.json").read_text())
     except Exception:
         stamp = {}
@@ -567,7 +567,7 @@ def check_task_id_hygiene(res: "Results") -> None:
   'orch-backlog-driver run' is untidy, but it is not this defect and no tool can
   safely rewrite it.
   """
-  db = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+  db = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
   if not db.exists():
     res.add("Task-id hygiene", "SKIP", f"no loop-governance ledger at {db}")
     return
@@ -828,7 +828,7 @@ def check_dev_repo_claude(res: "Results") -> None:
   Luke 2026-08-24: titusclaude (Claude Code agent) runs under the SAME
   governance as Hermes agents. CLAUDE.md is Claude Code's instruction file
   (the equivalent of AGENTS.md) — it carries the governance contract. Claude
-  usually works on NON-hermes-cortex repos, so this check scans dev repos
+  usually works on NON-steadfaste-fleet repos, so this check scans dev repos
   (like check_dev_repo_agents) and warns when CLAUDE.md is missing.
   """
   # Only meaningful if a Claude agent is configured on this host.
@@ -897,14 +897,14 @@ def check_dev_repo_claude(res: "Results") -> None:
     res.add("CLAUDE.md (dev repos)", "WARN",
         f"{len(missing)} dev repo(s) missing CLAUDE.md while a Claude agent is configured: "
         + ", ".join(missing[:6]),
-        "REQUIRED: copy ~/hermes-cortex/CLAUDE.md to each repo and adapt the "
+        "REQUIRED: copy ~/steadfaste-fleet/CLAUDE.md to each repo and adapt the "
         "project-specific parts. CLAUDE.md is Claude Code's governance "
         "contract — without it titusclaude is ungoverned in that repo.")
   elif drifted:
     res.add("CLAUDE.md (dev repos)", "WARN",
         f"{len(drifted)} dev repo(s) have a stale CLAUDE.md missing the fleet's "
         "Excellence core-value section: " + ", ".join(drifted[:6]),
-        "REQUIRED: reconcile ~/hermes-cortex/CLAUDE.md into each repo (merge the "
+        "REQUIRED: reconcile ~/steadfaste-fleet/CLAUDE.md into each repo (merge the "
         "Excellence — Core Value, Every Action section). This is a WARN — repo "
         "CLAUDE.md is project-adapted, never auto-overwritten.")
   else:
@@ -1018,7 +1018,7 @@ def check_soul_sync(res):
   hermes_soul = Path.home() / ".hermes" / "SOUL.md"
   if not hermes_soul.exists():
     res.add("SOUL.md (~/.hermes)", "FAIL", "not found at ~/.hermes/SOUL.md",
-        "REQUIRED: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md")
+        "REQUIRED: cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md")
     return
 
   # Size check: warn if >15K, fail if >20K
@@ -1055,7 +1055,7 @@ def check_soul_sync(res):
   if missing_canonical:
     res.add("SOUL.md canonical 12 (~/.hermes)", "FAIL",
         f"Missing {len(missing_canonical)} canonical principle(s): {', '.join(sorted(missing_canonical)[:5])}",
-        "REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+        "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
   else:
     res.add("SOUL.md canonical 12 (~/.hermes)", "PASS",
         f"all {len(template_titles)} canonical principles present")
@@ -1101,7 +1101,7 @@ def check_soul_sync(res):
     missing = len(template_markers) - len(agent_markers)
     res.add("SOUL.md template sync (~/.hermes)", "FAIL",
         f"Template has {len(template_markers)} trait markers, local has {len(agent_markers)} — {missing} missing",
-        "REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+        "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
   elif len(agent_markers) < len(effective_template):
     missing_markers = effective_template - agent_markers
     critical_missing = {m for m in missing_markers
@@ -1110,7 +1110,7 @@ def check_soul_sync(res):
     if critical_missing:
       res.add("SOUL.md template sync (~/.hermes)", "FAIL",
           f"Missing {len(critical_missing)} trait markers: {', '.join(sorted(critical_missing)[:5])}",
-          "REQUIRED: Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py")
+          "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
     else:
       res.add("SOUL.md template sync (~/.hermes)", "PASS")
   else:
@@ -1171,7 +1171,7 @@ def check_user_template(res):
   if template_newer:
     res.add("USER.md template (~/.hermes)", "WARN",
         "USER.md template changed — review your live copy",
-        "REQUIRED: diff ~/hermes-cortex/docs/templates/USER.seed.md ~/.hermes/memories/USER.md "
+        "REQUIRED: diff ~/steadfaste-fleet/docs/templates/USER.seed.md ~/.hermes/memories/USER.md "
         "and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; "
         "engineering standards (excellence, testing) now live in AGENTS.md.")
   else:
@@ -1185,7 +1185,7 @@ def check_skills(res):
 
   if not skills_yaml.exists():
     res.add("Skills manifest", "FAIL", f"Not found at {skills_yaml}",
-        "Run: cp skills.yaml ~/.hermes-cortex/skills.yaml")
+        "Run: cp skills.yaml ~/.steadfaste-fleet/skills.yaml")
     return
 
   try:
@@ -1308,7 +1308,7 @@ def check_skills(res):
 # to inbox_orchestrator).
 STALE_CRON_PROMPT_PATTERNS = [
   (r"contact-moses", "renamed to contact-orchestrator.sh"),
-  (r"inbox_moses", "agents send to inbox_orchestrator (role matrix: private repo hermes-cortex-private/docs/bus-architecture.md)"),
+  (r"inbox_moses", "agents send to inbox_orchestrator (role matrix: private repo steadfaste-fleet-private/docs/bus-architecture.md)"),
   (r"send to Moses", "agents send to the orchestrator inbox"),
   (r"message Moses", "agents message the orchestrator"),
   (r"reach Moses", "agents reach the orchestrator"),
@@ -1569,7 +1569,7 @@ def check_crons(res):
       for name in display:
         suggestion = find_similar_name(name, expected_set)
         status = "WARN" if suggestion else "INFO"
-        detail = f"did you mean '{suggestion}'?" if suggestion else "not part of Hermes Cortex"
+        detail = f"did you mean '{suggestion}'?" if suggestion else "not part of Steadfaste Fleet"
         res.add(f"Extra cron ({name})", status, detail)
     else:
       near_misses = [(n, find_similar_name(n, expected_set)) for n in display[:10]]
@@ -1643,7 +1643,7 @@ def _check_manifest_drift(res):
     drifted, missing, orphans = _mod.check_drift()
   except Exception as _e:
     res.add("Cron manifest drift", "WARN", f"manifest check failed: {_e}",
-        "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --check")
+        "Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cron_manifest.py --check")
     return
 
   if not drifted and not missing:
@@ -1653,15 +1653,15 @@ def _check_manifest_drift(res):
     for d in drifted[:5]:
       res.add(f"Cron manifest drift ({d['name']})", "FAIL",
           "; ".join(d["diffs"]),
-          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+          "Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cron_manifest.py --repair")
     if len(drifted) > 5:
       res.add(f"Cron manifest drift ({len(drifted)} total)", "FAIL",
           f"{len(drifted)} crons drifted from manifest",
-          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+          "Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cron_manifest.py --repair")
     for m in missing[:3]:
       res.add(f"Cron manifest missing ({m.get('name')})", "FAIL",
           "declared in manifest, absent from live jobs",
-          "Run: python3 ~/hermes-cortex/ops/scripts/manage/cron_manifest.py --repair")
+          "Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cron_manifest.py --repair")
 
 
 def _bridge_unit_names() -> set:
@@ -1794,7 +1794,7 @@ def check_bridge_unit_killmode(res) -> None:
             f"{len(missing)} enabled bridge unit(s) leave KillMode at the default "
             f"control-group, so a tick's cgroup teardown kills any worker it "
             f"detached: {', '.join(missing[:5])}" + (" …" if len(missing) > 5 else ""),
-            "Repair: python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py "
+            "Repair: python3 ~/steadfaste-fleet/ops/scripts/cortex-bus-bridge-generate.py "
             "--repair && systemctl --user daemon-reload")
     else:
         res.add("Bridge unit kill mode", "PASS",
@@ -1889,18 +1889,18 @@ def check_scripts(res):
 
 def check_cron_runtime_scripts(res):
   """Cron runtime path integrity: ~/.hermes/scripts must resolve to the SAME
-  tree as ~/.hermes-cortex/scripts (cortex-update deploy target).
+  tree as ~/.steadfaste-fleet/scripts (cortex-update deploy target).
 
   The cron scheduler resolves every no_agent job's script against
   HERMES_HOME/scripts (cron/scheduler.py enforces containment there). If
   that path is a SEPARATE real directory instead of a symlink (or an
   equivalent resolution), the scheduler executes stale deployed files and
   `check_deploy_checksums` still reports PASS (it only checks
-  ~/.hermes-cortex/scripts). Detected 2026-08-02: watchdog ran a frozen
+  ~/.steadfaste-fleet/scripts). Detected 2026-08-02: watchdog ran a frozen
   Jul-31 copy with legacy brain checks after the legacy → mycortex migration.
 
   Expected end state (cortex-update.sh): ~/.hermes/scripts is a symlink to
-  ~/.hermes-cortex/scripts, OR both resolve to the same directory.
+  ~/.steadfaste-fleet/scripts, OR both resolve to the same directory.
   """
   runtime = HERMES_HOME / "scripts"
   deploy = CORTEX_HOME / "scripts"
@@ -1910,7 +1910,7 @@ def check_cron_runtime_scripts(res):
     deploy_resolved = deploy.resolve()
   except OSError:
     res.add("Cron runtime scripts", "FAIL", "cannot resolve script dirs",
-        "Check permissions on ~/.hermes and ~/.hermes-cortex")
+        "Check permissions on ~/.hermes and ~/.steadfaste-fleet")
     return
 
   if not runtime.exists():
@@ -2259,11 +2259,11 @@ def _env_file_value(key: str) -> str:
   """Read one KEY=value from the agent env file (no sourcing, no code execution).
 
   Precedence matches agent-push-metrics.sh: the ONE canonical cortex env
-  (~/hermes-cortex/.env), then the legacy ~/.hermes-cortex/hermes-cortex.env.
-  The deploy dir (~/.hermes-cortex) holds no .env — it is a deployed path.
+  (~/steadfaste-fleet/.env), then the legacy ~/.steadfaste-fleet/steadfaste-fleet.env.
+  The deploy dir (~/.steadfaste-fleet) holds no .env — it is a deployed path.
   """
   for path in (CORTEX_ENV_FILE,
-               CORTEX_HOME / "hermes-cortex.env"):
+               CORTEX_HOME / "steadfaste-fleet.env"):
     try:
       if not path.is_file():
         continue
@@ -2538,7 +2538,7 @@ def check_services(res):
       val = os.environ.get(key, "")
       if val:
         return val
-      conf = Path.home() / "hermes-cortex" / ".env"
+      conf = Path.home() / "steadfaste-fleet" / ".env"
       if conf.exists():
         for line in conf.read_text().splitlines():
           if line.startswith(f"{key}="):
@@ -2742,9 +2742,9 @@ def check_system(res):
   # legacy brain autopilot/sync) are skipped: a disabled unit in failed
   # state is the intended post-decommission state, not an operational issue.
   expected_user_units = {
-    "hermes-cortex-dashboard.service",
-    "hermes-cortex-langfuse.service",
-    "hermes-cortex-cortex-bus.service",
+    "steadfaste-fleet-dashboard.service",
+    "steadfaste-fleet-langfuse.service",
+    "steadfaste-fleet-cortex-bus.service",
   }
   if IS_LINUX:
     failed = run_bg(["systemctl", "--user", "list-units", "--state=failed",
@@ -2815,11 +2815,11 @@ def check_system(res):
 
 
 def check_config(res):
-  """6. Config consistency: hermes-cortex.env var cross-reference."""
+  """6. Config consistency: steadfaste-fleet.env var cross-reference."""
   env_path = CORTEX_ENV if CORTEX_ENV.exists() else LEGACY_MODELS_ENV
   if not env_path.exists():
-    res.add("Config (hermes-cortex.env)", "WARN", "Not found",
-        "Create ~/hermes-cortex/.env with env vars")
+    res.add("Config (steadfaste-fleet.env)", "WARN", "Not found",
+        "Create ~/steadfaste-fleet/.env with env vars")
     return
 
   text = env_path.read_text()
@@ -2833,15 +2833,15 @@ def check_config(res):
       defined[m.group(1)] = line
 
   if not defined:
-    res.add("Config (hermes-cortex.env)", "WARN", "File exists but no exports defined",
+    res.add("Config (steadfaste-fleet.env)", "WARN", "File exists but no exports defined",
         "Add JUDGE_MODEL, EMBEDDING_MODEL etc.")
     return
 
   consumers_by_var = find_script_consumers()
   for var, consumer_names in consumers_by_var.items():
     if var not in defined:
-      res.add(f"Config ({var})", "WARN", f"Not defined in hermes-cortex.env",
-          f"Add: export {var}=<model-name> to ~/hermes-cortex/.env")
+      res.add(f"Config ({var})", "WARN", f"Not defined in steadfaste-fleet.env",
+          f"Add: export {var}=<model-name> to ~/steadfaste-fleet/.env")
     else:
       if consumer_names:
         res.add(f"Config ({var})", "PASS", f"defined, {len(consumer_names)} consumer(s) found")
@@ -3270,8 +3270,8 @@ def check_governance(res):
             res.add("Plugin pycache", "PASS", "no stale .pyc files")
       else:
         res.add("Plugin symlink", "WARN",
-            f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/... — deploy source is now ops/install/hooks/)",
-            "Re-create: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/")
+            f"symlinked to {target} (not ~/steadfaste-fleet/.steadfaste-fleet/... — deploy source is now ops/install/hooks/)",
+            "Re-create: ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/")
     else:
       deployed_init = plugin_dir / "__init__.py"
       repo_init = plugin_src / "__init__.py"
@@ -3283,7 +3283,7 @@ def check_governance(res):
         else:
           res.add("Plugin content", "FAIL",
               "deployed copy differs from repo — stale after git update",
-              "REQUIRED: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
               " (sanctioned deploy path — deploys, relocks, and verifies)")
       else:
         res.add("Plugin content", "WARN",
@@ -3296,14 +3296,14 @@ def check_governance(res):
       else:
         res.add("Enforcer survey gate", "WARN",
             "missing SURVEY_MARKER constant — survey-before-cron gate not active",
-            "Pull latest hermes-cortex and run cortex-update.sh ")
+            "Pull latest steadfaste-fleet and run cortex-update.sh ")
     except (OSError, PermissionError) as e:
       res.add("Enforcer survey gate", "WARN",
           f"cannot read enforcer plugin to verify survey gate: {type(e).__name__}: {e}",
           "Fix permissions on " + str(plugin_src / "__init__.py") + " or run cortex-update.sh")
   else:
     res.add("Governance plugin", "FAIL", "not installed",
-        "Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/\n"
+        "Install: ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/\n"
         "Then: hermes plugins enable governance-enforcer --allow-tool-override\n"
         "Then: /reset (new session)")
 
@@ -3318,7 +3318,7 @@ def check_governance(res):
     res.add("Plugin source", "PASS", "source in repo at plugins/governance-enforcer")
   else:
     res.add("Plugin source", "FAIL", "source missing in repo",
-        "Check: ~/hermes-cortex/plugins/governance-enforcer/")
+        "Check: ~/steadfaste-fleet/plugins/governance-enforcer/")
 
   # ── Host-optional foreign MCP server: the DeepSeek review tool's NAME ──
   # The tool was called `review_experimental_plan` — narrower than what it does (it reviews a
@@ -3361,7 +3361,7 @@ def check_governance(res):
         res.add("DeepSeek MCP tool name", "PASS", _ds_detail)
       elif _ds_rc == 1:
         res.add("DeepSeek MCP tool name", "WARN", _ds_detail,
-            "Run: bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools   "
+            "Run: bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --fix-tools   "
             "(the doctor's auto-fix runs this too)")
       else:
         # rc!=0 is a RESULT, and rc=124 (timeout) is not the same result as a refusal: say which.
@@ -3411,7 +3411,7 @@ def check_governance(res):
       """The value the REVIEWER resolves for `_name`, and its source.
 
       Mirrors loop-gov-mcp.py's `_env_value` order — process env, then CORTEX_ENV_FILE, then
-      ~/hermes-cortex/.env, then the deploy root, then the legacy ~/.hermes/.env. Kept in ONE
+      ~/steadfaste-fleet/.env, then the deploy root, then the legacy ~/.hermes/.env. Kept in ONE
       small function on purpose: the order is duplicated from the server, so it must be
       readable at a glance and cheap to re-check.
       """
@@ -3423,9 +3423,9 @@ def check_governance(res):
       if _explicit:
         _cands.append(Path(_explicit))
       _repo = (os.environ.get("CORTEX_REPO") or "").strip()
-      _cands.append((Path(_repo) if _repo else Path.home() / "hermes-cortex") / ".env")
+      _cands.append((Path(_repo) if _repo else Path.home() / "steadfaste-fleet") / ".env")
       _cands.append(Path(os.environ.get("CORTEX_DEPLOY_HOME",
-                                        str(Path.home() / ".hermes-cortex"))) / ".env")
+                                        str(Path.home() / ".steadfaste-fleet"))) / ".env")
       _cands.append(Path.home() / ".hermes" / ".env")
       for _p in _cands:
         try:
@@ -3500,8 +3500,8 @@ def check_governance(res):
 
     if name not in config_text:
       res.add(f"MCP server ({name})", "FAIL", "not configured",
-          f"Run: hermes mcp add {name} --command ~/.hermes-cortex/venv/bin/python3 "
-          f"--args ~/hermes-cortex/mcp-servers/{server_script}")
+          f"Run: hermes mcp add {name} --command ~/.steadfaste-fleet/venv/bin/python3 "
+          f"--args ~/steadfaste-fleet/mcp-servers/{server_script}")
       continue
 
     res.add(f"MCP server ({name})", "PASS", "configured in config.yaml")
@@ -3535,7 +3535,7 @@ def check_governance(res):
     if not pi_check.exists():
       res.add("Pi integration", "WARN",
               f"Pi is installed but {pi_check} was not deployed — the adapter cannot be wired",
-              "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
+              "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
     else:
       try:
         pi_proc = subprocess.run(["bash", str(pi_check), "--check"],
@@ -3551,7 +3551,7 @@ def check_governance(res):
                   f"cortex skills + extension registered ({_pi_last})")
         else:
           res.add("Pi integration", "WARN", _pi_last,
-                  "Run: bash ~/.hermes-cortex/scripts/install-pi-integration.sh   (then re-check)")
+                  "Run: bash ~/.steadfaste-fleet/scripts/install-pi-integration.sh   (then re-check)")
 
   # ── The declared fleet interpreter (CORTEX_PYTHON) ──
   # ONE name for "the fleet python", provisioned per host by the deploy. Reported as a host fact:
@@ -3559,7 +3559,7 @@ def check_governance(res):
   # caller that used to re-derive a path). It is probed WITHOUT an inherited PYTHONPATH, because a
   # caller's environment must not decide whether the declared interpreter looks healthy.
   declared_py = os.environ.get("CORTEX_PYTHON", "")
-  _agent_env_file = HOME / ".hermes-cortex" / "agent.env"
+  _agent_env_file = HOME / ".steadfaste-fleet" / "agent.env"
   if not declared_py and _agent_env_file.is_file():
     for _line in _agent_env_file.read_text(errors="replace").splitlines():
       if _line.startswith("CORTEX_PYTHON="):
@@ -3567,10 +3567,10 @@ def check_governance(res):
         break
   if not declared_py:
     res.add("Fleet python", "WARN", "no CORTEX_PYTHON declared — the built-in order applies",
-            "Run cortex-update.sh: it declares the fleet venv in ~/.hermes-cortex/agent.env")
+            "Run cortex-update.sh: it declares the fleet venv in ~/.steadfaste-fleet/agent.env")
   elif not Path(declared_py).expanduser().exists():
     res.add("Fleet python", "FAIL", f"CORTEX_PYTHON points at nothing: {declared_py}",
-            "Fix CORTEX_PYTHON in ~/.hermes-cortex/agent.env, or run cortex-update.sh "
+            "Fix CORTEX_PYTHON in ~/.steadfaste-fleet/agent.env, or run cortex-update.sh "
             "(it creates and fills an absent fleet venv)")
   else:
     try:
@@ -3606,14 +3606,14 @@ def check_governance(res):
     elif "score-cycle" in content and "governance" in content:
       res.add("Pre-commit hook", "WARN",
           "missing enforcer plugin presence check",
-          "Update: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+          "Update: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
           " (current hook is missing enforcer verification)")
     else:
       res.add("Pre-commit hook", "WARN", "installed but may be outdated",
-          "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh")
+          "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
   else:
     res.add("Pre-commit hook", "FAIL", f"not found at {expected_hook_path}",
-        "Install: bash ~/hermes-cortex/ops/scripts/cortex-update.sh\n"
+        "Install: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh\n"
         "The sanctioned deploy path installs and locks all hooks.")
 
   # ── Pre-push hook ──
@@ -3630,15 +3630,15 @@ def check_governance(res):
       res.add("Pre-push hook", "WARN", "installed but may be outdated")
   else:
     res.add("Pre-push hook", "WARN", "not installed",
-        "Install: cp ~/hermes-cortex/ops/scripts/pre-push-pull ~/.hermes-cortex/hooks/pre-push\n"
-        "Then: chmod +x ~/.hermes-cortex/hooks/pre-push")
+        "Install: cp ~/steadfaste-fleet/ops/scripts/pre-push-pull ~/.steadfaste-fleet/hooks/pre-push\n"
+        "Then: chmod +x ~/.steadfaste-fleet/hooks/pre-push")
 
   # ── Post-commit hook ──
   expected_post_commit = hooks_dir / "post-commit"
   expected_post_commit_src = CORTEX_HOME / "scripts" / "post-commit-audit"
   if not expected_post_commit.exists():
     res.add("Post-commit hook", "FAIL", "not installed",
-        "Install: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+        "Install: ln -sf ~/.steadfaste-fleet/scripts/post-commit-audit ~/.steadfaste-fleet/hooks/post-commit")
   elif expected_post_commit.is_symlink():
     target = expected_post_commit.resolve()
     if str(target) == str(expected_post_commit_src):
@@ -3648,11 +3648,11 @@ def check_governance(res):
       else:
         res.add("Post-commit hook", "FAIL",
             "symlink target not executable",
-            "Run: chmod +x ~/.hermes-cortex/scripts/post-commit-audit")
+            "Run: chmod +x ~/.steadfaste-fleet/scripts/post-commit-audit")
     else:
       res.add("Post-commit hook", "WARN",
           f"symlinks to {target} (expected {expected_post_commit_src})",
-          f"Fix: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+          f"Fix: ln -sf ~/.steadfaste-fleet/scripts/post-commit-audit ~/.steadfaste-fleet/hooks/post-commit")
   else:
     content = expected_post_commit.read_text()
     if "post-commit-audit" in content:
@@ -3661,7 +3661,7 @@ def check_governance(res):
     else:
       res.add("Post-commit hook", "WARN",
           "unknown content — expected post-commit-audit",
-          "Install: ln -sf ~/.hermes-cortex/scripts/post-commit-audit ~/.hermes-cortex/hooks/post-commit")
+          "Install: ln -sf ~/.steadfaste-fleet/scripts/post-commit-audit ~/.steadfaste-fleet/hooks/post-commit")
 
   # ── Score-cycle CLI (old system) ──
   score_paths = [
@@ -3718,14 +3718,14 @@ def check_governance(res):
                 stale_count += 1
                 res.add(f"Stale lock ({lf.name})", "WARN",
                     f"heartbeat expired {elapsed:.0f}s ago (TTL: {ttl}s)",
-                    f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                    f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
               else:
                 active_count += 1
             except (ValueError, TypeError):
               stale_count += 1
               res.add(f"Stale lock ({lf.name})", "WARN",
                   f"unparseable heartbeat: {heartbeat_str}",
-                  f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                  f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
           else:
             # Fallback: no heartbeat — use started_at > 24h heuristic
             started = lock_data.get("started_at", "")
@@ -3737,24 +3737,24 @@ def check_governance(res):
                   stale_count += 1
                   res.add(f"Stale lock ({lf.name})", "WARN",
                       f"from {started} ({age_hours:.0f}h old, no heartbeat)",
-                      f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                      f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
                 else:
                   active_count += 1
               except (ValueError, TypeError):
                 stale_count += 1
                 res.add(f"Stale lock ({lf.name})", "WARN",
                     f"unparseable timestamp: {started}",
-                    f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                    f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
             else:
               stale_count += 1
               res.add(f"Stale lock ({lf.name})", "WARN",
                   "no heartbeat or started_at field",
-                  f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+                  f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
         except (json.JSONDecodeError, OSError):
           stale_count += 1
           res.add(f"Stale lock ({lf.name})", "WARN",
               "unparseable lock file",
-              f"Remove: rm -f ~/.hermes-cortex/state/{lf.name}")
+              f"Remove: rm -f ~/.steadfaste-fleet/state/{lf.name}")
 
       if stale_count == 0:
         if active_count > 0:
@@ -3838,7 +3838,7 @@ def check_governance(res):
   for hook_name in ("pre-commit", "pre-push", "post-commit", "post-merge", "post-push"):
     deployed_hook = deployed_hooks_dir / hook_name
     git_hook = repo_hooks_dir / hook_name
-    repo_source = CORTEX_REPO / ".hermes-cortex" / "hooks" / hook_name
+    repo_source = CORTEX_REPO / ".steadfaste-fleet" / "hooks" / hook_name
 
     # Check 1: deployed hook exists
     if not deployed_hook.exists():
@@ -4068,7 +4068,7 @@ def check_governance(res):
     else:
       res.add("Skills gate", "WARN",
           "missing SKILLS_MARKER_DIR — skills gate not active",
-          "Pull latest hermes-cortex and run cortex-update.sh")
+          "Pull latest steadfaste-fleet and run cortex-update.sh")
   except (OSError, PermissionError) as e:
     res.add("Skills gate", "WARN",
         f"cannot read enforcer plugin to verify skills gate: {type(e).__name__}: {e}",
@@ -4079,8 +4079,8 @@ def check_hook_drift(res):
     """Check deployed hooks match repo source — prevents stale hooks from
     bypassing orchestrator-only path restrictions.
 
-    Each deployed hook in ~/.hermes-cortex/hooks/ should be a symlink
-    pointing to ~/.hermes-cortex/scripts/<name>. Compare the content of
+    Each deployed hook in ~/.steadfaste-fleet/hooks/ should be a symlink
+    pointing to ~/.steadfaste-fleet/scripts/<name>. Compare the content of
     the resolved script against the repo source in ops/scripts/.
     """
     import hashlib as _hl
@@ -4114,7 +4114,7 @@ def check_hook_drift(res):
     try:
         import glob as _glob
         _state_dir = (Path(os.environ.get("CORTEX_DEPLOY_HOME")
-                           or (Path.home() / ".hermes-cortex"))) / "state"
+                           or (Path.home() / ".steadfaste-fleet"))) / "state"
         _by_repo: dict[str, list[str]] = {}
         for _lp in _glob.glob(str(_state_dir / ".governance-*.json")):
             try:
@@ -4441,7 +4441,7 @@ def check_install(res):
     out = run_bg(["bash", str(SYMLINK_AUDIT)], timeout=15)
     if "BROKEN" in out or "MISMATCH" in out:
       res.add("Symlinks", "WARN", "some symlinks need attention",
-          "Run: bash ~/hermes-cortex/ops/scripts/manage/symlink-audit.sh")
+          "Run: bash ~/steadfaste-fleet/ops/scripts/manage/symlink-audit.sh")
     elif "ALL OK" in out or "OK" in out:
       res.add("Symlinks", "PASS", "all symlinks valid")
     else:
@@ -4449,13 +4449,13 @@ def check_install(res):
 
 
 def check_stale_deploys(res):
-  """Check ~/.hermes-cortex/scripts/ for orphaned or mis-deployed files."""
-  cortex_update = Path.home() / "hermes-cortex" / "ops" / "scripts" / "cortex-update.sh"
+  """Check ~/.steadfaste-fleet/scripts/ for orphaned or mis-deployed files."""
+  cortex_update = Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "cortex-update.sh"
   if not cortex_update.exists():
     return
 
   content = cortex_update.read_text()
-  deploy_home = Path.home() / ".hermes-cortex"
+  deploy_home = Path.home() / ".steadfaste-fleet"
   destinations = set()
 
   for line in content.splitlines():
@@ -4477,7 +4477,7 @@ def check_stale_deploys(res):
 
     destinations.add(dest)
 
-    repo_src = Path.home() / "hermes-cortex" / src
+    repo_src = Path.home() / "steadfaste-fleet" / src
     if not repo_src.exists():
       res.add("Deploy source missing", "FAIL",
           f"{src} → {dest_str}",
@@ -4582,7 +4582,7 @@ def check_install_sh_refs(res):
 def check_stale_skills(res):
   """Check deployed skills for orphans (no repo source) and missing (not deployed).
 
-  Scans ~/.hermes/skills/<cat>/<name>/ vs ~/hermes-cortex/skills/<cat>/<name>/
+  Scans ~/.hermes/skills/<cat>/<name>/ vs ~/steadfaste-fleet/skills/<cat>/<name>/
   and vs Hermes Agent default & optional skills.
 
   Orphans are flagged as WARN. Missing skills (repo has them, deployed doesn't)
@@ -4690,7 +4690,7 @@ def check_deploy_checksums(res):
   """Check MD5 checksums of deployed files vs repo source across ALL mappings.
 
   Covers three categories:
-  1. register() entries in cortex-update.sh (scripts → ~/.hermes-cortex/scripts/)
+  1. register() entries in cortex-update.sh (scripts → ~/.steadfaste-fleet/scripts/)
   2. Non-register path mappings (plugins, AGENTS.md, SOUL.md, profiles)
   3. Governance plugin symlink vs copy detection
   """
@@ -4827,8 +4827,8 @@ def check_deploy_checksums(res):
   # an agent name; Luke directive 2026-08-14). Unresolvable = no label.
   current_agent = os.environ.get("AGENT_NAME", "").lower().strip()
   if not current_agent or current_agent == "unknown":
-      for _idf in (Path.home() / ".hermes-cortex" / "agent.env",
-                   Path.home() / "hermes-cortex" / ".env"):
+      for _idf in (Path.home() / ".steadfaste-fleet" / "agent.env",
+                   Path.home() / "steadfaste-fleet" / ".env"):
           try:
               if _idf.is_file():
                   for _line in _idf.read_text().splitlines():
@@ -5097,8 +5097,8 @@ def check_skills_loadable(res):
             f"interpreter ({sys.executable}) cannot import yaml, so the name-charset, "
             f"YAML-parse and length rules were NOT applied",
             "Run the doctor with an interpreter that can import the declared set: "
-            "~/.hermes-cortex/venv/bin/python3 "
-            "~/.hermes-cortex/scripts/cortex-doctor.py — or repair the fleet venv with "
+            "~/.steadfaste-fleet/venv/bin/python3 "
+            "~/.steadfaste-fleet/scripts/cortex-doctor.py — or repair the fleet venv with "
             "python3 ops/scripts/manage/fix-cortex-venv.py")
     for rel, defects in bad[:10]:
         res.add("Skills loadable", "FAIL", f"{rel} — " + "; ".join(defects),
@@ -5238,7 +5238,7 @@ def check_skill_stubs(res):
             continue
         # Stubs are ~1KB. The size guard applies to BOTH markers — a full
         # doc that merely quotes 'Full content (truncated)' (e.g. the
-        # hermes-cortex skill doc) is not a stub.
+        # steadfaste-fleet skill doc) is not a stub.
         if len(content) < 1500 and (
             "Full content (truncated)" in content
             or "--- End skill ---" in content
@@ -5453,7 +5453,7 @@ def check_task_lifecycle_v2(res):
                     f"{health['failures']} failure(s); last: "
                     f"{(health.get('last_error') or '')[:120]} "
                     f"(sent={health['sent']}, coalesced={health['coalesced']})",
-                    "Check ~/.hermes-cortex/state/telegram-notify.log and "
+                    "Check ~/.steadfaste-fleet/state/telegram-notify.log and "
                     "TELEGRAM_BOT_TOKEN / TELEGRAM_HOME_CHANNEL in ~/.hermes/.env")
         else:
             res.add("Task Lifecycle v2 telegram notify", "PASS",
@@ -5502,7 +5502,7 @@ def check_skill_drift(res):
     """Check for drift between repo source and deployed skills.
 
     Scans every skill in ~/.hermes/skills/ that has a matching path
-    in ~/hermes-cortex/skills/. Reports which direction the drift is:
+    in ~/steadfaste-fleet/skills/. Reports which direction the drift is:
 
       PASS — deployed == repo source (in sync)
       WARN — repo source has changed, deploy pending (normal after edit)
@@ -5606,7 +5606,7 @@ def check_mem_plugins(res):
         else:
           res.add(f"{plugin} content", "FAIL",
               "deployed copy differs from repo — stale after git update",
-              "REQUIRED: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
               " (sanctioned deploy path — copies from repo plugins/ dir)")
       else:
         res.add(f"{plugin} content", "WARN",
@@ -5620,7 +5620,7 @@ def check_mem_plugins(res):
             "Add to plugins.enabled or run: hermes plugins enable " + plugin)
     else:
       res.add(f"{plugin} plugin", "WARN", "not installed",
-          "Run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh (deploys from repo)")
+          "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh (deploys from repo)")
 
 
 def check_mycortex_parity(res):
@@ -5988,7 +5988,7 @@ def check_cortex_gateway(res: "Results") -> None:
     """cortex-gateway: the deployed daemon imports hermetically (no Hermes on
     the path) and its config + systemd unit carry no hermes-gateway dependency.
     Serving without the incumbent harness is the whole point of the gateway."""
-    scripts = HOME / ".hermes-cortex" / "scripts"
+    scripts = HOME / ".steadfaste-fleet" / "scripts"
     if not (scripts / "cortex_gateway").is_dir():
         res.add("cortex-gateway", "SKIP", "package not deployed")
         return
@@ -6007,7 +6007,7 @@ def check_cortex_gateway(res: "Results") -> None:
                 f"daemon does not import hermetically: {p.stderr.strip()[-200:]}",
                 "run cortex-update.sh")
         return
-    cfg = HOME / ".hermes-cortex" / "gateway.yaml"
+    cfg = HOME / ".steadfaste-fleet" / "gateway.yaml"
     if cfg.is_file():
         try:
             if not json.loads(cfg.read_text()).get("bots"):
@@ -6029,17 +6029,17 @@ def check_cortex_gateway(res: "Results") -> None:
 
 
 def check_cortex_env(res: "Results") -> None:
-    """The ONE canonical cortex env: ~/hermes-cortex/.env.
+    """The ONE canonical cortex env: ~/steadfaste-fleet/.env.
 
     Since the 2026-10 single-env refactor every script reads that file, so a
     missing or misplaced env silently degrades the whole host. The deploy dir
-    holds a SANCTIONED back-compat symlink (~/.hermes-cortex/.env → the
+    holds a SANCTIONED back-compat symlink (~/.steadfaste-fleet/.env → the
     canonical) so legacy readers keep resolving the same file. Catches the two
     historical traps: a REAL file (not a symlink) at the deploy-dir .env path —
     once a stray symlink to ~/langfuse/.env — and a leftover retired
     cortex-bus.conf that is not the sanctioned symlink.
     """
-    canon = HOME / "hermes-cortex" / ".env"
+    canon = HOME / "steadfaste-fleet" / ".env"
     deploy_env = CORTEX_HOME / ".env"
     legacy = CORTEX_HOME / "cortex-bus.conf"
 
@@ -6049,26 +6049,26 @@ def check_cortex_env(res: "Results") -> None:
 
     problems = []
     if not canon.exists():
-        problems.append("canonical ~/hermes-cortex/.env is MISSING")
+        problems.append("canonical ~/steadfaste-fleet/.env is MISSING")
     elif (canon.stat().st_mode & 0o777) != 0o600:
         problems.append(
-            f"~/hermes-cortex/.env perms {oct(canon.stat().st_mode & 0o777)} (want 600)")
+            f"~/steadfaste-fleet/.env perms {oct(canon.stat().st_mode & 0o777)} (want 600)")
     # The deploy-dir .env is the sanctioned back-compat symlink. A real file at
     # that path is unowned (historically a stray symlink to ~/langfuse/.env).
     if deploy_env.exists() and not deploy_env.is_symlink():
-        problems.append("~/.hermes-cortex/.env is a REAL file, not the sanctioned symlink")
+        problems.append("~/.steadfaste-fleet/.env is a REAL file, not the sanctioned symlink")
     elif deploy_env.is_symlink():
         try:
             if deploy_env.resolve() != canon.resolve():
-                problems.append("~/.hermes-cortex/.env symlink points elsewhere")
+                problems.append("~/.steadfaste-fleet/.env symlink points elsewhere")
         except OSError:
-            problems.append("~/.hermes-cortex/.env symlink is broken")
+            problems.append("~/.steadfaste-fleet/.env symlink is broken")
     elif canon.exists():
-        problems.append("~/.hermes-cortex/.env symlink is MISSING (run consolidate-env.sh)")
+        problems.append("~/.steadfaste-fleet/.env symlink is MISSING (run consolidate-env.sh)")
     # cortex-bus.conf is retired (2026-10-17 rename to .env). A leftover real
     # file is a conflict; a leftover symlink to the canonical is inert-but-stale.
     if legacy.exists() and not legacy.is_symlink():
-        problems.append("retired ~/.hermes-cortex/cortex-bus.conf is a real file — remove it")
+        problems.append("retired ~/.steadfaste-fleet/cortex-bus.conf is a real file — remove it")
     elif legacy.is_symlink():
         try:
             if legacy.resolve() != canon.resolve():
@@ -6081,11 +6081,11 @@ def check_cortex_env(res: "Results") -> None:
     if problems:
         res.add("cortex env", "FAIL", "; ".join(problems),
                 "run cortex-update.sh (it runs consolidate-env.sh), or "
-                "bash ~/.hermes-cortex/scripts/consolidate-env.sh")
+                "bash ~/.steadfaste-fleet/scripts/consolidate-env.sh")
     else:
         res.add("cortex env", "PASS",
-                "canonical ~/hermes-cortex/.env present (600); "
-                "~/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired")
+                "canonical ~/steadfaste-fleet/.env present (600); "
+                "~/.steadfaste-fleet/.env is the sanctioned symlink; cortex-bus.conf retired")
 
 
 def check_paused_cron_reasons(res) -> None:
@@ -6290,17 +6290,17 @@ def check_orphan_cycle_resolution(res) -> None:
             f"{detail} — no bare MOVE_ON left behind by the reaper")
 
 def check_repo_local_cortex_dir(res):
-  """The Cortex repo must NOT carry a .hermes-cortex/ directory.
+  """The Cortex repo must NOT carry a .steadfaste-fleet/ directory.
 
   Why this is a check and not a comment: this directory was removed on
-  2026-10-07 precisely because, inside ~/hermes-cortex, its name shadows the
-  RUNTIME directory ~/.hermes-cortex — so a governance marker written into it was
+  2026-10-07 precisely because, inside ~/steadfaste-fleet, its name shadows the
+  RUNTIME directory ~/.steadfaste-fleet — so a governance marker written into it was
   indistinguishable from legitimate repo state, and it made the repo a source of
   the deploy it was supposed to consume.
 
   It then REAPPEARED as an empty directory, and nothing reported it. Root cause
   was the pre-fix marker writer: both loop-gov-mcp.py and the enforcer wrote
-  <repo>/.hermes-cortex/.governance-lock, and their DEPLOYED files were fixed
+  <repo>/.steadfaste-fleet/.governance-lock, and their DEPLOYED files were fixed
   while the RUNNING processes still held the old revision (deploy != load), so
   every lock acquisition in that window recreated it. Once the gateway restarted
   the writers stopped — but only a hand audit noticed the residue.
@@ -6312,14 +6312,14 @@ def check_repo_local_cortex_dir(res):
   The .gitignore rules that once hid this path are gone on purpose: unignored, a
   recurrence also shows up as untracked, which is how it was caught.
   """
-  stray = CORTEX_REPO / ".hermes-cortex"
+  stray = CORTEX_REPO / ".steadfaste-fleet"
   if not stray.exists():
-    res.add("Repo-local .hermes-cortex", "PASS", "absent — correct for the Cortex repo")
+    res.add("Repo-local .steadfaste-fleet", "PASS", "absent — correct for the Cortex repo")
     return
   try:
     entries = sorted(p.name for p in stray.iterdir())
   except OSError as e:                                  # unreadable is not "clean"
-    res.add("Repo-local .hermes-cortex", "FAIL",
+    res.add("Repo-local .steadfaste-fleet", "FAIL",
             f"exists at {stray} but is unreadable: {e}",
             "Investigate permissions; treat as present")
     return
@@ -6331,7 +6331,7 @@ def check_repo_local_cortex_dir(res):
          "code (deploy != load: restart the gateway).")
   if marker.exists():
     detail += " — CONTAINS .governance-lock, so governance state is being written inside the repo"
-  res.add("Repo-local .hermes-cortex", "FAIL", detail, fix)
+  res.add("Repo-local .steadfaste-fleet", "FAIL", detail, fix)
 
 
 def check_review_provenance(res) -> None:
@@ -6350,7 +6350,7 @@ def check_review_provenance(res) -> None:
   import subprocess
   name = "Review provenance"
   candidates = [
-      Path.home() / ".hermes-cortex" / "scripts" / "review-provenance-check.py",
+      Path.home() / ".steadfaste-fleet" / "scripts" / "review-provenance-check.py",
       Path(__file__).resolve().parents[3] / "scripts" / "quality" / "review-provenance-check.py",
   ]
   script = next((c for c in candidates if c.is_file()), None)
@@ -6480,14 +6480,14 @@ def check_harness_registry(res) -> None:
     tail = out.splitlines()[-1] if out else f"exit {rc}"
     why = "no interpreter on this host could read the registry" if rc == 3 else tail
     res.add(name, "WARN", f"COULD NOT VERIFY — {why}",
-            "Run: bash $HOME/.hermes-cortex/scripts/hc harness list --json   "
+            "Run: bash $HOME/.steadfaste-fleet/scripts/hc harness list --json   "
             "(then fix what it reports)")
     return
   try:
     data = json.loads(out[out.index("{"):])
   except Exception as exc:                        # never let an unreadable view crash the run
     res.add(name, "WARN", f"COULD NOT VERIFY — the registry view was not parseable ({exc})",
-            "Run: bash $HOME/.hermes-cortex/scripts/hc harness list --json")
+            "Run: bash $HOME/.steadfaste-fleet/scripts/hc harness list --json")
     return
   harnesses = data.get("harnesses") if isinstance(data, dict) else None
   if not isinstance(harnesses, list) or not harnesses:
@@ -6518,7 +6518,7 @@ def check_harness_registry(res) -> None:
     artifacts = [l for l in lines if l.startswith("artifact:")]
     verdict = lines[-1] if lines else f"exit {rc}"
     tail = f"{artifacts[-1]}; {verdict}" if artifacts else verdict
-    fix = (f"Run: bash $HOME/.hermes-cortex/scripts/hc harness verify {hname}   "
+    fix = (f"Run: bash $HOME/.steadfaste-fleet/scripts/hc harness verify {hname}   "
            "(then apply the install step the registry declares for it)")
     if rc == 0:
       res.add(label, "PASS", f"{detail}; {tail}")

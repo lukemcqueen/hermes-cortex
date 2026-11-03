@@ -1,6 +1,6 @@
 # Agent Registry Structure
 
-The `agent-registry.json` file at `~/hermes-cortex/ops/services/agent-registry.json` defines every agent's identity, reachability, and health polling configuration. A public `.example` version is committed to the repo with placeholders.
+The `agent-registry.json` file at `~/steadfaste-fleet/ops/services/agent-registry.json` defines every agent's identity, reachability, and health polling configuration. A public `.example` version is committed to the repo with placeholders.
 
 ## Key structural rules
 

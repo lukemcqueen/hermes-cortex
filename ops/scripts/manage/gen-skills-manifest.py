@@ -45,10 +45,10 @@ except ModuleNotFoundError:                                  # pragma: no cover
 
 
 def _find_repo() -> Path:
-    """Locate the hermes-cortex repo root — works from repo source AND deployed copy.
+    """Locate the steadfaste-fleet repo root — works from repo source AND deployed copy.
 
     Repo:   ops/scripts/manage/gen-skills-manifest.py  (4 levels down)
-    Deployed: ~/.hermes-cortex/scripts/gen-skills-manifest.py  (3 levels down)
+    Deployed: ~/.steadfaste-fleet/scripts/gen-skills-manifest.py  (3 levels down)
     Walk up until a dir containing skills/ + docs/ is found; fall back to env.
     """
     env = os.environ.get("CORTEX_REPO")
@@ -59,14 +59,14 @@ def _find_repo() -> Path:
         if (p / "skills").is_dir() and (p / "docs").is_dir():
             return p
         p = p.parent
-    return Path.home() / "hermes-cortex"
+    return Path.home() / "steadfaste-fleet"
 
 
 REPO = _find_repo()
 SKILLS_DIR = REPO / "skills"
 MANIFEST = REPO / "docs" / "SKILLS-MANIFEST.md"
 
-HEADER = """# Skills Manifest — Hermes Cortex
+HEADER = """# Skills Manifest — Steadfaste Fleet
 
 Skills in this repo auto-install via `install.sh` step 10, which
 recursively copies `skills/` to `~/.hermes/skills/`, preserving category

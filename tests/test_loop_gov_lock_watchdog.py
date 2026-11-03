@@ -29,8 +29,8 @@ import time
 from pathlib import Path
 
 HOME = Path.home()
-DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
-WATCHDOG = HOME / "hermes-cortex" / "ops" / "scripts" / "health" / "agent-loop-gov-lock-watchdog.py"
+DB = HOME / ".steadfaste-fleet" / "data" / "loop-governance.db"
+WATCHDOG = HOME / "steadfaste-fleet" / "ops" / "scripts" / "health" / "agent-loop-gov-lock-watchdog.py"
 PY = str(HOME / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3")
 
 PASS = "  PASS"

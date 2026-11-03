@@ -2,7 +2,7 @@
 name: webapp-deploy-verification
 version: 1.0.0
 description: "Verify deployed web app routes render and links resolve."
-author: Hermes Cortex
+author: Steadfaste Fleet
 metadata:
   hermes:
     tags: [web, deploy, verification, e2e, routes, links, nextjs, docker]

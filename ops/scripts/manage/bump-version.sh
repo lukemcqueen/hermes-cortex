@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ── Hermes Cortex — Version Bumper ─────────────────────────────
+# ── Steadfaste Fleet — Version Bumper ─────────────────────────────
 # Usage: bash ops/scripts/manage/bump-version.sh 1.1.0
 # Effect: Updates VERSION, install.sh, README badges in both repos,
 #         commits, tags, and pushes. Requires SSH access to both repos.
@@ -16,11 +16,11 @@ if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
   exit 1
 fi
 
-echo "=== Hermes Cortex v${VERSION} ==="
+echo "=== Steadfaste Fleet v${VERSION} ==="
 
 # ── Public repo ────────────────────────────────────────────
 echo ""
-echo "-> Public repo: hermes-cortex"
+echo "-> Public repo: steadfaste-fleet"
 cd "$SCRIPT_DIR"
 
 # Update VERSION file
@@ -42,7 +42,7 @@ git add VERSION install.sh README.md
 # whatever happens to be staged — including another session's half-finished work. Naming the
 # paths makes the commit set exactly this script's output.
 git commit -m "v${VERSION}: bump version" -- VERSION install.sh README.md
-git tag -a "v${VERSION}" -m "Hermes Cortex v${VERSION}"
+git tag -a "v${VERSION}" -m "Steadfaste Fleet v${VERSION}"
 git push origin main --tags
 echo "  + Pushed to origin/main (tag: v${VERSION})"
 
@@ -63,7 +63,7 @@ if [[ -d "$PRIVATE_DIR" ]]; then
   # sweep risk. (The guard used to be cortex-scoped; since 2026-10-22 it fires in every repo the
   # cortex hooks cover, so this line is also what keeps the commit legal where it is in scope.)
   git commit -m "v${VERSION}: bump version (align with public)" -- VERSION README.md
-  git tag -a "v${VERSION}" -m "Hermes Cortex Private v${VERSION}"
+  git tag -a "v${VERSION}" -m "Steadfaste Fleet Private v${VERSION}"
   git push origin main --tags
   echo "  + Pushed to origin/main (tag: v${VERSION})"
 else
@@ -73,6 +73,6 @@ fi
 
 # ── Summary ─────────────────────────────────────────────────
 echo ""
-echo "=== Hermes Cortex v${VERSION} released ==="
+echo "=== Steadfaste Fleet v${VERSION} released ==="
 echo "  Public:  git@github.com:lukemcqueen/steadfaste-fleet.git (v${VERSION})"
 echo "  Private: git@github.com:fleet-operator/private-data.git (v${VERSION})"

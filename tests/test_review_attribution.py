@@ -34,7 +34,7 @@ mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
 # Tests must NOT write into the PRODUCTION governance log — the gate's logger appends
-# to ~/.hermes-cortex/logs/loop-governance.log, so a test run would inject fabricated
+# to ~/.steadfaste-fleet/logs/loop-governance.log, so a test run would inject fabricated
 # cycles into the audit trail (found 2026-10-02 by reading the log back).
 import logging as _logging  # noqa: E402
 

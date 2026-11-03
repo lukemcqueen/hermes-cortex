@@ -11,8 +11,8 @@ live channel). The Telegram leg is proven separately by the reply-path evidence.
 
 Run it ON the host, from anywhere:
 
-    python3 ~/.hermes-cortex/scripts/cortex_gateway/slash_parity_evidence.py \
-        [--config ~/.hermes-cortex/gateway-esther0001.yaml] [--chat 999001] \
+    python3 ~/.steadfaste-fleet/scripts/cortex_gateway/slash_parity_evidence.py \
+        [--config ~/.steadfaste-fleet/gateway-esther0001.yaml] [--chat 999001] \
         [--model openrouter/deepseek/deepseek-flash-latest] [--no-llm]
 
 `--no-llm` skips the turns that call a model (the /model, /new and /restart legs
@@ -48,7 +48,7 @@ def _load_gateway(config: Path, chat, tmp: Path):
     secret = os.environ.get("GATEWAY_SECRET", "")
     if not secret:
         print("GATEWAY_SECRET is unset — source the cortex env first "
-              "(~/hermes-cortex/.env)", file=sys.stderr)
+              "(~/steadfaste-fleet/.env)", file=sys.stderr)
         raise SystemExit(3)
     backends = agents.build_backends(
         specs, {"bus_url": "", "bus_headers": {}, "secret": secret})
@@ -113,7 +113,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Acceptance check for the gateway's slash commands against a "
                     "live agent, on the deployed tree")
-    ap.add_argument("--config", default=str(Path.home() / ".hermes-cortex" /
+    ap.add_argument("--config", default=str(Path.home() / ".steadfaste-fleet" /
                                             "gateway-esther0001.yaml"))
     ap.add_argument("--chat", default="999001")
     ap.add_argument("--model", default="")

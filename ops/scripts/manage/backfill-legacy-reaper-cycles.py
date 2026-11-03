@@ -38,7 +38,7 @@ from pathlib import Path
 # Must match cortex_doctor/checks.py and mcp-servers/loop-gov-mcp.py — tests assert it.
 ORPHAN_REAPER_TAG = "[orphan-reaper]"
 
-DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 
 # The doctor's legacy predicate, mirrored exactly: an empty reason AND the old
 # reaper's outcome_note. A row matching this is "closed but not tagged".

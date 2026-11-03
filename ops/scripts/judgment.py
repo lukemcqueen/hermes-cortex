@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Judgment client for Hermes Cortex — typed AI decisions via the System One
+"""Judgment client for Steadfaste Fleet — typed AI decisions via the System One
 wire format (Jev today, von or an in-house model tomorrow).
 
 Design: steadfaste docs/design/judgment-abstraction.md.
@@ -280,8 +280,8 @@ def _env_file_paths(env: dict) -> list:
     if explicit:
         paths.append(Path(explicit))
     repo = (env.get("CORTEX_REPO") or "").strip()
-    paths.append((Path(repo) if repo else Path.home() / "hermes-cortex") / ".env")
-    paths.append(Path(env.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex")) / ".env")
+    paths.append((Path(repo) if repo else Path.home() / "steadfaste-fleet") / ".env")
+    paths.append(Path(env.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".steadfaste-fleet")) / ".env")
     paths.append(Path.home() / ".hermes" / ".env")     # legacy last resort
     return paths
 

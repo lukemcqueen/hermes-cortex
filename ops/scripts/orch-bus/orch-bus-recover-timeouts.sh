@@ -9,7 +9,7 @@ RESULT=$(sg docker -c "docker exec mycortex-postgres psql -U mycortex -d mycorte
   \"SELECT bus.recover_timeouts();\"" 2>/dev/null | tr -d '[:space:]')
 
 RECOVER_THRESHOLD=50  # silent below this — small timeouts are routine
-STATE_FILE="$HOME/.hermes-cortex/state/bus-recover-timeouts.state"
+STATE_FILE="$HOME/.steadfaste-fleet/state/bus-recover-timeouts.state"
 
 LAST=""
 if [ -f "$STATE_FILE" ]; then

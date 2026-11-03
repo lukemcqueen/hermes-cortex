@@ -2,10 +2,10 @@
 loop-governance DB must queue on the busy lock, not fail with
 'database is locked'.
 
-Repro (2026-09-29, luke / concurrent hermes-cortex sessions on moses):
+Repro (2026-09-29, luke / concurrent steadfaste-fleet sessions on moses):
 every interactive Hermes session spawns its OWN loop-gov-mcp.py daemon
 (= its own OS process), and each process opens its own connection to the
-shared ~/.hermes-cortex/data/loop-governance.db. When two sessions call
+shared ~/.steadfaste-fleet/data/loop-governance.db. When two sessions call
 begin_change() at the same time, the second write hit
 'database is locked' and could never acquire its governance lock —
 locking the whole repo to one session even though the lock FILES are

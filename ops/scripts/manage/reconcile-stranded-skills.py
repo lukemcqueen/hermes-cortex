@@ -48,11 +48,11 @@ def default_deployed_root():
     """The deployed skills tree, resolved the way the DETECTOR resolves it.
 
     check-skill-drift-parity.py reads `~/.hermes/skills`; some builds keep the tree
-    at `~/.hermes-cortex/skills`. Prefer whichever exists so both tools measure the
+    at `~/.steadfaste-fleet/skills`. Prefer whichever exists so both tools measure the
     same tree instead of this one silently reading a directory that holds nothing.
     """
     for cand in (pathlib.Path.home() / ".hermes" / "skills",
-                 pathlib.Path.home() / ".hermes-cortex" / "skills"):
+                 pathlib.Path.home() / ".steadfaste-fleet" / "skills"):
         if cand.is_dir():
             return cand
     return pathlib.Path.home() / ".hermes" / "skills"
@@ -121,10 +121,10 @@ def classify(deployed_text, repo_text):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--repo", default=str(pathlib.Path.home() / "hermes-cortex"))
+    ap.add_argument("--repo", default=str(pathlib.Path.home() / "steadfaste-fleet"))
     ap.add_argument("--deployed", default=str(default_deployed_root()),
                     help="the deployed skills tree (default: the detector's root, "
-                         "~/.hermes/skills, or ~/.hermes-cortex/skills where that is "
+                         "~/.hermes/skills, or ~/.steadfaste-fleet/skills where that is "
                          "what exists)")
     ap.add_argument("--apply", action="store_true",
                     help="copy the pure-superset class only (never a rewrite)")

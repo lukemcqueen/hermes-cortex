@@ -6,7 +6,7 @@ rules on a schedule (daily, no_agent). This test proves the six behaviours the
 doctor check only exercises on-demand:
 
   A: deployed copy content differs from repo source -> "content drift" alert (exit 1)
-  B: orphan .py/.sh in ~/.hermes-cortex/scripts/   -> "stale deploy" alert (exit 1)
+  B: orphan .py/.sh in ~/.steadfaste-fleet/scripts/   -> "stale deploy" alert (exit 1)
   C: registered destination missing on disk        -> "deployed copy missing" alert (exit 1)
   D: register() source missing in repo             -> "deploy source missing" alert (exit 1)
   E: healthy host (header-stripped copies)         -> silent, exit 0

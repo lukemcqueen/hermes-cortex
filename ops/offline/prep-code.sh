@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Offline Code Corpus Prep
+#  Steadfaste Fleet — Offline Code Corpus Prep
 #
 #  Generates code snippets and builds the search index.
 #

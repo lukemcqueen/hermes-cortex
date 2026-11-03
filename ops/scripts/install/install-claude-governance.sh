@@ -4,7 +4,7 @@
 #  servers at USER scope so Claude Code gets them in EVERY repo.
 #
 #  Problem (2026-09-29, Luke): the repo-root .mcp.json is PROJECT
-#  scope — Claude Code loads it only in the hermes-cortex checkout.
+#  scope — Claude Code loads it only in the steadfaste-fleet checkout.
 #  In a separate repo Claude had NO loop-governance tools (no
 #  begin_change / end_change), so governance silently didn't exist
 #  there. Fix: register the same governance servers at USER scope
@@ -27,13 +27,13 @@ CLAUDE_JSON="${HOME}/.claude.json"
 PYTHON="${PYTHON:-$(command -v python3)}"
 # Resolve deployed MCP server paths (cortex-update.sh deploys here on both
 # macOS and Linux). Fall back to the repo source when not deployed.
-LOOP_GOV="${HOME}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
-TASK_MCP="${HOME}/.hermes-cortex/scripts/task-mcp.py"
-EXECUTOR_MCP="${HOME}/.hermes-cortex/scripts/executor-mcp.py"
-BUS_MCP="${HOME}/.hermes-cortex/scripts/cortex-bus-mcp.py"
+LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
+TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
+EXECUTOR_MCP="${HOME}/.steadfaste-fleet/scripts/executor-mcp.py"
+BUS_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-bus-mcp.py"
 AGENT_NAME="${AGENT_NAME:-titusclaude}"
 # Python that has the `mcp` package: prefer the cortex venv, fall back to PATH.
-PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
+PY_CMD="${HOME}/.steadfaste-fleet/venv/bin/python3"
 [[ -x "$PY_CMD" ]] || PY_CMD="${PYTHON}"
 
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP"; do
@@ -88,19 +88,19 @@ GOVERNANCE = {
     # Slice B: the ONE loop-gov binary under BOTH role-distinct names, each with the
     # matching --role in its args (the doctor's role of record).
     "loop-governance": server(py_cmd,
-                              ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py", "--role", "loop-governance"],
+                              ["~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py", "--role", "loop-governance"],
                               {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "review": server(py_cmd,
-                              ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py", "--role", "review"],
+                              ["~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py", "--role", "review"],
                               {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "tasks": server(py_cmd,
-                    ["~/.hermes-cortex/scripts/task-mcp.py"],
+                    ["~/.steadfaste-fleet/scripts/task-mcp.py"],
                     {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "executor": server(py_cmd,
-                       ["~/.hermes-cortex/scripts/executor-mcp.py"],
+                       ["~/.steadfaste-fleet/scripts/executor-mcp.py"],
                        {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "agent-bus": server(py_cmd,
-                        ["~/.hermes-cortex/scripts/cortex-bus-mcp.py"],
+                        ["~/.steadfaste-fleet/scripts/cortex-bus-mcp.py"],
                         {"AGENT_NAME": "{{AGENT_NAME}}"}),
 }
 

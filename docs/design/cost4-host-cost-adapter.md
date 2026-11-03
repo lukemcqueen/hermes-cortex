@@ -33,10 +33,10 @@ cost baseline, taking 2 of 6 hosts measured to 6 of 6.
 | Baseline covers 2 of 6 hosts: $9.35 over 13 days = **$0.72/day** vs the story's $10/day target; the four worker hosts are unmeasured | `docs/evidence/cost-baseline-2026-10-19.txt:144-149` (block 5 = remote aggregation on host 2, block 6 = derived figures) |
 | Four `TASK_REQUEST`s were sent for this slice on 2026-10-22 07:39 KST and were **consumed with no closure**: all four worker inboxes drained, `inbox_esther` empty, no `TASK_RESULT`, and `tasks.task_events` for `6b7d9b8a` contains only `created` | `docs/evidence/morning-task-pass-2026-10-23/README.md` §"Dispatch: 0 (hold)" and its two artifacts |
 | **Why**: the `TASK_REQUEST` handler executes nothing. `ops/scripts/agent/commands.py:659-693` (`handle_task`) logs the task text and returns `{"success": true, "forwarded_to": "luke"}`. A measurement slice dispatched as free text to a worker whose only handler records prose cannot produce numbers by construction — the 10-22 send was the wrong channel, not a worker failure | `ops/scripts/agent/commands.py:659` |
-| The `EXEC` handler **does** execute: it resolves the command under `~/.hermes-cortex/scripts/` (absolute paths also accepted), runs it with `sys.executable` if `.py`, and returns `stdout`/`stderr`/`exit_code` in an `EXEC_RESULT` | `ops/scripts/agent/commands.py:328-361`, registered at `:702` |
-| `cron-cost-metrics.py` is already deployed to every host and already runs on every host: it is a deploy-map entry and is invoked every 5 minutes by the universal `agent-push-metrics` cron | `~/.hermes-cortex/deploy-manifest.tsv:315`; `docs/design/cost3-per-cron-cost-metrics.md` §3.2 |
+| The `EXEC` handler **does** execute: it resolves the command under `~/.steadfaste-fleet/scripts/` (absolute paths also accepted), runs it with `sys.executable` if `.py`, and returns `stdout`/`stderr`/`exit_code` in an `EXEC_RESULT` | `ops/scripts/agent/commands.py:328-361`, registered at `:702` |
+| `cron-cost-metrics.py` is already deployed to every host and already runs on every host: it is a deploy-map entry and is invoked every 5 minutes by the universal `agent-push-metrics` cron | `~/.steadfaste-fleet/deploy-manifest.tsv:315`; `docs/design/cost3-per-cron-cost-metrics.md` §3.2 |
 | What it does **not** have: a window filter and a per-day breakdown. It emits lifetime per-job `tokens`/`fires` and lifetime per-job spend. The slice asks for per-day fires + per-day tokens **over a window**, plus per-job totals | `ops/scripts/manage/cron-cost-metrics.py:34-60, 132-154` (no `--since`; `read_tokens` sums all rows) |
-| Identity is already resolved host-side by an existing helper, not by whoami/hostname: env `AGENT_NAME` → `~/.hermes-cortex/agent.env` → `~/hermes-cortex/.env`, hard error otherwise | `ops/scripts/agent/commands.py:33-54` (`_agent_name`) |
+| Identity is already resolved host-side by an existing helper, not by whoami/hostname: env `AGENT_NAME` → `~/.steadfaste-fleet/agent.env` → `~/steadfaste-fleet/.env`, hard error otherwise | `ops/scripts/agent/commands.py:33-54` (`_agent_name`) |
 
 ## 3. Design
 
@@ -78,8 +78,8 @@ python3 cron-cost-metrics.py --json-summary [--agent <a>] [--audit P] [--state-d
 - `per_day` is ascending by date; `per_job` is descending by tokens and **capped**
   (top 15) with `per_job_omitted` carrying the remainder count, so a host with many
   jobs still returns a body that fits.
-- Identity: `--agent` default becomes env `AGENT_NAME` → `~/.hermes-cortex/agent.env`
-  → `~/hermes-cortex/.env`, mirroring `commands.py:_agent_name`. A host that cannot
+- Identity: `--agent` default becomes env `AGENT_NAME` → `~/.steadfaste-fleet/agent.env`
+  → `~/steadfaste-fleet/.env`, mirroring `commands.py:_agent_name`. A host that cannot
   resolve its own name still exits 2 and says so — the tool never labels a host
   `unknown` (SOUL P3: tooling identity is host-derived).
 - Modes are mutually exclusive and exactly one is required.
@@ -100,7 +100,7 @@ correlation_id = cost4-<12 hex>
 ```
 
 sent to `inbox_joseph`, `inbox_gisu`, `inbox_kustos`, `inbox_titus` — the four
-`role != orchestrator` hosts in `~/.hermes-cortex/state/agent-registry.json`, which
+`role != orchestrator` hosts in `~/.steadfaste-fleet/state/agent-registry.json`, which
 is also where `orch-bus-fleet-dispatch.py:73-94` reads its agent list.
 
 Before any worker send, the identical `EXEC` goes to **`inbox_esther`** on this host:
@@ -141,7 +141,7 @@ Test 7 is the regression guard for the universal producer: `agent-push-metrics.s
 
 - RED then GREEN of the normed test file with exit codes, captured unmodified under
   `docs/evidence/cost4-host-cost-adapter/`.
-- The deployed copy run for real (`~/.hermes-cortex/scripts/cron-cost-metrics.py`)
+- The deployed copy run for real (`~/.steadfaste-fleet/scripts/cron-cost-metrics.py`)
   beside the repo copy, to show the deployed path emits the same JSON.
 - The local `EXEC` self-test round trip: the sent envelope, the consumed message, the
   handler log line, and the `EXEC_RESULT` read back with real numbers.

@@ -1,15 +1,15 @@
-# 🧠 Hermes Cortex
+# 🧠 Steadfaste Fleet
 
 > *An open-source installer, skill set, and fleet management system for your personal Hermes AI agent.*
 > *Privacy-first, offline-capable, multi-agent orchestration — runs on your own hardware.*
 
 **Version: 2.0.0** · [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) · [![GitHub](https://img.shields.io/github/license/lukemcqueen/steadfaste-fleet)](LICENSE) · [![Docs](https://img.shields.io/badge/Docs-Hermes%20Agent-FFD700)](https://hermes-agent.nousresearch.com)
 
-![Hermes Cortex](docs/assets/avatar.png)
+![Steadfaste Fleet](docs/assets/avatar.png)
 
-**Hermes Cortex** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime — but it's grown into much more. It's a **multi-agent fleet management platform**, a **governance engine**, a **self-healing operations system**, and a **deep knowledge stack**, all running on your own hardware with zero cloud dependency.
+**Steadfaste Fleet** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime — but it's grown into much more. It's a **multi-agent fleet management platform**, a **governance engine**, a **self-healing operations system**, and a **deep knowledge stack**, all running on your own hardware with zero cloud dependency.
 
-> **Why it exists:** Hermes Cortex turns a single Hermes Agent into a governed, self-healing fleet. It's the only agent harness where change discipline is **enforced at the tool level** — not suggested — where a crashed service **fixes itself before you wake up**, where the knowledge brain **works fully offline**, and where a second orchestrator **takes over the moment the first one blinks**. No cloud, no lock-in, no babysitting.
+> **Why it exists:** Steadfaste Fleet turns a single Hermes Agent into a governed, self-healing fleet. It's the only agent harness where change discipline is **enforced at the tool level** — not suggested — where a crashed service **fixes itself before you wake up**, where the knowledge brain **works fully offline**, and where a second orchestrator **takes over the moment the first one blinks**. No cloud, no lock-in, no babysitting.
 
 > **Prerequisite:** [Hermes Agent](https://hermes-agent.nousresearch.com) must be installed first. This project adds skills, services, and infrastructure on top of it.
 
@@ -53,7 +53,7 @@ each pattern explains *how it works*, the *minimal code to copy*, and the
 
 ### 🧩 Multi-Agent Fleet Architecture
 
-Hermes Cortex runs a coordinated team of specialized AI agents, each with distinct role, memory, and toolset:
+Steadfaste Fleet runs a coordinated team of specialized AI agents, each with distinct role, memory, and toolset:
 
 | Agent | Role | Responsibility |
 |-------|------|---------------|
@@ -64,7 +64,7 @@ Hermes Cortex runs a coordinated team of specialized AI agents, each with distin
 | **Kustos** 🛡️ | Security | Threat detection, blocklist management, access control |
 | **Gisu** 💬 | Communications | Inbox routing, message triage, cross-agent coordination |
 
-> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Joseph, Kustos, Gisu) run the full Hermes Cortex stack with inbox polling and bus health checks. **Dev-agents** (Titus — macOS) run the agent message handler to process fleet commands via their bus inbox.
+> **Agent Taxonomy:** Agents fill three role tiers. **Orchestrators** (Moses, Esther) run bus-based fleet orchestration scripts (`orch-bus-*`) and manage the update pipeline. **Server-agents** (Joseph, Kustos, Gisu) run the full Steadfaste Fleet stack with inbox polling and bus health checks. **Dev-agents** (Titus — macOS) run the agent message handler to process fleet commands via their bus inbox.
 
 Agents communicate via a **PGMQ-based Agent Bus** with A2A (Agent-to-Agent) protocol — Postgres-backed message queues with auth, health monitoring, and failover. No shared state, no race conditions.
 
@@ -105,10 +105,10 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 | **Recovery** | `service-recovery`, `agent-remediate-apply`, `remediation-sensor` | Auto-restart crashed services, apply fixes |
 | **Governance** | `governance-auditor`, `scoring-activity-watchdog` | Score tracking, lock cleanup, audit trails |
 | **Messaging** | `cortex-bus-workday/evening/overnight` | Process cortex-bus messages on schedule |
-| **Sync** | `hermes-cortex-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |
+| **Sync** | `steadfaste-fleet-sync`, `memory-to-brain-sync`, `agent-mycortex-sync` | Pull updates, persist memory, sync knowledge brain (every 15 min) |
 | **Security** | `threat-pipeline`, `agent-ip-submission` | Block threats, report IPs |
 | **Maintenance** | `memory-pruning`, `session-cache-build`, `orch-skill-lifecycle` | Weekly consolidation, daily skill lifecycle pipeline |
-| **Content** | `agent-daily-bible-reading` *(opt-in)*, `orch-skill-lifecycle`, `agent-offline-code-index` | Daily spiritual reading (opt-in, marker `~/.hermes-cortex/bible-reading-enabled`), skill lifecycle (daily 04:00), code indexing |
+| **Content** | `agent-daily-bible-reading` *(opt-in)*, `orch-skill-lifecycle`, `agent-offline-code-index` | Daily spiritual reading (opt-in, marker `~/.steadfaste-fleet/bible-reading-enabled`), skill lifecycle (daily 04:00), code indexing |
 | **Reports** | `orch-health-report` | Scheduled health briefings |
 
 All crons follow the **silent-when-good** pattern — zero output when healthy, targeted alerts on state changes.
@@ -204,7 +204,7 @@ Takes: **8–15 minutes** (mostly model downloads).
 
 ```bash
 # Pre-commit hook (auto-scoring via loop-governance MCP)
-bash ~/hermes-cortex/ops/scripts/pre-commit-score
+bash ~/steadfaste-fleet/ops/scripts/pre-commit-score
 score-cycle --help          # ready to use
 ```
 
@@ -228,20 +228,20 @@ bash ops/scripts/install-crons.sh --force
 curl -fsSL https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/install/install.sh | bash
 
 # Or clone for offline install / inspection:
-git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
-bash ~/hermes-cortex/ops/install/install.sh
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet
+bash ~/steadfaste-fleet/ops/install/install.sh
 
 # Check prerequisites only:
-bash ~/hermes-cortex/ops/install/install.sh --check
+bash ~/steadfaste-fleet/ops/install/install.sh --check
 
 # macOS — Laptop profile: lean, no Docker
-CORTEX_PROFILE=laptop bash ~/hermes-cortex/ops/install/install.sh
+CORTEX_PROFILE=laptop bash ~/steadfaste-fleet/ops/install/install.sh
 
 # Linux — auto-detects systemd, apt/dnf/pacman
-CORTEX_OS=linux bash ~/hermes-cortex/ops/install/install.sh
+CORTEX_OS=linux bash ~/steadfaste-fleet/ops/install/install.sh
 
 # Windows — uses winget/choco + scheduled tasks (limited)
-CORTEX_OS=windows bash ~/hermes-cortex/ops/install/install.sh
+CORTEX_OS=windows bash ~/steadfaste-fleet/ops/install/install.sh
 ```
 
 ### What `install.sh` does
@@ -287,7 +287,7 @@ export HERMES_HOME="$HOME/.hermes"      # Hermes config directory
 
 ```bash
 export CORTEX_SOURCES="me,family,shared,default"
-bash ~/hermes-cortex/ops/install/install.sh
+bash ~/steadfaste-fleet/ops/install/install.sh
 ```
 
 Each source has isolated memory and .gitignore. The `/brain` slash command adapts to whatever sources you configure.
@@ -296,10 +296,10 @@ Each source has isolated memory and .gitignore. The `/brain` slash command adapt
 
 ## 🔄 Upgrading
 
-To upgrade an existing Hermes Cortex installation:
+To upgrade an existing Steadfaste Fleet installation:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull --ff-only
 bash ops/scripts/cortex-update.sh     # delta update (changed files only)
 ```
@@ -392,7 +392,7 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/install-crons.sh` | Install/remove all 49 agent cron jobs |
 | `ops/scripts/install/install-orch-crons.sh` | Install/remove the 24 orchestrator-only cron jobs (Moses, Esther) |
 | `ops/scripts/manage/agent-hermes-update.sh` | Silent nightly update of Hermes Agent |
-| `ops/scripts/manage/agent-hermes-cortex-sync.sh` | Nightly git pull of hermes-cortex repo |
+| `ops/scripts/manage/agent-steadfaste-fleet-sync.sh` | Nightly git pull of steadfaste-fleet repo |
 | `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
 | `ops/scripts/manage/deploy-blocked-ips.sh` | Deploy shared blocklist across fleet |
 | `ops/scripts/manage/analyze-failures.py` | Analyze cron failure patterns |
@@ -417,7 +417,7 @@ offline_knowledge query "symptoms of malaria"
 | [Bus Scale Design](docs/design/bus-scale/stories.md) | Agent Bus scaling stories and capacity planning |
 | [Offline Scenarios](docs/knowledge-isolation-architecture.md) | Using Hermes without internet |
 | [AGENTS.md](AGENTS.md) | Agent execution contract, loop governance, inbox framework |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute to hermes-cortex |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute to steadfaste-fleet |
 
 ---
 

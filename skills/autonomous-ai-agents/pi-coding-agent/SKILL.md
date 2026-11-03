@@ -82,7 +82,7 @@ nothing else — verified with a plain prompt and with a prompt that used the ba
 
 A wrapper that only sends prompts is missing half the interface, and the missing half
 fails in ways that read as pi being broken (working adapter to copy:
-`ops/scripts/cortex_gateway/pi_control.py` in hermes-cortex).
+`ops/scripts/cortex_gateway/pi_control.py` in steadfaste-fleet).
 
 - **A built-in slash command sent as a prompt is a NO-OP.** `/compact`, `/model`,
   `/new`, `/restart`, `/settings` are handled only in the interactive/RPC surfaces; as a
@@ -157,12 +157,12 @@ projects only), the same shape as Claude Code. Governance is therefore an MCP
 registration — never hand-write a lock:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh   # loop-governance, tasks, executor, agent-bus, cortex-context
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # loop-governance, tasks, executor, agent-bus, cortex-context
 pi mcp list                                                 # expect 5 servers, state "connected"
 ```
 
 **Verify a host VERSION-AWARE — never by assuming the route.**
-`bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh` reports PASS/FAIL
+`bash ~/steadfaste-fleet/ops/scripts/manage/audit-pi-integration.sh` reports PASS/FAIL
 per layer (MCP servers, skills, extension, governance gate, `agent.env`),
 reads the installed version from the Pi install itself, and checks the REGISTERED
 skills path and its count instead of a hardcoded list. Auditing
@@ -242,9 +242,9 @@ becomes visible.
   (`~/.pi/agent/settings.json`, `~/.claude/skills`) needs a pointer to it.
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh           # wire it
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check   # rc 0 ONLY if Pi can see EVERY skill
-bash ~/hermes-cortex/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh           # wire it
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh --check   # rc 0 ONLY if Pi can see EVERY skill
+bash ~/steadfaste-fleet/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
 ```
 
 It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>, <cortex-governance.ts>]`
@@ -252,7 +252,7 @@ and `"skills": ["~/.agents/skills"]` — and RETIRES a pre-existing `~/.pi/agent
 link farm when one is found: a stale farm keeps Pi loading a curated subset beside the whole
 tree. Idempotent, and it preserves the user's other keys. It no longer reads `skills.yaml` at
 all — the manifest is cortex-owned at the REPO ROOT (`skills.yaml`, synced to
-`~/.hermes-cortex/skills.yaml` by `cortex-update.sh`) and is the record of Hermes's ritual set,
+`~/.steadfaste-fleet/skills.yaml` by `cortex-update.sh`) and is the record of Hermes's ritual set,
 not the source of a coding agent's exposure.
 
 **Drive it with `hc pi` instead of remembering script names** (a thin driver over the same
@@ -268,7 +268,7 @@ hc pi skills    # what Pi is pointed at, then the delegated visibility verdict
 HOST-scope one (every Pi project on the machine).
 
 - **Registering is not executing.** A deploy that COPIES an installer into
-  `~/.hermes-cortex/scripts/` has wired nothing, so a host with Pi installed can sit unwired with
+  `~/.steadfaste-fleet/scripts/` has wired nothing, so a host with Pi installed can sit unwired with
   no signal at all. Gate the run on PRESENCE (`~/.pi/agent/bin/pi` or the `~/.pi/agent` dir), run
   BOTH halves (`install-pi-mcp.sh`, `install-pi-integration.sh`), and report the outcome: a host
   without Pi is not a fault; a host with Pi that comes out of a deploy unwired is. The doctor's
@@ -292,8 +292,8 @@ from the store contract and there is no per-harness tool list left to drift.
 The extension keeps ONLY the lifecycle triggers, which MCP cannot provide:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh   # + cortex-context
-cp ~/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # + cortex-context
+cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
 pi -e extensions/cortex-context.ts --tools read,bash,edit,write
 ```
 
@@ -349,7 +349,7 @@ repo. Load it with the harness: `bash install-pi-integration.sh` registers both 
   never cross it. Registering loop-governance over MCP gives pi the *ritual*, not a
   gate: an MCP server is a tool surface and cannot see the host's own tools.
 - The commit-time hook DOES carry a lock check (`pre-commit-score`, "Level 3"), so a claim that it has none is wrong — but its refusal is scoped
-  `IS_CORTEX_REPO && !LOCK_FOUND`, i.e. `~/hermes-cortex` only, deliberately, so manual
+  `IS_CORTEX_REPO && !LOCK_FOUND`, i.e. `~/steadfaste-fleet` only, deliberately, so manual
   human commits in client repos are not blocked. The RITUAL gate is NOT so scoped:
   the reflexion/survey loop demands the ritual skills in EVERY repo since 2026-10-29,
   skipping only no-session (human) commits — so a Pi session IS disciplined in its
@@ -410,7 +410,7 @@ harness: the git hook already carries one copy and two copies drift.
   hands the extension a synthetic `pi`, so it passes green even on a gate pi never
   calls — those are two separate claims, and the second is the one that matters. Run one
   real turn in a scratch project repo and read the gate's OWN log
-  (`~/.hermes-cortex/logs/pi-governance.log`, one `GOV_VERDICT` line per decision) rather
+  (`~/.steadfaste-fleet/logs/pi-governance.log`, one `GOV_VERDICT` line per decision) rather
   than the agent's prose summary. Expect `refused` on the first write and then `allowed`,
   because the block names `begin_change` as the remedy and the agent simply complies —
   self-remediation is the gate working, not the gate failing. A gate that only ever
@@ -418,16 +418,16 @@ harness: the git hook already carries one copy and two copies drift.
   the agent's SELF-REPORT, and the write it claims may have been refused and retried.
 
 - **A Pi session's governance lock is tagged from the SESSION's repo, never from the
-  host's `~/hermes-cortex` (2026-10-09, titus).** Pi injects no repo identity, so
+  host's `~/steadfaste-fleet` (2026-10-09, titus).** Pi injects no repo identity, so
   `_derive_slug()` resolves it as `CORTEX_SESSION_REPO`, else the MCP child's working
   directory — the project you launched Pi in. Before that fix a Pi session working in a
-  project repo was locked as `hermes-cortex`, and the close gate refused forever with
+  project repo was locked as `steadfaste-fleet`, and the close gate refused forever with
   "the lock's repo cannot contain this session's work": the lock stays HELD on a refusal,
   and its prescribed remedy (an enforcer injection) does not exist on Pi, so only the
-  operator could delete `~/.hermes-cortex/state/.governance-sess_*.json`. Launch Pi from
+  operator could delete `~/.steadfaste-fleet/state/.governance-sess_*.json`. Launch Pi from
   the project (`cd repo && pi`), or pin `CORTEX_SESSION_REPO` in the MCP `env` block when
   the cwd is not the project. It needs a DEPLOY, not a pull: the harness runs the
-  deployed copy (`~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`). Verify with
+  deployed copy (`~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py`). Verify with
   `python3 tests/run_non_hermes_lock_release_repro.py` (pre-fix / working-tree / DEPLOYED
   in one run; it exits non-zero unless the lock is released). Full write-up:
   `docs/troubleshooting.md`.
@@ -469,7 +469,7 @@ The standalone `cortex-gateway` (a systemd/launchd unit, decoupled from
 backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
 
 - **Config/example:** `ops/scripts/gateway-pi.example.yaml` → copy to
-  `~/.hermes-cortex/gateway.yaml` (OUTSIDE the repo). `command` is an ARGV LIST,
+  `~/.steadfaste-fleet/gateway.yaml` (OUTSIDE the repo). `command` is an ARGV LIST,
   so use the ABSOLUTE pi launcher path (`/home/<user>/.local/bin/pi` etc.) — a
   relative or `~`-containing path is a per-message silent no-op. Use
   `output: raw` (pi's stdout is exactly the answer), `session: per_chat` with
@@ -490,7 +490,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   the operator's chat id ONLY; likewise `GATEWAY_SECRET` (HMAC signing key) is
   mandatory — the daemon refuses to start without it, because an empty key makes
   every bus signature forgeable. The bot+config are assembled per host: env vars
-  into the canonical cortex env (`~/hermes-cortex/.env`), `gateway.yaml` from the
+  into the canonical cortex env (`~/steadfaste-fleet/.env`), `gateway.yaml` from the
   example, then `enable --now` the unit. Full reference: `docs/templates/
   cortex-gateway.service` + `docs/design/cortex-gateway.md` (CR5 pi = the record,
   live on the second-bot `@Esther0001Bot`).
@@ -512,7 +512,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   spins it) on `ImportError: psycopg package required` the moment the bot-lock layer
   tries to reach the PGMQ Postgres — the system python has neither psycopg nor the
   cortex deps. Repoint both `ExecStartPre`/`ExecStart` at
-  `<host>/.hermes-cortex/venv/bin/python3`, and make sure `psycopg[binary]` is
+  `<host>/.steadfaste-fleet/venv/bin/python3`, and make sure `psycopg[binary]` is
   installed in that venv (the fleet venv historically lacks it — the same gap that
   keeps `cortex-update.sh` from exiting clean). `pg_isready -h 127.0.0.1 -p <pg-port>`
   confirms the bus Postgres is reachable before blaming psycopg. The venv's dashes
@@ -550,7 +550,7 @@ can print its own environment. Supply exactly one variable:
 
 ```json
 {"openrouter": {"type": "api_key",
-                "key": "!bash ~/.hermes-cortex/scripts/env-value.sh OPENROUTER_API_KEY"}}
+                "key": "!bash ~/.steadfaste-fleet/scripts/env-value.sh OPENROUTER_API_KEY"}}
 ```
 
 `env-value.sh` prints one named value (cortex env first, then the Hermes env, first

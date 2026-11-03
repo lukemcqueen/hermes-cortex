@@ -2,7 +2,7 @@
 # Runnable proof for the two shell-status claims this range's comments make.
 #
 # Why a committed script instead of a sentence in a comment (adversarial finding ADV-12971-2 on
-# ops/scripts/manage/agent-hermes-cortex-sync.sh): a comment that says "measured FALSE on ..." is an
+# ops/scripts/manage/agent-steadfaste-fleet-sync.sh): a comment that says "measured FALSE on ..." is an
 # assertion about a terminal run that a later reviewer cannot see or re-run. This file is the claim
 # in executable form.
 #

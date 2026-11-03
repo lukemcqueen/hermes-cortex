@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Hermes Cortex — Docker Desktop Launchd Agent
+  Steadfaste Fleet — Docker Desktop Launchd Agent
 
   Auto-starts Docker Desktop on login so all containers with
   restart:always or unless-stopped come back automatically.
@@ -28,7 +28,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/.hermes-cortex/logs"; exec /Applications/Docker.app/Contents/MacOS/Docker --unattended >>"$HOME/.hermes-cortex/logs/docker-launch.log" 2>&amp;1</string>
+        <string>mkdir -p "$HOME/.steadfaste-fleet/logs"; exec /Applications/Docker.app/Contents/MacOS/Docker --unattended >>"$HOME/.steadfaste-fleet/logs/docker-launch.log" 2>&amp;1</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

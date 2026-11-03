@@ -2,7 +2,7 @@
 
 ## What happened
 
-The `runtime/` directory was removed from hermes-cortex and the module tree
+The `runtime/` directory was removed from steadfaste-fleet and the module tree
 moved to `core/`. Three cron scripts still had `sys.path.insert(0, ".../runtime")`,
 causing import failures:
 
@@ -16,7 +16,7 @@ All three shared identical structure:
 
 ```python
 import sys
-sys.path.insert(0, "~/hermes-cortex/runtime")   # ← stale
+sys.path.insert(0, "~/steadfaste-fleet/runtime")   # ← stale
 from agent_bus.workflow.sla_watchdog import main            # ← module still exists, path was wrong
 ```
 
@@ -25,20 +25,20 @@ from agent_bus.workflow.sla_watchdog import main            # ← module still e
 In each file, changed the path string from `runtime` to `core`:
 
 ```python
-sys.path.insert(0, "~/hermes-cortex/core")   # ← corrected
+sys.path.insert(0, "~/steadfaste-fleet/core")   # ← corrected
 ```
 
 ## Files patched
 
 ### Upstream (repo source)
-- `hermes-cortex/ops/scripts/bus/workflow-sla-watchdog.py`
-- `hermes-cortex/ops/scripts/bus/workflow-router.py`
-- `hermes-cortex/ops/scripts/bus/workflow-dispatcher.py`
+- `steadfaste-fleet/ops/scripts/bus/workflow-sla-watchdog.py`
+- `steadfaste-fleet/ops/scripts/bus/workflow-router.py`
+- `steadfaste-fleet/ops/scripts/bus/workflow-dispatcher.py`
 
 ### Deployed (runtime)
-- `~/.hermes-cortex/scripts/workflow-sla-watchdog.py`
-- `~/.hermes-cortex/scripts/workflow-router.py`
-- `~/.hermes-cortex/scripts/workflow-dispatcher.py`
+- `~/.steadfaste-fleet/scripts/workflow-sla-watchdog.py`
+- `~/.steadfaste-fleet/scripts/workflow-router.py`
+- `~/.steadfaste-fleet/scripts/workflow-dispatcher.py`
 
 ## Verification
 
@@ -53,7 +53,7 @@ via `sys.path.insert`, every script that injects the old path must be
 found and updated. The scan pattern is:
 
 ```
-search_files(pattern='hermes-cortex/runtime')
+search_files(pattern='steadfaste-fleet/runtime')
 search_files(pattern='sys.path.insert.*runtime')
 ```
 

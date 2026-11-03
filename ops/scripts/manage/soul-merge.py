@@ -26,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_DIR = Path.home() / "hermes-cortex"
+REPO_DIR = Path.home() / "steadfaste-fleet"
 TEMPLATE = REPO_DIR / "docs" / "templates" / "SOUL.md"
 PROFILES_DIR = REPO_DIR / "profiles" / "personal" / "agent-profiles"  # removed from repo (commit d43e776) — kept for backward compat
 HERMES_HOME = Path.home() / ".hermes"

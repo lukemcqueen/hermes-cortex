@@ -70,7 +70,7 @@ def load_store_module():
     """
     here = Path(__file__).resolve()
     for candidate in (here.parents[2] / "ops" / "services" / STORE_DIR / "store.py",
-                      Path.home() / ".hermes-cortex" / "services" / STORE_DIR / "store.py"):
+                      Path.home() / ".steadfaste-fleet" / "services" / STORE_DIR / "store.py"):
         if candidate.is_file():
             return _import_module(candidate)
     return None

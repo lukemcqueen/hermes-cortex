@@ -9,9 +9,9 @@
 #  Actions:
 #    diagnose     — check script paths, permissions, deps
 #    check        — alias for diagnose
-#    fix-missing  — copy missing scripts from hermes-cortex repo
-#    fix-perms    — fix permissions on .hermes-cortex/scripts/
-#    fix-git      — fix git state in hermes-cortex
+#    fix-missing  — copy missing scripts from steadfaste-fleet repo
+#    fix-perms    — fix permissions on .steadfaste-fleet/scripts/
+#    fix-git      — fix git state in steadfaste-fleet
 #    fix-docker   — restart docker services
 #    fix-purge    — purge system caches (memory, brew, docker)
 #    fix-certs    — check and renew SSL certificates (certbot)
@@ -20,8 +20,8 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HERMES_SCRIPTS="${HOME}/.hermes-cortex/scripts"
-CORTEX_REPO="${HOME}/hermes-cortex"
+HERMES_SCRIPTS="${HOME}/.steadfaste-fleet/scripts"
+CORTEX_REPO="${HOME}/steadfaste-fleet"
 CORTEX_SCRIPTS="${CORTEX_REPO}/ops/scripts"
 ACTION="${1:-diagnose}"
 
@@ -138,7 +138,7 @@ case "${ACTION}" in
     fi
 
     # Check web cache
-    WEB_CACHE="${HOME}/.hermes-cortex/data/web_cache.sqlite"
+    WEB_CACHE="${HOME}/.steadfaste-fleet/data/web_cache.sqlite"
     if [ -f "${WEB_CACHE}" ]; then
       SIZE_MB=$(du -m "${WEB_CACHE}" 2>/dev/null | cut -f1 || echo 0)
       if [ "${SIZE_MB}" -gt 200 ] 2>/dev/null; then
@@ -326,13 +326,13 @@ except Exception as e:
     echo "MYCORTEX_DIAGNOSTIC:"
     
     # Check mycortex CLI
-    if ! command -v "${HOME}/.hermes-cortex/scripts/mycortex" >/dev/null 2>&1; then
+    if ! command -v "${HOME}/.steadfaste-fleet/scripts/mycortex" >/dev/null 2>&1; then
       echo "  mycortex: not installed"
       exit 0
     fi
     
     # Run mycortex doctor
-    health_output=$("${HOME}/.hermes-cortex/scripts/mycortex" doctor --json 2>&1 | tail -1 | grep -o '"ok": [a-z]*' || echo "unknown")
+    health_output=$("${HOME}/.steadfaste-fleet/scripts/mycortex" doctor --json 2>&1 | tail -1 | grep -o '"ok": [a-z]*' || echo "unknown")
     echo "  doctor_ok: ${health_output:-no issues reported}"
     
     # Check Postgres container
@@ -455,9 +455,9 @@ except Exception as e:
     echo "Actions:"
     echo "  diagnose        — check script paths, permissions, deps"
     echo "  check           — alias for diagnose"
-    echo "  fix-missing     — copy missing scripts from hermes-cortex repo"
-    echo "  fix-perms       — fix permissions on .hermes-cortex/scripts/"
-    echo "  fix-git         — fix git state in hermes-cortex"
+    echo "  fix-missing     — copy missing scripts from steadfaste-fleet repo"
+    echo "  fix-perms       — fix permissions on .steadfaste-fleet/scripts/"
+    echo "  fix-git         — fix git state in steadfaste-fleet"
     echo "  fix-docker      — restart docker services"
     echo "  fix-purge       — purge system caches (memory, brew, docker)"
     echo "  fix-certs       — check and renew SSL certificates (certbot)"

@@ -148,11 +148,11 @@ echo "═══ AC8: STORE-ONLY — an enforcer-journal-only session is REFUSED 
 # but the store does not know must NOT pass, or the store stops being authoritative
 # and the Hermes-shaped coupling is back.
 JOURNAL_SID="probe-journal-only-$$"
-mkdir -p "$HOME/.hermes-cortex/state/skills-credit"
+mkdir -p "$HOME/.steadfaste-fleet/state/skills-credit"
 printf '{"session":"%s","skills":["reflexion-check"]}\n' "$JOURNAL_SID" \
-  > "$HOME/.hermes-cortex/state/skills-credit/$JOURNAL_SID.json"
+  > "$HOME/.steadfaste-fleet/state/skills-credit/$JOURNAL_SID.json"
 out=$(python3 "$CHECKER" --session "$JOURNAL_SID" 2>&1); rc=$?
-rm -f "$HOME/.hermes-cortex/state/skills-credit/$JOURNAL_SID.json"
+rm -f "$HOME/.steadfaste-fleet/state/skills-credit/$JOURNAL_SID.json"
 if [[ "$rc" == "1" ]]; then
   pass "journal-only session refused — the store is authoritative, bridge gone"
 else

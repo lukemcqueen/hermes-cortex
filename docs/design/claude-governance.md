@@ -1,7 +1,7 @@
 # Claude Agent Governance Equivalence
 
 **Date:** 2026-08-24 · **Author:** Esther · **Status:** Design
-**Goal (Luke):** when Hermes Cortex is installed on a host with a Claude
+**Goal (Luke):** when Steadfaste Fleet is installed on a host with a Claude
 agent (titusclaude), the Claude agent gets the **same governance** as Hermes
 agents — no weaker enforcement, no bypass paths.
 
@@ -63,23 +63,23 @@ at the same governance servers:
 {
   "mcpServers": {
     "loop-governance": {
-      "command": "~/.hermes-cortex/venv/bin/python3",
-      "args": ["~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py"],
+      "command": "~/.steadfaste-fleet/venv/bin/python3",
+      "args": ["~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"],
       "env": {"AGENT_NAME": "titusclaude"}
     },
     "tasks": {
-      "command": "~/.hermes-cortex/venv/bin/python3",
-      "args": ["~/.hermes-cortex/scripts/task-mcp.py"],
+      "command": "~/.steadfaste-fleet/venv/bin/python3",
+      "args": ["~/.steadfaste-fleet/scripts/task-mcp.py"],
       "env": {"AGENT_NAME": "titusclaude"}
     },
     "executor": {
-      "command": "~/.hermes-cortex/venv/bin/python3",
-      "args": ["~/.hermes-cortex/scripts/executor-mcp.py"],
+      "command": "~/.steadfaste-fleet/venv/bin/python3",
+      "args": ["~/.steadfaste-fleet/scripts/executor-mcp.py"],
       "env": {"AGENT_NAME": "titusclaude"}
     },
     "agent-bus": {
-      "command": "~/.hermes-cortex/venv/bin/python3",
-      "args": ["~/.hermes-cortex/scripts/cortex-bus-mcp.py"],
+      "command": "~/.steadfaste-fleet/venv/bin/python3",
+      "args": ["~/.steadfaste-fleet/scripts/cortex-bus-mcp.py"],
       "env": {"AGENT_NAME": "titusclaude"}
     }
   }
@@ -134,13 +134,13 @@ at the same governance servers:
 | 3 | `docs/design/claude-governance.md` (this) | the equivalence contract | ✅ this file |
 | 4 | `ops/scripts/install/install-claude-governance.sh` | **USER-scope registration** (`~/.claude.json` `mcpServers`) — governance MCP available in EVERY repo Claude opens | ✅ shipped 2026-09-29 |
 | 5 | per-PROJECT session id for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | restart-stable, cross-project-disjoint lock identity | ✅ shipped 2026-09-29 |
-| 6 | per-SESSION repo identity for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | the lock is tagged with the caller's OWN repo (`CORTEX_SESSION_REPO`, else the MCP child's cwd) instead of the host-canonical `~/hermes-cortex` | ✅ shipped 2026-10-09 |
+| 6 | per-SESSION repo identity for non-Hermes callers (`mcp-servers/loop-gov-mcp.py`) | the lock is tagged with the caller's OWN repo (`CORTEX_SESSION_REPO`, else the MCP child's cwd) instead of the host-canonical `~/steadfaste-fleet` | ✅ shipped 2026-10-09 |
 
 ### 6.1 Shipped 2026-10-09 — the lock that could not be released (titus, pi)
 
 A non-Hermes caller (pi / Claude Code / the CLI) injects no repo, so
-`_derive_slug()` fell through to the host-canonical `~/hermes-cortex`. A session
-working in a project repo was therefore locked as `hermes-cortex`, and the close
+`_derive_slug()` fell through to the host-canonical `~/steadfaste-fleet`. A session
+working in a project repo was therefore locked as `steadfaste-fleet`, and the close
 gate refused with *"the lock's repo cannot contain this session's work"* — a
 refusal keeps the lock HELD, and its printed remedy (an enforcer injection) does
 not exist on a non-Hermes harness. Nothing but the operator could release it.
@@ -172,7 +172,7 @@ properly". Root causes and fixes:
    on the box (any repo, Claude OR Hermes) shared one id, so `begin_change`
    from one blocked the next and any session could release another's lock
    ACROSS UNRELATED REPOS. Fix: a per-PROJECT id persisted at
-   `~/.hermes-cortex/state/.session-<repo_slug>.id`:
+   `~/.steadfaste-fleet/state/.session-<repo_slug>.id`:
    - **restart-stable** — an MCP-child restart mid-session keeps the id, so
      the lock survives (Claude Code restarts the server between calls);
    - **cross-project disjoint** — different repos never share an id (the

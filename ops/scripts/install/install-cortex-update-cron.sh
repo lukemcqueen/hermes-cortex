@@ -5,7 +5,7 @@
 #  Creates a system-level cron job (launchd / systemd timer /
 #  crontab) that runs cortex-update.sh daily at 3am.
 #  The job is silent when nothing changed and writes
-#  ~/.hermes-cortex/state/last-update.{json,txt} on changes.
+#  ~/.steadfaste-fleet/state/last-update.{json,txt} on changes.
 #
 #  The operator (Luke role) is notified by whatever delivery
 #  channel the cron is configured with. When the cron's output
@@ -22,8 +22,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
 SERVICE_NAME="com.hermes.cortex-update"
-UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/scripts/cortex-update.sh"
-STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state"
+UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/cortex-update.sh"
+STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state"
 mkdir -p "$STATE_DIR"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; RESET='\033[0m'
@@ -34,7 +34,7 @@ error() { printf "${RED}✗${RESET} %s\n" "$*"; }
 install_cron() {
   if [[ ! -f "$UPDATE_SCRIPT" ]]; then
     error "cortex-update.sh not found at ${UPDATE_SCRIPT}"
-    error "Install Hermes Cortex first, then run this script."
+    error "Install Steadfaste Fleet first, then run this script."
     return 1
   fi
 
@@ -122,7 +122,7 @@ _install_systemd() {
   # Service unit
   cat > "${unit_dir}/${SERVICE_NAME}.service" <<UNIT
 [Unit]
-Description=Hermes Cortex Weekly Update
+Description=Steadfaste Fleet Weekly Update
 After=network.target
 
 [Service]
@@ -135,7 +135,7 @@ UNIT
   # Timer unit — daily 3am
   cat > "${unit_dir}/${SERVICE_NAME}.timer" <<TIMER
 [Unit]
-Description=Hermes Cortex Daily Update Timer
+Description=Steadfaste Fleet Daily Update Timer
 
 [Timer]
 OnCalendar=03:00:00

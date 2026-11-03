@@ -22,7 +22,7 @@
 #            the langfuse-fleet-script pattern; Hermes loads it at start)
 #
 # Value: ${HERMES_CRON_TIMEOUT:-600} — override per machine via
-# ~/hermes-cortex/.env (sourced by cortex-update.sh before this runs).
+# ~/steadfaste-fleet/.env (sourced by cortex-update.sh before this runs).
 # 0 = unlimited.
 #
 # ⚠️  Activation requires a gateway restart: systemd drop-ins are read
@@ -48,7 +48,7 @@ esac
 
 HOME_DIR="${HOME:?}"
 HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.steadfaste-fleet}"
 STATE_FILE="${CORTEX_DEPLOY_HOME}/state/cron-timeout-env"
 
 MECH=""

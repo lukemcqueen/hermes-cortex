@@ -23,7 +23,7 @@
 # Exit: 0 ok, 1 usage/validation error, 2 not in a git work tree.
 set -euo pipefail
 
-DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 AGENT_ENV="$DEPLOY/agent.env"
 
 die() { echo "session-identity: $*" >&2; exit 1; }

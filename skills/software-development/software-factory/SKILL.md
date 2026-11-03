@@ -2,7 +2,7 @@
 name: software-factory
 description: "Real features: 4-gate design with user approval per gate."
 version: 1.0.0
-author: Hermes Cortex (adapted from Maciejdziuba's gist of Dex Horthy's HumanLayer playbook, David Ondrej podcast 2026)
+author: Steadfaste Fleet (adapted from Maciejdziuba's gist of Dex Horthy's HumanLayer playbook, David Ondrej podcast 2026)
 license: MIT
 platforms: [linux, macos]
 metadata:

@@ -106,7 +106,7 @@ def test_candidates_are_never_cwd_relative(tmp_path):
         cands = task_db._migrate_candidates()
     assert all(c.is_absolute() for c in cands), (
         f"a candidate must never be cwd-relative: {cands}")
-    assert cands[0] == Path.home() / ".hermes-cortex/services/tasks/migrate.py"
+    assert cands[0] == Path.home() / ".steadfaste-fleet/services/tasks/migrate.py"
 
 
 def test_cmd_apply_schema_runs_the_deployed_runner(tmp_path):

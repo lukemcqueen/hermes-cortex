@@ -3,7 +3,7 @@ name: lesson-aware-agent
 version: 1.0.0
 category: software-development
 description: "Universal lesson-aware injection pattern. Makes every agent action memory-aware: search lessons before acting, save lessons after fixing. Works across all skills, not just change-test-loop."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

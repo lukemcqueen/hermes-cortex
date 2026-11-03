@@ -38,13 +38,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-CORTEX_REPO = HOME / "hermes-cortex"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 # Derive AGENT_NAME from env (set by cron/launchd) or .env (fleet setup)
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
-  bus_conf = HOME / "hermes-cortex" / ".env"
+  bus_conf = HOME / "steadfaste-fleet" / ".env"
   if bus_conf.exists():
     for line in bus_conf.read_text().splitlines():
       if line.startswith("AGENT_NAME="):
@@ -52,7 +52,7 @@ if not AGENT_NAME:
         AGENT_NAME = val
         break
 if not AGENT_NAME:
-  print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/hermes-cortex/.env or export AGENT_NAME.", flush=True)
+  print(f"❌ AGENT_NAME not configured. Set AGENT_NAME= in ~/steadfaste-fleet/.env or export AGENT_NAME.", flush=True)
   sys.exit(1)
 # Export for child modules (commands.py dispatch etc.) — identity is explicit,
 # never hostname-derived (Luke directive 2026-08-10).
@@ -62,12 +62,12 @@ from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
 
 # State file to track processed correlation_ids for idempotency
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "agent-message-state.json"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Agent labels file (created by cortex-agent-manager.py or manually)
-LABELS_FILE = HOME / ".hermes-cortex" / "agent-labels.json"
+LABELS_FILE = HOME / ".steadfaste-fleet" / "agent-labels.json"
 
 
 def _load_agent_labels() -> dict:
@@ -256,11 +256,11 @@ def normalize_tracked_subject(subject: str) -> str:
 # silently losing UPDATE_RESULTs. The worker survives (start_new_session),
 # writes its result here, and the sweep (_send_pending_update_results) sends
 # it on a later tick.
-UPDATE_PENDING_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "pending-update-results"
+UPDATE_PENDING_DIR = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "pending-update-results"
 UPDATE_RESULT_TIMEOUT_S = 1800  # worker must finish within 30 min or the sweep declares timeout
 
 # Deployed task-db.py path (repo path used when developing/deploying).
-TASK_DB_PATH = HOME / ".hermes-cortex" / "scripts" / "task-db.py"
+TASK_DB_PATH = HOME / ".steadfaste-fleet" / "scripts" / "task-db.py"
 if not TASK_DB_PATH.exists():
     TASK_DB_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "task-db.py"
 
@@ -699,7 +699,7 @@ except Exception:
     }
     # Fall back to the default pending dir so the sweep can still send this
     # correlation id instead of leaving a stale .running marker.
-    out_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "pending-update-results"
+    out_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "pending-update-results"
 result.setdefault("success", False)
 out_dir.mkdir(parents=True, exist_ok=True)
 (out_dir / (corr + ".json")).write_text(json.dumps(result))
@@ -1012,11 +1012,11 @@ def process_git_auth_check(msg_body: dict) -> dict:
     )
     remote_url = r.stdout.strip()
     # Owner-agnostic canonical match (2026-11-03 rename): accept the repo under its
-    # legacy name (hermes-cortex) or its renamed name (steadfaste-fleet), https/ssh.
+    # legacy name (steadfaste-fleet) or its renamed name (steadfaste-fleet), https/ssh.
     _u = (remote_url or "").strip()
     _canon = ("fleet-operator" not in _u and
               (_u.startswith("https://github.com/") or _u.startswith("git@github.com:")) and
-              _u.endswith(("/hermes-cortex.git", ":hermes-cortex.git",
+              _u.endswith(("/steadfaste-fleet.git", ":steadfaste-fleet.git",
                            "/steadfaste-fleet.git", ":steadfaste-fleet.git")))
     checks.append(("remote URL", _canon or (bool(expected_url) and expected_url in _u), remote_url))
   except Exception as e:
@@ -1045,7 +1045,7 @@ def process_exec_command(msg_body: dict) -> dict:
   """Process an EXEC command — run a script and return output.
 
   Message body format:
-    command: str  — relative path under ~/.hermes-cortex/scripts/
+    command: str  — relative path under ~/.steadfaste-fleet/scripts/
     params: list  — optional arguments to pass
     timeout: int  — max seconds (default 60)
 
@@ -1078,8 +1078,8 @@ def process_exec_command(msg_body: dict) -> dict:
       "command": "",
     }
 
-  # Resolve script path — relative under ~/.hermes-cortex/scripts/
-  scripts_dir = HOME / ".hermes-cortex" / "scripts"
+  # Resolve script path — relative under ~/.steadfaste-fleet/scripts/
+  scripts_dir = HOME / ".steadfaste-fleet" / "scripts"
   script_path = scripts_dir / command
 
   if not script_path.exists():
@@ -1533,7 +1533,7 @@ def main():
           payload = body.get("body", {})
           if isinstance(payload, str):
             payload = json.loads(payload)
-          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-stub-recovery"
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "skill-stub-recovery"
           stage_dir.mkdir(parents=True, exist_ok=True)
           host = payload.get("hostname", body.get("from", "unknown"))
           part = payload.get("part", 0)
@@ -1628,7 +1628,7 @@ def main():
       # collector state frozen since 07-28).
       if subject.startswith(("Learning Report", "LEARNING_REPORT")):
         try:
-          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "learning-reports"
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "learning-reports"
           stage_dir.mkdir(parents=True, exist_ok=True)
           src_agent = body.get("from", "unknown") if isinstance(body, dict) else "unknown"
           ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1661,7 +1661,7 @@ def main():
       # parts 2-31 archived 2026-08-14 01:00-02:15, verified same day).
       if subject.startswith("Skill Report:"):
         try:
-          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex")) / "state" / "skill-reports"
+          stage_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet")) / "state" / "skill-reports"
           stage_dir.mkdir(parents=True, exist_ok=True)
           src_agent = body.get("from", "unknown") if isinstance(body, dict) else "unknown"
           ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1728,12 +1728,12 @@ def main():
     # file-based inbox (check-agent-messages.sh) wrote this file; the handler
     # is the inbox poller now, so it must keep the marker fresh or heartbeat
     # reports "Agent inbox scan: DOWN" permanently. Write both the HERMES_HOME
-    # path (what heartbeat reads) and the legacy ~/.hermes-cortex/state path
+    # path (what heartbeat reads) and the legacy ~/.steadfaste-fleet/state path
     # (what older docs/crons referenced) — cheap and covers all hosts.
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for _state_dir in (
         Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "state",
-        HOME / ".hermes-cortex" / "state",
+        HOME / ".steadfaste-fleet" / "state",
     ):
         try:
             _state_dir.mkdir(parents=True, exist_ok=True)

@@ -60,9 +60,9 @@ Every `./run` MUST implement these commands with identical semantics:
 - **Platform dispatchers** use a root dispatcher + per-component `./run` scripts. Each component's `./run` implements the same interface above.
 
 > ⚠️ **Skill-dir assets:** the canonical assets live in the shared repo, NOT inside this skill's directory:
-> - Template → `~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh`
-> - `check-alembic-heads.py` → `~/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py`
-> Both deploy to `~/.hermes-cortex/scripts/project-run-scripts/...` via `cortex-update.sh`. Check the repo path exists before relying on it. If either is absent, write `./run` from the Template Structure below — every required piece (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
+> - Template → `~/steadfaste-fleet/ops/scripts/project-run-scripts/templates/run.sh`
+> - `check-alembic-heads.py` → `~/steadfaste-fleet/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py`
+> Both deploy to `~/.steadfaste-fleet/scripts/project-run-scripts/...` via `cortex-update.sh`. Check the repo path exists before relying on it. If either is absent, write `./run` from the Template Structure below — every required piece (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
 
 ## Migration Head Integrity — Fail-Fast, No Auto-Merge
 
@@ -78,7 +78,7 @@ Every project with Alembic migrations MUST have these two files:
 
 | File | Purpose | Provided by skill |
 |------|---------|-------------------|
-| `scripts/check-alembic-heads.py` | Static-analysis script: checks for multiple heads, validates revision ID length (max 32 chars) | `~/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py` — copy to your repo's `scripts/` |
+| `scripts/check-alembic-heads.py` | Static-analysis script: checks for multiple heads, validates revision ID length (max 32 chars) | `~/steadfaste-fleet/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py` — copy to your repo's `scripts/` |
 | `tests/test_migrations.py` | Pytest: asserts `len(script.get_heads()) == 1` at runtime | Template below — include in your test suite |
 
 ### Policy
@@ -122,8 +122,8 @@ Copy this script from the repo's `ops/scripts/project-run-scripts/scripts/` dire
 
 ```bash
 # Pick the file we already have on disk (repo path beats $HOME fallback):
-CHECKER="${HOME}/hermes-cortex/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py"
-[ -f "$CHECKER" ] || CHECKER="${HOME}/.hermes-cortex/scripts/project-run-scripts/scripts/check-alembic-heads.py"
+CHECKER="${HOME}/steadfaste-fleet/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py"
+[ -f "$CHECKER" ] || CHECKER="${HOME}/.steadfaste-fleet/scripts/project-run-scripts/scripts/check-alembic-heads.py"
 mkdir -p scripts && cp "$CHECKER" scripts/
 ```
 
@@ -260,7 +260,7 @@ Every `./run` follows this structure:
 ## Canonical Template
 
 The canonical template lives at
-`~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh` — verify it
+`~/steadfaste-fleet/ops/scripts/project-run-scripts/templates/run.sh` — verify it
 exists (`ls` the path) and read it before writing a new `./run`; it is the
 definitive starting point for every new project. Customize: PROJECT_ROOT paths, service names, env var defaults, test runner commands. If the template is
 missing, build from the Template Structure section above instead of guessing.
@@ -310,7 +310,7 @@ Every repo with vitest tests MUST include `_cleanup_vitest` and `_run_vitest` fu
 ## Update Workflow
 
 When writing a `./run` for a repo that lacks one, or updating one that's incomplete:
-1. Read the canonical template: `cat ~/hermes-cortex/ops/scripts/project-run-scripts/templates/run.sh` (verify it exists first)
+1. Read the canonical template: `cat ~/steadfaste-fleet/ops/scripts/project-run-scripts/templates/run.sh` (verify it exists first)
 2. Determine which tech stack(s) the project uses (Python/FastAPI? Rails? Go? Node?)
 3. Customize: service names, env var defaults, test paths, db credentials
 4. Copy `scripts/check-alembic-heads.py` from the skill (see Migration Head Integrity section above) if the project uses Alembic

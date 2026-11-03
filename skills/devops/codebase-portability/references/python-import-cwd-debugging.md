@@ -19,7 +19,7 @@ to different directories.
 
 | Location | `os.path.dirname(__file__)` | Has `hermes_paths.py`? |
 |----------|----------------------------|------------------------|
-| Deployed (`~/.hermes-cortex/scripts/`) | `...scripts/` | ✅ yes |
+| Deployed (`~/.steadfaste-fleet/scripts/`) | `...scripts/` | ✅ yes |
 | Repo (`ops/scripts/manage/`) | `...manage/` | ❌ no (it's at `ops/scripts/`) |
 
 From the repo path, `from hermes_paths import ensure_scripts_path` fails
@@ -89,10 +89,10 @@ After the fix, test from BOTH paths:
 
 ```bash
 # Deployed (production) path
-python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet
+python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py --quiet
 
 # Repo (development) path
-cd ~/hermes-cortex && python3 ops/scripts/manage/cortex-doctor.py --quiet
+cd ~/steadfaste-fleet && python3 ops/scripts/manage/cortex-doctor.py --quiet
 ```
 
 Both should produce identical results for the affected test.

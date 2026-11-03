@@ -6,7 +6,7 @@ which wire-level surfaces a third-party framework actually exposes.
 ## MCP — Model Context Protocol
 
 Tools and connections. A server exposes tools/resources; a client consumes them.
-Framework-agnostic, over stdio or HTTP. **Hermes Cortex status: supported**
+Framework-agnostic, over stdio or HTTP. **Steadfaste Fleet status: supported**
 (cortex-bus-mcp, executor-mcp, loop-gov-mcp, task-mcp; Hermes also acts as MCP client).
 
 ## ACP — Agent Client Protocol
@@ -18,7 +18,7 @@ form elicitation, cooperative turn cancellation, concurrent sessions, session cl
 Security note: ACP does *not* mount the editor's filesystem/terminal into the agent;
 `session/new.cwd` only identifies the app to launch.
 
-**Hermes Cortex status: NOT supported** (no `agentclient`/`acpx`/"agent client
+**Steadfaste Fleet status: NOT supported** (no `agentclient`/`acpx`/"agent client
 protocol" anywhere in the repo). Adding it means a small JSON-RPC-over-stdio shim in
 either direction:
 - **server** — expose a Hermes agent so Zed/`acpx`/other frameworks can drive it;
@@ -30,7 +30,7 @@ Agentic commerce. A business declares support by serving a JSON profile at
 `/.well-known/ucp` (spec versions, services, payment handlers, signing keys).
 Signed request/response verification via EC P-256 public keys. Requires HTTPS,
 `cache-control: public, max-age>=60`, no 3xx on the profile endpoint.
-**Hermes Cortex status: NOT supported** — only relevant if agentic commerce/payments
+**Steadfaste Fleet status: NOT supported** — only relevant if agentic commerce/payments
 enter scope; usually out of scope for this fleet.
 
 ## Common transport / discovery notes

@@ -29,18 +29,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in
 from lib.cortex_bus import bus_send, bus_read
 
 HOME = Path.home()
-HERMES_STATE = HOME / ".hermes-cortex" / "state"
+HERMES_STATE = HOME / ".steadfaste-fleet" / "state"
 REGISTRY_PATH = HERMES_STATE / "agent-registry.json"
-CORTEX_REPO = HOME / "hermes-cortex"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 
 
 def is_canonical_remote(remote_url: str) -> bool:
-    """Accept the canonical repo under its legacy name (hermes-cortex) or its renamed
+    """Accept the canonical repo under its legacy name (steadfaste-fleet) or its renamed
     name (steadfaste-fleet), on github.com, owner- and credential-agnostic.
     The old fleet-operator handle is dead (pre-2026-08-24) and is not accepted."""
     u = remote_url.strip()
     return "github.com" in u and (
-        u.endswith("/hermes-cortex.git") or u.endswith("/steadfaste-fleet.git")
+        u.endswith("/steadfaste-fleet.git") or u.endswith("/steadfaste-fleet.git")
     )
 
 

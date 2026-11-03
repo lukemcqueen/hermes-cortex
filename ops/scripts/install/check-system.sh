@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — System Verification Check
+#  Steadfaste Fleet — System Verification Check
 #  Run this BEFORE install.sh to verify your system is ready.
 #
 #  Usage:
@@ -88,7 +88,7 @@ check_os() {
         json_append "os" "warn" "Linux" "macOS-optimized, some steps may need adaptation"
     else
         fail "$MODE" "Unsupported OS: $os (macOS or Linux required)"
-        json_append "os" "fail" "Unsupported: $os" "Hermes Cortex requires macOS or Linux"
+        json_append "os" "fail" "Unsupported: $os" "Steadfaste Fleet requires macOS or Linux"
     fi
 }
 
@@ -352,7 +352,7 @@ check_service_manager() {
         SERVICES=(
             "ollama"
             "hermes-gateway"
-            "hermes-cortex-dashboard"
+            "steadfaste-fleet-dashboard"
         )
         SERVICE_NAMES=(
             "Ollama"
@@ -545,7 +545,7 @@ print_summary() {
 main() {
     echo ""
     echo "  ╔══════════════════════════════════════════════════════╗"
-    echo "  ║     Hermes Cortex — System Verification v${VERSION}       ║"
+    echo "  ║     Steadfaste Fleet — System Verification v${VERSION}       ║"
     echo "  ║     Profile: ${CORTEX_PROFILE}                           ║"
     echo "  ║     Run this before install.sh to check readiness     ║"
     echo "  ╚══════════════════════════════════════════════════════╝"

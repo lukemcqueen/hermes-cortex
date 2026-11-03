@@ -20,9 +20,9 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY=""
 if [ -n "${CORTEX_PYTHON:-}" ] && "$CORTEX_PYTHON" -c 'import pytest' 2>/dev/null; then
   PY="$CORTEX_PYTHON"
-elif [ -x "${HOME}/.hermes-cortex/venv/bin/python3" ] && \
-     "${HOME}/.hermes-cortex/venv/bin/python3" -c 'import pytest' 2>/dev/null; then
-  PY="${HOME}/.hermes-cortex/venv/bin/python3"
+elif [ -x "${HOME}/.steadfaste-fleet/venv/bin/python3" ] && \
+     "${HOME}/.steadfaste-fleet/venv/bin/python3" -c 'import pytest' 2>/dev/null; then
+  PY="${HOME}/.steadfaste-fleet/venv/bin/python3"
 fi
 if [ -z "$PY" ]; then
   # Not a fleet host, or a repo with its own interpreter: probe PATH by CAPABILITY. "python3

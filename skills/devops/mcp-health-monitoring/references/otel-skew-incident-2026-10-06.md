@@ -188,7 +188,7 @@ suite_exit=0
 
 == 2. live probe, every resolved runtime interpreter ==
 probe committed at: 259a84c1 2026-10-06 skills(mcp-health-monitoring): add otel version-skew probe + test + incident evidence
-probe: $HOME/hermes-cortex/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py
+probe: $HOME/steadfaste-fleet/skills/devops/mcp-health-monitoring/scripts/otel-version-skew-probe.py
   OK   $HOME/.hermes/hermes-agent/venv/bin/python3 
   OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/161f630fbf524b6dba10c7caa764b526/venv/bin/python3 
   OK   $HOME/.hermes/installs/483c6efb1d92c950/environments/391b894a13414bceb01aa62f0f7fc7d7/venv/bin/python3 

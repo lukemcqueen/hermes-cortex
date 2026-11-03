@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# hc — Hermes Cortex CLI entrypoint
+# hc — Steadfaste Fleet CLI entrypoint
 # Source of truth: ops/scripts/hc/bin/hc — the repo keeps the module one level up, so this
 # launcher lives in bin/ where nothing is named like the command (a DIRECTORY at
 # ops/scripts/hc meant `bash ops/scripts/hc` answered "Is a directory").
-# Deployed FLAT to ~/.hermes-cortex/scripts/hc with the module beside it. Invoke it by that
+# Deployed FLAT to ~/.steadfaste-fleet/scripts/hc with the module beside it. Invoke it by that
 # path: nothing in this repo creates a PATH link, so `command -v hc` finds nothing until a
 # host adds the deploy's scripts dir to PATH itself.
 
@@ -19,8 +19,8 @@ done
 # Fall back to known installation paths
 if [ -z "$HC_PY" ]; then
     for try in \
-        "${HOME}/hermes-cortex/ops/scripts/hc/hc.py" \
-        "${HOME}/.hermes-cortex/scripts/hc.py" \
+        "${HOME}/steadfaste-fleet/ops/scripts/hc/hc.py" \
+        "${HOME}/.steadfaste-fleet/scripts/hc.py" \
         "${HOME}/.local/bin/hc.py"; do
         if [ -f "$try" ]; then
             HC_PY="$try"
@@ -34,7 +34,7 @@ fi
 
 if [ ! -f "$HC_PY" ]; then
     echo "hc: cannot find hc.py — looked beside $(dirname "$0") and one level up" >&2
-    echo "hc: run the deployed ~/.hermes-cortex/scripts/hc, or reinstall with cortex-update.sh" >&2
+    echo "hc: run the deployed ~/.steadfaste-fleet/scripts/hc, or reinstall with cortex-update.sh" >&2
     exit 3
 fi
 

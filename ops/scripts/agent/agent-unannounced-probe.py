@@ -24,7 +24,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_PATH = Path.home() / ".hermes-cortex" / "data" / "unannounced-probes.jsonl"
+DEFAULT_PATH = Path.home() / ".steadfaste-fleet" / "data" / "unannounced-probes.jsonl"
 
 
 def loop_path(path=None) -> Path:

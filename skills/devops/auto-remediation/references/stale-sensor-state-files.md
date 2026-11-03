@@ -3,7 +3,7 @@
 ## Problem
 
 The `remediation-sensor.py` (no_agent cron, every 5m) writes pending state files to
-`~/.hermes-cortex/state/remediate/inbox-<id>.txt` when it detects issues. Each file
+`~/.steadfaste-fleet/state/remediate/inbox-<id>.txt` when it detects issues. Each file
 contains the `from=`, `subject=`, and `file=` path to the original inbox message.
 
 However, between the sensor's run and the LLM cron's run (`agent-auto-remediate`,
@@ -17,10 +17,10 @@ The sensor's state file becomes **stale** — it records a problem that no longe
 ## Signal
 
 ```
-$ cat ~/.hermes-cortex/state/remediate/inbox-*.txt
+$ cat ~/.steadfaste-fleet/state/remediate/inbox-*.txt
 from=esther
 subject=🔑 Bus token request — agent-bus for esther
-file=/home/esther/hermes-cortex-private/messages/inbox/20260714155531668467-esther.md
+file=/home/esther/steadfaste-fleet-private/messages/inbox/20260714155531668467-esther.md
 priority=urgent
 ```
 
@@ -41,7 +41,7 @@ between sensor ticks, the state file is already on disk.
 2. **Verify the issue is actually still present** before taking any action.
 3. **If resolved:** delete the stale state file:
    ```bash
-   rm ~/.hermes-cortex/state/remediate/inbox-<id>.txt
+   rm ~/.steadfaste-fleet/state/remediate/inbox-<id>.txt
    ```
 4. **If still active:** proceed with remediation as normal.
 
@@ -49,7 +49,7 @@ between sensor ticks, the state file is already on disk.
 
 ```bash
 # Confirm the state directory is clean
-ls ~/.hermes-cortex/state/remediate/
+ls ~/.steadfaste-fleet/state/remediate/
 # Should be empty or only contain truly active issues
 ```
 

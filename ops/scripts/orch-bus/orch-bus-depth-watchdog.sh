@@ -5,14 +5,14 @@
 
 # ── Agent identity — fail loud, never hostname/USER/other agent ──
 AGENT_NAME="${AGENT_NAME:-}"
-if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.steadfaste-fleet/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
-if [[ -z "$AGENT_NAME" && -f "${HOME}/hermes-cortex/.env" ]]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [[ -z "$AGENT_NAME" && -f "${HOME}/steadfaste-fleet/.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
 if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
-    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
     exit 1
 fi
 # Requires bus URL from config — no localhost fallback

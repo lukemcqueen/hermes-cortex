@@ -158,7 +158,7 @@ def main() -> int:
             json.dumps({"jobs": [paused_job, active_job]}), encoding="utf-8"
         )
         # Seed the watchdog state so the paused job is a legitimate candidate.
-        wd_state = Path(home) / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
+        wd_state = Path(home) / ".steadfaste-fleet" / "state" / "cron-failure-watchdog.json"
         wd_state.parent.mkdir(parents=True, exist_ok=True)
         wd_state.write_text(json.dumps({"abcd1234": {"alerted": True, "consecutive": 3}}))
         mod.subprocess = _FakeSubprocess()

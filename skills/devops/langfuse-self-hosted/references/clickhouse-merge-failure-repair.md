@@ -209,7 +209,7 @@ curl -sL -o /dev/null -w '%{http_code}' https://your-domain.com/langfuse/
 
 The `langfuse-health-watchdog` cron (Hermes-managed, runs hourly) tracks
 `TotalMergeFailures` via a state file at
-`~/.hermes-cortex/state/langfuse-ch-merge.state`. After dropping a corrupted
+`~/.steadfaste-fleet/state/langfuse-ch-merge.state`. After dropping a corrupted
 part, the state file still holds the old high failure count. Reset it to the
 current live value:
 
@@ -217,7 +217,7 @@ current live value:
 echo "$(docker exec langfuse-clickhouse-1 \
   clickhouse-client --query \
   \"SELECT value FROM system.metrics WHERE metric = 'TotalMergeFailures'\")\" \
-  > ~/.hermes-cortex/state/langfuse-ch-merge.state
+  > ~/.steadfaste-fleet/state/langfuse-ch-merge.state
 ```
 
 Otherwise the watchdog will either (a) report a phantom increase on next run,

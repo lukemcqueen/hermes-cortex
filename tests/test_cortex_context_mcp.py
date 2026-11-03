@@ -72,8 +72,8 @@ class FakePg:
 # ── Session identity: explicit + derivable, never "latest" ────
 
 def test_session_key_is_derived_from_harness_repo_branch(store_mod):
-    assert store_mod.SessionStore.session_key("pi", "hermes-cortex", "main") == \
-        "pi:hermes-cortex:main"
+    assert store_mod.SessionStore.session_key("pi", "steadfaste-fleet", "main") == \
+        "pi:steadfaste-fleet:main"
 
 
 def test_session_key_skips_empty_parts(store_mod):
@@ -253,9 +253,9 @@ def test_session_key_includes_all_three_axes(monkeypatch):
     srv = _load_server()
     monkeypatch.delenv("CORTEX_SESSION_KEY", raising=False)
     monkeypatch.setenv("CORTEX_SESSION_HARNESS", "pi")
-    monkeypatch.setenv("CORTEX_SESSION_REPO", "hermes-cortex")
+    monkeypatch.setenv("CORTEX_SESSION_REPO", "steadfaste-fleet")
     monkeypatch.setenv("CORTEX_SESSION_BRANCH", "main")
-    assert _load_tools().session_key_from({}) == "pi:hermes-cortex:main"
+    assert _load_tools().session_key_from({}) == "pi:steadfaste-fleet:main"
 
 
 # ── Real wire protocol: the server actually speaks MCP ───────

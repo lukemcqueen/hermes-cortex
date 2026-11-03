@@ -2,7 +2,7 @@
 
 ## Migration Context
 
-The hermes-cortex repo restructured from a `src/` prefix to an `ops/` prefix for
+The steadfaste-fleet repo restructured from a `src/` prefix to an `ops/` prefix for
 operational files (scripts, services, offline tools), and `deploy/` was moved
 under `ops/install/deploy/`. All path references in deployed cron scripts
 (`~/.hermes/scripts/*.sh`, `~/.hermes/scripts/*.py`) needed updating.
@@ -40,8 +40,8 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `agent-ip-submission.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` |
 | `cron-auto-remediate.sh` | `CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"` | `CORTEX_SCRIPTS="${CORTEX_REPO}/ops/scripts"` |
 | `cron-auto-remediate.sh` | `git status --porcelain -- ops/scripts/` | `git status --porcelain -- ops/scripts/` |
-| `send-agent-learning.sh` | `REPO_SCRIPTS="${HOME}/hermes-cortex/src/scripts"` | `REPO_SCRIPTS="${HOME}/hermes-cortex/ops/scripts"` |
-| `setup-agent-inbox.sh` | `bash "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh"` | `bash "${HOME}/hermes-cortex/ops/scripts/cortex-update.sh"` |
+| `send-agent-learning.sh` | `REPO_SCRIPTS="${HOME}/steadfaste-fleet/src/scripts"` | `REPO_SCRIPTS="${HOME}/steadfaste-fleet/ops/scripts"` |
+| `setup-agent-inbox.sh` | `bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"` | `bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"` |
 | `install-post-commit-hook.sh` | `NOTIFY_SCRIPT="${REPO_DIR}/ops/scripts/post-commit-notify.sh"` | `NOTIFY_SCRIPT="${REPO_DIR}/ops/scripts/post-commit-notify.sh"` |
 | `pre-commit-doc-audit.sh` | `grep -c '^ops/scripts/'` | `grep -c '^ops/scripts/'` |
 | `change-validate.sh` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"` |
@@ -81,28 +81,28 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | File | Specific old ref | Specific new ref |
 |------|-----------------|------------------|
 | `daily-lesson-mine.sh` | `"${CORTEX_REPO:-}/src/offline/session_mine.py"` | `"${CORTEX_REPO:-}/ops/offline/session_mine.py"` |
-| `offline_code_index_cron.sh` | `~/hermes-cortex/ops/offline/offline_code.sh` | `~/hermes-cortex/ops/offline/offline_code.sh` |
+| `offline_code_index_cron.sh` | `~/steadfaste-fleet/ops/offline/offline_code.sh` | `~/steadfaste-fleet/ops/offline/offline_code.sh` |
 | `cortex-update.sh` | `local corpus_src="${REPO_DIR}/src/offline/code-corpus"` | `local corpus_src="${REPO_DIR}/ops/offline/code-corpus"` |
 
 ### `src/mcp-servers/` → `ops/services/` (loop-gov-mcp.sh)
 | Path component | Old | New |
 |----------------|-----|-----|
-| venv location | `~/.hermes-cortex/mcp-servers/venv` | `~/.hermes-cortex/services/venv` |
-| script path | `$HOME/hermes-cortex/runtime/mcp-servers/loop-gov-mcp.py` | `$HOME/hermes-cortex/ops/services/loop-gov-mcp.py` |
+| venv location | `~/.steadfaste-fleet/mcp-servers/venv` | `~/.steadfaste-fleet/services/venv` |
+| script path | `$HOME/steadfaste-fleet/runtime/mcp-servers/loop-gov-mcp.py` | `$HOME/steadfaste-fleet/ops/services/loop-gov-mcp.py` |
 
 ### `core/governance/` → `core/governance/`
 | File | Specific old ref | Specific new ref |
 |------|-----------------|------------------|
-| `setup.sh` | `"${HOME}/hermes-cortex/src/loop-governance"` | `"${HOME}/hermes-cortex/core/governance"` |
-| `update.sh` | `"${HOME}/hermes-cortex/src/loop-governance"` (2 occurrences) | `"${HOME}/hermes-cortex/core/governance"` |
+| `setup.sh` | `"${HOME}/steadfaste-fleet/src/loop-governance"` | `"${HOME}/steadfaste-fleet/core/governance"` |
+| `update.sh` | `"${HOME}/steadfaste-fleet/src/loop-governance"` (2 occurrences) | `"${HOME}/steadfaste-fleet/core/governance"` |
 | `update.sh` | GitHub URL `main/core/governance/VERSION` | `main/core/governance/VERSION` |
-| `update.sh` | tarball extract `hermes-cortex-main/core/governance/` | `hermes-cortex-main/core/governance/` |
-| `cortex-update.sh` | `$HOME/src/hermes-cortex` (typo) | `$HOME/hermes-cortex` |
+| `update.sh` | tarball extract `steadfaste-fleet-main/core/governance/` | `steadfaste-fleet-main/core/governance/` |
+| `cortex-update.sh` | `$HOME/src/steadfaste-fleet` (typo) | `$HOME/steadfaste-fleet` |
 
 ### Comment/Docs-only paths (in message bodies sent to agents)
 | File | Old instruction | New instruction |
 |------|----------------|----------------|
-| `request-skill-reports.sh` | `bash ~/hermes-cortex/ops/scripts/manage/collect-agent-skills.sh` | ops equivalent instruction |
+| `request-skill-reports.sh` | `bash ~/steadfaste-fleet/ops/scripts/manage/collect-agent-skills.sh` | ops equivalent instruction |
 
 ## Issues Encountered
 

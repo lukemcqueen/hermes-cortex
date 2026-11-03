@@ -1,6 +1,6 @@
 # fleet-search
 
-One search capability for every fleet agent — hermes-cortex (Python) and steadfaste (Rust).
+One search capability for every fleet agent — steadfaste-fleet (Python) and steadfaste (Rust).
 Design of record: `docs/design/agent-search.md`.
 
 ```bash

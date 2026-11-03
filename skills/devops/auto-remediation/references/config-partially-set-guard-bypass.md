@@ -27,7 +27,7 @@ fi
 ```
 
 **The problem:** `CORTEX_INBOX_URL` IS set in one of the `.env` files the
-script sources (e.g. `~/hermes-cortex/.env` has the URL). The guard only
+script sources (e.g. `~/steadfaste-fleet/.env` has the URL). The guard only
 checks for the URL being empty. When the URL resolves, the guard releases
 into a code path that tries to POST to the URL — but `CORTEX_INBOX_AUTH` is
 NOT set, so every API call fails and the script hits the `else` branch,
@@ -53,7 +53,7 @@ grep -n 'source\|\.env\|\.conf' path/to/script.sh
 
 # 2. Check each source for INBOX_URL and INBOX_AUTH
 grep -E 'CORTEX_INBOX_URL|INBOX_URL|CORTEX_INBOX_AUTH|INBOX_AUTH' \
-  ~/hermes-cortex/.env ~/.hermes/hermes-inbox.conf ~/.hermes/.env ~/.hermes-cortex/.env
+  ~/steadfaste-fleet/.env ~/.hermes/hermes-inbox.conf ~/.hermes/.env ~/.steadfaste-fleet/.env
 
 # 3. Trace the resolution chain
 bash -x path/to/script.sh 2>&1 | grep -E 'INBOX_URL|INBOX_AUTH|exit|ERROR' | head -10
@@ -76,7 +76,7 @@ fi
 ```
 
 Apply to both the deployed copy (`~/.hermes/scripts/`) and the repo source
-(e.g. `~/hermes-cortex/ops/scripts/manage/`).
+(e.g. `~/steadfaste-fleet/ops/scripts/manage/`).
 
 ## Verification
 

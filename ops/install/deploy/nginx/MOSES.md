@@ -15,10 +15,10 @@
 
 ## What You Need To Do
 
-### 1. Push to hermes-cortex
+### 1. Push to steadfaste-fleet
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git push origin main
 ```
 
@@ -26,7 +26,7 @@ git push origin main
 
 Share this workflow so every peer can deploy security:
 
-> **Nginx security pipeline deployed.** Run `python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py` to deploy.
+> **Nginx security pipeline deployed.** Run `python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py` to deploy.
 > **Setup for a new machine:** Copy the env template, install the legacy script (if needed), see `ops/install/deploy/nginx/README.md`.
 > **Add new blocks:** Append bare IPs to `ops/install/deploy/nginx/blocked_ips.add`, update `nginx-badbots.conf` filters, re-run the script.
 > **Manual allow list:** Add `allow IP;` to `/etc/nginx/allow-ips-manual.conf` on each machine to prevent blocks.
@@ -44,7 +44,7 @@ This runs at 6 AM daily, scans logs for new suspect IPs, and auto-deploys if it 
 If any peer needs it:
 
 ```bash
-cp ~/hermes-cortex/ops/scripts/manage/nginx-security-scanner.sh ~/.hermes/scripts/
+cp ~/steadfaste-fleet/ops/scripts/manage/nginx-security-scanner.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 ```
 
@@ -53,7 +53,7 @@ chmod +x ~/.hermes/scripts/nginx-security-scanner.sh
 ### Preferred: Python script
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 python3 ops/install/deploy/nginx/hermes-services-apply.py --dry-run  # preview
 python3 ops/install/deploy/nginx/hermes-services-apply.py             # deploy
 ```
@@ -73,7 +73,7 @@ path it doesn't update. The live config is correct. Use the Python script to avo
 Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo cp ~/steadfaste-fleet/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
 sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
@@ -81,7 +81,7 @@ sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 
 ```bash
 # Python dry-run shows what would change
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 # Confirm nginx config is valid
 sudo nginx -t && echo "✓ Config valid" || echo "✗ Config invalid"
 ```

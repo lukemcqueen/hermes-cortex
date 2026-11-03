@@ -2,7 +2,7 @@
 //!
 //! The point of this surface is that it needs no daemon and no port: an MCP client starts the
 //! process, speaks JSON-RPC over its stdin/stdout, and the process exits with it. That is how one
-//! binary serves a Python agent system (hermes-cortex registers it in `mcp_servers`) and a Rust
+//! binary serves a Python agent system (steadfaste-fleet registers it in `mcp_servers`) and a Rust
 //! one (steadfaste can run it as a worker tool) without either of them owning a search service.
 //!
 //! TWO DISCIPLINES THIS FILE MUST KEEP:

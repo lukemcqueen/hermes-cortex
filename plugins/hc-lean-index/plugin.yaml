@@ -5,7 +5,7 @@ description: >-
   toolset collapse. Replaces the local core patch to agent/coding_context.py
   (keeps the hermes-agent git tree clean so `hermes update` never conflicts).
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 kind: general

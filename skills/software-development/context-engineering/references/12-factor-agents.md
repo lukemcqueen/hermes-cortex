@@ -30,7 +30,7 @@ Source: https://github.com/humanlayer/12-factor-agents (README + content/factor-
 8. **Contact humans with tool calls** (structured request_human_input), not prose.
 9. **The Goal (Goldratt)**: inefficiencies ≠ bottlenecks. Optimize the actual bottleneck.
 
-## Hermes Cortex implementation (2026-08-24, committed)
+## Steadfaste Fleet implementation (2026-08-24, committed)
 
 - `ops/scripts/executor_context_builder.py` + `mcp-servers/executor-mcp.py` — **F13 pre-fetch**: `execution_request` builds the context envelope deterministically before dispatch (repo rules AGENTS/CLAUDE, slice plan, task, recent git history, worktree diff; budget-capped ~6000 chars). Coding agents spend zero tool round-trips fetching context. Tests: `tests/test_executor_context_builder.py` (6/6).
 - `software-factory` skill — the 4-gate workflow (Product → Architecture → Program Design → Vertical Slices).

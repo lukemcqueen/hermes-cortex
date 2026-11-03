@@ -24,7 +24,7 @@ if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ] || [ ! -w "$MSG_FILE" ]; then
   exit 0
 fi
 
-DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 STATE_DIR="$DEPLOY_HOME/state"
 [ -d "$STATE_DIR" ] || exit 0
 

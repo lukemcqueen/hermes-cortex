@@ -37,7 +37,7 @@ ROLE BEHAVIOR
   orch-fleet-watchdog, and he has nothing to fail over TO.
 
 STATE MACHINE STATE FILE (per host):
-  ~/.hermes-cortex/state/bus-failover-state.json
+  ~/.steadfaste-fleet/state/bus-failover-state.json
 
 CONFIG (env vars, all optional):
   FAILOVER_MIN_DOWN_MINUTES  default 15 — outage before orchestrator activates
@@ -72,11 +72,11 @@ HOSTNAME = os.uname().nodename.split(".")[0]
 IS_ORCHESTRATOR = HOSTNAME in ("moses", "esther")
 IS_MOSES = HOSTNAME == "moses"
 
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
 LOG_FILE = STATE_DIR / ".bus-failover-log"
-CONF_FILE = HOME / "hermes-cortex" / ".env"
+CONF_FILE = HOME / "steadfaste-fleet" / ".env"
 WATCHDOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Esther's ACL (docs/bus-architecture.md): workers and Esther send to

@@ -33,8 +33,8 @@ from pathlib import Path
 _TOOLS_PY = (Path(__file__).resolve().parent.parent.parent
              / "ops" / "services" / "mycortex-mem" / "context_tools.py")
 if not _TOOLS_PY.is_file():
-    # Deployed layout: ~/.hermes-cortex/scripts/cortex-context.py
-    _TOOLS_PY = Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "context_tools.py"
+    # Deployed layout: ~/.steadfaste-fleet/scripts/cortex-context.py
+    _TOOLS_PY = Path.home() / ".steadfaste-fleet" / "services" / "mycortex-mem" / "context_tools.py"
 if not _TOOLS_PY.is_file():
     print(f"cortex-context: context_tools.py not found (tried repo + deployed) — skipping",
           file=sys.stderr)

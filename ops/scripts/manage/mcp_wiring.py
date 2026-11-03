@@ -54,7 +54,7 @@ def repo_rel_script(script):
     """The server script's path relative to the repo root.
 
     Callers pass a BARE filename (the doctor's EXPECTED_MCP_SERVERS does), so a fix string built
-    as `~/hermes-cortex/{script}` rendered `~/hermes-cortex/cortex-bus-mcp.py` — a path that does
+    as `~/steadfaste-fleet/{script}` rendered `~/steadfaste-fleet/cortex-bus-mcp.py` — a path that does
     not exist, i.e. a printed command nobody can run. Normalise here so every printed command
     resolves, whichever convention the caller used.
     """
@@ -66,7 +66,7 @@ def repo_rel_script(script):
 #: A command inside the HERMES venv works, but it is the tree the fleet is migrating off
 #: (Luke 2026-10-13: use the cortex venv). Worth a warning, not a failure.
 HERMES_VENV_MARK = "hermes-agent/venv"
-CORTEX_VENV = "~/.hermes-cortex/venv/bin/python3"
+CORTEX_VENV = "~/.steadfaste-fleet/venv/bin/python3"
 
 
 def _entry_blocks(config_text):
@@ -182,8 +182,8 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
         if block is None:
             results.append((name, "FAIL", "not configured",
                             f"hermes mcp add {name} --command "
-                            f"~/.hermes-cortex/venv/bin/python3 "
-                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"))
+                            f"~/.steadfaste-fleet/venv/bin/python3 "
+                            f"--args ~/steadfaste-fleet/{repo_rel_script(script)}"))
             continue
 
         gone, bare = _missing_paths(block)
@@ -192,8 +192,8 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
             results.append((name, "FAIL",
                             "configured, but these paths do NOT exist: " + ", ".join(gone),
                             f"hermes mcp remove {name} && hermes mcp add {name} "
-                            f"--command ~/.hermes-cortex/venv/bin/python3 "
-                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"
+                            f"--command ~/.steadfaste-fleet/venv/bin/python3 "
+                            f"--args ~/steadfaste-fleet/{repo_rel_script(script)}"
                             "   (or run cortex-update.sh to deploy the missing pieces)"))
             continue
         cmd = re.search(r"^[ \t]*command:[ \t]*(.+?)[ \t]*$", block, re.MULTILINE)
@@ -204,7 +204,7 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
             results.append((name, "WARN", f"registered against {why}",
                             f"hermes mcp remove {name} && hermes mcp add {name} "
                             f"--command {CORTEX_VENV} "
-                            f"--args ~/hermes-cortex/{repo_rel_script(script)}"
+                            f"--args ~/steadfaste-fleet/{repo_rel_script(script)}"
                             f"   (there is no 'hermes mcp update'; re-add it)"))
             continue
         results.append((name, "PASS", "configured and its paths exist", ""))

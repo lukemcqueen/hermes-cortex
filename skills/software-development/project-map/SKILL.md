@@ -6,9 +6,9 @@ description: |
   Trigger: before multi-file changes, entering a new project, code review.
 
   Run: project-map analyze
-  Read: .hermes-cortex/project-map.json
+  Read: .steadfaste-fleet/project-map.json
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 platforms: [linux, macos, windows]
 related_skills: [save-lesson, agent-contract]
 ---
@@ -25,17 +25,17 @@ Run `project-map analyze` when:
 
 ## Prerequisites
 
-`project-map` is installed by the Hermes Cortex installer as a wrapper at
-`~/hermes-cortex/ops/scripts/project-map/project_map.sh`, which runs
-`~/.hermes-cortex/offline/project_map.py` (falls back to the repo copy if
+`project-map` is installed by the Steadfaste Fleet installer as a wrapper at
+`~/steadfaste-fleet/ops/scripts/project-map/project_map.sh`, which runs
+`~/.steadfaste-fleet/offline/project_map.py` (falls back to the repo copy if
 the deployed one is missing). Check availability first:
 
 ```bash
-which project-map || ls ~/hermes-cortex/ops/scripts/project-map/project_map.sh
+which project-map || ls ~/steadfaste-fleet/ops/scripts/project-map/project_map.sh
 ```
 
-If missing: `bash ~/hermes-cortex/ops/install/install.sh` redeploys it, or
-invoke the module directly: `python3 ~/hermes-cortex/ops/scripts/project-map/project_map.py analyze`.
+If missing: `bash ~/steadfaste-fleet/ops/install/install.sh` redeploys it, or
+invoke the module directly: `python3 ~/steadfaste-fleet/ops/scripts/project-map/project_map.py analyze`.
 
 ## Quick Start
 
@@ -52,7 +52,7 @@ project-map status
 
 ## Output
 
-The analysis writes to `.hermes-cortex/project-map.json`:
+The analysis writes to `.steadfaste-fleet/project-map.json`:
 
 | Section | Content |
 |---------|---------|
@@ -69,7 +69,7 @@ The analysis writes to `.hermes-cortex/project-map.json`:
 
 ```
 1. Enter project or start new task
-2. Check: does .hermes-cortex/project-map.json exist?
+2. Check: does .steadfaste-fleet/project-map.json exist?
    a. If no → run: project-map analyze
    b. If yes → run: project-map status
 3. Before multi-file changes, check dependency_graph for impacted files
@@ -79,7 +79,7 @@ The analysis writes to `.hermes-cortex/project-map.json`:
 ## Verification (after analyze)
 
 ```bash
-ls -la .hermes-cortex/project-map.json   # exists, non-zero size, fresh mtime
+ls -la .steadfaste-fleet/project-map.json   # exists, non-zero size, fresh mtime
 project-map status                        # stats reflect the current tree
 ```
 
@@ -91,7 +91,7 @@ ran from the wrong directory — `cd` to the project root and re-run
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `command not found: project-map` | Not installed / not on PATH | Reinstall via cortex installer, or run the module directly: `python3 ~/hermes-cortex/ops/scripts/project-map/project_map.py analyze` |
+| `command not found: project-map` | Not installed / not on PATH | Reinstall via cortex installer, or run the module directly: `python3 ~/steadfaste-fleet/ops/scripts/project-map/project_map.py analyze` |
 | `status` shows 0 files | Ran outside the project root | `cd <project-root>` and re-run `analyze` |
 | Map is stale (shows deleted files) | Structural changes since last run | Re-run `project-map analyze` — it overwrites the JSON in place; no rollback needed (the file is a generated cache) |
 
@@ -100,7 +100,7 @@ ran from the wrong directory — `cd` to the project root and re-run
 ```bash
 $ project-map status
 
-📁 Project:  hermes-cortex
+📁 Project:  steadfaste-fleet
    Files:    576 (103115 lines)
    Routes:   9
    Models:   0

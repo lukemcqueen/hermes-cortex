@@ -11,12 +11,12 @@ ERROR: Could not read Langfuse project keys
 or
 
 ```
-FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes-cortex/.env'
+FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.steadfaste-fleet/.env'
 ```
 
 ## Root Cause
 
-The `.env` symlink at `~/.hermes-cortex/.env` → `~/langfuse/.env` only contains Langfuse **deployment** secrets (SALT, SECRET_KEY, CLICKHOUSE_PASSWORD, etc.) — NOT **project** API keys.
+The `.env` symlink at `~/.steadfaste-fleet/.env` → `~/langfuse/.env` only contains Langfuse **deployment** secrets (SALT, SECRET_KEY, CLICKHOUSE_PASSWORD, etc.) — NOT **project** API keys.
 
 The script needs:
 - `HERMES_LANGFUSE_PUBLIC_KEY` or `LANGFUSE_INIT_PROJECT_PUBLIC_KEY`
@@ -25,7 +25,7 @@ The script needs:
 ## Diagnosis
 
 ```bash
-grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes-cortex/.env
+grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.steadfaste-fleet/.env
 # If empty → keys not configured
 ```
 
@@ -35,7 +35,7 @@ grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes-cortex/.env
 2. Sign in (initial admin credentials from docker-compose)
 3. Navigate to **Settings → API Keys**
 4. Generate a new key pair (public + secret)
-5. Add to `~/.hermes/hermes-cortex.env` (NOT the docker-compose env):
+5. Add to `~/.hermes/steadfaste-fleet.env` (NOT the docker-compose env):
 
 ```
 HERMES_LANGFUSE_PUBLIC_KEY=pk-lf-xxxxx
@@ -43,4 +43,4 @@ HERMES_LANGFUSE_SECRET_KEY=sk-lf-xxxxx
 HERMES_LANGFUSE_BASE_URL=http://localhost:3000
 ```
 
-Or add directly to `~/.hermes-cortex/.env` (the file the scripts read).
+Or add directly to `~/.steadfaste-fleet/.env` (the file the scripts read).

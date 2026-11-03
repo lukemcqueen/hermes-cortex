@@ -1,8 +1,8 @@
 # Operations Reference (Luke's Deployment)
 
-This document contains operations-specific guidance for running Hermes Cortex
+This document contains operations-specific guidance for running Steadfaste Fleet
 across Luke's multi-machine fleet. It was relocated from `AGENTS.md` to keep
-the root agent guidelines focused on general Hermes Cortex usage.
+the root agent guidelines focused on general Steadfaste Fleet usage.
 
 ---
 
@@ -49,10 +49,10 @@ The confusion is that "agent inbox" sounds like one thing. It's two (and was for
 ```
 MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS (HTTP path)
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
-Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/hermes-cortex/.env
+Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/steadfaste-fleet/.env
  ↳ built-in Agent Bus API        ↳ mcp_servers.cortex-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
  ↳ stores messages (PGMQ)        ↳ runs cortex-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.cortex_bus.bus_send
-                     ↳ reads ~/hermes-cortex/.env
+                     ↳ reads ~/steadfaste-fleet/.env
 nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
  ↳ SSL + Basic Auth           ↳ exposes inbox_send/read/watch tools
  ↳ proxies → :8905
@@ -62,7 +62,7 @@ nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
 
 | Agent | Role | Runs API backend? | Runs MCP client? | Has `.env` config? |
 |-------|------|-------------------|-------------------|------------------------|
-| **Moses** | Primary orchestrator | ✅ YES — gateway :8905 + nginx :13004 | ✅ YES — inbox tools | ✅ `~/hermes-cortex/.env` |
+| **Moses** | Primary orchestrator | ✅ YES — gateway :8905 + nginx :13004 | ✅ YES — inbox tools | ✅ `~/steadfaste-fleet/.env` |
 | **Esther** | Backup orchestrator | ✅ YES — gateway :8905 + nginx :14004 | ✅ YES — inbox tools | ✅ Points to her own instance |
 | **Gisu** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
 | **Joseph** | Remote server | ❌ No — client only | ❌ No — HTTP path (`contact-orchestrator.sh` / `lib.cortex_bus.bus_send`) | ✅ Points to Moses |
@@ -136,13 +136,13 @@ If you are Moses or Esther (orchestrator):
 If you are Gisu, Joseph, Kustos, or Titus (worker):
  └─ You DO NOT install the MCP client (cortex-bus-mcp.py). It is
     orchestrator-only — the doctor warns if you add it.
- └─ You DO have the HTTP client: ~/hermes-cortex/.env
+ └─ You DO have the HTTP client: ~/steadfaste-fleet/.env
     + contact-orchestrator.sh (or lib.cortex_bus). This is your ONLY bus access.
  └─ You DO NOT run a bus server, Postgres, or nginx proxy
 ```
 
 > See the role matrix at the top of `docs/bus-architecture.md` (private repo —
-> `hermes-cortex-private/docs/bus-architecture.md`) — it is the
+> `steadfaste-fleet-private/docs/bus-architecture.md`) — it is the
 > canonical "who has what" reference. Every bus doc points to it.
 
 ### Setup checklist
@@ -150,14 +150,14 @@ If you are Gisu, Joseph, Kustos, or Titus (worker):
 **Orchestrators (Moses, Esther):**
 ```bash
 # 1. Pull repo
-cd ~/hermes-cortex && git pull
+cd ~/steadfaste-fleet && git pull
 
 # 2. Ensure MCP client is in config.yaml
 grep -A4 "cortex-bus" ~/.hermes/config.yaml
 # Should show: command: python3, args: [cortex-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
-nano ~/hermes-cortex/.env
+nano ~/steadfaste-fleet/.env
 ```
 ```ini
 CORTEX_BUS_URL="https://your-domain.com:13004"
@@ -165,7 +165,7 @@ CORTEX_BASIC_AUTH="your_username:your_password"
 AGENT_NAME="your_agent_name"
 ```
 ```bash
-chmod 600 ~/hermes-cortex/.env
+chmod 600 ~/steadfaste-fleet/.env
 
 # 4. Verify you can talk to the bus
 curl -s -u "your_username:your_password" \
@@ -174,10 +174,10 @@ curl -s -u "your_username:your_password" \
 
 **Workers (Gisu, Joseph, Kustos, Titus):** Do NOT add an `cortex-bus` entry to
 `config.yaml` — the MCP client is orchestrator-only. Your bus access is the
-HTTP client (`~/hermes-cortex/.env` + `contact-orchestrator.sh`), which
+HTTP client (`~/steadfaste-fleet/.env` + `contact-orchestrator.sh`), which
 the installer sets up. Verify it with:
 ```bash
-bash ~/.hermes-cortex/scripts/contact-orchestrator.sh "TEST: connectivity" "ping"
+bash ~/.steadfaste-fleet/scripts/contact-orchestrator.sh "TEST: connectivity" "ping"
 ```
 
 **Moses and Esther only — additionally:**
@@ -192,7 +192,7 @@ curl -s -u "your_username:your_password" https://your-domain.com:13004/api/pgmq/
 
 Key rule: only Moses and Esther run the Agent Bus API backend and the MCP
 client. Every other agent uses the HTTP client only (`contact-orchestrator.sh` +
-`~/hermes-cortex/.env`). Do NOT share credentials — every agent
+`~/steadfaste-fleet/.env`). Do NOT share credentials — every agent
 has their own htpasswd user.
 
 ---
@@ -219,7 +219,7 @@ Load `skill_view(name="offline-code")` for full usage docs.
 - **Templates:** Place in `docs/templates/`, update `install.sh`
 - **Install changes:** Edit `install.sh` (26 steps, idempotent)
 - **Docker config:** Edit `ops/install/deploy/docker-compose.langfuse.yml`
-- **Scoring hooks:** `bash ~/.hermes-cortex/ops/scripts/install/install-score-hook.sh --all` (or `--list`)
+- **Scoring hooks:** `bash ~/.steadfaste-fleet/ops/scripts/install/install-score-hook.sh --all` (or `--list`)
 
 ## Rules
 
@@ -232,7 +232,7 @@ Load `skill_view(name="offline-code")` for full usage docs.
 ### Installation (one-time per agent)
 
 ```bash
-cd ~/hermes-cortex && git pull --rebase origin main
+cd ~/steadfaste-fleet && git pull --rebase origin main
 bash ops/scripts/agent/install-worker.sh <YOUR_NAME>
 ```
 
@@ -248,7 +248,7 @@ The installer:
 
 ### Config
 
-The worker reads from `~/hermes-cortex/.env`:
+The worker reads from `~/steadfaste-fleet/.env`:
 ```ini
 BUS_URL=http://bus-host:8905
 CORTEX_BUS_AUTH=<your-basic-auth>
@@ -269,7 +269,7 @@ Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). De
 > If you upgrade the worker from an older version that used `vt=120`, you MUST
 > pull the latest code and restart:
 > ```bash
-> cd ~/hermes-cortex && git pull && bash ops/scripts/cortex-update.sh
+> cd ~/steadfaste-fleet && git pull && bash ops/scripts/cortex-update.sh
 > systemctl --user restart hermes-agent-worker
 >```
 > Run `cortex-doctor` after to verify no warnings.

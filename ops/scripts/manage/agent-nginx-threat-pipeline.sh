@@ -26,29 +26,29 @@ set -euo pipefail
 # `git push --no-verify` and forged a governance lock file — the
 # escape hatch was abused (34 logged no-verify events fleet-wide,
 # 20 reached origin). Now:
-#   • A FRESH MARKER (~/.hermes-cortex/state/.pipeline-commit, < 10 min)
+#   • A FRESH MARKER (~/.steadfaste-fleet/state/.pipeline-commit, < 10 min)
 #     + allowlist-only staged files makes the pre-commit hook sanction
 #     the commit: reflexion/lock gates are skipped, but the append-only
 #     guard, adversarial scan, secret-leak scan and SCORING still run.
 #   • pre-push sanctions pushes whose ENTIRE range is pipeline commits.
 # No --no-verify anywhere: a pipeline commit is a recorded, scored commit.
-_PIPE_MARKER="${HOME}/.hermes-cortex/state/.pipeline-commit"
-_create_pipe_marker() { mkdir -p "${HOME}/.hermes-cortex/state"; : > "$_PIPE_MARKER"; }
+_PIPE_MARKER="${HOME}/.steadfaste-fleet/state/.pipeline-commit"
+_create_pipe_marker() { mkdir -p "${HOME}/.steadfaste-fleet/state"; : > "$_PIPE_MARKER"; }
 _remove_pipe_marker() { rm -f "$_PIPE_MARKER"; }
 trap '_remove_pipe_marker' EXIT
 
 # ── Guard: abort any stale git operations before proceeding ──
-if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rev-parse --git-dir &>/dev/null; then
-  if git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --show-current &>/dev/null 2>&1; then
+if git -C "${CORTEX_REPO:-${HOME}/steadfaste-fleet}" rev-parse --git-dir &>/dev/null; then
+  if git -C "${CORTEX_REPO:-${HOME}/steadfaste-fleet}" rebase --show-current &>/dev/null 2>&1; then
     echo "[$(ts) nginx-threat-pipeline] ⚠ Stale rebase detected — aborting"
-    git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" rebase --abort 2>/dev/null || true
+    git -C "${CORTEX_REPO:-${HOME}/steadfaste-fleet}" rebase --abort 2>/dev/null || true
   fi
   # Clear any unfinished merge/revert/cherry-pick state
-  git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" cherry-pick --quit 2>/dev/null || true
-  git -C "${CORTEX_REPO:-${HOME}/hermes-cortex}" merge --quit 2>/dev/null || true
+  git -C "${CORTEX_REPO:-${HOME}/steadfaste-fleet}" cherry-pick --quit 2>/dev/null || true
+  git -C "${CORTEX_REPO:-${HOME}/steadfaste-fleet}" merge --quit 2>/dev/null || true
 fi
 
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
 SCANNER="${CORTEX_REPO}/ops/scripts/manage/nginx-security-scanner.sh"
 SUBMIT_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.submit"
 
@@ -88,8 +88,8 @@ for cmd in timeout gtimeout; do
 done
 
 # DEPLOY_SCRIPT: minimal — just deploy blocked IPs
-CORTEX_REPO="${CORTEX_REPO:-${HOME}/hermes-cortex}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-${HOME}/steadfaste-fleet}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}"
 DEPLOY_SCRIPT=""
 DEPLOY_BLOCKED="${CORTEX_DEPLOY_HOME}/scripts/deploy-blocked-ips.sh"
 if [ ! -x "$DEPLOY_BLOCKED" ]; then
@@ -112,7 +112,7 @@ done
 F2B_INSTALLED=false
 command -v fail2ban-client &>/dev/null && F2B_INSTALLED=true
 
-mkdir -p "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state" "${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/logs"
+mkdir -p "${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state" "${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/logs"
 
 log()  { echo "[$(ts) nginx-threat-pipeline] $*" >&2; }
 error(){ echo "[$(ts) nginx-threat-pipeline] ✗ $*" >&2; }
@@ -355,7 +355,7 @@ else
 fi
 
 # ── Save state ──
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.hermes-cortex/state/nginx-threat-pipeline-lastrun"
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "${HOME}/.steadfaste-fleet/state/nginx-threat-pipeline-lastrun"
 
 # ── Output (never silent — security exception) ──
 TS=$(ts)

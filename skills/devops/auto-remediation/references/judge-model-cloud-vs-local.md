@@ -19,7 +19,7 @@ nomic-embed-text:v1.5    0a109f422b47    274 MB    40 hours ago
 
 ## Root Cause
 
-`~/hermes-cortex/.env` has `JUDGE_MODEL=deepseek-v4-flash` — a cloud API model name
+`~/steadfaste-fleet/.env` has `JUDGE_MODEL=deepseek-v4-flash` — a cloud API model name
 that was copied from the orchestrator's `LLM_CRON_MODEL` setting. The watchdog
 reads this config via `hermes_models.get_model("JUDGE_MODEL", ...)` and correctly
 reports it missing from Ollama. But `deepseek-v4-flash` (and similar: `gpt-4o`,
@@ -27,7 +27,7 @@ reports it missing from Ollama. But `deepseek-v4-flash` (and similar: `gpt-4o`,
 
 ## Fix
 
-Change `JUDGE_MODEL` in `~/hermes-cortex/.env` to the actual local Ollama judge model:
+Change `JUDGE_MODEL` in `~/steadfaste-fleet/.env` to the actual local Ollama judge model:
 
 ```bash
 # Before
@@ -40,7 +40,7 @@ JUDGE_MODEL=qwen2.5-coder:3b
 ## How Config Resolution Works
 
 `hermes_models.py` resolves model names in this priority:
-1. `~/hermes-cortex/.env` (the repo config file, **not** the `~/.hermes-cortex/.env` symlink)
+1. `~/steadfaste-fleet/.env` (the repo config file, **not** the `~/.steadfaste-fleet/.env` symlink)
 2. Runtime env var (`os.environ`)
 3. `~/.hermes/models.env` (legacy fallback)
 4. Hardcoded default
@@ -49,7 +49,7 @@ JUDGE_MODEL=qwen2.5-coder:3b
 
 ```bash
 # 1. Confirm the config
-grep JUDGE_MODEL ~/hermes-cortex/.env
+grep JUDGE_MODEL ~/steadfaste-fleet/.env
 # → JUDGE_MODEL=qwen2.5-coder:3b
 
 # 2. Run the watchdog

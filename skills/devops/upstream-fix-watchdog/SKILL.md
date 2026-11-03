@@ -3,7 +3,7 @@ name: upstream-fix-watchdog
 version: 1.0.0
 description: Watch upstream for a bug fix to land; silent until fixed.
 tags: [cron, watchdog, upstream, fix, fleet, pin, monitoring]
-related_skills: [watchers, fleet-commands, cron-format-standard, hermes-cortex-maintenance]
+related_skills: [watchers, fleet-commands, cron-format-standard, steadfaste-fleet-maintenance]
 ---
 
 # Upstream Fix Watchdog
@@ -63,7 +63,7 @@ Fleet action:
   4. <remove the pin once all hosts verify clean>"""
 
 def fetch(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": "hermes-cortex-fix-watchdog"})
+    req = urllib.request.Request(url, headers={"User-Agent": "steadfaste-fleet-fix-watchdog"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
@@ -175,7 +175,7 @@ to restore. Decide by content, not by default:
   **Before trusting an upstream fix, grep the whole feature for the same
   flaw class** — a fix to one function often leaves siblings broken. See
   `references/mcp-tool-watch-probe-case.md` for the full reproduction.
-- **Seam-rot on the LOCAL patch re-apply (whole-deploy abort).** Hermes Cortex
+- **Seam-rot on the LOCAL patch re-apply (whole-deploy abort).** Steadfaste Fleet
   re-applies local hermes-agent patches after every `hermes update` via
   `ops/scripts/install/install-*.py` (lean index, cron cost-tracking, mcp-tool
   watch). When upstream refactors the seam, the installer's marker anchor no

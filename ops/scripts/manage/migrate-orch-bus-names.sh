@@ -10,7 +10,7 @@
 # These were never registered in cortex-update.sh and are not deployed
 # anywhere. This script:
 #   1. Removes the orphan source files from ops/scripts/bus/
-#   2. Removes any stale bus-* deployed copies from ~/.hermes-cortex/scripts/
+#   2. Removes any stale bus-* deployed copies from ~/.steadfaste-fleet/scripts/
 #      and ~/.hermes/scripts/
 #   3. Verifies the orch-bus-* counterparts exist
 #
@@ -18,8 +18,8 @@
 
 set -euo pipefail
 
-REPO="${CORTEX_REPO:-$HOME/hermes-cortex}"
-CORTEX_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+REPO="${CORTEX_REPO:-$HOME/steadfaste-fleet}"
+CORTEX_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 HERMES_SCRIPTS="$HOME/.hermes/scripts"
 
 # Files to clean up: old source path → new source path (for verification)

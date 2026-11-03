@@ -18,7 +18,7 @@
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
-CORTEX_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}"
 MYCORTEX="${CORTEX_HOME}/scripts/mycortex"
 
 if [[ ! -x "$MYCORTEX" ]]; then

@@ -6,7 +6,7 @@ When mycortex (`search`) misses and the model answers from training data, that
 answer is ephemeral. Next session pays the same token cost. The answer cache
 inserts a local-DB lookup between RAG miss and model call.
 
-Key rule: **works with ALL repos an agent has, not just hermes-cortex** —
+Key rule: **works with ALL repos an agent has, not just steadfaste-fleet** —
 source_scope on answers controls visibility (federated or per-source-name).
 
 ## Files Created

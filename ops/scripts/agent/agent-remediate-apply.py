@@ -27,7 +27,7 @@ SEEN_FILE = STATE_DIR / "remediate-seen.txt"
 JOBS_FILE = HOME / ".hermes" / "cron" / "jobs.json"
 RESUME_COOLDOWN_FILE = REMEDIATE_DIR / "resume-cooldown.json"
 RESUME_COOLDOWN_HOURS = 6
-WATCHDOG_STATE_FILE = HOME / ".hermes-cortex" / "state" / "cron-failure-watchdog.json"
+WATCHDOG_STATE_FILE = HOME / ".steadfaste-fleet" / "state" / "cron-failure-watchdog.json"
 
 # Jobs that must NEVER be auto-resumed, even if a watchdog flag lingers in
 # its state file. Cover deliberate/operator holds and superseded duplicates:

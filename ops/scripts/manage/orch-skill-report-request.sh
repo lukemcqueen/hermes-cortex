@@ -16,25 +16,25 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 STATE_DIR="$CORTEX_DEPLOY_HOME/state"
 REGISTRY_FILE="$STATE_DIR/agent-registry.json"
 
 # ── Source config ───────────────────────────────────────────
 # Resolve bus config with canonical precedence env → .env → .env
 # (same as orch-bus-forwarder.py). Fix 2026-08-17: the old if/elif sourced
-# ONLY ~/hermes-cortex/.env when it existed, so INBOX_URL fell back to the
+# ONLY ~/steadfaste-fleet/.env when it existed, so INBOX_URL fell back to the
 # dead CORTEX_INBOX_URL (localhost:8904 — the bus listens on 8903) and every
 # send silently failed ("0 sent, 4 failed", cron reported ok). The conf
 # carries the live CORTEX_BUS_URL / CORTEX_BASIC_AUTH; resolve across both.
 resolve_var() {
   local varname="$1" val=""
   if [[ -n "${!varname:-}" ]]; then val="${!varname}"; fi
-  if [[ -z "$val" && -f "${HOME}/hermes-cortex/.env" ]]; then
-    val=$(grep -E "^${varname}=" "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  if [[ -z "$val" && -f "${HOME}/steadfaste-fleet/.env" ]]; then
+    val=$(grep -E "^${varname}=" "${HOME}/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
   fi
-  if [[ -z "$val" && -f "${HOME}/hermes-cortex/.env" ]]; then
-    val=$(grep -E "^${varname}=" "${HOME}/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  if [[ -z "$val" && -f "${HOME}/steadfaste-fleet/.env" ]]; then
+    val=$(grep -E "^${varname}=" "${HOME}/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
   fi
   printf '%s' "$val"
 }
@@ -55,11 +55,11 @@ BUS_TOKEN="${CORTEX_BUS_TOKEN:-}"
 # A machine name is not an agent name; requests must be signed by the
 # orchestrator's agent identity (Luke directive 2026-08-14).
 AGENT_NAME="${AGENT_NAME:-}"
-if [[ -z "$AGENT_NAME" && -f "${HOME}/.hermes-cortex/agent.env" ]]; then
-  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.hermes-cortex/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+if [[ -z "$AGENT_NAME" && -f "${HOME}/.steadfaste-fleet/agent.env" ]]; then
+  AGENT_NAME=$(grep -E '^AGENT_NAME=' "${HOME}/.steadfaste-fleet/agent.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 fi
 if [[ -z "$AGENT_NAME" || "$AGENT_NAME" == "unknown" ]]; then
-  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
   exit 1
 fi
 
@@ -140,21 +140,21 @@ Hi $agent,
 
 Please run agent-collect-skills.sh and share your custom skills.
 This helps the orchestrator discover and evaluate agent-developed skills
-for potential incorporation into the hermes-cortex upstream.
+for potential incorporation into the steadfaste-fleet upstream.
 
 Instructions:
   # Run once to report current skills:
-  bash ~/hermes-cortex/ops/scripts/manage/agent-collect-skills.sh
+  bash ~/steadfaste-fleet/ops/scripts/manage/agent-collect-skills.sh
 
   # To set up automatic reporting (every 6h, no_agent):
   hermes cron create \
     name=agent-collect-skills \
     every 6h \
-    script=~/.hermes-cortex/scripts/agent-collect-skills.sh \
+    script=~/.steadfaste-fleet/scripts/agent-collect-skills.sh \
     no_agent=true \
     deliver=local
 
-  Then fill in ~/hermes-cortex/.env with your bus
+  Then fill in ~/steadfaste-fleet/.env with your bus
   inbox credentials (see install.sh for setup).
 
 Reply to this message with a summary of any custom skills found,

@@ -24,7 +24,7 @@ ops/services/<svc>/schema/vNNN__*.sql        (1) repo file committed
 
 `ops/services/<svc>/migrate.py` discovers migrations with
 `schema_dir.glob("*.sql")` where schema_dir is its **sibling deployed**
-directory (`~/.hermes-cortex/services/<svc>/schema/`). A migration committed
+directory (`~/.steadfaste-fleet/services/<svc>/schema/`). A migration committed
 to the repo but missing its `register()` line never reaches the deployed dir,
 so the version-gated runner NEVER applies it — even though the file "exists"
 in the repo and tests pass against the repo path.
@@ -39,10 +39,10 @@ ls ops/services/<svc>/schema/vNNN__*.sql
 grep -n 'register.*vNNN' ops/scripts/cortex-update.sh
 
 # 3. Deployed dir has it?
-ls ~/.hermes-cortex/services/<svc>/schema/
+ls ~/.steadfaste-fleet/services/<svc>/schema/
 
 # 4. Runner sees it — run from the DEPLOYED path, not the repo:
-python3 ~/.hermes-cortex/services/<svc>/migrate.py   # expect "up to date (version N)" or applies
+python3 ~/.steadfaste-fleet/services/<svc>/migrate.py   # expect "up to date (version N)" or applies
 
 # 5. Live DB applied it?
 docker exec -i mycortex-postgres psql -U mycortex -d mycortex -t -A \
@@ -71,7 +71,7 @@ violation). The deploy-map gap was the real remaining bug.
    ```bash
    register "ops/services/<svc>/schema/vNNN__foo.sql" "${CORTEX_DEPLOY_HOME}/services/<svc>/schema/vNNN__foo.sql"
    ```
-2. Deploy via the sanctioned invocation: `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
+2. Deploy via the sanctioned invocation: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`
 3. Confirm migrate.py on the already-migrated host reports a no-op (idempotent):
    `tasks schema up to date (version N) — no-op`
 4. Commit + push. Every host's next cortex-update deploys the files and

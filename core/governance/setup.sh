@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
 #  Loop Governance — Installer
-#  Installs from hermes-cortex repo to ~/.hermes-cortex/tools/
+#  Installs from steadfaste-fleet repo to ~/.steadfaste-fleet/tools/
 #
 #  Usage:
 #    bash setup.sh                    # full install
@@ -28,9 +28,9 @@ done
 # Priority: local repo > curl pipe dir > Hermes skill dir
 SOURCE_DIR=""
 for dir in \
-  "${HOME}/hermes-cortex/core/governance" \
+  "${HOME}/steadfaste-fleet/core/governance" \
   "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" \
-  "${HOME}/.hermes-cortex/skills/software-development/loop-governance/scripts"; do
+  "${HOME}/.steadfaste-fleet/skills/software-development/loop-governance/scripts"; do
   if [[ -n "$dir" && -f "${dir}/loop_scorer.py" ]]; then
     SOURCE_DIR="$dir"
     break
@@ -38,13 +38,13 @@ for dir in \
 done
 
 if [[ -z "$SOURCE_DIR" ]]; then
-  fail "Could not find loop-governance source. Clone hermes-cortex first:"
-  info "  git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex"
+  fail "Could not find loop-governance source. Clone steadfaste-fleet first:"
+  info "  git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet"
   exit 1
 fi
 
 # ── Install target ─────────────────────────────────────────
-INSTALL_DIR="${HOME}/.hermes-cortex/tools/loop-governance"
+INSTALL_DIR="${HOME}/.steadfaste-fleet/tools/loop-governance"
 mkdir -p "$INSTALL_DIR"
 
 echo ""
@@ -124,12 +124,12 @@ TOOLS["auto_apply.py"]="auto-apply"
 TOOLS["loop_config.py"]="loop-config"
 
 # session-cache-build points at the CANONICAL session cache builder, which is
-# deployed by cortex-update.sh to ~/.hermes-cortex/scripts/ and is the same
+# deployed by cortex-update.sh to ~/.steadfaste-fleet/scripts/ and is the same
 # script the agent-session-cache-build cron invokes. It used to point at a stale
 # tools/loop-governance/session_cache.py duplicate that was never in the deploy
 # register: its module-level `from hermes_models import get_model` raised
 # ModuleNotFoundError from that directory, so the CLI died before doing any work.
-# INSTALL_DIR is <home>/.hermes-cortex/tools/loop-governance, so the canonical
+# INSTALL_DIR is <home>/.steadfaste-fleet/tools/loop-governance, so the canonical
 # script sits two levels up in scripts/.
 TOOLS["../../scripts/agent-session_cache.py"]="session-cache-build"
 
@@ -151,7 +151,7 @@ if ! echo "$PATH" | tr ':' '\n' | grep -q "${HOME}/.local/bin"; then
 fi
 
 # ── Database directory ─────────────────────────────────────
-DB_DIR="${HOME}/.hermes-cortex/data"
+DB_DIR="${HOME}/.steadfaste-fleet/data"
 mkdir -p "$DB_DIR"
 
 # ── Config ──────────────────────────────────────────────────
@@ -179,7 +179,7 @@ if [[ "$CHECK_ONLY" != "1" && "$SYMLINKS_ONLY" != "1" ]]; then
 fi
 
 # ── Symlink Hermes skill → repo (so Hermes agents find it) ─
-HERMES_SKILL_DIR="${HOME}/.hermes-cortex/skills/software-development/loop-governance"
+HERMES_SKILL_DIR="${HOME}/.steadfaste-fleet/skills/software-development/loop-governance"
 if [[ -d "$HERMES_SKILL_DIR" && ! -L "$HERMES_SKILL_DIR" ]]; then
   # Only if it's a real directory, not already a symlink
   HERMES_SCRIPTS="${HERMES_SKILL_DIR}/scripts"

@@ -2,7 +2,7 @@
 name: orch-weekly-auto-fix
 description: "After the weekly opportunity scan identifies issues, run auto-fix patterns — git pull, branch cleanup, Docker restart, permission fixes, disk cleanup — then verify each fix succeeded. Reduces manual intervention for known recurring problems."
 version: 1.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -37,10 +37,10 @@ The cron runs in four phases:
 
 ### 1. Deploy the companion script
 
-Copy `scripts/orch-weekly-auto-fix.py` from the hermes-cortex repo to `~/.hermes/scripts/`:
+Copy `scripts/orch-weekly-auto-fix.py` from the steadfaste-fleet repo to `~/.hermes/scripts/`:
 
 ```bash
-cp hermes-cortex/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
+cp steadfaste-fleet/scripts/orch-weekly-auto-fix.py ~/.hermes/scripts/orch-weekly-auto-fix.py
 ```
 
 The script handles known fix patterns with built-in verification:

@@ -48,7 +48,7 @@ def check_mycortex_sources_ok() -> int:
     ...
 ```
 
-See the repo source at `~/hermes-cortex/ops/scripts/health-vector.py` for the full implementations with platform-aware checks.
+See the repo source at `~/steadfaste-fleet/ops/scripts/health-vector.py` for the full implementations with platform-aware checks.
 
 ### 2. Update CHECK_FUNCTIONS list
 
@@ -81,7 +81,7 @@ labels = ["resources", "services", "no_errored_crons",
 ### 4. Copy, restart, verify
 
 ```bash
-cp ~/hermes-cortex/ops/scripts/health-vector.py ~/.hermes/scripts/health-vector.py
+cp ~/steadfaste-fleet/ops/scripts/health-vector.py ~/.hermes/scripts/health-vector.py
 systemctl --user restart health-vector
 sleep 2
 curl -s http://127.0.0.1:8905/
@@ -94,7 +94,7 @@ python3 ~/.hermes/scripts/health-vector.py --check
 ### 5. Commit to repo
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git add ops/scripts/health-vector.py
 git commit -m "fix: align health-vector.py CHECK_FUNCTIONS with 9-element schema"
 git push origin main

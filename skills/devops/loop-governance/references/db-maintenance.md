@@ -1,8 +1,8 @@
 # DB Maintenance for Loop Governance
 
-> Applies to: `~/.hermes-cortex/data/loop-governance.db`
+> Applies to: `~/.steadfaste-fleet/data/loop-governance.db`
 > Table: `loop_cycles`
-> Author: Hermes Cortex — extracted from weekly evaluation pipeline (Jul 2026)
+> Author: Steadfaste Fleet — extracted from weekly evaluation pipeline (Jul 2026)
 > Schema last MEASURED: 2026-10-22 (`PRAGMA table_info(loop_cycles)`)
 
 ## Retention Policy
@@ -83,7 +83,7 @@ the existence check above exists for that reason.
 
 ```python
 import sqlite3, os
-db = os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')
+db = os.path.expanduser('~/.steadfaste-fleet/data/loop-governance.db')
 conn = sqlite3.connect(db)
 cur = conn.cursor()
 cur.execute("SELECT COUNT(*), ROUND(AVG(composite),1) FROM loop_cycles")

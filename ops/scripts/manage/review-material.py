@@ -31,7 +31,7 @@ from pathlib import Path
 MIN_USEFUL = 200          # chars; below this a reviewer cannot judge the file at all
 GATE_CANDIDATES = (
     "mcp-servers/loop-gov-mcp.py",
-    "~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
+    "~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py",
 )
 
 
@@ -108,7 +108,7 @@ def main() -> int:
     repo = Path(a.repo).expanduser().resolve()
     global GATE_CANDIDATES
     if a.gate == "deployed":
-        GATE_CANDIDATES = ("~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",)
+        GATE_CANDIDATES = ("~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py",)
     elif a.gate == "repo":
         GATE_CANDIDATES = ("mcp-servers/loop-gov-mcp.py",)
     gate, gate_path = _load_gate(repo)

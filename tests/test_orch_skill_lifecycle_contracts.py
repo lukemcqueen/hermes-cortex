@@ -23,7 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(os.environ.get("REPO", Path.home() / "hermes-cortex"))
+REPO = Path(os.environ.get("REPO", Path.home() / "steadfaste-fleet"))
 MANAGE = REPO / "ops" / "scripts" / "manage"
 
 # The checker's threshold, restated here as the CONTRACT: if either side moves,

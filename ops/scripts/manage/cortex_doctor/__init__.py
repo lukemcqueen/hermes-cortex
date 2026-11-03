@@ -1,5 +1,5 @@
 """
-cortex_doctor — Hermes Cortex installation health check package.
+cortex_doctor — Steadfaste Fleet installation health check package.
 
 Split from the monolithic cortex-doctor.py (2177 lines) into modular
 components:

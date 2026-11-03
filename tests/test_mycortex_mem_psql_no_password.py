@@ -171,7 +171,7 @@ def test_resolve_mem_password_env_var_wins(store_module, monkeypatch):
 
 def test_resolve_mem_password_falls_back_to_cortex_env(tmp_path, store_module, monkeypatch):
     """When the env var is unset (the gateway/systemd case — services do not inherit
-    ~/hermes-cortex/.env), the store resolves the password from the canonical cortex
+    ~/steadfaste-fleet/.env), the store resolves the password from the canonical cortex
     .env so the provider is available without any service-specific env injection.
     """
     monkeypatch.delenv("MYCORTEX_MEM_PASSWORD", raising=False)

@@ -32,7 +32,7 @@ MCP server code. The bar is provenance + behavior, not a glance at the diff.
 6. **Persistence check** — what does it install or change? (crons,
    systemd units, config files, auto-start hooks). Reject silent
    persistence; require explicit opt-in.
-7. **License** — compatible with the target repo (MIT for hermes-cortex).
+7. **License** — compatible with the target repo (MIT for steadfaste-fleet).
 
 ## Decision
 

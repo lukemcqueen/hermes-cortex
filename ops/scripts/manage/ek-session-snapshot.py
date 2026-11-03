@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Auto-snapshot echokorean session state.
-Updates .hermes-cortex/sessions/current.md when git state changes.
+Updates .steadfaste-fleet/sessions/current.md when git state changes.
 Silent exit (0) when nothing changed — no output = no notification."""
 
 import json, os, subprocess, sys
@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 from hermes_tz import get_timezone
 
 REPO = os.environ.get("ECHOKOREAN_REPO", os.path.expanduser("~/Developer/PERSONAL/echokorean"))
-SESSION_FILE = os.path.join(REPO, ".hermes-cortex", "sessions", "current.md")
+SESSION_FILE = os.path.join(REPO, ".steadfaste-fleet", "sessions", "current.md")
 KST = get_timezone()
 
 os.chdir(REPO)

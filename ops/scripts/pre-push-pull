@@ -17,7 +17,7 @@ set -euo pipefail
 # ── Git hooks integrity check ─────────────────────────────
 # Verify core.hooksPath points to our hooks directory.
 # If it doesn't, governance hooks aren't running at all.
-EXPECTED_HOOKS="${HOME}/.hermes-cortex/hooks"
+EXPECTED_HOOKS="${HOME}/.steadfaste-fleet/hooks"
 ACTUAL_HOOKS=$(git config --get core.hooksPath 2>/dev/null || echo "")
 if [[ -z "$ACTUAL_HOOKS" ]]; then
     echo ""
@@ -57,14 +57,14 @@ for hook in pre-commit post-commit post-merge; do
         if [[ ! -f "$target" ]] && [[ ! -f "${EXPECTED_HOOKS}/${target}" ]] && [[ ! -f "$(dirname "${EXPECTED_HOOKS}/${hook}")/${target}" ]]; then
             echo ""
             echo "❌  Push blocked: hook '${hook}' is a dangling symlink (→ ${target})"
-            echo "    Re-run: bash ~/hermes-cortex/ops/scripts/install-score-hook.sh"
+            echo "    Re-run: bash ~/steadfaste-fleet/ops/scripts/install-score-hook.sh"
             echo ""
             exit 1
         fi
     elif [[ ! -f "${EXPECTED_HOOKS}/${hook}" ]]; then
         echo ""
         echo "❌  Push blocked: hook '${hook}' not found at ${EXPECTED_HOOKS}/${hook}"
-        echo "    Re-run: bash ~/hermes-cortex/ops/scripts/install-score-hook.sh"
+        echo "    Re-run: bash ~/steadfaste-fleet/ops/scripts/install-score-hook.sh"
         echo ""
         exit 1
     fi
@@ -73,19 +73,19 @@ done
 # ── Governance lock check ─────────────────────────────────
 # Before allowing a push, verify an active governance lock exists.
 # SCOPE (Luke 2026-08-06): the lock requirement applies ONLY in the
-# hermes-cortex repo. Non-HC repos (client-mwi, client-works, projects)
+# steadfaste-fleet repo. Non-HC repos (client-mwi, client-works, projects)
 # receive MANUAL pushes by humans too — a manual push has no governance
 # lock, so an unscoped gate blocked ordinary work on Titus (reproduced:
 # "Push blocked: no active governance lock" on a scratch non-HC repo).
 # Safety gates (syntax, no-verify audit, behind-check) still run in
-# every repo. Rule 11 pattern: ${HOME}/hermes-cortex comparison.
-CORTEX_REPO_TOP="${HOME}/hermes-cortex"
+# every repo. Rule 11 pattern: ${HOME}/steadfaste-fleet comparison.
+CORTEX_REPO_TOP="${HOME}/steadfaste-fleet"
 _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 # Overridable so the receipt gate can be exercised by a runnable test against a
 # controlled state dir (tests/test_review_receipt_gate.py). Not a bypass: an
 # empty or unknown dir yields NO lock, which blocks harder, and a dir with a lock
 # still has to satisfy the receipt gate.
-GOVERNANCE_STATE_DIR="${GOVERNANCE_STATE_DIR:-${HOME}/.hermes-cortex/state}"
+GOVERNANCE_STATE_DIR="${GOVERNANCE_STATE_DIR:-${HOME}/.steadfaste-fleet/state}"
 GOVERNANCE_STATE_REPO="$CORTEX_REPO_TOP"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 LOCK_FOUND=0
@@ -172,7 +172,7 @@ if [[ "$LOCK_FOUND" -eq 0 && "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]; then
   echo ""
   echo "❌  Push blocked: no active governance lock for this repository."
   echo "    No bypass flags available — call begin_change() before making changes, then push."
-  echo "    The lock file must exist at ~/.hermes-cortex/state/.governance-*.json"
+  echo "    The lock file must exist at ~/.steadfaste-fleet/state/.governance-*.json"
   echo "    with repo_slug='$REPO_SLUG'."
   echo ""
   exit 1
@@ -372,7 +372,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # merged to main (7dbba626 removed core/governance/). Now a new-branch
   # push is checked against origin/main instead: any no-verify commit not
   # already on main is blocked, closing the temp-branch bypass.
-  NO_VERIFY_LOG="${HOME}/.hermes-cortex/state/no-verify-log.json"
+  NO_VERIFY_LOG="${HOME}/.steadfaste-fleet/state/no-verify-log.json"
   if [[ -f "$NO_VERIFY_LOG" ]]; then
     NO_VERIFY_BLOCKED=0
     NO_VERIFY_HASHES=$(python3 -c "
@@ -414,7 +414,7 @@ except Exception:
       # 3 consecutive --no-verify commits are tolerated; the 4th+ is
       # MANDATED — this push is blocked until a fully verified commit
       # (pre-commit hook ran, sentinel written) resets the debt to 0.
-      DEBT_FILE="${HOME}/.hermes-cortex/state/bypass-debt.json"
+      DEBT_FILE="${HOME}/.steadfaste-fleet/state/bypass-debt.json"
       DEBT=0
       if [[ -f "$DEBT_FILE" ]]; then
         DEBT=$(python3 -c "
@@ -442,8 +442,8 @@ except Exception:
   fi
 done
 
-# ── Doctor regression check (orchestrators, hermes-cortex only) ──
-# Run doctor on EVERY hermes-cortex push by an orchestrator host.
+# ── Doctor regression check (orchestrators, steadfaste-fleet only) ──
+# Run doctor on EVERY steadfaste-fleet push by an orchestrator host.
 # The strongest 2026-08-04 directive (mandatory adversarial gate)
 # silently doesn't apply if deployed state drifts — the only way to
 # catch that at push time is to verify the full deployed state.
@@ -452,10 +452,10 @@ done
 # pushes because the gate only fired on cortex_doctor/* changes —
 # closed.)
 # ⚠️  SCOPE (Luke corrections 2026-08-05): this gate fires ONLY when
-# (a) the push is in the hermes-cortex repo AND (b) the host is an
+# (a) the push is in the steadfaste-fleet repo AND (b) the host is an
 # orchestrator (moses/esther). Non-cortex repos (client-mwi,
 # client-works, ebm-website, pinned repos, ...) must NOT run the
-# hermes-cortex doctor — a failing hermes-cortex state must never
+# steadfaste-fleet doctor — a failing steadfaste-fleet state must never
 # block a client repo's push. Non-orchestrator hosts never run it.
 _detect_orch() {
   local _host _home _user
@@ -472,9 +472,9 @@ _detect_orch() {
 }
 
 DOCTOR_BLOCKED=0
-CORTEX_DOCTOR="${HOME}/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
+CORTEX_DOCTOR="${HOME}/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
 if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DOCTOR" ]]; then
-  DOCTOR_OUTPUT=$(cd "${HOME}/hermes-cortex/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
+  DOCTOR_OUTPUT=$(cd "${HOME}/steadfaste-fleet/ops/scripts/manage" && python3 cortex-doctor.py --quiet 2>&1 || true)
   # Real failure = any ❌ check line that is NOT the "Overall: FAILING"
   # summary line (counted via its own ❌). Matches on the ❌ marker, not
   # the word "FAIL" — "Overall: FAILING" would false-positive the old grep.
@@ -489,7 +489,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
     echo "❌  Push blocked: doctor reports $([ "${_DOCTOR_FAILS:-0}" -eq 1 ] && echo '1 failure' || echo "${_DOCTOR_FAILS} failures")."
     echo "    Deployed state does not match repo source (or governance drift)."
     echo "    Dogfood is MANDATORY before push (Luke directive 2026-08-05):"
-    echo "      bash ${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh --force"
+    echo "      bash ${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh --force"
     echo "    (runs pull → deploy → doctor → verify; exit 1 on any FAIL)"
     echo ""
     echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vE 'PENDING cycles|Overall: FAILING' | head -10
@@ -499,14 +499,14 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
 fi
 
 # ── MANDATORY DOGFOOD (2026-08-05, Luke directive) ─────────
-# A push that touches ANY non-doc file in hermes-cortex MUST
+# A push that touches ANY non-doc file in steadfaste-fleet MUST
 # dogfood-deploy BEFORE it lands: pull → cortex-update → doctor →
 # verify. The gate runs cortex-dogfood.sh itself so the step cannot
 # be forgotten — "make this mandatory, not a manual ritual".
 # SCOPE (Luke 2026-08-05):
 #   - EVERY script/enforcement file in the HC repo, INCLUDING changes
 #     in paths to these files (renames, moved paths, config refs).
-#   - HERMES-CORTEX repo ONLY. Dogfood = redeployment of HC, so it is
+#   - STEADFASTE-FLEET repo ONLY. Dogfood = redeployment of HC, so it is
 #     irrelevant to non-HC repos (client-mwi, client-works, projects)
 #     — a non-HC push redeploys nothing. (Luke correction 2026-08-05.)
 #   - Only DOCS are exempt (*.md, docs/) — no deployed state changes.
@@ -524,8 +524,8 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_F
     echo "🔄  MANDATORY DOGFOOD: push touches enforcement/deploy files."
     echo "    Running cortex-dogfood.sh (pull → deploy → doctor → verify)..."
     echo ""
-    if [[ -f "${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh" ]]; then
-      bash "${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh" --quiet 2>&1 | sed 's/^/    /'
+    if [[ -f "${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh" ]]; then
+      bash "${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh" --quiet 2>&1 | sed 's/^/    /'
       _DOGFOOD_RC=${PIPESTATUS[0]}
     else
       echo "    ✗ cortex-dogfood.sh not deployed — cannot verify deployed state."
@@ -536,7 +536,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_F
       echo "❌  Push blocked: mandatory dogfood FAILED."
       echo "    The deployed state does not verify clean after your changes."
       echo "    Fix the failures above, re-run:"
-      echo "      bash ${HOME}/.hermes-cortex/scripts/cortex-dogfood.sh --force"
+      echo "      bash ${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh --force"
       echo "    then push again. This gate cannot be skipped (no --no-verify)."
       echo ""
       exit 1

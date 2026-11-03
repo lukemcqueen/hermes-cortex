@@ -3,7 +3,7 @@
 ## Problem
 
 When a `register()` line is removed from `cortex-update.sh`, the deployed
-copy stays on disk at `~/.hermes-cortex/scripts/`. Over time, these orphan
+copy stays on disk at `~/.steadfaste-fleet/scripts/`. Over time, these orphan
 files accumulate. Similarly, after install/update, agents don't know if
 their deployment is actually healthy.
 
@@ -14,7 +14,7 @@ their deployment is actually healthy.
 **File:** `ops/scripts/cortex-update.sh` — `clean_stale_deploys()` function
 
 Runs automatically at the end of every deploy. Scans
-`~/.hermes-cortex/scripts/` for `.py` and `.sh` files not in any
+`~/.steadfaste-fleet/scripts/` for `.py` and `.sh` files not in any
 `register()` destination, then removes them.
 
 ```bash

@@ -27,7 +27,7 @@ Before sending any command to a remote fleet agent, test the full cycle locally:
 hc exec moses cortex-doctor.py --json
 
 # Run handler manually
-cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
+cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 
 # Verify response
 sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELECT queue_name, state FROM bus.messages;"'
@@ -51,7 +51,7 @@ sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELEC
 ### Command Subjects
 | Subject | Action | Response Subject |
 |---------|--------|-----------------|
-| EXEC | Run script under `~/.hermes-cortex/scripts/` | EXEC_RESULT |
+| EXEC | Run script under `~/.steadfaste-fleet/scripts/` | EXEC_RESULT |
 | UPDATE_REQUEST | `cortex-update.sh` | UPDATE_RESULT |
 | ROLLBACK_REQUEST | `git checkout <sha>` then update | ROLLBACK_RESULT |
 | GIT_AUTH_CHECK | `git ls-remote` verification | GIT_AUTH_RESULT |
@@ -83,7 +83,7 @@ sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELEC
 ## How to Run On-Demand (Moses)
 ```bash
 hc exec moses cortex-doctor.py --json
-cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
+cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
 
 ## Previous Session Notes
@@ -117,7 +117,7 @@ When messages are stuck `processing` on a fleet agent, the bus is the broken cha
 ```
 Run a full diagnostic and report back:
 1. Check handler cron exists and is enabled
-2. Read handler state file (~/.hermes-cortex/state/agent-handler-state.json)
+2. Read handler state file (~/.steadfaste-fleet/state/agent-handler-state.json)
 3. Check system load / memory / disk
 4. Check latest handler output log
 5. Run doctor

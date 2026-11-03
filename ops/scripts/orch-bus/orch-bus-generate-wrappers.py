@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """generate-bus-wrappers.py — Generate per-agent bus watch wrappers from registry.
 
-Reads ~/.hermes-cortex/state/agent-registry.json and creates wrapper scripts
+Reads ~/.steadfaste-fleet/state/agent-registry.json and creates wrapper scripts
 for each agent that has inbox_user and inbox_watch_schedule set.
 
 Usage:
@@ -32,10 +32,10 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
-REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
+SCRIPTS_DIR = HOME / ".steadfaste-fleet" / "scripts"
+REGISTRY_PATH = HOME / ".steadfaste-fleet" / "state" / "agent-registry.json"
 WATCH_SCRIPT = SCRIPTS_DIR / "bus-watch.sh"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 
 
 def get_registry():
@@ -56,7 +56,7 @@ def generate_wrapper(agent_name, agent_data, dry_run=False):
     wrapper_path = SCRIPTS_DIR / f"cortex-bus-{agent_name}.sh"
     wrapper_content = f"""#!/bin/bash
 # Auto-generated from agent-registry.json
-CONFIG="${{HOME}}/.hermes/cortex-bus-{agent_name}.conf" exec "${{HOME}}/.hermes-cortex/scripts/bus-watch.sh"
+CONFIG="${{HOME}}/.hermes/cortex-bus-{agent_name}.conf" exec "${{HOME}}/.steadfaste-fleet/scripts/bus-watch.sh"
 """
     if dry_run:
         print(f"[DRY RUN] Would create: {wrapper_path}")
@@ -169,7 +169,7 @@ def main():
 
     print()
     print("Done. To add a new agent:")
-    print("  1. Add entry to ~/.hermes-cortex/state/agent-registry.json")
+    print("  1. Add entry to ~/.steadfaste-fleet/state/agent-registry.json")
     print("  2. Create config: ~/.hermes/cortex-bus-<agent>.conf")
     print("  3. Run: python3 generate-bus-wrappers.py --apply-crons")
     print()

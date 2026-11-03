@@ -2,7 +2,7 @@
 name: engineering-approach
 description: "Engineering and communication standards for this project: terse, direct, skip explanations, always handle errors."
 version: 1.9.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 metadata:
   tags: [engineering-standards, communication, style-guide, best-practices]
 ---
@@ -249,14 +249,14 @@ For CLI scoring, `--code-file` should be the file that best represents the chang
 |---------|-------------|-----|
 | `embedding failed` / `Ollama connection refused` | Ollama not running | `ollama serve` or `brew services restart ollama` |
 | `Model nomic-embed-text:v1.5 not found` | Model not pulled | `ollama pull nomic-embed-text:v1.5` (274 MB) |
-| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.hermes-cortex/data/loop-governance.db-journal` |
-| `score-cycle not found` | Symlink missing | `bash ~/hermes-cortex/core/governance/setup.sh --symlinks-only` |
+| `DB locked` | Concurrent score-cycle process | Wait and retry, or `rm ~/.steadfaste-fleet/data/loop-governance.db-journal` |
+| `score-cycle not found` | Symlink missing | `bash ~/steadfaste-fleet/core/governance/setup.sh --symlinks-only` |
 | `warning: all tests failed` | Test suite broken | Fix tests first, then re-score |
 | MCP tool returns `Error: no such column` | Server code out of sync with DB schema | Kill stale `loop-gov-mcp.py` processes |
 
 **Fallback protocol:** If scoring is genuinely blocked (Ollama down, DB
 corrupt, network unreachable):
-1. Diagnose with `bash ~/.hermes-cortex/tools/loop-governance/verify.sh`
+1. Diagnose with `bash ~/.steadfaste-fleet/tools/loop-governance/verify.sh`
 2. If fix takes > 2 minutes, run `score-cycle` once the issue is resolved
 3. Never skip entirely — the cron auditor flags unscored changes
 
@@ -412,7 +412,7 @@ If the backend doesn't support sort params yet, remove the clickable sort header
 - **When the user corrects the project (`wrong project`, `that's not this repo`), don't switch on your own.** Confirm the correct project and only operate there.
 - **If a task requires cross-project work** (e.g. wiring two repos together), the user will explicitly say so or provide the path. Until then, assume single-project scope.
 - **Repo ownership matters — don't push/merge to repos you don't own.** The user has delegated authority differently per repo:
-  - **hermes-cortex:** Moses is the owner. Do NOT cherry-pick, merge, commit, or push changes directly. Instead, give the user a prompt to pass to Moses with the specific changes needed (commit SHAs, file edits, reasoning). The user is the gatekeeper — they approve all updates to the public repo.
+  - **steadfaste-fleet:** Moses is the owner. Do NOT cherry-pick, merge, commit, or push changes directly. Instead, give the user a prompt to pass to Moses with the specific changes needed (commit SHAs, file edits, reasoning). The user is the gatekeeper — they approve all updates to the public repo.
   - **Other repos (ACME, Echo Korean, etc.):** The user owns these and expects you to handle commits, pushes, and merges directly after approval.
   - If unclear which model applies, ask: "Do you want me to handle this directly, or give you a prompt for the repo owner?"
 
@@ -622,7 +622,7 @@ When setting up a Python virtual environment:
 
 `#!/usr/bin/env python3` on macOS resolves to the system Python (3.9), which doesn't support union type syntax (`str | None`, `list[float] | None`). This will crash with `TypeError: unsupported operand type(s) for |` on any script using 3.10+ syntax.
 
-**Hermes Cortex standard:** Use explicit `#!/usr/bin/env python3.12` in ALL .py scripts. The `env` fallback resolves `python3.12` from PATH:
+**Steadfaste Fleet standard:** Use explicit `#!/usr/bin/env python3.12` in ALL .py scripts. The `env` fallback resolves `python3.12` from PATH:
 - `~/.local/bin/python3.12` (uv-managed, canonical for Hermes)
 - `/opt/homebrew/bin/python3.12` (Homebrew fallback)
 - `~/.pyenv/versions/3.12.*/bin/python3.12` (pyenv fallback)

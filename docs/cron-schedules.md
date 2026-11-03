@@ -1,4 +1,4 @@
-# Cron Schedules — Hermes Cortex
+# Cron Schedules — Steadfaste Fleet
 
 > **Canonical schedule reference.** Every cron job in the fleet, its schedule, type, script/prompt, and delivery.
 >
@@ -82,7 +82,7 @@
 | `agent-secret-leak-watchdog` | `0 */4 * * *` | no_agent | `agent-secret-leak-watchdog.py` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
 | `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
-| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin |
+| `agent-steadfaste-fleet-sync` | `33 22 * * *` | no_agent | `agent-steadfaste-fleet-sync.sh` | origin |
 | `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local |

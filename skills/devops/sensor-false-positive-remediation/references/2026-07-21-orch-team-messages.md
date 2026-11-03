@@ -19,7 +19,7 @@ The `remediation-sensor.py` reported every 5 minutes:
    - `brain/lessons/` (lessons confirming it was never deployed)
 
 2. **Path check:** The script didn't exist anywhere — not in `ops/scripts/`,
-   `~/.hermes/scripts/`, or `~/.hermes-cortex/scripts/`.
+   `~/.hermes/scripts/`, or `~/.steadfaste-fleet/scripts/`.
 
 3. **Install script check:** No `create_cron` block referenced it in
    `install-crons.sh` or `install-orch-crons.sh`. It only appeared in uninstall
@@ -47,7 +47,7 @@ to:
 ## Verification
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/remediation-sensor.py
 # Output: only git_issue (uncommitted changes from the fix itself)
 # No more script_missing
 ```
@@ -55,8 +55,8 @@ python3 ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py
 ## Deployment
 
 ```bash
-cp ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py ~/.hermes-cortex/scripts/
-cp ~/hermes-cortex/ops/scripts/manage/remediation-sensor.py ~/.hermes/scripts/
+cp ~/steadfaste-fleet/ops/scripts/manage/remediation-sensor.py ~/.steadfaste-fleet/scripts/
+cp ~/steadfaste-fleet/ops/scripts/manage/remediation-sensor.py ~/.hermes/scripts/
 ```
 
 ## Lesson

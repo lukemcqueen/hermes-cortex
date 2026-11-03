@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — Offline Content Auto-Update
+#  Steadfaste Fleet — Offline Content Auto-Update
 #
 #  Checks for updates to your downloaded offline content
 #  (Bible, hymns, ZIM reference) and applies them silently.
@@ -27,12 +27,12 @@ set -euo pipefail
 
 HOME="${HOME:-$(echo ~)}"
 # Prefer installed offline path, fall back to repo-relative
-if [[ -d "$HOME/.hermes-cortex/offline" ]]; then
-  OFFLINE_DIR="$HOME/.hermes-cortex/offline"
-elif [[ -d "$HOME/hermes-cortex/offline" ]]; then
-  OFFLINE_DIR="$HOME/hermes-cortex/offline"
+if [[ -d "$HOME/.steadfaste-fleet/offline" ]]; then
+  OFFLINE_DIR="$HOME/.steadfaste-fleet/offline"
+elif [[ -d "$HOME/steadfaste-fleet/offline" ]]; then
+  OFFLINE_DIR="$HOME/steadfaste-fleet/offline"
 else
-  OFFLINE_DIR="$HOME/hermes-cortex/offline"
+  OFFLINE_DIR="$HOME/steadfaste-fleet/offline"
 fi
 BIBLE_DIR="$HOME/offline/bible"
 HYMNS_DIR="$HOME/offline/hymns"

@@ -51,9 +51,9 @@ the external peer is behind nginx which accepts Basic only; Bearer → 401.
 ## Verification
 
 ```bash
-cd ~/hermes-cortex && timeout 90 python3 ops/scripts/orch-bus/orch-bus-forwarder.py
+cd ~/steadfaste-fleet && timeout 90 python3 ops/scripts/orch-bus/orch-bus-forwarder.py
 # expect: ✅ [.. KST] Peer recovered — drained 0→local, 0→peer
-python3 -c "import json; st=json.load(open('$HOME/.hermes-cortex/state/bus-forwarder-state.json')); print(st.get('peer_downed_at','CLEARED'), st['total_peer_to_local'], st['total_local_to_peer'])"
+python3 -c "import json; st=json.load(open('$HOME/.steadfaste-fleet/state/bus-forwarder-state.json')); print(st.get('peer_downed_at','CLEARED'), st['total_peer_to_local'], st['total_local_to_peer'])"
 ```
 
 ## Related: fleet server-version split
@@ -62,7 +62,7 @@ The 403-vs-200 ACL behavior differs per host because TWO server versions exist:
 
 | File | ACL model | Where runs |
 |------|-----------|-----------|
-| `core/cortex_bus/server.py` | coarse boolean (`can_read`/`can_send` = bool) | deployed `~/.hermes-cortex/bus/server.py` (Esther :8903) |
+| `core/cortex_bus/server.py` | coarse boolean (`can_read`/`can_send` = bool) | deployed `~/.steadfaste-fleet/bus/server.py` (Esther :8903) |
 | `core/cortex_bus/server.py` | per-queue arrays (`can_read` = queue list, `queue not in allowed_queues → 403`) | canonical (Moses' bus) |
 
 Diagnose a 403 by diffing the two server files BEFORE assuming a config bug.

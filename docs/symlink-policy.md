@@ -1,11 +1,11 @@
-# Symlink Policy — Hermes Cortex ↔ Hermes Agent
+# Symlink Policy — Steadfaste Fleet ↔ Hermes Agent
 
 ## Why This Exists
 
-Hermes Cortex deploys runtime files (scripts, skills, state, data) to
-`~/.hermes-cortex/`. Hermes Agent reads its runtime files from `~/.hermes/`.
+Steadfaste Fleet deploys runtime files (scripts, skills, state, data) to
+`~/.steadfaste-fleet/`. Hermes Agent reads its runtime files from `~/.hermes/`.
 To keep both working without duplicating files, Cortex directories that Hermes
-Agent needs to find at `~/.hermes/` are **symlinked** from `~/.hermes-cortex/`.
+Agent needs to find at `~/.hermes/` are **symlinked** from `~/.steadfaste-fleet/`.
 
 This document tells every agent which directories are symlinked and why,
 and what to do when installing or updating.
@@ -16,7 +16,7 @@ and what to do when installing or updating.
 
 These are managed by Hermes Agent itself and must remain as real directories
 or files at `~/.hermes/`. **Never replace these with symlinks to
-`~/.hermes-cortex/`.**
+`~/.steadfaste-fleet/`.**
 
 | Path | Purpose | Why not symlink |
 |------|---------|----------------|
@@ -49,8 +49,8 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
 | `.env`, `.env` | Agent Bus auth credentials (legacy) | Hermes inbox client auth |
 | `agent-name` | Agent identity name | Hermes agent identification |
 
-**Also DO NOT touch these in `~/.hermes-cortex/`:**
-- `~/.hermes-cortex/skills/` — Must be a **REAL directory**: Cortex OWNS the skill library.
+**Also DO NOT touch these in `~/.steadfaste-fleet/`:**
+- `~/.steadfaste-fleet/skills/` — Must be a **REAL directory**: Cortex OWNS the skill library.
   `~/.hermes/skills/` must be a **symlink to it** (not a real directory). This is the REVERSE
   of the 2026-07-07 direction, deliberately (2026-10-21): the fleet is moving OFF the Hermes
   agent, so Cortex must own the canonical store instead of borrowing the tree that Hermes
@@ -65,7 +65,7 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
 omarchy links its own agent skills (`omarchy`, `diagnose-crash`) into `~/.agents/skills` as a
 **real directory** — the same path the cortex publisher wants as its pointer. The two coexist
 cleanly because omarchy's skills are **already symlinked inside the cortex defaults tree**
-(`~/.hermes-cortex/skills/omarchy` → `/usr/share/omarchy/default/agents/skills/omarchy`), so
+(`~/.steadfaste-fleet/skills/omarchy` → `/usr/share/omarchy/default/agents/skills/omarchy`), so
 publishing the pointer exposes both omarchy's skills AND the full cortex library through one
 path. The publish tool (`publish-agent-skills.py`) refuses to clobber a foreign real dir by
 design (exit 4, "DECISION REQUIRED") — the operator runs `--adopt-published`, which **preserves
@@ -79,7 +79,7 @@ path on update; the omarchy crash-watch consumer reads its skill via the absolut
 
 ## ✅ Symlinked — Cortex Runtime
 
-These are real directories at `~/.hermes-cortex/` with symlinks at `~/.hermes/`.
+These are real directories at `~/.steadfaste-fleet/` with symlinks at `~/.hermes/`.
 Symlinks work because macOS/Linux resolve writes through the symlink
 transparently — no data is lost.
 
@@ -118,7 +118,7 @@ transparently — no data is lost.
 ## Directory Map
 
 ```
-~/.hermes/                          ~/.hermes-cortex/
+~/.hermes/                          ~/.steadfaste-fleet/
 ├── config.yaml           [REAL]    ├── scripts/          [REAL]
 ├── .env                  [REAL]    ├── tools/            [REAL]
 ├── profiles/             [REAL]    ├── sessions/         [REAL]
@@ -135,13 +135,13 @@ transparently — no data is lost.
 ├── ... (Hermes runtime)            ├── certs/            [REAL]
 │                                   ├── cortex-bus/      [REAL]
 │                                   ├── bin/              [REAL]
-├── scripts → .hermes-cortex/       │
+├── scripts → .steadfaste-fleet/       │
 │  .env                  [REAL]     │
 │  (Each .env is independent —     ├── skills → ../.hermes/skills/ [SYMLINK]
 │   NOT symlinked.                  │
 │   ~/.hermes/.env = Agent only    Both point to same skills dir
-│   ~/hermes-cortex/.env = Cortex (Hermes manages ~/.hermes/skills/
-│   ~/hermes-cortex/.env = Repo)   via skills_sync.py, cortex-update
+│   ~/steadfaste-fleet/.env = Cortex (Hermes manages ~/.hermes/skills/
+│   ~/steadfaste-fleet/.env = Repo)   via skills_sync.py, cortex-update
 │                                   deploys through the symlink)
 ```
 
@@ -152,7 +152,7 @@ transparently — no data is lost.
 Symlinks work on all Hermes Agent platforms (macOS, Linux, Ubuntu) for all
 filesystem operations: **read, write, append, open, stat, rename** (on the
 link, not the target), and **delete** (on the link, not the target). Writes
-to `~/.hermes/<dir>/file` transparently go to `~/.hermes-cortex/<dir>/file`.
+to `~/.hermes/<dir>/file` transparently go to `~/.steadfaste-fleet/<dir>/file`.
 
 The exception is container/CI environments with `--read-only` root filesystems
 — but those don't use `~/.hermes/` as a writable directory anyway.
@@ -165,7 +165,7 @@ The exception is container/CI environments with `--read-only` root filesystems
 | Directory has runtime writes | **Symlink** — writes resolve through the link to the real path |
 | File must be at `~/.hermes/` for Hermes Agent to find it | **Symlink** — if Hermes can follow symlinks (it can) |
 | File is a Hermes Agent core config | **Real file** — never symlink |
-| The deployment target is already `~/.hermes-cortex/` | **Symlink** — cortex-update writes to the real path |
+| The deployment target is already `~/.steadfaste-fleet/` | **Symlink** — cortex-update writes to the real path |
 
 ## Installation / Update
 
@@ -183,7 +183,7 @@ ls -la ~/.hermes/scripts
 
 # Re-create
 rm ~/.hermes/scripts
-ln -s ~/.hermes-cortex/scripts ~/.hermes/scripts
+ln -s ~/.steadfaste-fleet/scripts ~/.hermes/scripts
 ```
 
 ### Fresh install: create all symlinks
@@ -194,21 +194,21 @@ for dir in scripts offline state data sessions memory memories \
            hooks mcp-servers dashboard health-server web-cache evals; do
   if [ -d ~/.hermes/$dir ] && [ ! -L ~/.hermes/$dir ]; then
     rm -rf ~/.hermes/$dir
-    ln -s ~/.hermes-cortex/$dir ~/.hermes/$dir
+    ln -s ~/.steadfaste-fleet/$dir ~/.hermes/$dir
   fi
 done
 
 # Individual files
 for f in bible-reading-tracker.json titus-avatar.html; do
   if [ -f ~/.hermes/$f ] && [ ! -L ~/.hermes/$f ]; then
-    cp ~/.hermes/$f ~/.hermes-cortex/$f
+    cp ~/.hermes/$f ~/.steadfaste-fleet/$f
     rm ~/.hermes/$f
-    ln -s ~/.hermes-cortex/$f ~/.hermes/$f
+    ln -s ~/.steadfaste-fleet/$f ~/.hermes/$f
   fi
 done
 
 # CRITICAL (inverted 2026-10-21): the skills tree must be a REAL directory in
-# ~/.hermes-cortex/, and the ~/.hermes path a symlink TO it — Cortex owns the library.
+# ~/.steadfaste-fleet/, and the ~/.hermes path a symlink TO it — Cortex owns the library.
 # Do NOT do this by hand: the tool MOVES the real tree, links back, and verifies.
 #   python3 ops/scripts/manage/migrate-skills-ownership.py --check
 #   python3 ops/scripts/manage/migrate-skills-ownership.py
@@ -231,10 +231,10 @@ find ~/.hermes -maxdepth 1 -type l | while read link; do
 done
 
 # Verify the cortex tree is REAL and the harness paths POINT at it
-ls -ld ~/.hermes-cortex/skills ~/.hermes/skills ~/.agents/skills
-# → drwx------ ... ~/.hermes-cortex/skills             (real — cortex owns it)
-# → ... ~/.hermes/skills -> ~/.hermes-cortex/skills    (Hermes pointer, transition)
-# → ... ~/.agents/skills -> ~/.hermes-cortex/skills    (agent-visible standard path)
+ls -ld ~/.steadfaste-fleet/skills ~/.hermes/skills ~/.agents/skills
+# → drwx------ ... ~/.steadfaste-fleet/skills             (real — cortex owns it)
+# → ... ~/.hermes/skills -> ~/.steadfaste-fleet/skills    (Hermes pointer, transition)
+# → ... ~/.agents/skills -> ~/.steadfaste-fleet/skills    (agent-visible standard path)
 ```
 
 ## Audit Trail
@@ -242,8 +242,8 @@ ls -ld ~/.hermes-cortex/skills ~/.hermes/skills ~/.agents/skills
 | Date | Action | By |
 |------|--------|-----|
 | 2026-07-07 | Initial policy created | Titus |
-| 2026-07-07 | Migrated 15 dirs + 2 files from ~/.hermes/ to ~/.hermes-cortex/ with symlinks | Titus |
+| 2026-07-07 | Migrated 15 dirs + 2 files from ~/.hermes/ to ~/.steadfaste-fleet/ with symlinks | Titus |
 | 2026-07-07 | Identified skills/ as Hermes Agent canonical dir — reverted symlink direction | Titus |
 | 2026-07-08 | Stripped aspirational symlinks from doc — only scripts/ is actually symlinked. .env split into 3 independent files. | Moses |
-| 2026-10-21 | **INVERTED**: Cortex now owns the canonical skills tree — `~/.hermes-cortex/skills/` is a REAL directory, and `~/.hermes/skills` + `~/.agents/skills` are pointers to it. Reason: the fleet is moving off the Hermes agent, so the 2026-07-07 direction (Hermes canonical) had to be reversed. Tools: `ops/scripts/manage/migrate-skills-ownership.py` (invert, per host, verified, never deletes) and `ops/scripts/manage/publish-agent-skills.py` (publish the agent-visible view). | Esther |
+| 2026-10-21 | **INVERTED**: Cortex now owns the canonical skills tree — `~/.steadfaste-fleet/skills/` is a REAL directory, and `~/.hermes/skills` + `~/.agents/skills` are pointers to it. Reason: the fleet is moving off the Hermes agent, so the 2026-07-07 direction (Hermes canonical) had to be reversed. Tools: `ops/scripts/manage/migrate-skills-ownership.py` (invert, per host, verified, never deletes) and `ops/scripts/manage/publish-agent-skills.py` (publish the agent-visible view). | Esther |
 | 2026-10-21 | **Omarchy coexistence**: on hosts running the Omarchy desktop, `~/.agents/skills` was omarchy's real dir (partial view). Published the cortex pointer with `--adopt-published` (preserves omarchy's tree by rename to `~/.agents/skills.pre-publish-<stamp>`, never deletes) — omarchy's skills were already symlinked inside the cortex defaults, so agents now see omarchy + all cortex skills via one pointer. | Moses |

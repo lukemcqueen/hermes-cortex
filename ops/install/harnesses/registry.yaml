@@ -27,10 +27,10 @@ version: 1
 defaults:
   # Every non-MCP harness goes through this one CLI (never a bespoke script).
   cli: cortex-context
-  cli_path: ~/.hermes-cortex/scripts/cortex-context.py
-  mcp_server: ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+  cli_path: ~/.steadfaste-fleet/scripts/cortex-context.py
+  mcp_server: ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
   # The trigger half: the harness owns WHEN a checkpoint is written.
-  trigger: ~/.hermes-cortex/scripts/session-autocheckpoint.py
+  trigger: ~/.steadfaste-fleet/scripts/session-autocheckpoint.py
   impl: ops/services/mycortex-mem/context_tools.py
   env:
     - CORTEX_SESSION_HARNESS
@@ -78,8 +78,8 @@ harnesses:
       session_before_compact: checkpoint before continuity is lost
     install: |
       # USER SCOPE — every Pi project, one registration (recommended):
-      bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
-      bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
+      bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
+      bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
       # PROJECT SCOPE — one repo, files copied in + a generated run line:
       hc harness install pi --dir <your-pi-project>
       # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
@@ -154,11 +154,11 @@ harnesses:
             \ generic CLI over the one MCP implementation, so a Pi agent without MCP
             \ can run the entire ritual."
           verify:
-          - git config --get core.hooksPath prints ~/.hermes-cortex/hooks — so a commit made from a Pi session is gated.
-          - python3 ~/.hermes-cortex/scripts/loop-gov.py --list lists begin_change and end_change.
-          - "The CLI works under EVERY interpreter shape, and the skew that broke gisu (2026-10-20) is now a WARNING, not a failure — with no `mcp` at all the handlers run through their own stand-ins, with mcp>=2.0 the SDK is used, and an mcp in between (importable but too old for the 2.0 constructor API this server registers handlers with) used to kill the module at import and make the CLI exit 3 on every write gate, which read as governance being unavailable. It now prints on stderr `[mcp-server] WARNING: the installed MCP SDK cannot serve this module (<error>) — stdio serving is DISABLED; the CLI adapter still works` and the CLI exits 0/1 as usual. Seeing that warning means THE INTERPRETER's mcp is behind — the extension spawns CORTEX_GOVERNANCE_PYTHON, defaulting to `python3` from pi's PATH — not that governance is down. Fix it by running the CLI with ~/.hermes-cortex/venv/bin/python3, or repair that venv with `python3 ops/scripts/manage/fix-cortex-venv.py` (its --check probes this capability, not just the import)."
-          - python3 ~/.hermes-cortex/scripts/loop-gov.py check_lock returns a JSON status object (the CLI reaches the governance store). Note: its 'active' field is NOT the test the push gate uses — a lock FILE can exist (and permit a push) while check_lock reports inactive, so an inactive reading must not be taken as permission to push.
-          - python3 ~/.hermes-cortex/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
+          - git config --get core.hooksPath prints ~/.steadfaste-fleet/hooks — so a commit made from a Pi session is gated.
+          - python3 ~/.steadfaste-fleet/scripts/loop-gov.py --list lists begin_change and end_change.
+          - "The CLI works under EVERY interpreter shape, and the skew that broke gisu (2026-10-20) is now a WARNING, not a failure — with no `mcp` at all the handlers run through their own stand-ins, with mcp>=2.0 the SDK is used, and an mcp in between (importable but too old for the 2.0 constructor API this server registers handlers with) used to kill the module at import and make the CLI exit 3 on every write gate, which read as governance being unavailable. It now prints on stderr `[mcp-server] WARNING: the installed MCP SDK cannot serve this module (<error>) — stdio serving is DISABLED; the CLI adapter still works` and the CLI exits 0/1 as usual. Seeing that warning means THE INTERPRETER's mcp is behind — the extension spawns CORTEX_GOVERNANCE_PYTHON, defaulting to `python3` from pi's PATH — not that governance is down. Fix it by running the CLI with ~/.steadfaste-fleet/venv/bin/python3, or repair that venv with `python3 ops/scripts/manage/fix-cortex-venv.py` (its --check probes this capability, not just the import)."
+          - python3 ~/.steadfaste-fleet/scripts/loop-gov.py check_lock returns a JSON status object (the CLI reaches the governance store). Note: its 'active' field is NOT the test the push gate uses — a lock FILE can exist (and permit a push) while check_lock reports inactive, so an inactive reading must not be taken as permission to push.
+          - python3 ~/.steadfaste-fleet/scripts/loop-gov.py begin_change '{"task_id":"pi-smoke","description":"probe"}' returns a cycle id and end_change releases it — run this only when you hold no other lock.
         why: |
           Pi >= 0.99 gained an MCP client and reads user-scope servers from
           ~/.pi/agent/mcp.json, so the five cortex servers (loop-governance,
@@ -178,7 +178,7 @@ harnesses:
         # loop-governance MCP server is a tool SURFACE — it can hand the agent
         # begin_change but it cannot see a native write. So a Pi session could edit
         # and write files with NO lock. The commit-time hook IS a second layer, but
-        # its lock check is scoped to the hermes-cortex repo only, so a Pi session
+        # its lock check is scoped to the steadfaste-fleet repo only, so a Pi session
         # in a PROJECT repo had no lock gate at write OR commit time.
         #
         # This is the INTERACTIVE gate (a native tool call); `governance` above is
@@ -213,7 +213,7 @@ harnesses:
       - 'pi mcp list shows cortex-context with the memory/session tools.'
       - 'In a Pi session call mem_context — the peer card must come back.'
       - 'Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>'
-      - 'Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.hermes-cortex/logs/pi-context.log`).'
+      - 'Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.steadfaste-fleet/logs/pi-context.log`).'
       - 'node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the write gate and asserts both directions.'
       - 'In a Pi session, with no lock: writing a file is refused with GOVERNANCE LOCK REQUIRED; after begin_change it succeeds.'
     # The extension's own knobs. Routine markers go to the cortex log, never the
@@ -221,7 +221,7 @@ harnesses:
     env_optional:
       - CORTEX_CONTEXT_CLI
       - CORTEX_CONTEXT_PYTHON
-      - {CORTEX_CONTEXT_LOG: 'default: ~/.hermes-cortex/logs/pi-context.log'}
+      - {CORTEX_CONTEXT_LOG: 'default: ~/.steadfaste-fleet/logs/pi-context.log'}
       - {CORTEX_CONTEXT_LOG_MAX_BYTES: 'default: 1 MiB; rotates to <log>.1'}
       - {CORTEX_CONTEXT_DEBUG: '1 = echo routine markers to stderr while diagnosing'}
 
@@ -234,8 +234,8 @@ harnesses:
     why: Hermes reads MCP servers from config, so it needs no shim at all.
     install: |
       hermes mcp add cortex-context \
-          --command ~/.hermes-cortex/venv/bin/python3 \
-          --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+          --command ~/.steadfaste-fleet/venv/bin/python3 \
+          --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
     verify:
       - 'hermes mcp list | grep cortex-context'
       - 'Call mcp__cortex_context__mem_context; the peer card must come back.'

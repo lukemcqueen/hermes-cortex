@@ -59,7 +59,7 @@ EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
 # is shown with its id REDACTED — the shape (`hc-pi-<chat>`) is the evidence, the
 # specific id is not.
 PI_BIN="${PI_BIN:-$HOME/.pi/agent/bin/pi}"
-CTX_CLI="${HOME}/.hermes-cortex/scripts/cortex-context.py"
+CTX_CLI="${HOME}/.steadfaste-fleet/scripts/cortex-context.py"
 if [ -x "$PI_BIN" ]; then
   mcp_out="$("$PI_BIN" mcp list 2>&1 | grep -A2 'cortex-context' || true)"
 else

@@ -1,4 +1,4 @@
-"""platform_utils.py — Cross-platform helpers for Hermes Cortex scripts.
+"""platform_utils.py — Cross-platform helpers for Steadfaste Fleet scripts.
 
 Provides macOS/Linux service management, HTTP checks, Docker detection,
 and platform detection. All functions return simple booleans or None

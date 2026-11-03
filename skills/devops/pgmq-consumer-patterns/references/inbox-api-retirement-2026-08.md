@@ -23,7 +23,7 @@ inbox API was retired but consumers/docs were never swept.
 | Claim | Evidence |
 |-------|----------|
 | `api/inbox` retired | `grep "@app.post\|@app.get" ops/services/agent-bus/server.py` — only `/api/pgmq/*`, `/api/bus/dashboard`, `/health`, `/.well-known/agent-card.json` |
-| Push moved to PGMQ | `ops/scripts/health/health-vector-push.sh` reads `CORTEX_BUS_URL`+`CORTEX_BASIC_AUTH` from `~/hermes-cortex/.env`, POSTs `/api/pgmq/send` → `inbox_health_check` |
+| Push moved to PGMQ | `ops/scripts/health/health-vector-push.sh` reads `CORTEX_BUS_URL`+`CORTEX_BASIC_AUTH` from `~/steadfaste-fleet/.env`, POSTs `/api/pgmq/send` → `inbox_health_check` |
 | Report still on old API | `orch-health-report.py` `_fetch_inbox_vector` → `_inbox_request("api/inbox?...")` |
 | `orch-team-health.py` gone | `git log --oneline --diff-filter=D -- "**/orch-team-health.py"` → `69e3cf8e` "Remove orch-team-health cron… superseded by fleet-status-watchdog" |
 | Migration commit | `0f01556d` "refactor: migrate all scripts/docs from CORTEX_INBOX_URL/AUTH to CORTEX_BUS_FALLBACK_URL/AUTH" |
@@ -32,7 +32,7 @@ inbox API was retired but consumers/docs were never swept.
 
 1. **`orch-clean-health-queue.py`** — drainer persists: while archiving each
    ping, write `{"<agent>": {"vector": [...], "ts": "<iso>"}}` to
-   `~/.hermes-cortex/state/inbox-health-state.json` and update
+   `~/.steadfaste-fleet/state/inbox-health-state.json` and update
    `last-seen.json`. Best-effort (OSError swallowed) — archiving already happened.
 2. **`orch-health-report.py`** — consumer reads state file first; fallback is a
    live `bus_read("inbox_health_check", vt=60)` peek scanning up to 20 pings,
@@ -47,21 +47,21 @@ inbox API was retired but consumers/docs were never swept.
 
 ```bash
 # Seed a ping exactly like the producer
-PYTHONPATH=~/hermes-cortex/ops/scripts python3 -c "
+PYTHONPATH=~/steadfaste-fleet/ops/scripts python3 -c "
 from lib.cortex_bus import bus_send
 import json, time
 bus_send('inbox_health_check', {'from': 'titus', 'subject': 'health',
     'body': json.dumps({'v':[1]*9,'h':'t','t':int(time.time())})})"
 
 # Run the drainer AS CRON DOES (direct python3 from another cwd fails hermes_paths import)
-CORTEX_REPO=~/hermes-cortex PYTHONPATH=~/hermes-cortex/ops/scripts \
-  python3 ~/hermes-cortex/ops/scripts/orch-bus/orch-clean-health-queue.py
+CORTEX_REPO=~/steadfaste-fleet PYTHONPATH=~/steadfaste-fleet/ops/scripts \
+  python3 ~/steadfaste-fleet/ops/scripts/orch-bus/orch-clean-health-queue.py
 
 # Confirm persistence
-cat ~/.hermes-cortex/state/inbox-health-state.json
+cat ~/.steadfaste-fleet/state/inbox-health-state.json
 
 # Confirm the consumer now reports the agent green
-python3 ~/hermes-cortex/ops/scripts/agent/orch-health-report.py
+python3 ~/steadfaste-fleet/ops/scripts/agent/orch-health-report.py
 ```
 
 ## Sweep Checklist (use after ANY transport migration)

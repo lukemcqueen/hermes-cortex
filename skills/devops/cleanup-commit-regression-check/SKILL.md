@@ -70,7 +70,7 @@ diff, exit 1 on deletions).
 
 Verifying a cleanup-commit fix surfaced a deeper deployment trap: the cron
 runner executes from `~/.hermes/scripts/`, but cortex-update deploys to
-`~/.hermes-cortex/scripts/`. The symlink bridge is skipped when local-only
+`~/.steadfaste-fleet/scripts/`. The symlink bridge is skipped when local-only
 files exist, so deployed fixes silently don't reach the running cron, and
 the doctor misses it (it checks the deploy dir, not the cron dir). Full
 detail, detection commands, and the safe sync fix:
@@ -110,4 +110,4 @@ grep -rn "_resolve_var(" ops/scripts/ 2>/dev/null | grep -v "def _resolve_var"
   The function-set diff between commit and parent is the precise tool.
 - **Deployed copies carry a `# SOURCE:` header** — `diff -q` against the
   repo always reports drift even when synced. Compare deployed vs the
-  deploy dir (`~/.hermes-cortex/scripts/`) or strip the header.
+  deploy dir (`~/.steadfaste-fleet/scripts/`) or strip the header.

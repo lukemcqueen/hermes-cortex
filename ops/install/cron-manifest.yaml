@@ -4,7 +4,7 @@ crons:
   scope: universal
   schedule: 30 4 * * 1-6
   script: ''
-  prompt: "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).\nIf candidates exist and look correct, apply them by running:\n  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply\nThen commit and push the changes.\nIf no candidates (empty context) or you disagree with the recommendations, stay silent.\n\n## TIMEZONE — READ FIRST\nThe header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nagents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Scan: 12 candidates found\nPhase 2 — Review: accepted 10 / rejected 2\nPhase 3 — Apply: 10 sections moved to docs/\n\n\U0001F4CA deepseek-v4-flash (opencode-zen) | $0.006/run ≈ $0.18/mo\n\nIf nothing to apply: output exactly [SILENT]"
+  prompt: "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).\nIf candidates exist and look correct, apply them by running:\n  python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py --repo ~/steadfaste-fleet --prune --apply\nThen commit and push the changes.\nIf no candidates (empty context) or you disagree with the recommendations, stay silent.\n\n## TIMEZONE — READ FIRST\nThe header timestamp must use the host configured timezone, NOT a hardcoded label. Run `date '+%Y-%m-%d %H:%M %Z'` (or `date '+%H:%M %Z'` for time-only) and use its exact output — the timezone comes from HERMES_TIMEZONE / system local time. The KST in the example below is illustrative; substitute whatever %Z returns.\n\n## OUTPUT FORMAT — FOLLOW EXACTLY\nMatch this structure line for line. Your content replaces the values.\nEverything else stays: dashes, colons, spacing, line breaks.\n\nagents-md-prune-apply (JOB_ID) [YYYY-MM-DD HH:MM KST]\n-------------\n\nPhase 1 — Scan: 12 candidates found\nPhase 2 — Review: accepted 10 / rejected 2\nPhase 3 — Apply: 10 sections moved to docs/\n\n\U0001F4CA deepseek-v4-flash (opencode-zen) | $0.006/run ≈ $0.18/mo\n\nIf nothing to apply: output exactly [SILENT]"
   skill: documentation-scope
   skills:
   - documentation-scope
@@ -154,10 +154,10 @@ crons:
   no_agent: true
   model: ''
   provider: ''
-- name: agent-hermes-cortex-sync
+- name: agent-steadfaste-fleet-sync
   scope: universal
   schedule: 33 22 * * *
-  script: agent-hermes-cortex-sync.sh
+  script: agent-steadfaste-fleet-sync.sh
   prompt: ''
   skill: ''
   deliver: origin
@@ -353,7 +353,7 @@ crons:
 
     ## Steps
 
-    1. TIME-LAPSE: `git -C ~/hermes-cortex log --oneline --since="30 days" | wc -l` for the month''s commit count; `git -C ~/hermes-cortex log --oneline --since="30 days" | head -30` to see the work arc; `ls ~/brain/lessons/ | wc -l` for lesson scale; `mycortex stats` for brain scale
+    1. TIME-LAPSE: `git -C ~/steadfaste-fleet log --oneline --since="30 days" | wc -l` for the month''s commit count; `git -C ~/steadfaste-fleet log --oneline --since="30 days" | head -30` to see the work arc; `ls ~/brain/lessons/ | wc -l` for lesson scale; `mycortex stats` for brain scale
 
     2. `mycortex list -n 30` — what''s fresh; pick 3-5 pages that capture the month''s themes
 
@@ -1187,7 +1187,7 @@ crons:
   prompt: |-
     Morning task pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
 
-    task-db.py lives at ~/hermes-cortex/ops/scripts/manage/task-db.py (NOT tools/). For reads, the DEPLOYED copy is NOT lock-free by virtue of its location: python3 <script> is write-class wherever it lives and needs a RESOLVED GOVERNED REPO (a path-like arg on the call, or the repo your session already resolved). With neither you get its own refusal, No governed repo could be resolved for this call — which is NOT the lock rule. So either open the cycle first (begin_change) and then read via the deployed copy from anywhere, or use an ungated surface: read_file / search_files / the MCP task tools.
+    task-db.py lives at ~/steadfaste-fleet/ops/scripts/manage/task-db.py (NOT tools/). For reads, the DEPLOYED copy is NOT lock-free by virtue of its location: python3 <script> is write-class wherever it lives and needs a RESOLVED GOVERNED REPO (a path-like arg on the call, or the repo your session already resolved). With neither you get its own refusal, No governed repo could be resolved for this call — which is NOT the lock rule. So either open the cycle first (begin_change) and then read via the deployed copy from anywhere, or use an ungated surface: read_file / search_files / the MCP task tools.
 
     READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess column names):
       docker exec -i mycortex-postgres psql -U mycortex_reader_<profile> -d mycortex -c '<sql>'

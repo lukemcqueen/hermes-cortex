@@ -3,7 +3,7 @@
 #  ./run — canonical single CLI entrypoint for this project
 #
 #  Source: ops/scripts/project-run-scripts/templates/run.sh
-#  (hermes-cortex project-run-scripts skill — canonical template).
+#  (steadfaste-fleet project-run-scripts skill — canonical template).
 #  Customize: PROJECT_ROOT paths, service names, env defaults,
 #  test runners. Keep the command contract identical across repos
 #  so a developer switching projects never re-learns the interface.

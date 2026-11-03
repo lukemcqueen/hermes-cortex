@@ -42,10 +42,10 @@ from pathlib import Path
 
 HOME = Path.home()
 HOSTNAME = os.uname().nodename.split(".")[0]
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 MARKER_FILE = STATE_DIR / ".failover-active"
 FAILOVER_STATE_FILE = STATE_DIR / "bus-failover-state.json"
-CONF_FILE = HOME / "hermes-cortex" / ".env"
+CONF_FILE = HOME / "steadfaste-fleet" / ".env"
 
 LOCAL_URL = "http://127.0.0.1:8903"
 MAX_PER_TICK = 20

@@ -6,7 +6,7 @@
 # deployed logic, not a copy.
 set -uo pipefail
 
-SCRIPT="${HOME}/hermes-cortex/ops/scripts/agent-security-posture-check.sh"
+SCRIPT="${HOME}/steadfaste-fleet/ops/scripts/agent-security-posture-check.sh"
 [ -f "$SCRIPT" ] || { echo "SKIP: script not found"; exit 0; }
 
 BLOCK=$(awk '/^# --- 3\. firewall ban set ---/{p=1} p{print} /^# --- 4\./{exit}' "$SCRIPT")

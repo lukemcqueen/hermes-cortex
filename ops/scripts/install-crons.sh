@@ -28,17 +28,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 source "${SCRIPT_DIR}/install/os-config.sh"
 
 # ── Source project .env ──────────────────────────────────
-# ~/hermes-cortex/.env contains LLM_CRON_MODEL, LLM_CRON_PROVIDER,
+# ~/steadfaste-fleet/.env contains LLM_CRON_MODEL, LLM_CRON_PROVIDER,
 # LOCAL_CRON_MODEL, LOCAL_CRON_PROVIDER, and other runtime vars.
 # Source it before validation so agents don't need manual exports.
-ENV_FILE="${HOME}/hermes-cortex/.env"
+ENV_FILE="${HOME}/steadfaste-fleet/.env"
 if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
 
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
-SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"
+SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"
 HERMES_CMD=""
 
 # ── Telegram recipient (PII — never hardcoded) ────────────
@@ -278,7 +278,7 @@ sys.exit(1)
   if $exists && { $FORCE || ${_do_edit:-false}; } && [[ -n "$HERMES_CMD" ]]; then
     # Find job_id by name from jobs.json directly
     local job_id _tmp
-    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}/state/_cron_find.py"
+    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state/_cron_find.py"
     mkdir -p "$(dirname "$_tmp")"
     cat > "$_tmp" << 'PYEOF'
 import json, sys
@@ -394,7 +394,7 @@ PYEOF
 # per-cron model switch in the manifest is never reverted by a re-install.
 pin_cron_model() {
   local name="$1" model="$2" provider="$3" reasoning_effort="$4"
-  local _mf="${CORTEX_REPO:-$HOME/hermes-cortex}/ops/install/cron-manifest.yaml"
+  local _mf="${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/install/cron-manifest.yaml"
   # Env chain is the single control point (2026-09-09): when LLM_CRON_MODEL/
   # LLM_CRON_PROVIDER are set, manifest model/provider pins are IGNORED so an
   # upstream manifest sync can never re-pin crons to a dead model again
@@ -565,7 +565,7 @@ if $UNINSTALL; then
     "agent-fixer-overnight" \
     "agent-fixer-workday" \
     "agent-governance-auditor" \
-    "agent-hermes-cortex-sync" \
+    "agent-steadfaste-fleet-sync" \
     "agent-hermes-update" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
@@ -627,8 +627,8 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # ── Validate LLM cron model/provider env vars ──────────────
-# LLM-driven crons need a model + provider. Set in ~/hermes-cortex/.env.
-# The install script now sources ~/hermes-cortex/.env via set -a above, so
+# LLM-driven crons need a model + provider. Set in ~/steadfaste-fleet/.env.
+# The install script now sources ~/steadfaste-fleet/.env via set -a above, so
 # LLM_CRON_MODEL and LLM_CRON_PROVIDER will be picked up automatically.
 LLM_CRON_MODEL="${LLM_CRON_MODEL:-}"
 LLM_CRON_PROVIDER="${LLM_CRON_PROVIDER:-}"
@@ -638,7 +638,7 @@ if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
   echo "━━━ LLM Cron Model/Provider Not Configured ━━━"
   echo ""
   echo "  LLM-driven cron jobs need a model and provider."
-  echo "  Set them in ~/hermes-cortex/.env:"
+  echo "  Set them in ~/steadfaste-fleet/.env:"
   echo ""
   echo "    LLM_CRON_MODEL=deepseek/deepseek-v4.1-flash"
   echo "    LLM_CRON_PROVIDER=openrouter"
@@ -974,7 +974,7 @@ create_cron "agent-loop-gov-lock-watchdog" "*/5 * * * *" \
   "true"
 
 # Bus outbox retry sweep (2026-08-27): re-sends messages queued by
-# bus_send when the bus was unreachable (~/.hermes-cortex/bus-retry/).
+# bus_send when the bus was unreachable (~/.steadfaste-fleet/bus-retry/).
 # Watchdog pattern — silent when the outbox is empty; alerts on
 # quarantine / persistent bus-down. no_agent. Runs the lib module
 # directly (no wrapper): lib/ is on sys.path[0] as the script's dir.
@@ -1144,9 +1144,9 @@ create_cron "agent-offline-code-index" "0 5 * * 0" \
   "" \
   "true"
 
-# Daily hermes-cortex sync and update
-create_cron "agent-hermes-cortex-sync" "33 22 * * *" \
-  "agent-hermes-cortex-sync.sh" \
+# Daily steadfaste-fleet sync and update
+create_cron "agent-steadfaste-fleet-sync" "33 22 * * *" \
+  "agent-steadfaste-fleet-sync.sh" \
   "" \
   "" \
   "" \
@@ -1246,7 +1246,7 @@ create_cron "agent-agents-md-prune-apply" "30 4 * * 1-6" \
   "" \
   "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).
 If candidates exist and look correct, apply them by running:
-  python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
+  python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py --repo ~/steadfaste-fleet --prune --apply
 Then commit and push the changes.
 If no candidates (empty context) or you disagree with the recommendations, stay silent.
 

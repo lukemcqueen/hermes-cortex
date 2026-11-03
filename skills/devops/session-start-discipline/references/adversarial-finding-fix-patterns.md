@@ -79,6 +79,6 @@ Then run: `python3 /tmp/fix.py`
 
 After fixing, run:
 ```bash
-python3 ~/hermes-cortex/ops/scripts/quality/adversarial-verify.py --dir ops/scripts --level A2
+python3 ~/steadfaste-fleet/ops/scripts/quality/adversarial-verify.py --dir ops/scripts --level A2
 ```
 0 High findings = done.

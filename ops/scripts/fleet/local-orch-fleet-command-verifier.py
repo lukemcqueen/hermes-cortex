@@ -24,8 +24,8 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────
 
-CORTEX_REPO = Path.home() / "hermes-cortex"
-STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+CORTEX_REPO = Path.home() / "steadfaste-fleet"
+STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 
 # Shared Telegram notify module (single Bot API copy — R-9/M-3). Token and
 # chat id are read from ~/.hermes/.env inside the module; never hardcoded.

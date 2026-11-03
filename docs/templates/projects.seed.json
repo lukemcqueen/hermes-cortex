@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Project-to-repo mapping for Hermes Cortex. Each entry maps a project name to its repository path and brain source.",
+  "description": "Project-to-repo mapping for Steadfaste Fleet. Each entry maps a project name to its repository path and brain source.",
   "projects": [
     {
       "name": "example-project",

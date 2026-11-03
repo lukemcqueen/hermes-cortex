@@ -1,11 +1,11 @@
 ---
 name: requirements-elicitation
-description: "Requirements elicitation for Hermes Cortex (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW prioritization, and user-story output with acceptance criteria."
+description: "Requirements elicitation for Steadfaste Fleet (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW prioritization, and user-story output with acceptance criteria."
 version: 1.2.0
 author: Hermes Agent
 license: MIT
 category: software-development
-source: hermes-cortex
+source: steadfaste-fleet
 platforms: [linux, macos, windows]
 metadata:
   hermes:
@@ -448,7 +448,7 @@ Save the elicitation document with `write_file` under:
 
 `docs/elicit/YYYY-MM-DD_<feature-slug>.md`
 
-Treat that as relative to the repo root (e.g. `hermes-cortex/docs/elicit/`).
+Treat that as relative to the repo root (e.g. `steadfaste-fleet/docs/elicit/`).
 This is the durable home for elicitation artifacts — committed to the shared
 repo so the whole fleet benefits. If the runtime provides a specific target
 path, use that exact path.

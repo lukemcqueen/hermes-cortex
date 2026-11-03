@@ -3,7 +3,7 @@ name: state-orchestrator
 version: 1.0.0
 category: software-development
 description: >
-  Information routing decision matrix for Hermes Cortex agents. Defines when to
+  Information routing decision matrix for Steadfaste Fleet agents. Defines when to
   consult live context vs session history vs memory vs docs, with explicit
   priority ordering, staleness handling, confidence scoring, and cross-reference
   chaining patterns for multi-source state resolution.
@@ -42,7 +42,7 @@ metadata:
 
 ## 1. Information Source Map
 
-There are four distinct information sources available to a Hermes Cortex agent.
+There are four distinct information sources available to a Steadfaste Fleet agent.
 Each has a different purpose, trust profile, and freshness guarantee.
 
 | Source | Symbol | Definition | Best For | Limitations |

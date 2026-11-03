@@ -7,7 +7,7 @@ fast llm reviewer; heavy / always-review changes must route to the agent
 backend; enforcement must hold (every branch goes through SOME reviewer).
 
 Run (hermes venv, from repo root):
-    PATH="$HOME/.hermes-cortex/venv/bin:$PATH" python3 \
+    PATH="$HOME/.steadfaste-fleet/venv/bin:$PATH" python3 \
         ops/scripts/manage/dogfood-reviewer-tiering.py
 """
 import importlib.util
@@ -15,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent.parent.parent  # hermes-cortex/
+REPO = Path(__file__).resolve().parent.parent.parent.parent  # steadfaste-fleet/
 MODULE = REPO / "mcp-servers" / "loop-gov-mcp.py"
 _FAIL = []
 

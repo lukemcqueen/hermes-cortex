@@ -18,7 +18,7 @@ file; the daemon kept writing unsplit audit lines for hours.
 the cache fields. Grepping the file proves nothing about the running process.
 
 **Fix shipped:**
-- `agent-hermes-update.sh` writes `~/.hermes-cortex/state/restart-pending`
+- `agent-hermes-update.sh` writes `~/.steadfaste-fleet/state/restart-pending`
   (content `updated:<version>`) when `hermes version` changes.
 - Doctor `check_soul_sync` (yes, that's where it landed) WARNs on the marker:
   "Hermes updated but the daemon has not been restarted — running stale code".

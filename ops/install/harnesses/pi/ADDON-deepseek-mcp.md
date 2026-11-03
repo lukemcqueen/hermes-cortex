@@ -27,8 +27,8 @@ a hand procedure: `cortex-doctor.py` reports `DeepSeek MCP tool name`, its auto-
 manager below, and an agent can run the same two commands directly:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --check-tools   # exit 1 if stale
-bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh --fix-tools     # rename it
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --check-tools   # exit 1 if stale
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --fix-tools     # rename it
 ```
 
 That is `install-pi-mcp.sh` — the one file that owns `~/.pi/agent/mcp.json`. It resolves the
@@ -64,7 +64,7 @@ the same trap `install-pi-mcp.sh` guards against. Resolve it by CAPABILITY, neve
 path you happen to have:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/lib/python-with-module.sh --print mcp
+bash ~/steadfaste-fleet/ops/scripts/lib/python-with-module.sh --print mcp
 # exit 3 = no interpreter on this host can import it; install it and re-run
 ```
 
@@ -86,7 +86,7 @@ pi mcp list | grep deepseek      # expected: connected, with its 3 tools, named 
 - **Renaming its tools is the one thing the fleet does touch**, and only through the
   automated script above — a stale tool name is detected by the doctor rather than
   re-derived by each agent.
-- **Do not "fix" it by copying its source into `hermes-cortex/`.** Moving it here is an
+- **Do not "fix" it by copying its source into `steadfaste-fleet/`.** Moving it here is an
   owner decision (it lives in a product repo and calls a paid API), and a second copy of
   a server is exactly the phantom this tree exists to prevent.
 

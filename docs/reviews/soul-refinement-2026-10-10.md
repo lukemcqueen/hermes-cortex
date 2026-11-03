@@ -37,5 +37,5 @@ for.
 
 If approved, add as a local subsection under `--- Local Principles ---` (below the canonical
 12, generic to any agent, 4 sentences maximum as written above), then run
-`python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py` and confirm the marker lands in
+`python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py` and confirm the marker lands in
 the deployed copy before committing. Keep it under the doctor's 15K WARN / 20K FAIL budget.

@@ -31,7 +31,7 @@ for root, dirs, files in os.walk("ops/scripts"):
                 f.write(content)
 ```
 
-Run: `cd ~/hermes-cortex && python3 /tmp/bulk_fix.py`
+Run: `cd ~/steadfaste-fleet && python3 /tmp/bulk_fix.py`
 
 ## Why This Works
 

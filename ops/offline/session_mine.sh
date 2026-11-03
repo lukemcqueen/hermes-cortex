@@ -1,13 +1,13 @@
 #!/bin/bash
 # session-mine — Mine session history for bug-fix lessons
-# Installed by Hermes Cortex install.sh
+# Installed by Steadfaste Fleet install.sh
 
-SCRIPT_DIR="$HOME/.hermes-cortex/offline"
+SCRIPT_DIR="$HOME/.steadfaste-fleet/offline"
 SCRIPT="$SCRIPT_DIR/session_mine.py"
 
 if [ ! -f "$SCRIPT" ]; then
     # Fallback to repo location
-    SCRIPT="$HOME/hermes-cortex/ops/offline/session_mine.py"
+    SCRIPT="$HOME/steadfaste-fleet/ops/offline/session_mine.py"
 fi
 
 if [ ! -f "$SCRIPT" ]; then
@@ -16,6 +16,6 @@ if [ ! -f "$SCRIPT" ]; then
 fi
 
 # Ensure Hermes paths are on PYTHONPATH
-export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${HOME}/.hermes-cortex/scripts"
+export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${HOME}/.steadfaste-fleet/scripts"
 
 exec python3 "$SCRIPT" "$@"

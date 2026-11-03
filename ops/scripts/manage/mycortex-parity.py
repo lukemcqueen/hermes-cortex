@@ -32,14 +32,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Resolve the hermes-cortex repo root from either runtime location:
+# Resolve the steadfaste-fleet repo root from either runtime location:
 #   repo:   <root>/ops/scripts/manage/mycortex-parity.py  → parents[3]
-#   deploy: ~/.hermes-cortex/scripts/mycortex-parity.py   → parents[2] is the
-#           HOME dir (~), NOT the repo — so also probe $HOME/hermes-cortex.
+#   deploy: ~/.steadfaste-fleet/scripts/mycortex-parity.py   → parents[2] is the
+#           HOME dir (~), NOT the repo — so also probe $HOME/steadfaste-fleet.
 _HERE = Path(__file__).resolve()
 _REPO_CANDIDATES = [
     _HERE.parents[3],                                     # repo layout
-    Path.home() / "hermes-cortex",                        # deployed layout → repo
+    Path.home() / "steadfaste-fleet",                        # deployed layout → repo
     _HERE.parents[2],                                     # deployed layout (legacy comment; harmless)
 ]
 REPO_ROOT = next((p for p in _REPO_CANDIDATES if (p / "tests" / "fixtures").is_dir()), _HERE.parents[3])
@@ -81,7 +81,7 @@ def run_mycortex(query: str, limit: int = 10, source: str | None = None) -> list
     if proc.returncode != 0:
         raise RuntimeError(
             f"mycortex search failed (rc={proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}"
-            "\n  → is `mycortex` on PATH? Deployed to ~/.hermes-cortex/scripts (or use --engine fixture)."
+            "\n  → is `mycortex` on PATH? Deployed to ~/.steadfaste-fleet/scripts (or use --engine fixture)."
         )
     try:
         data = json.loads(proc.stdout)
@@ -190,7 +190,7 @@ def mode_check(args) -> int:
         try:
             if args.engine == "mycortex":
                 # Scope EVERY query to its golden-declared source. Federated
-                # (HC) queries target the federated source (hermes-cortex);
+                # (HC) queries target the federated source (steadfaste-fleet);
                 # isolated (MO) queries target their source. Passing None for
                 # federated queries searched ALL visible sources — including
                 # isolated sources with reader grants — so archive/session

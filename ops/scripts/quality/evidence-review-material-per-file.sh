@@ -8,7 +8,7 @@
 # Assertions are emitted FIRST, then the raw transcript, so the load-bearing lines
 # cannot be lost if the material bound cuts this artifact.
 set -uo pipefail
-REPO="${HOME}/hermes-cortex"
+REPO="${HOME}/steadfaste-fleet"
 REV="bde4e24d"
 FAIL=0
 
@@ -29,7 +29,7 @@ chk "per-file regression case ran" "1" \
 chk "parity test result" "RESULT: ALL PASS (1 tests)" \
   "$(timeout 300 python3 tests/test_skill_drift_parity.py 2>&1 | tail -1)"
 chk "A4 gate" "1" \
-  "$(timeout 300 python3 "${HOME}/.hermes-cortex/scripts/adversarial-verify.py" \
+  "$(timeout 300 python3 "${HOME}/.steadfaste-fleet/scripts/adversarial-verify.py" \
       --file mcp-servers/loop-gov-mcp.py --level A4 --gate 2>&1 | grep -c 'GATE_PASSED')"
 chk "harness artifact says ALL PASS" "1" \
   "$(grep -c '^RESULT: ALL PASS' tests/artifacts/loop-gov-regression.txt)"

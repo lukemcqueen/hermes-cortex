@@ -2,7 +2,7 @@
 name: skill-miner
 description: "Use when running the loop-gov skill digest miner."
 version: 2.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux]
 metadata:
@@ -29,26 +29,26 @@ it hashes local skill files and feeds the session embedding cache that
 
 | File | Path |
 |------|------|
-| Deployed copy (run this) | `~/.hermes-cortex/tools/loop-governance/skill_miner.py` |
-| Repo source | `~/hermes-cortex/core/governance/skill_miner.py` |
+| Deployed copy (run this) | `~/.steadfaste-fleet/tools/loop-governance/skill_miner.py` |
+| Repo source | `~/steadfaste-fleet/core/governance/skill_miner.py` |
 | Output default | `/tmp/skills-manifest.json` (change manifest: added/removed/unchanged_count) |
 
 ## Running
 
 ```bash
 # Scan skill files (incremental; manifest written only on change)
-python3 ~/.hermes-cortex/tools/loop-governance/skill_miner.py collect
+python3 ~/.steadfaste-fleet/tools/loop-governance/skill_miner.py collect
 
 # Embed new/changed digests into the session cache (silent when nothing new)
-python3 ~/.hermes-cortex/tools/loop-governance/skill_miner.py score
+python3 ~/.steadfaste-fleet/tools/loop-governance/skill_miner.py score
 ```
 
 Silent-watchdog design: zero output + exit 0 = "no changes" — not a failure.
 
 ## Known issue (2026-09-28, esther)
 
-`~/.hermes-cortex/scripts/skill-miner-wrapper` is broken: it execs
-`~/.hermes-cortex/scripts/skill_miner.py`, which does not exist on this host.
+`~/.steadfaste-fleet/scripts/skill-miner-wrapper` is broken: it execs
+`~/.steadfaste-fleet/scripts/skill_miner.py`, which does not exist on this host.
 Use the deployed toolchain path above instead.
 
 ## Related

@@ -20,13 +20,13 @@ Search ALL three deployment ecosystems for the old term:
 
 ```
 # 1. Repo source
-grep -rn 'old-term' ~/hermes-cortex/ --include='*.py' --include='*.sh' --include='*.md' --include='*.json' --include='*.yaml' --include='*.service' --include='*.conf'
+grep -rn 'old-term' ~/steadfaste-fleet/ --include='*.py' --include='*.sh' --include='*.md' --include='*.json' --include='*.yaml' --include='*.service' --include='*.conf'
 
 # 2. Hermes config and deployed scripts
 grep -rn 'old-term' ~/.hermes/scripts/ ~/.hermes/cron/jobs.json ~/.hermes/templates/ ~/.hermes/config.yaml ~/.hermes/memories/ ~/.hermes/plugins/ ~/.hermes/hooks/ ~/.hermes/bin/ ~/.hermes/SOUL.md
 
 # 3. Agent infra (deployed copies that may not be synced from repo)
-grep -rn 'old-term' ~/.hermes-cortex/scripts/ ~/.hermes-cortex/templates/ ~/.hermes-cortex/hooks/
+grep -rn 'old-term' ~/.steadfaste-fleet/scripts/ ~/.steadfaste-fleet/templates/ ~/.steadfaste-fleet/hooks/
 ```
 
 **Within each location, check these file types:**
@@ -43,7 +43,7 @@ Not every reference needs changing. Classify each hit:
 
 | Type | Action | Example |
 |------|--------|---------|
-| **Active code path** | Fix path | `script="~/hermes-cortex/src/web-cache/web_cache.py"` |
+| **Active code path** | Fix path | `script="~/steadfaste-fleet/src/web-cache/web_cache.py"` |
 | **Comment/doc** | Fix if describing current state | `# Template source: ops/scripts/...` |
 | **Migration doc** | Skip (intentionally documents old→new) | `cortex-path-migration-july2026.md` |
 | **Historical plan** | Optionally update for currency | `.hermes/plans/2026-07-14-*.md` |
@@ -55,11 +55,11 @@ Not every reference needs changing. Classify each hit:
 
 ## Step 3: Fix in Order
 
-1. **Repo source first** (`~/hermes-cortex/`) — this is the canonical version
+1. **Repo source first** (`~/steadfaste-fleet/`) — this is the canonical version
 2. **Deploy after** — run `cortex-update.sh` to sync repo fixes
 3. **For files NOT synced by cortex-update** (templates, non-script files):
    - Fix deployed copy directly with `sed` or `patch`
-4. **Clean up orphaned directories** — `rm -rf ~/.hermes-cortex/old-name/`
+4. **Clean up orphaned directories** — `rm -rf ~/.steadfaste-fleet/old-name/`
 
 ## Step 4: Bulk Fix Technique
 
@@ -70,7 +70,7 @@ For mass fixes across deployed files, `sed` is faster than individual `patch()` 
 find ~/.hermes/skills/ -name '*.md' -exec sed -i.bak 's|old-path|new-path|g' {} \;
 
 # Fix specific files
-sed -i.bak 's|hermes-cortex/a2a/|hermes-cortex/bus/|g' ~/.hermes-cortex/scripts/*.py
+sed -i.bak 's|steadfaste-fleet/a2a/|steadfaste-fleet/bus/|g' ~/.steadfaste-fleet/scripts/*.py
 
 # Fix cron prompt embedded paths (inside JSON — be careful with escaping)
 sed -i.bak 's|skills/|skills/|g' ~/.hermes/cron/jobs.json
@@ -84,7 +84,7 @@ Run a clean verification grep excluding noise:
 
 ```bash
 echo "=== Remaining references ==="
-grep -rn 'old-term' ~/hermes-cortex/ ~/.hermes/ ~/.hermes-cortex/ 2>/dev/null | \
+grep -rn 'old-term' ~/steadfaste-fleet/ ~/.hermes/ ~/.steadfaste-fleet/ 2>/dev/null | \
   grep -v '__pycache__' | grep -v '.pyc' | \
   grep -v 'node_modules' | grep -v '.git/' | \
   grep -v 'cron/output/' | grep -v 'logs/' | \
@@ -108,6 +108,6 @@ and WHY.
 | **Skipped cron prompts** | Crons have embedded paths in `jobs.json` prompts | Always grep `jobs.json` |
 | **Skipped templates** | systemd/launchd templates in `.hermes/templates/` have WorkingDirectory paths | Always grep templates/ |
 | **Skipped deployed skills** | `~/.hermes/skills/` has its own copies not synced by cortex-update | Run bulk sed on skills/ too |
-| **Skipped `.hermes-cortex/`** | Agent infra scripts like web-cache live here, not in repo | Always check this location |
+| **Skipped `.steadfaste-fleet/`** | Agent infra scripts like web-cache live here, not in repo | Always check this location |
 | **Skipped file content names** | Protocol identifiers like `a2a.agent-card` also need renaming | Search for the term in JSON content too |
 | **Claimed "done" too early** | Erosion of trust — user believes you're wrong | Do Step 5 verification BEFORE reporting |

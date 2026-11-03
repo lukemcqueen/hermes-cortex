@@ -9,7 +9,7 @@ self-healing loop. The two fixers `agent-remediate-apply` and
 | Cron | Input | Handlers | Deploy |
 |------|-------|----------|--------|
 | `agent-remediate-apply` (no_agent, 10m, deliver origin) | Sensor cron output dir `~/.hermes/cron/output/<id>/` | Own `fix_*` functions (nginx, service, disk, ollama, web_cache) | Registered in cortex-update.sh |
-| `agent-apply-fixes` (no_agent, 10m, deliver local) | Marker files `~/.hermes-cortex/state/remediate/inbox-*.txt` | **Dynamically imported the SAME `fix_*` functions from agent-remediate-apply.py** | NOT registered in cortex-update.sh |
+| `agent-apply-fixes` (no_agent, 10m, deliver local) | Marker files `~/.steadfaste-fleet/state/remediate/inbox-*.txt` | **Dynamically imported the SAME `fix_*` functions from agent-remediate-apply.py** | NOT registered in cortex-update.sh |
 
 ## Root cause 1 — hardcoded job id (the real bug)
 
@@ -31,7 +31,7 @@ output dir was fresh) so nothing flagged it.
 ## Root cause 2 — zombie cron (the "duplicate")
 
 `agent-apply-fixes` was a zombie:
-- Its marker input `~/.hermes-cortex/state/remediate/inbox-*.txt` was empty
+- Its marker input `~/.steadfaste-fleet/state/remediate/inbox-*.txt` was empty
   since **Jul 20** (dir mtime) — nothing wrote markers anymore.
 - Deployed copy was a **Jul 23** artifact in `~/.hermes/scripts/` — the
   script had no `register()` in cortex-update.sh, so it never updated.
@@ -48,7 +48,7 @@ output dir was fresh) so nothing flagged it.
    uninstall-array entry
 3. `cortex-update.sh`: removed the `register(...agent-apply-fixes.py...)` line
 4. `agent-stale-ref-watchdog.sh`: removed from `CRON_SCRIPTS` array
-5. Deployed copies removed (`~/.hermes/scripts/`, `~/.hermes-cortex/scripts/`)
+5. Deployed copies removed (`~/.hermes/scripts/`, `~/.steadfaste-fleet/scripts/`)
    + `git rm ops/scripts/agent/agent-apply-fixes.py`
 6. Docs: `docs/cron-schedules.md` (canonical), `docs/older/cron-jobs-reference.md` (the historical table this pass read),
    `README.md` (pipeline diagram + Recovery table), `docs/setup-reference.md`

@@ -5,7 +5,7 @@
     PUSH_RECEIPT_E2E=1 python3 tests/test_push_receipt_hook_live.py   # + allow case
 
 Why this exists: the carve-out is only reachable for a NON-EMPTY unpushed range in
-$HOME/hermes-cortex — the hook gates nothing else — so a rule-level test alone
+$HOME/steadfaste-fleet — the hook gates nothing else — so a rule-level test alone
 cannot show the gate actually yields. This drives the shipped hook itself with a
 THROWAWAY state dir (GOVERNANCE_STATE_DIR), so nothing here can authorise a live
 push: an empty dir can only refuse harder.

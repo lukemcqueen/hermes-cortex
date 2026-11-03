@@ -3,7 +3,7 @@ name: adversarial-finding-fix-patterns
 description: "Fix adversarial-verify.py findings with real handling."
 version: 1.0.0
 category: software-development
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -94,7 +94,7 @@ change. Before "fixing" anything, run the SAME gate level on the ORIGINAL
 file:
 
 ```bash
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <original>.py --level A4
+python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <original>.py --level A4
 ```
 
 - **Identical findings** (same technique + target + parameter) → baseline.
@@ -418,7 +418,7 @@ CYCLE store before assuming re-review is available:
 
 ```bash
 # read-only; the store is sqlite even when the CLI is absent
-python3 -c "import sqlite3,os; c=sqlite3.connect('file:'+os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')+'?mode=ro',uri=True); print(c.execute('SELECT cycle_id,verdict,reviewer_model FROM adversarial_reviews ORDER BY cycle_id DESC LIMIT 5').fetchall())"
+python3 -c "import sqlite3,os; c=sqlite3.connect('file:'+os.path.expanduser('~/.steadfaste-fleet/data/loop-governance.db')+'?mode=ro',uri=True); print(c.execute('SELECT cycle_id,verdict,reviewer_model FROM adversarial_reviews ORDER BY cycle_id DESC LIMIT 5').fetchall())"
 ```
 
 A cycle whose blob verdicts exist but whose cycle row is missing cannot be

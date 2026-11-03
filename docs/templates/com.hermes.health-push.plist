@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Hermes Cortex — Health Push Launchd Plist
+  Steadfaste Fleet — Health Push Launchd Plist
 
   Pushes a health vector to the Moses agent inbox every 10 minutes.
   TITUS installs this: he is the fleet's ONLY macOS host (hostname LAM2, the
@@ -9,7 +9,7 @@
   script (ops/scripts/health/health-vector-push.sh) from its own scheduler.
 
   PORTABLE (2026-10-13). This is the plist Titus installs, and it hard-coded
-  /Users/luke/hermes-cortex/... — so on his Mac the health push pointed at a path
+  /Users/luke/steadfaste-fleet/... — so on his Mac the health push pointed at a path
   that does not exist and the service failed silently. The path is now
   $HOME-expanded by /bin/bash -lc, because launchd expands NOTHING inside plist
   strings, and the two log paths stay literal (/tmp and /dev/null) on purpose.
@@ -23,7 +23,7 @@
     tail -f /tmp/com.hermes.health-push.err
 
   ⚠️ Script lives in health/ (not scripts/ root) and the repo must be at
-     ~/hermes-cortex. If yours is elsewhere, change the $HOME path below.
+     ~/steadfaste-fleet. If yours is elsewhere, change the $HOME path below.
 -->
 <plist version="1.0">
 <dict>
@@ -35,7 +35,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>exec "$HOME/hermes-cortex/ops/scripts/health/health-vector-push.sh"</string>
+        <string>exec "$HOME/steadfaste-fleet/ops/scripts/health/health-vector-push.sh"</string>
     </array>
 
     <key>EnvironmentVariables</key>

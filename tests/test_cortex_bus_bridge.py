@@ -222,7 +222,7 @@ def test_with_killmode_inserts_after_type_and_is_idempotent():
         "\n"
         "[Service]\n"
         "Type=oneshot\n"
-        "ExecStart=/usr/bin/env python3 /home/e/hermes-cortex/ops/scripts/"
+        "ExecStart=/usr/bin/env python3 /home/e/steadfaste-fleet/ops/scripts/"
         "cortex-bus-bridge-run.py --name agent-message-handler --script "
         "agent-message-handler.py --deliver local\n"
     )

@@ -98,7 +98,7 @@ def test_a_missing_map_is_loud_never_an_empty_answer():
 
 def test_the_host_map_resolves_the_loop_gov_server():
     """On a deployed host: the real map, and the deployed file really is there."""
-    manifest = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
+    manifest = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
     manifest = manifest / "deploy-manifest.tsv"
     if not manifest.is_file():
         print("  (no host deploy-manifest.tsv — skipped)")

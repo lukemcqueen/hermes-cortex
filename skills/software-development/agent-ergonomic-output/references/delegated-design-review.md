@@ -2,7 +2,7 @@
 
 Validated 2026-08-24: deep-mode elicit + 6-role HC-Party run entirely via
 `delegate_task` subagents on the delegation-pinned model (deepseek-v4-pro),
-producing the decision + plan for AXI adoption in Hermes Cortex. Use this
+producing the decision + plan for AXI adoption in Steadfaste Fleet. Use this
 recipe when the user asks for a design review but is not available for Q&A,
 or when the design should run on a stronger model than the session default.
 

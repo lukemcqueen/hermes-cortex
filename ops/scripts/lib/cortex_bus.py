@@ -6,7 +6,7 @@ Provides send/read/archive/list_queues functions using the Agent Bus HTTP API.
 Bus URL is read from .env (CORTEX_BUS_URL); when
 CORTEX_BUS_FALLBACK_URL is set, sends automatically retry the fallback bus
 per-call when the primary is unreachable (failover path, since 2026-08-04).
-Config file location: ~/hermes-cortex/.env (the ONE canonical cortex env)
+Config file location: ~/steadfaste-fleet/.env (the ONE canonical cortex env)
 
 Usage:
     from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_list_queues
@@ -22,7 +22,7 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
+CONFIG_FILE = Path.home() / "steadfaste-fleet" / ".env"
 
 # ── Test-traffic discipline (2026-09-07) ────────────────────────────────
 # Receiver handlers (agent-message-handler.py) SILENTLY ARCHIVE the
@@ -183,7 +183,7 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
     need to remember json.dumps() before passing it.
 
     Resilience (2026-08-27): when the bus is unreachable, the message is
-    queued to the durable outbox (~/.hermes-cortex/bus-retry/) and returns
+    queued to the durable outbox (~/.steadfaste-fleet/bus-retry/) and returns
     {"queued": true, "outbox_file": <path>} — a truthy value, so existing
     callers that treat truthy as success keep working and the message is
     NOT lost. The agent-bus-retry-sweep cron re-sends it with backoff.

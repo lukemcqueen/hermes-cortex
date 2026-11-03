@@ -21,11 +21,11 @@
 #
 # Usage:  governance-refused-close-advisory.sh [repo_slug]
 #         (repo_slug defaults to the current git repo's directory name)
-# Env:    GOVERNANCE_STATE_DIR overrides ~/.hermes-cortex/state (tests use this).
+# Env:    GOVERNANCE_STATE_DIR overrides ~/.steadfaste-fleet/state (tests use this).
 # ─────────────────────────────────────────────────────────────
 set -u
 
-STATE_DIR="${GOVERNANCE_STATE_DIR:-$HOME/.hermes-cortex/state}"
+STATE_DIR="${GOVERNANCE_STATE_DIR:-$HOME/.steadfaste-fleet/state}"
 REPO_SLUG="${1:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo generic)" 2>/dev/null || echo generic)}"
 
 [[ -d "$STATE_DIR" ]] || exit 0

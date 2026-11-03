@@ -19,7 +19,7 @@ If you caught yourself mid-session (or were corrected) for having called `begin_
 
 4. **Classify with agent-flow** — match the task to one of the 12 patterns.
 
-5. **Load on-task skills** from `~/.hermes-cortex/skills.yaml` matching your classification.
+5. **Load on-task skills** from `~/.steadfaste-fleet/skills.yaml` matching your classification.
 
 6. **Add a structural guardrail** (Principle 9) so the failure cannot repeat. In this session, the guardrail was:
    - The MANDATORY SESSION-START RITUAL in SOUL.md was updated with numbered steps 1-7
@@ -31,7 +31,7 @@ If you caught yourself mid-session (or were corrected) for having called `begin_
 The SOUL.md changes must be committed to the repo so all fleet agents benefit:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git add profiles/personal/agent-profiles/*/SOUL.md docs/templates/SOUL.md
 git commit -m "fix: structural guardrail for session-start skill loading order"
 git push origin main

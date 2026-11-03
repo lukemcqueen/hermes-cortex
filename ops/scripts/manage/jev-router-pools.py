@@ -50,11 +50,11 @@ def default_list() -> Path:
     """The pricing list, from the repo checkout or the deployed copy.
 
     Two locations because this script runs from both: the repo tree during
-    development, and `~/.hermes-cortex/scripts/manage/` after a deploy — where the
+    development, and `~/.steadfaste-fleet/scripts/manage/` after a deploy — where the
     list lives at the deploy root, not beside the script.
     """
     for candidate in (REPO_ROOT / "config" / "jev-router-models.json",
-                      Path.home() / ".hermes-cortex" / "config" / "jev-router-models.json"):
+                      Path.home() / ".steadfaste-fleet" / "config" / "jev-router-models.json"):
         if candidate.is_file():
             return candidate
     return REPO_ROOT / "config" / "jev-router-models.json"

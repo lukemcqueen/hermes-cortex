@@ -38,7 +38,7 @@ metadata:
    | Task shape | Action |
    |---|---|
    | `EXEC <script>` / `doctor` / `diagnostic` on host X | Dispatch via bus (see Dispatch below) |
-   | Needs code change in hermes-cortex | Do it yourself: begin_change → fix → verify → end_change → push |
+   | Needs code change in steadfaste-fleet | Do it yourself: begin_change → fix → verify → end_change → push |
    | Needs another agent's local action | Send `EXEC` to that agent's inbox |
    | Needs Luke | Leave pending, note the blocker in the delivery (never silently drop) |
    | Stale/invalid | `task-db.py update <id> --status cancelled --reason stale` |
@@ -51,7 +51,7 @@ metadata:
    # Then the real dispatch:
    python3 - <<'EOF'
    import sys, json, uuid, socket
-   sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts"))
+   sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
    from lib.cortex_bus import bus_send
    corr = f"backlog-{uuid.uuid4().hex[:12]}"
    my_name = socket.gethostname().split(".")[0]

@@ -12,19 +12,19 @@ INTENDED USAGE:
     
     # Via execute_code in Hermes agent
     from hermes_tools import execute_code
-    execute_code(code="python3 ~/.hermes-cortex/scripts/analyze-failures.py --week last")
+    execute_code(code="python3 ~/.steadfaste-fleet/scripts/analyze-failures.py --week last")
 
 NOTES:
     This script now uses cortex_lib.tools.read_file/write_file (component-hermes-
     separation S1b), so it runs standalone from the shell with no Hermes runtime
     required:
-        python3 ~/.hermes-cortex/scripts/analyze-failures.py --week last
+        python3 ~/.steadfaste-fleet/scripts/analyze-failures.py --week last
 
-    It reads trace JSON from ~/.hermes-cortex/evals/traces/ and writes the
-    report to ~/.hermes-cortex/evals/reports/.
+    It reads trace JSON from ~/.steadfaste-fleet/evals/traces/ and writes the
+    report to ~/.steadfaste-fleet/evals/reports/.
 
 Examples:
-    python3 analyze-failures.py --week last   # reads ~/.hermes-cortex/evals/traces
+    python3 analyze-failures.py --week last   # reads ~/.steadfaste-fleet/evals/traces
     python3 analyze-failures.py --days 7
 """
 import argparse
@@ -40,12 +40,12 @@ from typing import Any
 # component-hermes-separation). Runs standalone, no Hermes runtime required.
 # Bootstrap cortex_lib onto sys.path for BOTH layouts: in-repo this file sits at
 # ops/scripts/manage/ (cortex_lib is two levels up at ops/scripts/), deployed it
-# sits flat at ~/.hermes-cortex/scripts/ (cortex_lib is alongside). Same walk
+# sits flat at ~/.steadfaste-fleet/scripts/ (cortex_lib is alongside). Same walk
 # cortex_lib.paths.ensure_scripts_path does, done here directly to avoid a
 # circular import.
 _T_SCRIPTS = {
     str(Path(__file__).resolve().parent.parent),   # ops/scripts/            (in-repo)
-    str(Path(__file__).resolve().parent),          # ~/.hermes-cortex/scripts (deployed flat)
+    str(Path(__file__).resolve().parent),          # ~/.steadfaste-fleet/scripts (deployed flat)
 }
 for _t in _T_SCRIPTS:
     if _t not in sys.path:
@@ -54,7 +54,7 @@ for _t in _T_SCRIPTS:
 from cortex_lib.tools import read_file, write_file
 
 # Configuration
-CORTEX_HOME = Path.home() / ".hermes-cortex"
+CORTEX_HOME = Path.home() / ".steadfaste-fleet"
 TRACES_DIR = CORTEX_HOME / "evals" / "traces"
 REPORTS_DIR = CORTEX_HOME / "evals" / "reports"
 LANGFUSE_DIR = Path.home() / "langfuse"

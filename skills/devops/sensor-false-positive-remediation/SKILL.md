@@ -6,7 +6,7 @@ description: >-
   Handle false positives from the auto-remediation sensor pipeline.
   Covers the trace-before-create workflow for sensor-reported missing
   scripts and distinguishing stale sensor entries from genuine issues.
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -36,7 +36,7 @@ sensor's hardcoded check lists.
 The sensor cron's output lives at `~/.hermes/cron/output/922670b04cba/*.md`
 (job id for `agent-remediation-sensor`). An empty issue array prints as `[]`
 in the file — that is the healthy state, not an error. On hosts with
-`IS_SERVER=false` in `~/hermes-cortex/.env` the sensor always prints `[]` by
+`IS_SERVER=false` in `~/steadfaste-fleet/.env` the sensor always prints `[]` by
 design (host gating); don't expect sensor issues from them.
 
 ## Workflow: Handling `script_missing` from the sensor
@@ -44,12 +44,12 @@ design (host gating); don't expect sensor issues from them.
 ### 1. Trace references
 
 ```bash
-search_files(pattern="<script-name>", path="~/hermes-cortex")
+search_files(pattern="<script-name>", path="~/steadfaste-fleet")
 ```
 
 Check: does the script exist in any `ops/scripts/` directory?
 ```bash
-ls ~/hermes-cortex/ops/scripts/*<script-name>* 2>/dev/null
+ls ~/steadfaste-fleet/ops/scripts/*<script-name>* 2>/dev/null
 ```
 
 ### 2. Check session lessons
@@ -80,14 +80,14 @@ If it only appears in the **uninstall** array (cleanup legacy) and never in a
 ### 5. Deploy
 
 ```bash
-cp ~/hermes-cortex/ops/scripts/health/agent-remediation-sensor.py ~/.hermes-cortex/scripts/
-cp ~/hermes-cortex/ops/scripts/health/agent-remediation-sensor.py ~/.hermes/scripts/
+cp ~/steadfaste-fleet/ops/scripts/health/agent-remediation-sensor.py ~/.steadfaste-fleet/scripts/
+cp ~/steadfaste-fleet/ops/scripts/health/agent-remediation-sensor.py ~/.hermes/scripts/
 ```
 
 ### 6. Verify
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agent-remediation-sensor.py
+python3 ~/.steadfaste-fleet/scripts/agent-remediation-sensor.py
 ```
 
 Confirm the `script_missing` issue no longer appears in output.

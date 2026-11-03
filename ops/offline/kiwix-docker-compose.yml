@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────────
 #  Kiwix-Serve — Offline ZIM Content Server (Docker)
-#  Part of Hermes Cortex offline knowledge stack
+#  Part of Steadfaste Fleet offline knowledge stack
 # ─────────────────────────────────────────────────────────────
 # Usage: docker compose -f kiwix-docker-compose.yml up -d
 # Serves ZIM files at http://localhost:8080

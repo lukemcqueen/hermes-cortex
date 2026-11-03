@@ -2,7 +2,7 @@ Reproduction — end_change on a NON-Hermes host (titus / pi), 2026-10-09
 ====================================================================
 Report: a pi session working in a project repo opens a governance lock and the
 lock is NEVER released — the operator must delete
-~/.hermes-cortex/state/.governance-sess_*.json by hand.
+~/.steadfaste-fleet/state/.governance-sess_*.json by hand.
 
 revision under test   : 6c61ef57  (branch main) — HEAD when this ran. The artifact
                         is committed BY the change it measures, so the file under
@@ -12,7 +12,7 @@ pre-fix comparison ref: 662155bb (662155bb)
 re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --write-artifact --include-doctor
 
 ── PRE-FIX (git 662155bb (662155bb)) ──
-   lock.repo_slug           : hermes-cortex
+   lock.repo_slug           : steadfaste-fleet
    lock.repo_path           : (empty)
    end_change verdict       : ❌ Cannot close: the lock's repo cannot contain this session's work.
    lock file left behind    : ['.governance-sess_87239dec3167.json']
@@ -31,9 +31,9 @@ re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --wri
 
 Reading of the transcript
 --------------------------------------------------------------------
-PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (hermes-cortex) because a
+PRE-FIX: the lock is tagged with the HOST-CANONICAL repo (steadfaste-fleet) because a
 caller with no injector fell through to Priority 1 in _derive_slug(). The close gate
-then looks for this session's work in ~/hermes-cortex, cannot find it, and REFUSES —
+then looks for this session's work in ~/steadfaste-fleet, cannot find it, and REFUSES —
 a refusal leaves the lock held by design, and the remedy it prints (a governance-
 enforcer injection) does not exist on a non-Hermes harness. The lock file is left on
 disk: the reported symptom, in the same file-name shape (sess_<12 hex>) the report cites.

@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-24
-- Author: Esther (verified from `~/.hermes-cortex/agent-inbox/server.py`)
+- Author: Esther (verified from `~/.steadfaste-fleet/agent-inbox/server.py`)
 
 ## Context
 
@@ -42,6 +42,6 @@ v2 — threaded messaging with topic channels):**
 
 ## References
 
-- `~/.hermes-cortex/agent-inbox/server.py` (implementation; legacy
+- `~/.steadfaste-fleet/agent-inbox/server.py` (implementation; legacy
   deprecation warnings at `/send`)
 - Agent Bus MCP tools (`mcp__agent_bus__inbox_*`)

@@ -25,8 +25,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 LOCAL_URL = "http://127.0.0.1:8903"
-STATE = Path.home() / ".hermes-cortex" / "state"
-CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
+STATE = Path.home() / ".steadfaste-fleet" / "state"
+CONFIG_FILE = Path.home() / "steadfaste-fleet" / ".env"
 PEEK_QUEUES = ("inbox_{agent}", "inbox_orchestrator", "out_{agent}", "inbox_health_check")
 # Peek is a window, not the full queue: the API returns at most PEEK_LIMIT
 # messages. A backlog larger than the window is never hidden — the exact depth
@@ -60,7 +60,7 @@ def _read_config(key: str) -> str:
 
 
 def _load_config() -> tuple[str, str, str]:
-    """(primary_bus_url, bearer_token, basic_auth) from env → ~/hermes-cortex/.env."""
+    """(primary_bus_url, bearer_token, basic_auth) from env → ~/steadfaste-fleet/.env."""
     url = _read_config("CORTEX_BUS_URL") or LOCAL_URL
     token = _read_config("CORTEX_BUS_TOKEN")
     basic = _read_config("CORTEX_BASIC_AUTH") or _read_config("CORTEX_BUS_AUTH")

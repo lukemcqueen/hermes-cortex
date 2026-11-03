@@ -47,11 +47,11 @@ FAIL = 0
 WARN = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"
-CONF_FILE = HOME / "hermes-cortex" / ".env"
+CONF_FILE = HOME / "steadfaste-fleet" / ".env"
 REGISTRY_FILE = STATE_DIR / "agent-registry.local.json"
 
 # Moses' real health URLs (from agent registry)
@@ -163,14 +163,14 @@ def phase0_preflight() -> None:
 
     # No stale failover marker / state
     if MARKER_FILE.exists():
-        bad("stale failover marker present at start", "remove before drill: rm ~/.hermes-cortex/state/.failover-active")
+        bad("stale failover marker present at start", "remove before drill: rm ~/.steadfaste-fleet/state/.failover-active")
     else:
         ok("no stale failover marker")
     if STATE_FILE.exists():
         try:
             st = json.loads(STATE_FILE.read_text())
             if st.get("failover_active"):
-                bad("failover-state.json says failover_active at start", "reset: rm ~/.hermes-cortex/state/failover-state.json")
+                bad("failover-state.json says failover_active at start", "reset: rm ~/.steadfaste-fleet/state/failover-state.json")
             else:
                 ok("failover-state.json clean (not active)")
         except json.JSONDecodeError:
@@ -322,7 +322,7 @@ def phase3_agent_fallback(mod) -> None:
     # Simulated worker fallback: with primary dead, lib.cortex_bus must choose
     # the fallback URL. Verify the library's URL-selection logic exists.
     try:
-        sys.path.insert(0, str(HOME / "hermes-cortex" / "ops" / "scripts"))
+        sys.path.insert(0, str(HOME / "steadfaste-fleet" / "ops" / "scripts"))
         import lib.cortex_bus as cb
         if cb.BUS_FALLBACK_URL:
             ok(f"lib.cortex_bus fallback configured: {cb.BUS_FALLBACK_URL}")

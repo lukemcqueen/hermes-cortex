@@ -2,7 +2,7 @@
 name: golden-parity-harness
 description: "Golden known-answer parity testing for system replacement."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -138,7 +138,7 @@ the drift is invisible to the cheapest test you can write:
   isolated sources granted to the generic reader role. Archive/session content
   from those sources scored ~0.9998 on generic queries and crowded the correct
   docs out of top-3 (3 of 8 HC failures were pure noise, fixed by scoping to
-  `--source hermes-cortex`). The golden's `source` field is the intent; honor
+  `--source steadfaste-fleet`). The golden's `source` field is the intent; honor
   it for both scopes, not just isolated ones.
 - **Check the search-config guardrail before blaming ranking (2026-08-03).**
   `simple` config (the language-agnostic default) does no stemming and no

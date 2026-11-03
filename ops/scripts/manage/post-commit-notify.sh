@@ -2,13 +2,13 @@
 # ─────────────────────────────────────────────────────────────
 #  post-commit-notify.sh — Notify all agents after a commit
 #
-#  Runs after every git commit to hermes-cortex. Extracts
+#  Runs after every git commit to steadfaste-fleet. Extracts
 #  commit details and sends an inbox broadcast to all agents
 #  via the agent inbox API.
 #
 #  Uses the SAME config loading pattern as inbox-mcp.py:
 #    1. CORTEX_INBOX_* environment variables
-#    2. ~/hermes-cortex/.env (KEY=VALUE format, parsed line-by-line)
+#    2. ~/steadfaste-fleet/.env (KEY=VALUE format, parsed line-by-line)
 #    3. URL fallback chain: primary → fallback → third → localhost:8903
 #
 #  Silent when:
@@ -17,15 +17,15 @@
 #    - State file says we already notified for this commit
 #
 #  Install as git post-commit hook:
-#    cp ops/scripts/manage/post-commit-notify.sh ~/.hermes-cortex/hooks/post-commit
-#    chmod +x ~/.hermes-cortex/hooks/post-commit
+#    cp ops/scripts/manage/post-commit-notify.sh ~/.steadfaste-fleet/hooks/post-commit
+#    chmod +x ~/.steadfaste-fleet/hooks/post-commit
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
 # ── Paths ──
-STATE_FILE="${HOME}/.hermes-cortex/state/post-commit-notify"
+STATE_FILE="${HOME}/.steadfaste-fleet/state/post-commit-notify"
 LOG_FILE="${STATE_FILE}.log"
-CONFIG_FILE="${HOME}/hermes-cortex/.env"
+CONFIG_FILE="${HOME}/steadfaste-fleet/.env"
 
 # ── Helpers ──
 log()  { echo "[notify] $*" >> "$LOG_FILE"; }
@@ -103,7 +103,7 @@ if [ -z "$AGENT_NAME" ]; then
   if [ -n "$INBOX_AUTH" ] && [[ "$INBOX_AUTH" == *:* ]]; then
     AGENT_NAME="${INBOX_AUTH%%:*}"
   else
-    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.hermes-cortex/agent.env / .env or export AGENT_NAME" >&2
+    echo "❌ AGENT_NAME not configured — set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / .env or export AGENT_NAME" >&2
     exit 1
   fi
 fi
@@ -136,7 +136,7 @@ for URL in "${URL_CHAIN[@]}"; do
     -d "from=${AGENT_NAME}" \
     -d "to=all" \
     -d "topic=general" \
-    -d "subject=📦 hermes-cortex update: ${SUBJECT}" \
+    -d "subject=📦 steadfaste-fleet update: ${SUBJECT}" \
     -d "body=${BODY}" \
     -d "priority=normal" \
     -d "status=read" \

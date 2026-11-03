@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Offline Knowledge Cascade Tool
+Steadfaste Fleet — Offline Knowledge Cascade Tool
 
 A CLI that provides cascading knowledge lookup across multiple local sources:
   1. web_cache (semantic search, always checked first)
@@ -48,9 +48,9 @@ import lessons
 
 # ── Config ──────────────────────────────────────────────────
 HOME = Path.home()
-CACHE_DIR = HOME / ".hermes-cortex" / "web-cache"
+CACHE_DIR = HOME / ".steadfaste-fleet" / "web-cache"
 CACHE_DB = CACHE_DIR / "cache.db"
-CACHE_SCRIPT = HOME / ".hermes-cortex" / "web-cache" / "web_cache.py"
+CACHE_SCRIPT = HOME / ".steadfaste-fleet" / "web-cache" / "web_cache.py"
 ZIM_DIR = HOME / "offline" / "zim"
 LIBRARY_FILE = HOME / "offline" / "kiwix-library.xml"
 KIWIX_URL = "http://localhost:8080"
@@ -89,7 +89,7 @@ def _find_bun():
 
 def _find_mycortex_cli():
     """Locate the mycortex CLI (deployed by cortex-update.sh)."""
-    candidate = HOME / ".hermes-cortex" / "scripts" / "mycortex"
+    candidate = HOME / ".steadfaste-fleet" / "scripts" / "mycortex"
     if candidate.exists():
         return candidate
     return candidate  # return best guess — caller fails gracefully
@@ -662,7 +662,7 @@ def hymns_search(query):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Hermes Cortex Offline Knowledge Cascade",
+        description="Steadfaste Fleet Offline Knowledge Cascade",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -778,7 +778,7 @@ Examples:
     
     elif args.command == "stats":
         stats = system_stats()
-        print("\n🔍 Hermes Cortex — Offline Knowledge System")
+        print("\n🔍 Steadfaste Fleet — Offline Knowledge System")
         print("=" * 60)
         
         wc = stats["web_cache"]

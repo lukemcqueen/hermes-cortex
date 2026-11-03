@@ -179,7 +179,7 @@ def publish_copy(defaults: Path, published: Path, dry_run: bool) -> int:
 
 
 def main() -> int:
-    cortex_home = Path(os.environ.get("CORTEX_HOME", Path.home() / ".hermes-cortex"))
+    cortex_home = Path(os.environ.get("CORTEX_HOME", Path.home() / ".steadfaste-fleet"))
     ap = argparse.ArgumentParser(description=(__doc__ or "publish agent skills").split("\n")[0])
     ap.add_argument("--from", dest="defaults", default=str(cortex_home / "skills"),
                     help="the cortex-owned DEFAULTS tree (owner of the content)")

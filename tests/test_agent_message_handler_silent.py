@@ -29,7 +29,7 @@ def handler_module(monkeypatch):
     amh = importlib.util.module_from_spec(spec)
     # The script imports hermes_paths from the deployed scripts dir at top level
     sys_path_backup = list(sys.path)
-    sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts"))
+    sys.path.insert(0, str(Path.home() / ".steadfaste-fleet" / "scripts"))
     spec.loader.exec_module(amh)
     sys.path[:] = sys_path_backup
     return amh

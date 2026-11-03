@@ -157,7 +157,7 @@ with test("GET / returns valid HTML"):
     html = r.read().decode()
     assert "<!DOCTYPE html>" in html
     assert "</html>" in html
-    assert "Hermes Cortex" in html
+    assert "Steadfaste Fleet" in html
 
 with test("HTML has monitor JavaScript"):
     r = urllib.request.urlopen(f"{BASE}/", timeout=10)

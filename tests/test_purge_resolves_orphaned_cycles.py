@@ -46,7 +46,7 @@ def _iso(minutes_ago: int) -> str:
 
 
 def _cortex_home(tmp: Path, with_db: bool = True) -> Path:
-    home = tmp / ".hermes-cortex"
+    home = tmp / ".steadfaste-fleet"
     (home / "state").mkdir(parents=True, exist_ok=True)
     if with_db:
         (home / "data").mkdir(parents=True, exist_ok=True)

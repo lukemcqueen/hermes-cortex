@@ -1,11 +1,11 @@
 # Bus Scale — Enterprise-Grade Hermes Agent Fleet Bus
 
-> **Scaling the Hermes Cortex Agent Bus (PGMQ + FastAPI) from ~6 agents to 1000+ agents.**
+> **Scaling the Steadfaste Fleet Agent Bus (PGMQ + FastAPI) from ~6 agents to 1000+ agents.**
 > Design documents, user stories, and implementation plans for all identified gaps.
 
 ## Why This Exists
 
-The Hermes Cortex Agent Bus was designed for a small fleet (~6 agents). A comprehensive
+The Steadfaste Fleet Agent Bus was designed for a small fleet (~6 agents). A comprehensive
 architecture review (HC-Party, July 2026) identified **15 distinct gaps** that must be
 addressed to reach enterprise-grade scalability (1000+ agents). This directory contains
 the design, decomposition, and implementation for closing those gaps.
@@ -66,7 +66,7 @@ All designs in this directory follow these principles:
 
 ## Related Documents
 
-- [`docs/reference/cortex-bus-config.md`](../../reference/cortex-bus-config.md) — Current bus configuration guide (**private repo** — `hermes-cortex-private/docs/reference/cortex-bus-config.md`)
-- [`docs/orch-bus-setup.md`](../../orch-bus-setup.md) — Bus setup and operation guide (**private repo** — `hermes-cortex-private/docs/orch-bus-setup.md`)
+- [`docs/reference/cortex-bus-config.md`](../../reference/cortex-bus-config.md) — Current bus configuration guide (**private repo** — `steadfaste-fleet-private/docs/reference/cortex-bus-config.md`)
+- [`docs/orch-bus-setup.md`](../../orch-bus-setup.md) — Bus setup and operation guide (**private repo** — `steadfaste-fleet-private/docs/orch-bus-setup.md`)
 - [`docs/fleet-update-protocol.md`](../../fleet-update-protocol.md) — Fleet update message schemas
 - [`docs/agent-architecture.md`](../../agent-architecture.md) — Agent roles and capability matrix

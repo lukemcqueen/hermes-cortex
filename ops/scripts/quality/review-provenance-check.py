@@ -32,7 +32,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 ADVISORY = "provenance: advisory"
 # A file can legitimately present a model-ish header without being a review at all (a design doc
 # whose header names the model it is about — measured on docs/older/plans/…decision-model.md). The

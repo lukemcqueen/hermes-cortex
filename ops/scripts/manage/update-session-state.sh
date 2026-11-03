@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# update-session-state.sh — Refresh the Repo State section of .hermes-cortex/sessions/current.md
+# update-session-state.sh — Refresh the Repo State section of .steadfaste-fleet/sessions/current.md
 #
 # Usage: ./ops/scripts/manage/update-session-state.sh
 #   Runs silently if nothing changed (watchdog/CRON mode).
 #   Pass --verbose to always print status.
 #
-# Scope: hermes-cortex workdir only. Ignores all other repos.
+# Scope: steadfaste-fleet workdir only. Ignores all other repos.
 
 # Timezone-aware timestamp: honors HERMES_TIMEZONE (IANA), else system TZ.
 ts() {
@@ -20,7 +20,7 @@ ts() {
 
 set -euo pipefail
 
-REPO_DIR="${HOME:?}/hermes-cortex"
+REPO_DIR="${HOME:?}/steadfaste-fleet"
 VERBOSE=false
 
 # Parse args
@@ -30,17 +30,17 @@ while [[ $# -gt 0 ]]; do
         *) REPO_DIR="$1"; shift ;;
     esac
 done
-SESSION_FILE="$REPO_DIR/.hermes-cortex/sessions/current.md"
+SESSION_FILE="$REPO_DIR/.steadfaste-fleet/sessions/current.md"
 
-# The Cortex repo carries no .hermes-cortex/ (removed 2026-10-07: inside
-# ~/hermes-cortex that name shadowed the runtime dir ~/.hermes-cortex and made a
+# The Cortex repo carries no .steadfaste-fleet/ (removed 2026-10-07: inside
+# ~/steadfaste-fleet that name shadowed the runtime dir ~/.steadfaste-fleet and made a
 # governance marker indistinguishable from repo state). Session state is RUNTIME
 # state, so fall back to the deploy home. A consumer PROJECT still keeps its
 # tracked overlay, which is why the repo-local path is preferred when present.
 # Previously this hard-exited 1, so deleting the repo dir made the 2-hourly cron
 # fail on every run for the Cortex repo itself.
 if [ ! -f "$SESSION_FILE" ]; then
-    SESSION_FILE="${HOME}/.hermes-cortex/sessions/current.md"
+    SESSION_FILE="${HOME}/.steadfaste-fleet/sessions/current.md"
     mkdir -p "$(dirname "$SESSION_FILE")"
     [ -f "$SESSION_FILE" ] || printf '# Session State — %s\n\n' "$REPO_DIR" > "$SESSION_FILE"
 fi
@@ -145,6 +145,6 @@ HEADER=$(sed '/^## Repo State/q' "$SESSION_FILE" 2>/dev/null | sed '$d' 2>/dev/n
     echo "$NEW_SECTION"
 } > "$SESSION_FILE"
 
-echo "✅ .hermes-cortex/sessions/current.md updated — ${NOW}"
+echo "✅ .steadfaste-fleet/sessions/current.md updated — ${NOW}"
 echo "   Last commit: ${LAST_COMMIT_HASH} — ${LAST_COMMIT_MSG}"
 echo "   Branch: ${BRANCH} | ${DIRTY:+dirty ($DIRTY files)}${DIRTY:-clean}"

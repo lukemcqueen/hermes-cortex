@@ -12,8 +12,8 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-NO_VERIFY_LOG="${HOME}/.hermes-cortex/state/no-verify-log.json"
-BYPASS_MARKER="${HOME}/.hermes-cortex/state/.bypass-found"
+NO_VERIFY_LOG="${HOME}/.steadfaste-fleet/state/no-verify-log.json"
+BYPASS_MARKER="${HOME}/.steadfaste-fleet/state/.bypass-found"
 
 # Only run if no-verify log exists
 if [[ ! -f "$NO_VERIFY_LOG" ]]; then

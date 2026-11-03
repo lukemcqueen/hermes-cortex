@@ -31,9 +31,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in
 from lib.cortex_bus import bus_list_queues
 
 HOME = Path.home()
-CORTEX_REPO = HOME / "hermes-cortex"
-REGISTRY_PATH = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
-DISPATCH_LOG = HOME / ".hermes-cortex" / "state" / "fleet-update-state.json"
+CORTEX_REPO = HOME / "steadfaste-fleet"
+REGISTRY_PATH = HOME / ".steadfaste-fleet" / "state" / "agent-registry.json"
+DISPATCH_LOG = HOME / ".steadfaste-fleet" / "state" / "fleet-update-state.json"
 
 
 def check(label: str, ok: bool, detail: str = "") -> dict:

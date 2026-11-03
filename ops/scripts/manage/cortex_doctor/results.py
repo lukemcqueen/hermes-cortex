@@ -98,7 +98,7 @@ class Results:
             return
 
         print(
-            f"\n━━━ Hermes Cortex Doctor ━━━  ({datetime.now().strftime('%H:%M:%S')})\n"
+            f"\n━━━ Steadfaste Fleet Doctor ━━━  ({datetime.now().strftime('%H:%M:%S')})\n"
         )
 
         for c in self.checks:

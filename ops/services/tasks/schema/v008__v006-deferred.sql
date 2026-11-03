@@ -22,13 +22,13 @@
 --
 -- ALSO FIXES (found live during S6 e2e): v007's partial-preserve was
 -- defeated by non-NULL parameter DEFAULTS. task_upsert declared
--- p_project DEFAULT 'hermes-cortex', p_scope DEFAULT 'personal',
+-- p_project DEFAULT 'steadfaste-fleet', p_scope DEFAULT 'personal',
 -- p_status DEFAULT 'pending', p_priority DEFAULT 0, p_source DEFAULT
 -- 'manual'. A named-arg status-only call (task_upsert(p_id=>…,
 -- p_status=>…)) OMITS those args → the DEFAULT fills them → the
 -- ON CONFLICT COALESCE(p_x, existing) sees a non-NULL value and clobbers
 -- (source doctor-probe → manual, priority 3 → 0, project client-x →
--- hermes-cortex). The DECLARE block's COALESCE already applies the
+-- steadfaste-fleet). The DECLARE block's COALESCE already applies the
 -- canonical defaults for the INSERT branch, so the signature defaults can
 -- be NULL: omitted → NULL → preserve existing (v007's actual intent).
 -- ============================================================================
@@ -44,7 +44,7 @@ CREATE OR REPLACE FUNCTION tasks.task_upsert(
     p_content        TEXT DEFAULT NULL,
     p_created_by     TEXT DEFAULT NULL,
     p_assignee       TEXT DEFAULT NULL,
-    p_project        TEXT DEFAULT NULL,    -- was 'hermes-cortex' (v007 fix)
+    p_project        TEXT DEFAULT NULL,    -- was 'steadfaste-fleet' (v007 fix)
     p_repo           TEXT DEFAULT NULL,
     p_target         TEXT DEFAULT NULL,
     p_scope          TEXT DEFAULT NULL,     -- was 'personal'
@@ -74,7 +74,7 @@ DECLARE
     -- Non-nullable columns: coalesce defaults so a partial update
     -- (status-only) still proposes a valid row that passes RLS WITH CHECK
     -- and NOT NULL.
-    v_project TEXT := COALESCE(p_project, 'hermes-cortex');
+    v_project TEXT := COALESCE(p_project, 'steadfaste-fleet');
     v_scope   TEXT := COALESCE(p_scope, 'personal');
     v_status  TEXT := COALESCE(p_status, 'pending');
     v_priority INT := COALESCE(p_priority, 0);

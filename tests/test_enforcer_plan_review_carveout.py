@@ -4,10 +4,10 @@
 WHY (2026-10-30, operator directive + measured deadlock): the plan-review-before-slice
 gate (hc-plan-review-check.py) refuses a non-trivial slice unless the active cycle has a
 row in `adversarial_reviews`. The ONLY sanctioned writer is adversarial-review.py
---cycle-id N --review, deployed to the SHARED path (~/.hermes-cortex/scripts/) for all
-agents. But it writes into ~/.hermes-cortex/data/loop-governance.db — governance DATA, not
-a git repo — so the lock gate resolved the write to hermes-cortex and demanded a
-hermes-cortex lock, which a worker's pending cycle forbids ("Close out your previous task
+--cycle-id N --review, deployed to the SHARED path (~/.steadfaste-fleet/scripts/) for all
+agents. But it writes into ~/.steadfaste-fleet/data/loop-governance.db — governance DATA, not
+a git repo — so the lock gate resolved the write to steadfaste-fleet and demanded a
+steadfaste-fleet lock, which a worker's pending cycle forbids ("Close out your previous task
 ... unscored PENDING cycles"). A worker therefore structurally could not satisfy the gate
 that gates their OWN commit.
 
@@ -36,7 +36,7 @@ enf = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(enf)
 
 HOME = Path.home()
-DEPLOYED = f"{HOME}/.hermes-cortex/scripts/adversarial-review.py"
+DEPLOYED = f"{HOME}/.steadfaste-fleet/scripts/adversarial-review.py"
 
 
 def _cmd(material=f"--material-file plan.md", reviewer="--reviewer-id plan-x",
@@ -115,8 +115,8 @@ def test_the_exemption_is_wired_before_the_lock_refusal():
 
 # ── DB-write gate: adversarial_reviews is append-only (2026-10-30) ──────────
 
-GOV_DB = f"{HOME}/.hermes-cortex/data/loop-governance.db"
-DEPLOYED_REVIEWER = f"{HOME}/.hermes-cortex/scripts/adversarial-review.py"
+GOV_DB = f"{HOME}/.steadfaste-fleet/data/loop-governance.db"
+DEPLOYED_REVIEWER = f"{HOME}/.steadfaste-fleet/scripts/adversarial-review.py"
 
 
 def test_raw_sqlite3_delete_against_gov_db_is_blocked():
@@ -162,7 +162,7 @@ def test_canonical_reviewer_with_any_db_is_not_blocked():
 
 
 def test_manage_record_review_script_is_not_blocked():
-    cmd = (f"python3 {HOME}/hermes-cortex/ops/scripts/manage/record-review.py "
+    cmd = (f"python3 {HOME}/steadfaste-fleet/ops/scripts/manage/record-review.py "
            f"--cycle-id 42 --verdict CLEAN --findings-json '[]' "
            f"--reviewer-id x --reviewer-model m --summary s --db {GOV_DB}")
     assert enf._is_governance_db_mutation_command(cmd) is False

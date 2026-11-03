@@ -1,10 +1,10 @@
 """
-Circuit breaker for Hermes Cortex Agent Bus.
+Circuit breaker for Steadfaste Fleet Agent Bus.
 
 Auto-degrades from PGMQ to file backend when Postgres is unavailable.
 Auto-restores when Postgres comes back.
 
-State is persisted to ~/.hermes-cortex/bus-circuit-breaker.json
+State is persisted to ~/.steadfaste-fleet/bus-circuit-breaker.json
 """
 
 import json
@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from datetime import datetime, timezone
 
-STATE_FILE = Path.home() / ".hermes-cortex" / "bus-circuit-breaker.json"
+STATE_FILE = Path.home() / ".steadfaste-fleet" / "bus-circuit-breaker.json"
 
 
 class CircuitBreakerState:

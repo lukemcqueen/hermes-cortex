@@ -1,15 +1,15 @@
-Evidence — why the repo-local .hermes-cortex reappeared, and what stops it now.
+Evidence — why the repo-local .steadfaste-fleet reappeared, and what stops it now.
 
 === 1. the check is REGISTERED and RUNS (doctor output) ===
 $ python3 ops/scripts/manage/cortex-doctor.py | grep -E "Repo-local |Deploy sync|Overall"
 ✅ Deploy sync — deployed commit matches HEAD
-  ✅ Repo-local .hermes-cortex — absent — correct for the Cortex repo
+  ✅ Repo-local .steadfaste-fleet — absent — correct for the Cortex repo
   ⚠️  Overall: WARNING  (435 pass · 7 warn · 0 fail · 6 info)
 (exit 0)
 
 === 2. the guard test, all three states, run now ===
 $ python3 tests/test_repo_local_cortex_dir_check.py
-PASS  lock marker named -> FAIL: exists at /home/esther/.hermes/cache/scratch/repo-local-check-ctdjxt86/.hermes-cortex — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
+PASS  lock marker named -> FAIL: exists at /home/esther/.hermes/cache/scratch/repo-local-check-ctdjxt86/.steadfaste-fleet — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
 
 RESULT: ALL PASS - the check fails on presence and names the marker
 (exit 0)
@@ -40,11 +40,11 @@ $ (precise greps against the deployed files)
 15:    return None
 --- deployed enforcer _secondary_lock_path (expect return None):
 15:    return None
---- any code writing <repo>/.hermes-cortex outside ~/.hermes-cortex? (expect none)
+--- any code writing <repo>/.steadfaste-fleet outside ~/.steadfaste-fleet? (expect none)
 0
 0
 
 === 5. push state ===
 ## main...origin/main
-aba68507 fix(doctor): fail on a repo-local .hermes-cortex, and record why it returns
-aba68507 fix(doctor): fail on a repo-local .hermes-cortex, and record why it returns
+aba68507 fix(doctor): fail on a repo-local .steadfaste-fleet, and record why it returns
+aba68507 fix(doctor): fail on a repo-local .steadfaste-fleet, and record why it returns

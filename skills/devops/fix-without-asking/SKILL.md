@@ -5,7 +5,7 @@ description: |-
   Covers the litmus test, the failure pattern, and the concrete "never ask" guardrail.
   Triggers: 'should I fix', 'want me to', discovered anything wrong mid-task, user says 'fix it'
 version: 1.3.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -264,7 +264,7 @@ If you don't have the agent's Telegram contact, go to the user and deliver the m
 ```
 Run a full diagnostic and report back:
 1. Check handler cron exists and is enabled
-2. Read handler state file (~/.hermes-cortex/state/agent-handler-state.json)
+2. Read handler state file (~/.steadfaste-fleet/state/agent-handler-state.json)
 3. Check system load / memory / disk
 4. Check latest handler output log
 5. Run doctor
@@ -297,7 +297,7 @@ Before sending any command to a remote fleet agent, **test the full cycle on you
 hc exec moses cortex-doctor.py --json
 
 # 2. Manually run the handler
-cd ~/.hermes-cortex && python3 scripts/agent-message-handler.py --once
+cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 
 # 3. Verify response arrived
 sg docker -c 'docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT queue_name, state FROM bus.messages WHERE queue_name = '\''inbox_moses'\'';"'
@@ -408,7 +408,7 @@ removed from the expected list.
 
 Habit: after any change, run this before `end_change`:
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
 ```
 
 If it exits non-zero, find the root cause and fix it. Do not pass `end_change`
@@ -467,7 +467,7 @@ and the doctor now shows 0 fail. The question was justified.
 
 Habit: after any `cortex-doctor.py --quiet` run, grep for warnings:
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | grep '⚠️'
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | grep '⚠️'
 ```
 For each warning, apply the 3-question litmus test. If all yes, fix before
 reporting done.

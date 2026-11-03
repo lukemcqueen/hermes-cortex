@@ -19,7 +19,7 @@
 # ─────────────────────────────────────────────────────────────
 set -uo pipefail
 
-REPO="${HOME}/hermes-cortex"
+REPO="${HOME}/steadfaste-fleet"
 UPDATE="${REPO}/ops/scripts/cortex-update.sh"
 DOCTOR="${REPO}/ops/scripts/manage/cortex-doctor.py"
 QUIET=""
@@ -27,7 +27,7 @@ FORCE=""
 DOCTOR_ONLY=""
 
 # Orchestrator scope (Luke correction 2026-08-05): dogfood verifies the
-# deployed hermes-cortex state end-to-end — that is an orchestrator's
+# deployed steadfaste-fleet state end-to-end — that is an orchestrator's
 # (moses/esther) job. Non-orchestrator hosts get a clear message instead.
 _detect_orch() {
   local _host _home _user
@@ -45,7 +45,7 @@ _detect_orch() {
 
 if ! _detect_orch; then
   echo "❌  cortex-dogfood: orchestrator-only (moses/esther hosts)."
-  echo "    Dogfood verifies the deployed hermes-cortex state — a"
+  echo "    Dogfood verifies the deployed steadfaste-fleet state — a"
   echo "    non-orchestrator cannot run the full deploy/verify cycle."
   exit 1
 fi
@@ -69,7 +69,7 @@ echo "━━━ cortex-dogfood ━━━"
 # to the doctor (no active lock → FAIL). Record it so the verify step
 # can exempt exactly this task — other leaked cycles still fail.
 DOGFOOD_OWN_TASK=""
-for _lf in "${HOME}/.hermes-cortex/state"/.governance-*.json; do
+for _lf in "${HOME}/.steadfaste-fleet/state"/.governance-*.json; do
   [[ -f "$_lf" ]] || continue
   _task=$(python3 -c "import json;print(json.load(open('$_lf')).get('task_id',''))" 2>/dev/null || echo "")
   if [[ -n "$_task" ]]; then

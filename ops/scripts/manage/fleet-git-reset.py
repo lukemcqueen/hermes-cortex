@@ -8,8 +8,8 @@ retries block on rebase-conflict abort). This script performs that alignment
 SAFELY and reports exactly what it did.
 
 Safety guards (fail closed):
-  * Only operates on ~/hermes-cortex — never an arbitrary repo.
-  * Verifies the origin remote URL is the canonical hermes-cortex repo.
+  * Only operates on ~/steadfaste-fleet — never an arbitrary repo.
+  * Verifies the origin remote URL is the canonical steadfaste-fleet repo.
   * Requires an explicit mode: --check (dry-run, touches nothing) or --reset.
   * Refuses to reset a DIRTY worktree (uncommitted changes would be lost)
     unless --force is passed deliberately.
@@ -17,7 +17,7 @@ Safety guards (fail closed):
   * Refuses if not on the main branch (only main is aligned).
   * Prints before/after SHAs + a JSON summary line for EXEC_RESULT evidence.
 
-Usage (via bus EXEC — deployed to ~/.hermes-cortex/scripts/):
+Usage (via bus EXEC — deployed to ~/.steadfaste-fleet/scripts/):
     python3 fleet-git-reset.py --check            # dry-run report
     python3 fleet-git-reset.py --reset            # align local main to origin/main
     python3 fleet-git-reset.py --reset --force    # allow dirty worktree (deliberate)
@@ -35,11 +35,11 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-TARGET_REPO = HOME / "hermes-cortex"
+TARGET_REPO = HOME / "steadfaste-fleet"
 
 
 def is_canonical_remote(url: str) -> bool:
-    """Accept the canonical repo under either its legacy name (hermes-cortex) or its
+    """Accept the canonical repo under either its legacy name (steadfaste-fleet) or its
     renamed name (steadfaste-fleet) on github.com, owner-agnostic. The prior guard
     compared against an exact owner URL that never named fleet-operator; being
     owner-agnostic would otherwise accept the dead fleet-operator org (pre-2026-08-24
@@ -48,14 +48,14 @@ def is_canonical_remote(url: str) -> bool:
     c = canonical_remote(url)
     return (c.startswith("https://github.com/")
             and "/fleet-operator/" not in c
-            and (c.endswith("/hermes-cortex.git") or c.endswith("/steadfaste-fleet.git")))
+            and (c.endswith("/steadfaste-fleet.git") or c.endswith("/steadfaste-fleet.git")))
 
 
 def canonical_remote(url: str) -> str:
     """Normalize a git remote URL to scheme://host/path, stripping credentials.
 
     Hosts may store the origin URL with an embedded token
-    (https://<token>@github.com/lukemcqueen/hermes-cortex.git) — that is still
+    (https://<token>@github.com/lukemcqueen/steadfaste-fleet.git) — that is still
     the canonical repo, and the guard must not refuse it (kustos, 2026-08-13;
     remote corrected from the pre-rewrite fleet-operator URL 2026-08-24).
     Non-http URLs (ssh, file) are returned unchanged.

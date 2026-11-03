@@ -33,7 +33,7 @@ cross-references that silently break tests and indexes.
 - A governance lock (`begin_change`) — write tools block without it.
 - Adversarial-verifier loaded (pre-commit blocks changed `ops/` paths).
 - Enumerate the surface FIRST: `git grep -i <term>`, files named `*<term>*`,
-  deployed copies (`~/.hermes-cortex/scripts/`), cron jobs (`jobs.json`),
+  deployed copies (`~/.steadfaste-fleet/scripts/`), cron jobs (`jobs.json`),
   live configs. 200+ matches across 100+ files is normal for a real sweep.
 
 ## Procedure

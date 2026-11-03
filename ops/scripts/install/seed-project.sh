@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  seed-project.sh — Deploy Hermes Cortex harness to a project
+#  seed-project.sh — Deploy Steadfaste Fleet harness to a project
 #
-#  One-command bootstrap: AGENTS.md, .hermes-cortex/ infra,
+#  One-command bootstrap: AGENTS.md, .steadfaste-fleet/ infra,
 #  loop-governance scoring, pre-commit hooks, project skills.
 #
 #  Usage:
 #    seed-project.sh --project=<path>                         # default: merge mode, all components
 #    seed-project.sh --project=<path> --mode=overwrite        # destructive (backup still created)
 #    seed-project.sh --project=<path> --mode=diff             # preview only, no writes
-#    seed-project.sh --project=<path> --components=AGENTS.md,.hermes-cortex
+#    seed-project.sh --project=<path> --components=AGENTS.md,.steadfaste-fleet
 #    seed-project.sh --project=<path> --name="My API"         # custom project name
 #    seed-project.sh --project=<path> --template=./custom.md  # custom AGENTS.md template
 #    seed-project.sh --project=<path> --skill-refs=score-cycle,change-test-loop
@@ -30,7 +30,7 @@ header(){ printf "\n${BOLD}%s${RESET}\n" "$*"; }
 
 # ── Paths ────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # hermes-cortex repo root
+REPO_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"  # steadfaste-fleet repo root
 TEMPLATES_DIR="${REPO_DIR}/docs/templates"
 AGENTS_TEMPLATE="${TEMPLATES_DIR}/AGENTS.seed.md"
 MANIFEST_TEMPLATE="${REPO_DIR}/skills.yaml"   # cortex owns the manifest at the repo root
@@ -40,7 +40,7 @@ HERMES_CORTEX_SKILLS="${HOME}/.hermes/skills"  # resolved via symlink
 # ── Help ─────────────────────────────────────────────────────
 show_help() {
   cat <<EOF
-seed-project.sh — Deploy Hermes Cortex harness to a project
+seed-project.sh — Deploy Steadfaste Fleet harness to a project
 
 USAGE:
   seed-project.sh --project=<path> [options]
@@ -53,7 +53,7 @@ OPTIONS:
   --mode=overwrite     Backup existing, overwrite everything
   --mode=diff          Show what would change, no writes
   --components=ALL     (default) Deploy everything
-  --components=list    Comma-separated: AGENTS.md,.hermes-cortex,pre-commit,loop-gov,manifest,skills
+  --components=list    Comma-separated: AGENTS.md,.steadfaste-fleet,pre-commit,loop-gov,manifest,skills
   --name=<name>        Project display name (for AGENTS.md placeholder)
   --template=<path>    Custom AGENTS.md template file
   --skill-refs=list    Comma-separated skill names for the manifest always section
@@ -68,7 +68,7 @@ RESTORE:
 EXAMPLES:
   seed-project.sh --project=~/Developer/my-api --mode=diff
   seed-project.sh --project=~/Developer/my-api --name="Payment API" --skill-refs=change-test-loop
-  seed-project.sh --project=~/Developer/my-api --components=AGENTS.md,.hermes-cortex
+  seed-project.sh --project=~/Developer/my-api --components=AGENTS.md,.steadfaste-fleet
   seed-project.sh --list-backups=~/Developer/my-api
   seed-project.sh --restore=~/Developer/my-api
   seed-project.sh --restore=~/Developer/my-api@20260626_150000
@@ -139,15 +139,15 @@ create_backup() {
   BACKUP_DIR=""
   BACKUP_MANIFEST=""
 
-  # Skip backup entirely if nothing exists to save (no .hermes-cortex, no AGENTS.md, no pre-commit)
-  # Avoids creating empty .hermes-cortex/ as side effect (bug: --components=AGENTS.md)
+  # Skip backup entirely if nothing exists to save (no .steadfaste-fleet, no AGENTS.md, no pre-commit)
+  # Avoids creating empty .steadfaste-fleet/ as side effect (bug: --components=AGENTS.md)
   local has_anything=false
   [[ -f "${project}/AGENTS.md" ]] && has_anything=true
-  [[ -d "${project}/.hermes-cortex" ]] && has_anything=true
+  [[ -d "${project}/.steadfaste-fleet" ]] && has_anything=true
   [[ -f "${project}/.git/hooks/pre-commit" ]] && has_anything=true
   $has_anything || return 0
 
-  BACKUP_DIR="${project}/.hermes-cortex/.seed-backups/${ts}"
+  BACKUP_DIR="${project}/.steadfaste-fleet/.seed-backups/${ts}"
   BACKUP_MANIFEST="${BACKUP_DIR}/manifest.json"
   mkdir -p "$BACKUP_DIR"
   header "Backing up existing files → ${BACKUP_DIR/$HOME/~}"
@@ -158,17 +158,17 @@ create_backup() {
     info "  AGENTS.md"
   fi
 
-  # Backup .hermes-cortex/ structure (exclude .seed-backups to avoid circular copy)
-  if [[ -d "${project}/.hermes-cortex" ]]; then
-    mkdir -p "${BACKUP_DIR}/.hermes-cortex"
+  # Backup .steadfaste-fleet/ structure (exclude .seed-backups to avoid circular copy)
+  if [[ -d "${project}/.steadfaste-fleet" ]]; then
+    mkdir -p "${BACKUP_DIR}/.steadfaste-fleet"
     # Copy everything except .seed-backups (which contains the backup we're writing)
-    for item in "${project}/.hermes-cortex/"* "${project}/.hermes-cortex"/.[!.]*; do
+    for item in "${project}/.steadfaste-fleet/"* "${project}/.steadfaste-fleet"/.[!.]*; do
       local base="$(basename "$item")"
       [[ "$base" == ".seed-backups" ]] && continue
       [[ "$base" == "." || "$base" == ".." ]] && continue
-      cp -r "$item" "${BACKUP_DIR}/.hermes-cortex/" 2>/dev/null || true
+      cp -r "$item" "${BACKUP_DIR}/.steadfaste-fleet/" 2>/dev/null || true
     done
-    info "  .hermes-cortex/"
+    info "  .steadfaste-fleet/"
   fi
 
   # Backup pre-commit hook
@@ -197,7 +197,7 @@ JSON
 
 list_backups() {
   local project="$1"
-  local backup_root="${project}/.hermes-cortex/.seed-backups"
+  local backup_root="${project}/.steadfaste-fleet/.seed-backups"
   if [[ ! -d "$backup_root" ]]; then
     echo "No backups found for ${project}."
     return 0
@@ -239,7 +239,7 @@ restore_backup() {
   fi
 
   project="$(cd "$project" 2>/dev/null && pwd)" || die "Project not found: $(basename "$target" 2>/dev/null || echo "$target")"
-  local backup_root="${project}/.hermes-cortex/.seed-backups"
+  local backup_root="${project}/.steadfaste-fleet/.seed-backups"
 
   # Find the backup to restore
   local restore_dir=""
@@ -264,39 +264,39 @@ restore_backup() {
     has_restore=true
   fi
 
-  # Restore .hermes-cortex/ — only if backup actually has it
-  if [[ -d "${restore_dir}/.hermes-cortex" ]]; then
-    # Stage backup content to /tmp/ BEFORE moving .hermes-cortex
-    # (backup lives inside .hermes-cortex/.seed-backups — would become unreachable)
+  # Restore .steadfaste-fleet/ — only if backup actually has it
+  if [[ -d "${restore_dir}/.steadfaste-fleet" ]]; then
+    # Stage backup content to /tmp/ BEFORE moving .steadfaste-fleet
+    # (backup lives inside .steadfaste-fleet/.seed-backups — would become unreachable)
     local stage_dir
     stage_dir="$(mktemp -d "/tmp/.seed-restore-stage-XXXXXX")"
-    cp -r "${restore_dir}/.hermes-cortex/"* "$stage_dir/" 2>/dev/null || true
+    cp -r "${restore_dir}/.steadfaste-fleet/"* "$stage_dir/" 2>/dev/null || true
 
-    # Move current .hermes-cortex to temp sibling in case restore goes wrong
-    local tmp_backup="${project}/.hermes-cortex.tmp-restore"
-    if [[ -d "${project}/.hermes-cortex" ]]; then
-      mv "${project}/.hermes-cortex" "${tmp_backup}"
+    # Move current .steadfaste-fleet to temp sibling in case restore goes wrong
+    local tmp_backup="${project}/.steadfaste-fleet.tmp-restore"
+    if [[ -d "${project}/.steadfaste-fleet" ]]; then
+      mv "${project}/.steadfaste-fleet" "${tmp_backup}"
     fi
 
     # Restore from staged copy
-    cp -r "$stage_dir/" "${project}/.hermes-cortex/" && {
-      # Re-insert backups from moved-away .hermes-cortex
+    cp -r "$stage_dir/" "${project}/.steadfaste-fleet/" && {
+      # Re-insert backups from moved-away .steadfaste-fleet
       if [[ -d "${tmp_backup}" ]]; then
         if [[ -d "${tmp_backup}/.seed-backups" ]]; then
-          mkdir -p "${project}/.hermes-cortex/.seed-backups"
-          cp -r "${tmp_backup}/.seed-backups/"* "${project}/.hermes-cortex/.seed-backups/" 2>/dev/null || true
+          mkdir -p "${project}/.steadfaste-fleet/.seed-backups"
+          cp -r "${tmp_backup}/.seed-backups/"* "${project}/.steadfaste-fleet/.seed-backups/" 2>/dev/null || true
         fi
         rm -rf "${tmp_backup}"
       fi
       rm -rf "$stage_dir"
-      info "  Restored .hermes-cortex/"
+      info "  Restored .steadfaste-fleet/"
       has_restore=true
     } || {
       # cp failed — move the original back
-      warn "  Failed to restore .hermes-cortex/ from backup"
+      warn "  Failed to restore .steadfaste-fleet/ from backup"
       rm -rf "$stage_dir"
       if [[ -d "${tmp_backup}" ]]; then
-        mv "${tmp_backup}" "${project}/.hermes-cortex"
+        mv "${tmp_backup}" "${project}/.steadfaste-fleet"
       fi
     }
   fi
@@ -377,12 +377,12 @@ deploy_agents_md() {
 
 deploy_cortex_dir() {
   local project="$1"
-  [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *".hermes-cortex"* ]] && return 0
+  [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *".steadfaste-fleet"* ]] && return 0
 
   local dirs=(
-    "${project}/.hermes-cortex/sessions/archive"
-    "${project}/.hermes-cortex/memory"
-    "${project}/.hermes-cortex/skills"
+    "${project}/.steadfaste-fleet/sessions/archive"
+    "${project}/.steadfaste-fleet/memory"
+    "${project}/.steadfaste-fleet/skills"
   )
 
   if [[ "$MODE" == "diff" ]]; then
@@ -390,7 +390,7 @@ deploy_cortex_dir() {
     for d in "${dirs[@]}"; do
       [[ -d "$d" ]] || { echo "  would create: ${d/$HOME/~}"; missing=$((missing + 1)); }
     done
-    [[ "$missing" -eq 0 ]] && echo "  .hermes-cortex/ — exists"
+    [[ "$missing" -eq 0 ]] && echo "  .steadfaste-fleet/ — exists"
     return 0
   fi
 
@@ -403,16 +403,16 @@ deploy_cortex_dir() {
   done
 
   # .gitkeep files
-  touch "${project}/.hermes-cortex/.gitkeep"
-  touch "${project}/.hermes-cortex/sessions/.gitkeep"
-  touch "${project}/.hermes-cortex/memory/.gitkeep"
-  touch "${project}/.hermes-cortex/skills/.gitkeep"
+  touch "${project}/.steadfaste-fleet/.gitkeep"
+  touch "${project}/.steadfaste-fleet/sessions/.gitkeep"
+  touch "${project}/.steadfaste-fleet/memory/.gitkeep"
+  touch "${project}/.steadfaste-fleet/skills/.gitkeep"
 
   # .gitignore for memory/ (never commit agent memory)
-  local gitignore="${project}/.hermes-cortex/.gitignore"
+  local gitignore="${project}/.steadfaste-fleet/.gitignore"
   if [[ ! -f "$gitignore" ]]; then
     cat > "$gitignore" <<'EOF'
-# Hermes Cortex — never commit agent memory
+# Steadfaste Fleet — never commit agent memory
 memory/
 *.db
 *.sqlite
@@ -423,9 +423,9 @@ EOF
   fi
 
   if [[ "$created" -gt 0 ]]; then
-    info "  .hermes-cortex/ — ${created} dir(s) created"
+    info "  .steadfaste-fleet/ — ${created} dir(s) created"
   else
-    info "  .hermes-cortex/ — exists"
+    info "  .steadfaste-fleet/ — exists"
   fi
 }
 
@@ -477,16 +477,16 @@ deploy_manifest() {
   local project="$1" refs="$2"
   [[ "${COMPONENTS}" != "ALL" && "${COMPONENTS}" != *"manifest"* ]] && return 0
 
-  local manifest_dest="${project}/.hermes-cortex/skills.yaml"
+  local manifest_dest="${project}/.steadfaste-fleet/skills.yaml"
 
   # Use --skill-refs to customize the always section
   local always_skills="${refs:-change-test-loop,engineering-approach,save-lesson,spike,dev-plan}"
 
   if [[ "$MODE" == "diff" ]]; then
     if [[ ! -f "$manifest_dest" ]]; then
-      echo "  would create: .hermes-cortex/skills.yaml"
+      echo "  would create: .steadfaste-fleet/skills.yaml"
     else
-      echo "  .hermes-cortex/skills.yaml — exists"
+      echo "  .steadfaste-fleet/skills.yaml — exists"
     fi
     return 0
   fi
@@ -496,7 +496,7 @@ deploy_manifest() {
   content="# Skills Manifest — $(basename "$project")
 #
 # Declares which global Hermes skills are relevant to this project.
-# See ~/hermes-cortex/docs/skills-manifest-reference.md for format.
+# See ~/steadfaste-fleet/docs/skills-manifest-reference.md for format.
 # Task types correspond to agent-flow patterns (12 types).
 
 always:"
@@ -546,7 +546,7 @@ deploy_skills() {
     return 0
   fi
 
-  local project_skills="${project}/.hermes-cortex/skills"
+  local project_skills="${project}/.steadfaste-fleet/skills"
 
   if [[ "$refs" == "ALL" || "$COMPONENTS" == "ALL" ]]; then
     # Default skill set for a seeded project
@@ -614,7 +614,7 @@ print_summary() {
   echo "  Mode:     ${mode}"
   [[ -n "$BACKUP_DIR" ]] && echo "  Backup:   ${backup_ref}"
   echo ""
-  echo "  AGENTS.md, .hermes-cortex/, pre-commit, loop-gov, manifest ($([[ "$LEGACY_COPY" == "true" ]] && echo "skills:file-copy" || echo "skills:manifest"))"
+  echo "  AGENTS.md, .steadfaste-fleet/, pre-commit, loop-gov, manifest ($([[ "$LEGACY_COPY" == "true" ]] && echo "skills:file-copy" || echo "skills:manifest"))"
   echo "  To restore: seed-project.sh --restore=${project/$HOME/~}"
   echo "━━━━━━━━━━━━━━━━━━━━━"
 }

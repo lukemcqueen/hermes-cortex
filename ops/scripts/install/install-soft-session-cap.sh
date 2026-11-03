@@ -19,7 +19,7 @@
 # cache-killer long contexts) while keeping the session alive.
 #
 # VALUE SOURCE (priority): runtime env SOFT_SESSION_CAP_TOKENS >
-# ~/hermes-cortex/.env (repo) > ~/hermes-cortex/.env (deploy).
+# ~/steadfaste-fleet/.env (repo) > ~/steadfaste-fleet/.env (deploy).
 # UNSET = NO-OP: the script is safe to deploy fleet-wide BEFORE Luke
 # picks the A/B value; it only writes when a value is explicitly set.
 #
@@ -36,16 +36,16 @@ set -euo pipefail
 
 HOME_DIR="${HOME:?}"
 HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.steadfaste-fleet}"
 
 # ── Resolve the intended cap ─────────────────────────────────
-# Priority: runtime env > ~/hermes-cortex/.env — the ONE canonical cortex env.
-# The deploy dir (~/.hermes-cortex) holds no .env: it is a deployed path.
+# Priority: runtime env > ~/steadfaste-fleet/.env — the ONE canonical cortex env.
+# The deploy dir (~/.steadfaste-fleet) holds no .env: it is a deployed path.
 # No fleet fallback: an unset cap is a valid state (control host / value not
 # yet chosen) — NEVER invent one.
 SOFT_SESSION_CAP_TOKENS="${SOFT_SESSION_CAP_TOKENS:-}"
-if [[ -z "$SOFT_SESSION_CAP_TOKENS" && -f "${HOME_DIR}/hermes-cortex/.env" ]]; then
-  SOFT_SESSION_CAP_TOKENS="$(grep -E '^SOFT_SESSION_CAP_TOKENS=' "${HOME_DIR}/hermes-cortex/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)"
+if [[ -z "$SOFT_SESSION_CAP_TOKENS" && -f "${HOME_DIR}/steadfaste-fleet/.env" ]]; then
+  SOFT_SESSION_CAP_TOKENS="$(grep -E '^SOFT_SESSION_CAP_TOKENS=' "${HOME_DIR}/steadfaste-fleet/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"' || true)"
 fi
 
 if [[ -z "$SOFT_SESSION_CAP_TOKENS" ]]; then

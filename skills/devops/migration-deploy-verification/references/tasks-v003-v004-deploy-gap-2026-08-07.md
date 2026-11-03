@@ -18,7 +18,7 @@ Root-cause chain claimed:
   migrate.py against the repo dir) 9 minutes before committing.
 - Live function derivation was already the NEW one
   (`WHEN 'completed' THEN 'done'`, cancelled → NULL).
-- Deployed schema dir `~/.hermes-cortex/services/tasks/schema/` had ONLY
+- Deployed schema dir `~/.steadfaste-fleet/services/tasks/schema/` had ONLY
   v001+v002 — the deploy-map gap was real.
 - Deployed migrate.py == repo (only a blank-line diff) — the runner was fine;
   it just never saw v003/v004 because link 2 (deploy map) was missing.
@@ -35,7 +35,7 @@ grep -n "v00[0-9]" ops/scripts/cortex-update.sh
 #   service registered ALL its migrations — the pattern to copy)
 
 # Deployed dir (link 3):
-ls -la ~/.hermes-cortex/services/tasks/schema/
+ls -la ~/.steadfaste-fleet/services/tasks/schema/
 
 # Live DB (link 5):
 docker exec -i mycortex-postgres psql -U mycortex -d mycortex -c \

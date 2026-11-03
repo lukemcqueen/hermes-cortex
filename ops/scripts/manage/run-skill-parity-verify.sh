@@ -14,7 +14,7 @@
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-VERIFY="${HOME}/.hermes-cortex/scripts/adversarial-verify.py"
+VERIFY="${HOME}/.steadfaste-fleet/scripts/adversarial-verify.py"
 [ -x "${VERIFY}" ] || VERIFY="${REPO}/ops/scripts/quality/adversarial-verify.py"
 OUT="${REPO}/docs/evidence/skill-drift-parity-verify.txt"
 

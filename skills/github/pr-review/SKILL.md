@@ -159,7 +159,7 @@ Run project map to understand the dependency graph:
 ```bash
 if [ "$PMAP" -eq 1 ]; then
   project-map analyze 2>/dev/null
-  MAP_FILE=".hermes-cortex/project-map.json"
+  MAP_FILE=".steadfaste-fleet/project-map.json"
 else
   MAP_FILE=""
 fi

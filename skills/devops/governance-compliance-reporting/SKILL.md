@@ -42,14 +42,14 @@ Cross-reference changed paths against `docs/orchestrator-only-paths.txt`:
 
 ```
 ops/scripts/          ops/install/          plugins/
-mcp-servers/          skills/               .hermes-cortex/hooks/
+mcp-servers/          skills/               .steadfaste-fleet/hooks/
 cortex_doctor/        tests/                profiles/
 docs/templates/       AGENTS.md
 ```
 
 > These entries are quoted from the guard file, which matches them as **repo-relative**
-> prefixes against `git diff --cached --name-only` — so `.hermes-cortex/hooks/` here means
-> a repo-local hooks dir, NOT the deployed `~/.hermes-cortex/hooks/`. A `~/`-prefixed
+> prefixes against `git diff --cached --name-only` — so `.steadfaste-fleet/hooks/` here means
+> a repo-local hooks dir, NOT the deployed `~/.steadfaste-fleet/hooks/`. A `~/`-prefixed
 > entry in that file could never match a staged path (silently dead guard entry).
 
 ### Phase 2: Classify Each Commit
@@ -60,7 +60,7 @@ docs/templates/       AGENTS.md
 | **Orchestrator commit** | Author is Moses or Esther, path is in restricted list | Likely legitimate enforcement work |
 | **Non-orch agent commit** | Author is an agent, path is in restricted list | **🔴 VIOLATION** — needs review/revert |
 | **Doc-only** | Only changed docs/templates/ or AGENTS.md | Low severity — but still restricted |
-| **Enforcement-impacting** | Changed pre-commit-score, plugins/*, mcp-servers/*, .hermes-cortex/hooks/* | **🔴 CRITICAL** — governance mechanism itself |
+| **Enforcement-impacting** | Changed pre-commit-score, plugins/*, mcp-servers/*, .steadfaste-fleet/hooks/* | **🔴 CRITICAL** — governance mechanism itself |
 
 **Pitfall — author identity is unreliable:** Multiple agents may share the same git identity (`Moses (Hermes Agent) <moses@hermes-agent.local>`). The git author field alone cannot distinguish between Moses on the orchestrator machine vs Joseph running with the same config. Cross-reference with machine identity from the push source when available.
 
@@ -74,7 +74,7 @@ For commits touching enforcement-critical paths, evaluate:
 | `plugins/governance-enforcer/__init__.py` | Did the skills gate change? Was the blocking logic relaxed? Did ALL_TOOLS gate get changed to WRITE_TOOLS only? |
 | `plugins/hermes-governance-enforcer/__init__.py` | Same as above (older plugin path). Did the skills list change (8 vs 10)? Did exemptions change? |
 | `mcp-servers/loop-gov-mcp.py` | Was the DOGFOOD auto-deploy gate added, removed, or changed? Was the file gutted and rebuilt? |
-| `~/.hermes-cortex/hooks/*` | Did hook symlink targets change? Did content drift from repo source? |
+| `~/.steadfaste-fleet/hooks/*` | Did hook symlink targets change? Did content drift from repo source? |
 
 ### Phase 4: Distinguish Damage from Legitimate Fixes
 
@@ -135,7 +135,7 @@ After the review, when the user directs you to revert: see `references/revert-ex
 When identifying the agent running the review, use the authoritative source:
 
 ```bash
-grep ^AGENT_NAME ~/hermes-cortex/.env | cut -d= -f2
+grep ^AGENT_NAME ~/steadfaste-fleet/.env | cut -d= -f2
 ```
 
 Do NOT use `hostname`, `git config user.name`, or `$(whoami)`. The `.env` file is the single source of truth for agent identity. Every bus message, health report, and registry entry uses this name.

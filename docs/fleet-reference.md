@@ -6,7 +6,7 @@
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo.
 >
 > **RULE 3: DOCUMENTATION IS NOT OPTIONAL**
 > Every change includes doc updates. If another agent would be confused without reading an updated doc, the doc must be updated before the governance lock is released.
@@ -59,7 +59,7 @@ Every cron name MUST start with a group prefix. No bare names:
 - Every `create_cron` name MUST have a matching entry in the same file's uninstall array
 - After any cron rename or addition, run:
   ```bash
-  python3 ~/hermes-cortex/ops/scripts/manage/fix-cron-duplicates.py
+  python3 ~/steadfaste-fleet/ops/scripts/manage/fix-cron-duplicates.py
   ```
   Zero issues = arrays are in sync.
 
@@ -98,7 +98,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin | the fleet owner |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin | the fleet owner |
 | `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local | the fleet owner |
-| `agent-hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin | the fleet owner |
+| `agent-steadfaste-fleet-sync` | `33 22 * * *` | no_agent | `agent-steadfaste-fleet-sync.sh` | origin | the fleet owner |
 | `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local | the fleet owner |
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin | the fleet owner |
 | `agent-learning-collector` | `0 */6 * * *` | no_agent | `agent-learning-collector.py` | local | the fleet owner |
@@ -165,7 +165,7 @@ These run on this machine but use `agent-*` naming. Not in repo installers (inte
 | `memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
 | `governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
 | `hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
-| `hermes-cortex-sync` | `33 22 * * *` | no_agent | `agent-hermes-cortex-sync.sh` | origin |
+| `steadfaste-fleet-sync` | `33 22 * * *` | no_agent | `agent-steadfaste-fleet-sync.sh` | origin |
 | `threat-pipeline` | `0 5 * * *` | no_agent | `nginx-threat-pipeline.sh` | origin |
 | `model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `langfuse-health-watchdog` | `0 * * * *` | no_agent | `langfuse-health-watchdog.py` | origin |

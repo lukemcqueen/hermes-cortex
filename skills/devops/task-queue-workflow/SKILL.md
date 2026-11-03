@@ -3,7 +3,7 @@ name: task-queue-workflow
 version: 1.0.0
 category: devops
 description: "Use when claiming task-db slices under task model v3."
-author: Hermes Cortex
+author: Steadfaste Fleet
 platforms: [linux, macos]
 metadata:
   hermes:

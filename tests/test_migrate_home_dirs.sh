@@ -17,35 +17,35 @@ check(){ if eval "$2"; then echo "PASS: $1"; else echo "FAIL: $1"; fails=$((fail
 
 # 1. happy path: move (not copy) + correct symlink targets + content preserved
 H="$TMP/h1"; rc=0
-( export HOME="$H"; mkdir -p "$HOME/hermes-cortex/sub" "$HOME/.hermes-cortex/brain"
-  echo m > "$HOME/hermes-cortex/marker"; echo y > "$HOME/.hermes-cortex/brain/a"
+( export HOME="$H"; mkdir -p "$HOME/steadfaste-fleet/sub" "$HOME/.steadfaste-fleet/brain"
+  echo m > "$HOME/steadfaste-fleet/marker"; echo y > "$HOME/.steadfaste-fleet/brain/a"
   cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ); rc=$?
 check "happy migrate exits 0 (rc=$rc)" "[ '$rc' = '0' ]"
-check "old paths are symlinks (moved, not copied)" "[ -L '$H/hermes-cortex' ] && [ -L '$H/.hermes-cortex' ]"
+check "old paths are symlinks (moved, not copied)" "[ -L '$H/steadfaste-fleet' ] && [ -L '$H/.steadfaste-fleet' ]"
 check "symlink targets resolve to new dirs" \
-  "[ \"\$(readlink '$H/hermes-cortex')\" = '$H/steadfaste-fleet' ] && [ \"\$(readlink '$H/.hermes-cortex')\" = '$H/.steadfaste-fleet' ]"
+  "[ \"\$(readlink '$H/steadfaste-fleet')\" = '$H/steadfaste-fleet' ] && [ \"\$(readlink '$H/.steadfaste-fleet')\" = '$H/.steadfaste-fleet' ]"
 check "new dirs exist" "[ -d '$H/steadfaste-fleet' ] && [ -d '$H/.steadfaste-fleet' ]"
-check "content preserved (reachable through the symlink)" "[ -f '$H/hermes-cortex/marker' ] && [ -f '$H/.hermes-cortex/brain/a' ]"
+check "content preserved (reachable through the symlink)" "[ -f '$H/steadfaste-fleet/marker' ] && [ -f '$H/.steadfaste-fleet/brain/a' ]"
 
 # 2. idempotency: same fake home, re-run is a clean no-op
 rc=0
 ( export HOME="$H"; cd "$HOME"; bash "$SCRIPT" >/dev/null 2>&1 ); rc=$?
 check "idempotent re-run exits 0 (rc=$rc)" "[ '$rc' = '0' ]"
-check "re-run left symlinks + new dirs intact" "[ -L '$H/hermes-cortex' ] && [ -d '$H/steadfaste-fleet' ]"
+check "re-run left symlinks + new dirs intact" "[ -L '$H/steadfaste-fleet' ] && [ -d '$H/steadfaste-fleet' ]"
 
 # 3. unexpected-symlink guard: ONE run; the exit code and the message come from
 #    the SAME invocation.
 H="$TMP/h2"; rc=0
 ( export HOME="$H"; mkdir -p "$HOME/elsewhere"
-  ln -s "$HOME/elsewhere" "$HOME/hermes-cortex"
+  ln -s "$HOME/elsewhere" "$HOME/steadfaste-fleet"
   cd "$HOME"; bash "$SCRIPT" >"$TMP/out2" 2>&1 ); rc=$?
 check "unexpected-symlink guard exits non-zero (rc=$rc)" "[ '$rc' != '0' ]"
 check "unexpected-symlink message names the target" "grep -q 'symlink to' '$TMP/out2'"
 
 # 4. cwd-inside-source guard refuses with a non-zero exit
 H="$TMP/h3"; rc=0
-( export HOME="$H"; mkdir -p "$HOME/hermes-cortex"
-  cd "$HOME/hermes-cortex"; bash "$SCRIPT" >"$TMP/out3" 2>&1 ); rc=$?
+( export HOME="$H"; mkdir -p "$HOME/steadfaste-fleet"
+  cd "$HOME/steadfaste-fleet"; bash "$SCRIPT" >"$TMP/out3" 2>&1 ); rc=$?
 check "cwd-inside-source exits non-zero (rc=$rc)" "[ '$rc' != '0' ]"
 check "cwd-inside-source message names the remedy" "grep -q 'stable workdir' '$TMP/out3'"
 

@@ -33,7 +33,7 @@ import sys
 
 SCRIPT = os.environ.get(
     "NVA_AUDIT_PATH",
-    os.path.expanduser("~/hermes-cortex/ops/scripts/manage/agent-no-verify-audit.py"),
+    os.path.expanduser("~/steadfaste-fleet/ops/scripts/manage/agent-no-verify-audit.py"),
 )
 SANDBOX = "/tmp/nva-dedup-test"
 

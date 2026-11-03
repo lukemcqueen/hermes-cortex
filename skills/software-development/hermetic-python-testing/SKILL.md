@@ -3,7 +3,7 @@ name: hermetic-python-testing
 description: "Write Python modules with hermetic unit-test seams. Covers sandboxed inputs AND live-side-effect output defaults (telegram/webhook/mail routes)."
 version: 1.0.0
 category: software-development
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -16,7 +16,7 @@ metadata:
 
 Write Python modules so their unit tests never touch real state, real
 credentials, or real network — and prove it. Born from telegram_notify S2
-(2026-08-08): tests silently wrote to `~/.hermes-cortex/state/` and read the
+(2026-08-08): tests silently wrote to `~/.steadfaste-fleet/state/` and read the
 real `~/.hermes/.env` until the module was restructured.
 
 ## When to Use
@@ -43,7 +43,7 @@ def _state_file() -> Path:
 Import-time constants freeze the path for the whole process. Tests that set
 env vars AFTER import (the standard `monkeypatch.setenv` pattern) silently
 read/write the real location. Symptom to watch for: a module's real log file
-or state JSON appears in `~/.hermes-cortex/state/` after a test run.
+or state JSON appears in `~/.steadfaste-fleet/state/` after a test run.
 
 ### 2. Expose seams for clock and send, then monkeypatch them
 

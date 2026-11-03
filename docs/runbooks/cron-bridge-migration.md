@@ -44,14 +44,14 @@ install / doctor context does not have.
 ## Procedure (per host)
 
 ```bash
-cd ~/hermes-cortex && git pull --ff-only
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh          # deploys the bridge scripts
+cd ~/steadfaste-fleet && git pull --ff-only
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh          # deploys the bridge scripts
 ```
 
 1. **Generate the units** from the host's own `jobs.json`:
    ```bash
-   python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py --dry-run   # inspect first
-   python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py
+   python3 ~/steadfaste-fleet/ops/scripts/cortex-bus-bridge-generate.py --dry-run   # inspect first
+   python3 ~/steadfaste-fleet/ops/scripts/cortex-bus-bridge-generate.py
    ```
    It skips LLM / chained / non-translatable jobs and only emits simple
    `no_agent` ones.
@@ -79,7 +79,7 @@ bash ~/hermes-cortex/ops/scripts/cortex-update.sh          # deploys the bridge 
    #    (timer active AND still present in Hermes jobs.json)
    # b) no job is owned by neither (silently stopped)
    # c) the doctor is healthy
-   python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet
+   python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
    ```
 
 ## Guards (why this is safe now)
@@ -111,7 +111,7 @@ all four requests answered only at the 30-minute sweep timeout
   REMOVES the Hermes entry, so the job is gone from `jobs.json` and the
   generator will never emit that unit again. Repair in place:
   ```bash
-  python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-generate.py --repair
+  python3 ~/steadfaste-fleet/ops/scripts/cortex-bus-bridge-generate.py --repair
   systemctl --user daemon-reload
   ```
   Idempotent: a second run reports `0 unit(s) given`.
@@ -128,7 +128,7 @@ all four requests answered only at the 30-minute sweep timeout
   `enable` alone (or leave it disabled) for jobs paused for a reason.
 - **Testing a bridge unit can deliver for real.** The runner takes
   `--deliver <target>`; a `local` target saves to
-  `~/.hermes-cortex/cron-output/<job>.log` and never sends, while anything
+  `~/.steadfaste-fleet/cron-output/<job>.log` and never sends, while anything
   else sends Telegram. Never let a test run the wrapper without an explicit
   `--deliver local` + temp `CORTEX_DEPLOY_HOME`.
 - **A silent watchdog proves nothing.** Exit 0 with empty stdout is the

@@ -3,7 +3,7 @@ name: enforcement-change-safety
 version: 1.1.0
 category: devops
 description: "Use before enforcement code changes or shared-repo commits."
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -64,7 +64,7 @@ binary on macOS, or every commit on Titus blocks:
 
 - **macOS has no `~/.local/bin` in PATH by default** — `command -v score-cycle`
   fails even when installed. Add the canonically-deployed path as a search
-  candidate: `$HOME/.hermes-cortex/tools/loop-governance/score_cycle.py`
+  candidate: `$HOME/.steadfaste-fleet/tools/loop-governance/score_cycle.py`
   (cortex-update.sh registers it there on BOTH Linux and macOS). Test the search
   with an emptied PATH to prove the deployed-path candidate resolves.
 - **macOS has no `timeout` command** (coreutils provides `gtimeout`). Resolve
@@ -146,9 +146,9 @@ its author panics ("my edits vanished").
 `tests/test_runtime/test_governance_bypass.py::TestHasGovernanceLock`
 (corrupted/deleted lock → False) FAILS when your session holds an active
 governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
-`.hermes-cortex/.governance-lock` written by `begin_change`, so it returns True.
+`.steadfaste-fleet/.governance-lock` written by `begin_change`, so it returns True.
 
-- Prove contamination: `mv .hermes-cortex/.governance-lock /tmp/x` → tests pass
+- Prove contamination: `mv .steadfaste-fleet/.governance-lock /tmp/x` → tests pass
   → `mv` back. Phase 1 primary lock is separate, so your write gate survives.
 - Never call these a regression while mid-lock.
 
@@ -164,7 +164,7 @@ repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
 
 - `begin_change` creates a PENDING cycle. The doctor distinguishes (since
   2026-08-05, commit 63981498): a cycle whose task_id has a LIVE lock file
-  (`~/.hermes-cortex/state/.governance-*.json`, status executing) is the
+  (`~/.steadfaste-fleet/state/.governance-*.json`, status executing) is the
   CURRENT task → reported INFO "score at end_change", NOT a FAIL. A cycle
   whose task_id has NO lock is a LEAK (you moved on without scoring) → FAIL.
   Green is achievable mid-lock; the current task's own cycle no longer fails
@@ -197,7 +197,7 @@ repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
 **Symptom:** `git pull --rebase` replays your commit WITHOUT running the
 pre-commit hook, so the pre-commit sentinel (`.git/.pre-commit-ran`) is never
 written. The post-commit hook then logs the NEW rebased hash in
-`~/.hermes-cortex/state/no-verify-log.json` as a `--no-verify` commit, and
+`~/.steadfaste-fleet/state/no-verify-log.json` as a `--no-verify` commit, and
 pre-push BLOCKS your push: "commit X was made with --no-verify". Cherry-pick
 and revert hit the same false positive. It's a FALSE POSITIVE — the commit
 went through the hook originally; the replay just bypassed it mechanically.
@@ -226,7 +226,7 @@ producing a new hash NOT in the log; then push passes. Leave the old dangling
 entry — it can never match a future push range, and deleting audit entries
 looks like tampering.
 
-**Do NOT:** `rm ~/.hermes-cortex/state/no-verify-log.json` to unblock a push —
+**Do NOT:** `rm ~/.steadfaste-fleet/state/no-verify-log.json` to unblock a push —
 that is exactly the audit-trail tampering the pre-push hook exists to catch.
 
 **Verify hook behavior with the 8-path matrix** before shipping any hook
@@ -237,7 +237,7 @@ builds a scratch repo, installs the real hooks, and runs all eight paths
 
 ## Rule 6: Hooks Run in EVERY Repo — Never Assume the Cortex Tree
 
-`core.hooksPath ~/.hermes-cortex/hooks` is set **globally** — the pre-commit/
+`core.hooksPath ~/.steadfaste-fleet/hooks` is set **globally** — the pre-commit/
 pre-push hooks fire in every git repo on the host (client-repo-a, client-repo-b,
 client repos, any project without the cortex `ops/` tree). A hook that builds
 a path on `$REPO_ROOT` (the repo being committed IN) and assumes cortex
@@ -245,7 +245,7 @@ layout breaks EVERY commit in those repos — even one-line test fixes.
 
 **Real regression (2026-08-04, Esther, commit `faa0e929`):** the adversarial
 gate hard-resolved `ADVERSARIAL_SCRIPT="$REPO_ROOT/ops/scripts/quality/adversarial-verify.py"`.
-That path exists only in ~/hermes-cortex itself. Project repos have no `ops/`
+That path exists only in ~/steadfaste-fleet itself. Project repos have no `ops/`
 tree → fail-closed block on every commit (Titus hit it on client-repo-a within
 hours). Fix `72d6cdc3`: candidate loop with deployed-path fallback.
 
@@ -254,7 +254,7 @@ hours). Fix `72d6cdc3`: candidate loop with deployed-path fallback.
 ```bash
 ADVERSARIAL_SCRIPT=""
 for candidate in "$REPO_ROOT/ops/scripts/quality/adversarial-verify.py" \
-                 "$HOME/.hermes-cortex/scripts/adversarial-verify.py"; do
+                 "$HOME/.steadfaste-fleet/scripts/adversarial-verify.py"; do
   if [[ -f "$candidate" ]]; then
     ADVERSARIAL_SCRIPT="$candidate"
     break
@@ -266,7 +266,7 @@ if [[ -z "$ADVERSARIAL_SCRIPT" ]]; then
 fi
 ```
 
-- `$HOME/.hermes-cortex/scripts/` is where `cortex-update.sh` registers every
+- `$HOME/.steadfaste-fleet/scripts/` is where `cortex-update.sh` registers every
   deployed tool on BOTH Linux and macOS — always include it as the fallback.
 - `$REPO_ROOT` (from `git rev-parse --show-toplevel`) is the repo being
   committed IN — only valid as the FIRST candidate, never the only path.
@@ -277,7 +277,7 @@ fi
 **Verify BEFORE shipping a hook change (all three):**
 1. Commit in the cortex repo → repo-local candidate wins (scan runs)
 2. Commit in a scratch project repo with NO `ops/` tree → deployed copy found
-   (`git init /tmp/proj && git config core.hooksPath ~/.hermes-cortex/hooks`)
+   (`git init /tmp/proj && git config core.hooksPath ~/.steadfaste-fleet/hooks`)
 3. Temporarily move the deployed tool aside → commit still blocked (exit 1),
    then restore
 
@@ -335,7 +335,7 @@ are needed together, or the fix breaks commits:
    installed.
 
 2. **Carve out the hooksPath guard**: pre-commit-score and pre-push-pull both
-   fail CLOSED when `core.hooksPath != ~/.hermes-cortex/hooks` (5ab54547).
+   fail CLOSED when `core.hooksPath != ~/.steadfaste-fleet/hooks` (5ab54547).
    That guard would block EVERY commit in a pinned repo (their hooksPath IS
    their own dir). The carve-out passes when the hooks dir carries any
    cortex-managed hook (governance IS running there); the tripwire still
@@ -387,13 +387,13 @@ Two Luke corrections (2026-08-05) about gate blast radius. The pre-commit and
 pre-push hooks fire in EVERY repo on the host (Rule 6) — so any NEW gate added
 to them must be doubly scoped or it will block innocent work in project repos:
 
-1. **Repo scope**: only fire in the hermes-cortex repo itself.
+1. **Repo scope**: only fire in the steadfaste-fleet repo itself.
    ```bash
    _REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
-   [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]   # CORTEX_REPO_TOP=${HOME}/hermes-cortex
+   [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]]   # CORTEX_REPO_TOP=${HOME}/steadfaste-fleet
    ```
    Non-cortex repos (client-repo-a, client-repo-b, client-web-app, pinned repos,
-   ...) must NEVER run the hermes-cortex doctor — a failing cortex state must
+   ...) must NEVER run the steadfaste-fleet doctor — a failing cortex state must
    not block a client repo's push.
 2. **Orchestrator scope**: only orchestrator hosts run orchestrator-level
    gates. Reuse `_detect_orch()` (hostname moses|esther AND home
@@ -407,7 +407,7 @@ before the repo guard existed keeps firing in every repo, and one stale cortex
 state then blocks ordinary commits in unrelated projects while telling the user
 to run a cortex deploy they have no reason to run. The failure mode is
 structural and greppable: the gate sits ABOVE the `IS_CORTEX_REPO` assignment
-(`REPO_ROOT == ${HOME}/hermes-cortex`), so it is unscoped BY CONSTRUCTION.
+(`REPO_ROOT == ${HOME}/steadfaste-fleet`), so it is unscoped BY CONSTRUCTION.
 
 - When touching any shared hook, walk every `echo "❌ …"` block and classify it:
   (a) repo-scoped, (b) orchestrator-scoped, or (c) a genuinely universal quality
@@ -417,8 +417,8 @@ structural and greppable: the gate sits ABOVE the `IS_CORTEX_REPO` assignment
   in (a): no other repo can act on that divergence.
 - If the guard is computed late, either move it above the gate or inline the
   cheap equivalent (`_TOP=$(git rev-parse --show-toplevel)` +
-  `[[ "$_TOP" == "${HOME}/hermes-cortex" ]]`) rather than reordering a long
-  script. Use the SAME `${HOME}/hermes-cortex` comparison the other cortex-only
+  `[[ "$_TOP" == "${HOME}/steadfaste-fleet" ]]`) rather than reordering a long
+  script. Use the SAME `${HOME}/steadfaste-fleet` comparison the other cortex-only
   gates use, so there is one scoping idiom to audit.
 - Prove it by real execution, not inspection: run the deployed hook from a
   throwaway `git init` repo and assert the gate does NOT fire (the hook still
@@ -431,7 +431,7 @@ Titus was blocked committing `apps/api/tests/test_ipi_similarity.py` in a
 project repo. The config-driven guard (docs/orchestrator-only-paths.txt read
 from HEAD) is the correct repo-aware design: "no config file = no
 restrictions". The hardcoded array must be wrapped in the same
-`if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]` gate, and any
+`if [[ "$REPO_ROOT" == "${HOME}/steadfaste-fleet" ]]` gate, and any
 cortex-specific path it protects that the config misses (e.g.
 `^core/governance/tests/`) added explicitly rather than via unanchored
 patterns.
@@ -499,11 +499,11 @@ failure — empty string + skip, never `|| echo 0` + delete.**
 
 **Mandatory dogfood in the pre-push gate (Luke: "make this MANDATORY — I
 thought you did already"):** a push that touches ANY non-doc file in
-hermes-cortex runs the FULL dogfood cycle (pull → cortex-update → doctor →
+steadfaste-fleet runs the FULL dogfood cycle (pull → cortex-update → doctor →
 verify) BEFORE landing. The gate invokes `cortex-dogfood.sh --quiet` itself
 so the step cannot be forgotten:
 
-- **Scope (both Luke corrections 2026-08-05):** hermes-cortex repo ONLY
+- **Scope (both Luke corrections 2026-08-05):** steadfaste-fleet repo ONLY
   (dogfood = redeployment of HC — irrelevant to client repos) AND orchestrator
   host only. Docs (`*.md`, `docs/`) exempt — no deployed state changes.
 - **Trigger is INVERTED, not an allowlist:** fire on every non-doc file
@@ -547,9 +547,9 @@ Fix pattern (both layers or the bug persists):
 
 **Topology for diagnosis:** live memory = `~/.hermes/memories/MEMORY.md`
 (Hermes resolves `get_hermes_home()/memories`, default `HERMES_HOME=~/.hermes`).
-The deploy target `~/.hermes-cortex/memories/MEMORY.md` is a dead seed copy on
-most hosts — live only when `HERMES_HOME=$HOME/.hermes-cortex` (commented
-option in `hermes-cortex.env.example`) or `~/.hermes/memories` is symlinked to
+The deploy target `~/.steadfaste-fleet/memories/MEMORY.md` is a dead seed copy on
+most hosts — live only when `HERMES_HOME=$HOME/.steadfaste-fleet` (commented
+option in `steadfaste-fleet.env.example`) or `~/.hermes/memories` is symlinked to
 it. Check which path the host loads BEFORE diagnosing "memory wiped": a
 checksum "fix" on the dead copy is a no-op; on the live copy it is data loss.
 
@@ -739,11 +739,11 @@ other conclude the system is broken. When touching either block message:
   start while its body was byte-identical to the repo source (`diff` empty after stripping the
   provenance header). That false positive fires on every deploy and can only be "cleared" by a
   restart that changes nothing. Compare what the process LOADED with what is on disk instead: the
-  loop-governance daemon writes a startup stamp (`~/.hermes-cortex/state/loop-gov-daemon.json`) with
+  loop-governance daemon writes a startup stamp (`~/.steadfaste-fleet/state/loop-gov-daemon.json`) with
   its pid and the sha256 of its own module, and the doctor's `loop-gov daemon` check compares that
   hash with the file's hash NOW. For a process that records nothing about itself, `ps -o lstart=` vs
   the file's mtime is the FALLBACK — report it as COULD NOT VERIFY by content, never as proof.
-  Resolve the deployed path from the deploy manifest (`~/.hermes-cortex/deploy-manifest.tsv`) rather
+  Resolve the deployed path from the deploy manifest (`~/.steadfaste-fleet/deploy-manifest.tsv`) rather
   than guessing it. Re-run after every later deploy: a module edited AFTER the last restart needs
   ANOTHER restart, so "verified loaded" is a property of a moment, never of a host. Ship it as a
   scripted capture (content parity + the process's own recorded hash) so the next agent proves it in
@@ -972,7 +972,7 @@ def load(name, path):
     return mod
 
 old = load("enf_old", "/home/<user>/.hermes/plugins/governance-enforcer/__init__.py")   # DEPLOYED
-new = load("enf_new", "/home/<user>/hermes-cortex/plugins/governance-enforcer/__init__.py")  # REPO
+new = load("enf_new", "/home/<user>/steadfaste-fleet/plugins/governance-enforcer/__init__.py")  # REPO
 for case in FIXTURES:
     assert (old.gate(case) is None) == (new.gate(case) is None), case
 ```
@@ -1165,7 +1165,7 @@ enforcement working as intended.
 ## Rule 27: A Close's Receipt Also Authorises the Push — Do Not Re-Gate It
 
 A push with NO active lock is LEGITIMATE when a CLEAN review receipt covers its range. The close
-writes that receipt (`~/.hermes-cortex/state/.reviewed-<repo_slug>-<tip>.json`) and the receipt is
+writes that receipt (`~/.steadfaste-fleet/state/.reviewed-<repo_slug>-<tip>.json`) and the receipt is
 bound to the reviewed CONTENT — so it authorises exactly the range that was reviewed and closed, and
 nothing else. Treat a lock-free push that names a receipt as the gate working, never as a bypass:
 adding a lock-carrier cycle back, or "fixing" the allowance, re-introduces real friction (one

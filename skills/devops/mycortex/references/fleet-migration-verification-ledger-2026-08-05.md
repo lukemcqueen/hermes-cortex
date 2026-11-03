@@ -15,7 +15,7 @@ preserving in any similar fleet migration:
   lets every fleet host run the same script safely (Esther's host verified
   exit-0 on re-run).
 - **Non-destructive by default**: old container is STOPPED, never removed;
-  dump kept in `~/.hermes-cortex/backups/gbrain-migration-<ts>.dump`.
+  dump kept in `~/.steadfaste-fleet/backups/gbrain-migration-<ts>.dump`.
   Rollback = `docker start gbrain-postgres` + revert the .env lines.
 - **`--dry-run` and `--yes` flags** — dry-run prints the plan and exits; the
   interactive confirm can be skipped for unattended fleet EXEC.
@@ -61,7 +61,7 @@ explicitly. The fleet migration script now does this automatically (step 4b).
 
 ## 3. Dashboard unit consolidation (unrelated but same session)
 
-`hermes-cortex-dashboard.service` crash-looped ("Address already in use") for
+`steadfaste-fleet-dashboard.service` crash-looped ("Address already in use") for
 weeks because an OLD duplicate unit `cortex-dashboard.service` (different
 name, same server.py) had been running since Jul 23 and owned port 8901.
 The doctor's crash-loop check only names the unit in auto-restart, not the
@@ -72,7 +72,7 @@ both names so systemd forgets the failed state.
 
 ## 4. `hc send` self-test gate: HC_AGENT default is "moses"
 
-`hc.py`'s `load_config()` reads `HC_AGENT` from env or `~/.hermes-cortex/hc.env`,
+`hc.py`'s `load_config()` reads `HC_AGENT` from env or `~/.steadfaste-fleet/hc.env`,
 falling back to `DEFAULT_AGENT = "moses"`. On ANY non-moses host (esther,
 joseph, ...), a plain `hc send <self> <subject> <body>` is **REFUSED** with
 "requires --self-tested" even when sending to yourself — the gate compares

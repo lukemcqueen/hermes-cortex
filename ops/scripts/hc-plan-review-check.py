@@ -10,7 +10,7 @@ into a commit gate: begin_change -> plan -> adversarial-review.py --cycle-id N
 
 A "slice" is a change worth reviewing: it touches a source/config file AND is
 either multi-file or >50 added+deleted lines. Trivial single-file edits, docs,
-and hermes-cortex's own adversarial-scan commits are exempt (the HC repo is
+and steadfaste-fleet's own adversarial-scan commits are exempt (the HC repo is
 already covered by the A2/A4 scan; this gate targets project repos).
 
 Skipped (rc 0) when there is no active governance session -- an ungoverned or
@@ -33,8 +33,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-GOV_DIR = Path.home() / ".hermes-cortex" / "state"
-DEFAULT_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+GOV_DIR = Path.home() / ".steadfaste-fleet" / "state"
+DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 
 # A change is a "slice" when it touches a source/config file AND (multiple files
 # OR > this many added+deleted lines). Single trivial files pass without review.
@@ -50,7 +50,7 @@ EXIT_CANNOT_VERIFY = 3
 
 _HCRC_PATHS = (
     Path(__file__).resolve().parent / "hc-reflexion-check.py",
-    Path.home() / ".hermes-cortex" / "scripts" / "hc-reflexion-check.py",
+    Path.home() / ".steadfaste-fleet" / "scripts" / "hc-reflexion-check.py",
 )
 
 
@@ -154,12 +154,12 @@ def main() -> int:
 
     repo_sl = a.repo_root.strip() or _git_toplevel()
     slug = hcrc.repo_slug()
-    if slug == "hermes-cortex":
+    if slug == "steadfaste-fleet":
         # self-contained HC-repo exemption, matching the pre-commit hook's
-        # IS_CORTEX_REPO scope: hermes-cortex is covered by its own close-time
+        # IS_CORTEX_REPO scope: steadfaste-fleet is covered by its own close-time
         # adversarial review (A2/A4 on staged scripts), so this gate targets
         # project repos only. Return early regardless of caller.
-        print("PASS — hermes-cortex repo (covered by its own close review)")
+        print("PASS — steadfaste-fleet repo (covered by its own close review)")
         return EXIT_PASS
     session_id = a.session.strip() or hcrc.active_session_id(slug)
 
@@ -204,7 +204,7 @@ def main() -> int:
           f"cycle {cycle_id} has no recorded adversarial plan review.", file=sys.stderr)
     print("  Review the plan for this slice BEFORE implementing it. This is a command you", file=sys.stderr)
     print("  can run yourself — no orchestrator, no second governance lock needed:", file=sys.stderr)
-    print(f"    python3 ~/.hermes-cortex/scripts/adversarial-review.py \\", file=sys.stderr)
+    print(f"    python3 ~/.steadfaste-fleet/scripts/adversarial-review.py \\", file=sys.stderr)
     print(f"      --cycle-id {cycle_id} --material-file <your-plan.md> --review \\", file=sys.stderr)
     print(f"      --reviewer-id plan-<repo-slug>", file=sys.stderr)
     print("  (--material-file reads the plan from a file; pass the plan CONTENT, not a", file=sys.stderr)

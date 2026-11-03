@@ -1,4 +1,4 @@
-# Hermes Cortex — nginx Security Deploy Guide
+# Steadfaste Fleet — nginx Security Deploy Guide
 
 This directory holds everything needed to deploy and maintain nginx
 security configs: reverse proxy, rate limiting, IP blocking, and
@@ -13,7 +13,7 @@ fail2ban filters.
 | **nginx** | Required. The deploy scripts install configs and reload nginx. |
 | **fail2ban** | Required for automated bans. The pipeline integrates with fail2ban filters. |
 | **sudoers entry** | Passwordless sudo for `/usr/local/sbin/install-nginx-full.sh` + nginx commands. Not needed for the Python script if the user has root access via other means. |
-| **Env file** | `~/hermes-cortex/.env` (gitignored) — set your `CORTEX_*` vars. The deploy scripts auto-source this. See `.env.example` for all options. |
+| **Env file** | `~/steadfaste-fleet/.env` (gitignored) — set your `CORTEX_*` vars. The deploy scripts auto-source this. See `.env.example` for all options. |
 
 **Agents without nginx/fail2ban** should skip this pipeline entirely.
 The scanner silently exits when nginx logs aren't found, but there's
@@ -29,7 +29,7 @@ no benefit to running it on a host without nginx.
 | `nginx-badbots.conf` | **Input:** fail2ban filter for archive scanners + `/storage/` crawling |
 | `install-nginx-full.sh` | **Full deploy** bash script — nginx configs + SSL + blocked IPs + fail2ban. Used for fresh installs and full deploys. Daily pipeline uses `deploy-blocked-ips.sh` for incremental updates. |
 | `hermes-services-apply.py` | **Primary** Python deploy script — auto-discovers SSL, supports `--dry-run`, handles port prefixes and `allow-ips-manual.conf` |
-| `~/hermes-cortex/.env.example` | **Env template** — copy to `.env`, set `CORTEX_SSL_*` vars. Gitignored, auto-sourced by deploy scripts. |
+| `~/steadfaste-fleet/.env.example` | **Env template** — copy to `.env`, set `CORTEX_SSL_*` vars. Gitignored, auto-sourced by deploy scripts. |
 | `allow-ips-manual.conf` | **Per-machine** (not in git): manual allow list at `/etc/nginx/allow-ips-manual.conf` — IPs listed here override blocked_ips.conf |
 | `README.md` | This file |
 
@@ -40,8 +40,8 @@ no benefit to running it on a host without nginx.
 ### 1. Configure the env file
 
 ```bash
-cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
-# Edit ~/hermes-cortex/.env with your cert paths, port prefix, etc.
+cp ~/steadfaste-fleet/.env.example ~/steadfaste-fleet/.env
+# Edit ~/steadfaste-fleet/.env with your cert paths, port prefix, etc.
 ```
 
 The deploy scripts auto-source this file — no need to source it manually.
@@ -61,15 +61,15 @@ sudo chmod 440 /etc/sudoers.d/hermes-security
 sudo visudo -cf /etc/sudoers.d/hermes-security
 ```
 
-No `env_keep` needed — all deploy scripts auto-source `~/hermes-cortex/.env`
+No `env_keep` needed — all deploy scripts auto-source `~/steadfaste-fleet/.env`
 internally. Set your `CORTEX_*` vars in the env file once, and every deploy picks
 them up automatically.
 
 ### 4. Ensure input files exist
 
 ```bash
-touch ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add
-touch ~/hermes-cortex/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf
+touch ~/steadfaste-fleet/ops/install/deploy/nginx/blocked_ips.add
+touch ~/steadfaste-fleet/ops/install/deploy/fail2ban/filter.d/nginx-badbots.conf
 ```
 
 ### 5. Create the manual allow list on each machine (recommended)
@@ -88,7 +88,7 @@ EOF
 ### Preferred: Python deploy script
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 
 # Dry-run first to see what would change
 python3 ops/install/deploy/nginx/hermes-services-apply.py --dry-run
@@ -124,7 +124,7 @@ If the legacy script fails with `nginx: [emerg] unexpected end of file` in `bloc
 the config has bare IPs (missing `deny ... ;` wrapper). Fix with the helper script:
 
 ```bash
-python3 ~/hermes-cortex/ops/install/deploy/nginx/fix-blocked-ips.py
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/fix-blocked-ips.py
 sudo cp /tmp/blocked_ips.conf.new /etc/nginx/blocked_ips.conf   # Linux
 # sudo cp /tmp/blocked_ips.conf.new /usr/local/etc/nginx/blocked_ips.conf # macOS
 sudo /usr/local/sbin/install-nginx-full.sh
@@ -137,7 +137,7 @@ sudo /usr/local/sbin/install-nginx-full.sh
 Only needed if your pipeline cron references `/usr/local/sbin/install-nginx-full.sh`:
 
 ```bash
-sudo cp ~/hermes-cortex/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
+sudo cp ~/steadfaste-fleet/ops/install/deploy/nginx/install-nginx-full.sh /usr/local/sbin/install-nginx-full.sh
 sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 ```
 
@@ -145,7 +145,7 @@ sudo chmod 755 /usr/local/sbin/install-nginx-full.sh
 
 ```bash
 # Python script shows what it would do
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
 # Config valid?
 sudo nginx -t && echo "✓ Config valid"
 ```
@@ -169,9 +169,9 @@ work until certs are provided.
 
 ```bash
 # 1. Copy the env template (stays in repo, never goes to nginx)
-cp ~/hermes-cortex/.env.example ~/hermes-cortex/.env
+cp ~/steadfaste-fleet/.env.example ~/steadfaste-fleet/.env
 # 2. Edit with your settings
-vim ~/hermes-cortex/.env
+vim ~/steadfaste-fleet/.env
 
 # 2. Edit with your cert paths or domain
 #  CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/example.com/fullchain.pem
@@ -179,8 +179,8 @@ vim ~/hermes-cortex/.env
 #  CORTEX_SSL_DOMAIN=example.com
 
 # 3. Deploy (auto-sources the env file internally)
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py --dry-run
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py
 ```
 
 ### Env var reference
@@ -237,7 +237,7 @@ Rate limited to 6 requests/minute per IP.
 Append bare IPs (one per line) to `blocked_ips.add`:
 
 ```bash
-echo "1.2.3.4" >> ~/hermes-cortex/ops/install/deploy/nginx/blocked_ips.add
+echo "1.2.3.4" >> ~/steadfaste-fleet/ops/install/deploy/nginx/blocked_ips.add
 ```
 
 ### Update fail2ban filters
@@ -248,14 +248,14 @@ Edit `nginx-badbots.conf` with new `failregex` patterns as needed.
 
 ```bash
 # Preferred
-python3 ~/hermes-cortex/ops/install/deploy/nginx/hermes-services-apply.py
+python3 ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-services-apply.py
 
 # Legacy (still works for IPs, but doesn't handle allow-ips-manual or port prefix)
 sudo /usr/local/sbin/install-nginx-full.sh
 ```
 
 The deploy script does **all** of this atomically:
-1. Backs up existing configs to `/etc/hermes-cortex-backups/$(date)/`
+1. Backs up existing configs to `/etc/steadfaste-fleet-backups/$(date)/`
 2. Deploys fresh `hermes-services.conf` + `hermes-zone-defs.conf`
 3. Removes any duplicate `include hermes-zone-defs.conf` lines
 4. Appends new IPs from `blocked_ips.add` — validates IPv4 format, rejects private/reserved ranges, skips duplicates, **strips any IPs listed in `allow-ips-manual.conf`**
@@ -288,7 +288,7 @@ legacy symlink that causes issues. Run this checklist once after pulling:
 ### 1. Remove the legacy symlink
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 # Check if deploy is a symlink (not a real directory)
 ls -la deploy 2>/dev/null
 # If it shows: deploy -> ops/install/deploy
@@ -303,7 +303,7 @@ the canonical files in `ops/install/deploy/nginx/` — do not add the slash.
 ### 2. Verify the fix script reads from the canonical path
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 grep "source = os.path.join" ops/install/deploy/nginx/fix-blocked-ips.py
 # Should show: ops/install/deploy/nginx/blocked_ips.add
 # If the old code still shows deploy/nginx/blocked_ips.add, pull the latest:
@@ -313,7 +313,7 @@ git pull origin main
 ### 3. Pull the latest IPs and deploy
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull origin main
 sudo -n ops/install/deploy/nginx/fix-blocked-ips.py
 # Expect: "✓ Generated: 14000+ blocked IPs"
@@ -328,7 +328,7 @@ bash ops/scripts/cortex-update.sh
 ### 5. Verify no leftover symlinks
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 find . -maxdepth 2 -name 'deploy' -type l 2>/dev/null && \
  echo "⚠ Legacy symlink still exists" || echo "✓ Clean"
 ```

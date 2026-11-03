@@ -8,7 +8,7 @@ description: >-
   processes it.
 version: 1.0.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 created_from_session: cortex-bus-architecture-survey
 related_skills:
   - survey-before-action
@@ -306,14 +306,14 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
 
 2. **Check handler state file** — The handler logs processed correlation_ids:
    ```bash
-   cat ~/.hermes-cortex/state/agent-message-state.json
+   cat ~/.steadfaste-fleet/state/agent-message-state.json
    ```
    If your correlation_id is in `processed_ids` → handler ran. The gap is in `send_bus_result`.
 
 3. **Test `bus_send` independently** — If the handler ran but no reply came, test whether the agent's `bus_send` works:
    ```bash
    python3 -c "
-   import sys; sys.path.insert(0, '$HOME/hermes-cortex/ops/scripts')
+   import sys; sys.path.insert(0, '$HOME/steadfaste-fleet/ops/scripts')
    from lib.cortex_bus import bus_send
    r = bus_send('inbox_orchestrator', {'from':'test','subject':'TEST','body':{},
                                 'correlation_id':'diag'})
@@ -385,7 +385,7 @@ When a new cross-agent feature needs every agent to support it:
 Moses: hc exec esther cortex-doctor.py --json
   → sends EXEC to inbox_esther
   → handler picks up within 5 min
-  → runs ~/.hermes-cortex/scripts/cortex-doctor.py --json
+  → runs ~/.steadfaste-fleet/scripts/cortex-doctor.py --json
   → sends EXEC_RESULT back to inbox_moses
   → hc exec polls and displays result
 ```
@@ -400,7 +400,7 @@ When fixing a port number, URL, env var name, or file path — **do not fix
 just the file you're editing**. Search the entire repo first:
 
 ```bash
-grep -rn "<old-value>" ~/hermes-cortex \
+grep -rn "<old-value>" ~/steadfaste-fleet \
   --include="*.py" --include="*.md" --include="*.sh" \
   --include="*.yaml" --include="*.conf" \
   2>/dev/null | grep -v ".git/" | grep -v "__pycache__"

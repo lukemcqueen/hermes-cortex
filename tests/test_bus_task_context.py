@@ -18,7 +18,7 @@ import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 # Mirror the deployed layout: the builder lives next to the MCP servers on
-# the fleet (~/.hermes-cortex/scripts/); in-repo it's ops/scripts/. Both
+# the fleet (~/.steadfaste-fleet/scripts/); in-repo it's ops/scripts/. Both
 # must be importable so the direct import works in tests and in prod.
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 _SPEC = importlib.util.spec_from_file_location(

@@ -71,7 +71,7 @@ end_change rejected — no cycle auto-created for this tool type. Force-clearing
 ```
 Then force-clear:
 ```
-rm -f ~/.hermes-cortex/state/.governance-$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')).json
+rm -f ~/.steadfaste-fleet/state/.governance-$(basename $(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')).json
 ```
 
 Never silently force-clear without calling `end_change` first.

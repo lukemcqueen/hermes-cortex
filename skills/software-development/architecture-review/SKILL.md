@@ -3,7 +3,7 @@ name: architecture-review
 version: 1.2.0
 description: "Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and cost estimation."
 category: software-development
-source: hermes-cortex (ported from AgentKore)
+source: steadfaste-fleet (ported from AgentKore)
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -21,7 +21,7 @@ metadata:
 
 A structured, multi-role architecture review process designed for complex design decisions (formerly known as HC-Party). It assembles a panel of six expert personas, each evaluating the architecture from their unique vantage point using a weighted decision matrix. Conflicts are surfaced and resolved systematically, and cost estimates ground every recommendation in reality.
 
-**Origin:** Ported from AgentKore into the Hermes Cortex skill set.
+**Origin:** Ported from AgentKore into the Steadfaste Fleet skill set.
 
 ## When to Trigger
 

@@ -94,7 +94,7 @@ def test_stats_separate_hook_cycles_and_judge_coverage_on_the_rest() -> None:
         make_ledger(db, [
             # hook cycles: never owed feedback
             ("precommit-repo-HEAD/update", "hook fixture", 5.8, None),
-            ("precommit-hermes-cortex-main/fix-x", "hook real", 6.7, None),
+            ("precommit-steadfaste-fleet-main/fix-x", "hook real", 6.7, None),
             ("precommit-dry-HEAD/update", "hook fixture", 5.8, None),
             # judged cycles: 1 of 3 has feedback
             ("docs-consolidation-cleanup", "judged", 8.6, 0),
@@ -144,7 +144,7 @@ def test_normalizer_repairs_ids_and_records_the_original() -> None:
         make_ledger(db, [
             (MALFORMED_A, None, 5.8, None),
             (MALFORMED_B, "hook fixture artifact", 5.8, None),
-            ("precommit-hermes-cortex-main/fix-y", "clean row", 6.7, None),
+            ("precommit-steadfaste-fleet-main/fix-y", "clean row", 6.7, None),
             (UNREPAIRABLE, None, 5.8, None),
         ])
         manifest = tmp / "manifest.txt"
@@ -186,7 +186,7 @@ def test_normalizer_repairs_ids_and_records_the_original() -> None:
         preserved = con.execute("SELECT COUNT(*) FROM loop_cycles WHERE task_id = ?",
                                 (UNREPAIRABLE,)).fetchone()[0]
         check(preserved == 1, "an id that cannot be safely reduced must be left untouched")
-        check(rows.get("precommit-hermes-cortex-main/fix-y") == "clean row",
+        check(rows.get("precommit-steadfaste-fleet-main/fix-y") == "clean row",
               "clean rows must be untouched")
         con.close()
 

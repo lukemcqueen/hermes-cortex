@@ -14,11 +14,11 @@ npm install --prefix /tmp/piver @earendil-works/pi-coding-agent@1.0.0
 
 # 2. a temp HOME (the real ~/.pi/agent is untouched), with the deployed cortex tree linked
 TD=/tmp/pihome
-mkdir -p "$TD/.pi/agent" "$TD/.hermes-cortex" "$TD/.hermes"
-ln -sfn ~/.hermes-cortex/scripts "$TD/.hermes-cortex/scripts"
-ln -sfn ~/.hermes-cortex/tools   "$TD/.hermes-cortex/tools"
+mkdir -p "$TD/.pi/agent" "$TD/.steadfaste-fleet" "$TD/.hermes"
+ln -sfn ~/.steadfaste-fleet/scripts "$TD/.steadfaste-fleet/scripts"
+ln -sfn ~/.steadfaste-fleet/tools   "$TD/.steadfaste-fleet/tools"
 ln -sfn ~/.hermes/hermes-agent   "$TD/.hermes/hermes-agent"
-printf 'AGENT_NAME=estherpitest\n' > "$TD/.hermes-cortex/agent.env"
+printf 'AGENT_NAME=estherpitest\n' > "$TD/.steadfaste-fleet/agent.env"
 
 # 3. install, then connect with the real client
 HOME="$TD" PYTHON=~/.hermes/hermes-agent/venv/bin/python3 \
@@ -42,7 +42,7 @@ readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
       "source": "<TD>/.pi/agent/mcp.json",
       "enabled": true,
       "exposure": "direct",
-      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py",
       "state": "connected",
       "tools": [
         "rereview_change", "begin_change", "end_change", "check_lock", "cycle_query",
@@ -57,7 +57,7 @@ readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
       "source": "<TD>/.pi/agent/mcp.json",
       "enabled": true,
       "exposure": "direct",
-      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/task-mcp.py",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.steadfaste-fleet/scripts/task-mcp.py",
       "state": "connected",
       "tools": [
         "task_add", "task_list", "task_pending", "task_update", "task_switch", "task_save_end",
@@ -71,7 +71,7 @@ readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
       "source": "<TD>/.pi/agent/mcp.json",
       "enabled": true,
       "exposure": "direct",
-      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/executor-mcp.py",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.steadfaste-fleet/scripts/executor-mcp.py",
       "state": "connected",
       "tools": [
         "executor_list", "executor_probe", "execution_request", "execution_status",
@@ -84,7 +84,7 @@ readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
       "source": "<TD>/.pi/agent/mcp.json",
       "enabled": true,
       "exposure": "direct",
-      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.hermes-cortex/scripts/cortex-bus-mcp.py",
+      "transport": "<TD>/.hermes/hermes-agent/venv/bin/python3 <TD>/.steadfaste-fleet/scripts/cortex-bus-mcp.py",
       "state": "connected",
       "tools": [
         "inbox_send", "inbox_read", "inbox_watch", "inbox_delete", "inbox_list_agents",

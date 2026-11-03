@@ -26,7 +26,7 @@ This skill enforces the "update existing before creating new" rule.
 ## When to Load
 
 Load this skill whenever you are about to create a new:
-- Script (`ops/scripts/` or `~/.hermes-cortex/scripts/`)
+- Script (`ops/scripts/` or `~/.steadfaste-fleet/scripts/`)
 - Config (cron, installer, env)
 - Cron job definition
 - Skill (`skills/<category>/<name>/`)
@@ -39,7 +39,7 @@ Load this skill whenever you are about to create a new:
 ### Step 1: Search with 3+ different terms
 
 ```bash
-search_files(pattern="<term-1>", path="~/hermes-cortex/ops/scripts/", target="files")
+search_files(pattern="<term-1>", path="~/steadfaste-fleet/ops/scripts/", target="files")
 search_files(pattern="<term-2>", ...)   # different angle
 search_files(pattern="<term-3>", ...)   # synonym / broader concept
 skills_list()
@@ -158,7 +158,7 @@ saves more time than writing.
 
 ## Relationship to Other Skills
 
-- **survey-before-action** (Hermes Cortex) — covers the general survey
+- **survey-before-action** (Steadfaste Fleet) — covers the general survey
   checklist. This skill adds the enforcement layer and the "extend, don't
   rebuild" rule.
 - **cortex-preflight** (repo-specific) — adds git search and deployment

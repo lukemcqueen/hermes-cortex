@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fleet-audit — Fleet Ready Score validator for Hermes Cortex agent registries.
+fleet-audit — Fleet Ready Score validator for Steadfaste Fleet agent registries.
 
 Reads agent-registry.json and validates each agent against Fleet Ready Score
 levels (F0-F3). Currently supports F1 validation per PRD-005 REQ-003.
@@ -85,9 +85,9 @@ def find_registry(path_hint=None):
         return None
 
     candidates = [
-        Path.home() / ".hermes-cortex" / "state" / "agent-registry.json",
-        Path.home() / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.json.example",
-        Path.home() / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.template.json",
+        Path.home() / ".steadfaste-fleet" / "state" / "agent-registry.json",
+        Path.home() / "steadfaste-fleet" / "ops" / "install" / "deploy" / "agent-registry.json.example",
+        Path.home() / "steadfaste-fleet" / "ops" / "install" / "deploy" / "agent-registry.template.json",
     ]
     for c in candidates:
         if c.exists():
@@ -206,7 +206,7 @@ def validate_f1(registry, suggest=False):
         # Check SOUL.md profile exists
         soul_path = Path.home() / ".hermes" / "SOUL.md"
         if not soul_path.exists():
-            agent_warnings.append(f"{agent_key}: SOUL.md not found at ~/.hermes/SOUL.md — run: cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md")
+            agent_warnings.append(f"{agent_key}: SOUL.md not found at ~/.hermes/SOUL.md — run: cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md")
         else:
             soul_size = soul_path.stat().st_size
             if soul_size < 500:
@@ -289,7 +289,7 @@ def format_results(results, suggest=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Fleet Ready Score validator for Hermes Cortex agent registries."
+        description="Fleet Ready Score validator for Steadfaste Fleet agent registries."
     )
     parser.add_argument(
         "--level", "-l",
@@ -312,7 +312,7 @@ def main():
     registry_path = find_registry(args.registry)
     if not registry_path:
         print("ERROR: Could not find agent-registry.json.")
-        print("Provide a path with --registry or deploy to ~/.hermes-cortex/state/agent-registry.json")
+        print("Provide a path with --registry or deploy to ~/.steadfaste-fleet/state/agent-registry.json")
         sys.exit(1)
 
     try:

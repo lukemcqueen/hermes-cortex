@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Offline Reader
+Steadfaste Fleet — Offline Reader
 ────────────────────────────────
 A lightweight local web server for browsing Bible translations and
 hymns completely offline. Zero external dependencies — Python stdlib only.
@@ -531,7 +531,7 @@ class ReaderHandler(http.server.BaseHTTPRequestHandler):
 <html lang="en">
 <head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Offline Reader — Hermes Cortex</title>
+<title>Offline Reader — Steadfaste Fleet</title>
 <style>
   *{{margin:0;padding:0;box-sizing:border-box}}
   body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -751,7 +751,7 @@ function checkKiwix() {{
                 if (dot) {{ dot.className = 'status-dot dot-ready'; txt.textContent = 'kiwix-serve running'; }}
                 if (count) count.textContent = '✓';
             }} else {{
-                check.textContent = '❌ kiwix-serve is not running. Start it with: docker compose -f hermes-cortex/offline/kiwix-docker-compose.yml up -d';
+                check.textContent = '❌ kiwix-serve is not running. Start it with: docker compose -f steadfaste-fleet/offline/kiwix-docker-compose.yml up -d';
                 if (dot) {{ dot.className = 'status-dot dot-missing'; txt.textContent = 'Not running'; }}
                 if (count) count.textContent = '✗';
             }}
@@ -1137,7 +1137,7 @@ def find_free_port(start=8081):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Hermes Cortex — Offline Reader",
+        description="Steadfaste Fleet — Offline Reader",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1161,7 +1161,7 @@ Examples:
     print()
     print("  ╔═══════════════════════════════════════════╗")
     print("  ║   📖 Offline Reader                      ║")
-    print("  ║   Hermes Cortex — Browse offline content  ║")
+    print("  ║   Steadfaste Fleet — Browse offline content  ║")
     print("  ╚═══════════════════════════════════════════╝")
     print()
 

@@ -2,17 +2,17 @@
 
 Gotcha (2026-09-14): governance locks for a cron session were mis-scoped —
 the MCP derived repo_slug from ITS OWN cwd (the hermes-agent git checkout)
-rather than the session repo (hermes-cortex), so the git hooks
+rather than the session repo (steadfaste-fleet), so the git hooks
 (pre-commit-score / pre-push-pull, which derive the slug from the repo they
 run in) could not match the lock and blocked every commit/push on
-hermes-cortex.
+steadfaste-fleet.
 
 Root cause: _derive_slug() ran `git rev-parse --show-toplevel` from the MCP
 daemon's cwd FIRST. When that cwd is inside ANY git checkout (the Hermes
 install is one), it returned that repo's basename and never reached the
-canonical `~/hermes-cortex` fallback.
+canonical `~/steadfaste-fleet` fallback.
 
-The fix: prefer the canonical governed repo (`$HOME/hermes-cortex`) before
+The fix: prefer the canonical governed repo (`$HOME/steadfaste-fleet`) before
 consulting the MCP process cwd — the daemon's cwd is a launch artifact and is
 never a reliable signal of the session's working repo. Same for the enforcer
 plugin's _derive_repo_slug(). Portable across Linux and macOS (Path.home only).
@@ -55,8 +55,8 @@ def _fake_git_foreign_check_output_factory(mcp_module: types.ModuleType):
 class TestDeriveSlugPrefersCanonicalGovernedRepo:
     """The MCP cwd is a launch artifact (can be the hermes-agent git checkout).
 
-    When the canonical governed repo `$HOME/hermes-cortex` exists, _derive_slug
-    must return `hermes-cortex` regardless of what git repo the MCP daemon
+    When the canonical governed repo `$HOME/steadfaste-fleet` exists, _derive_slug
+    must return `steadfaste-fleet` regardless of what git repo the MCP daemon
     process cwd happens to resolve to. Otherwise the git hooks (which derive
     the slug from the actual committed repo) cannot match the lock and block
     commit/push.
@@ -64,13 +64,13 @@ class TestDeriveSlugPrefersCanonicalGovernedRepo:
 
     @pytest.fixture
     def fake_home(self, tmp_path):
-        """A HOME containing a governed `hermes-cortex` repo (with .git)."""
-        gov = tmp_path / "hermes-cortex"
+        """A HOME containing a governed `steadfaste-fleet` repo (with .git)."""
+        gov = tmp_path / "steadfaste-fleet"
         (gov / ".git").mkdir(parents=True)
         return tmp_path
 
     def test_prefers_canonical_repo_over_foreign_cwd(self, fake_home, monkeypatch):
-        """When the governed repo exists, the slug is hermes-cortex even if the
+        """When the governed repo exists, the slug is steadfaste-fleet even if the
         MCP cwd would resolve to a foreign git repo (hermes-agent)."""
         monkeypatch.setattr(_loop_gov, "HOME", fake_home)
         # Simulate the MCP cwd being inside a foreign git checkout: git is
@@ -81,7 +81,7 @@ class TestDeriveSlugPrefersCanonicalGovernedRepo:
             "check_output",
             lambda *a, **k: (fake_home / "does-not-exist").name.encode(),
         )
-        assert _loop_gov._derive_slug() == "hermes-cortex"
+        assert _loop_gov._derive_slug() == "steadfaste-fleet"
 
     def test_falls_back_to_cwd_git_when_no_canonical_repo(self, tmp_path, monkeypatch):
         """No governed repo exists (project-repo-only machine): derive from the
@@ -89,7 +89,7 @@ class TestDeriveSlugPrefersCanonicalGovernedRepo:
         proj = tmp_path / "client-alpha"
         (proj / ".git").mkdir(parents=True)
         # Canonical repos absent:
-        assert not (tmp_path / "hermes-cortex").exists()
+        assert not (tmp_path / "steadfaste-fleet").exists()
         monkeypatch.setattr(_loop_gov, "HOME", tmp_path)
         monkeypatch.setattr(
             _loop_gov.subprocess,
@@ -115,4 +115,4 @@ class TestDeriveSlugPrefersCanonicalGovernedRepo:
                 returncode=0, stdout=(str(fake_home / "hermes-agent") + "\n")
             ),
         )
-        assert _enforcer._derive_repo_slug() == "hermes-cortex"
+        assert _enforcer._derive_repo_slug() == "steadfaste-fleet"

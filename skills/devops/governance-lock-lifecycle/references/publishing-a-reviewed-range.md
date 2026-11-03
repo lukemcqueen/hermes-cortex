@@ -15,7 +15,7 @@ the gates in the order they fire, what each one wants, and the recipe that satis
 1. **Enforcer (tool level).** `git push` is write-class, so it needs an ACTIVE governance lock.
    Without one the call is refused and the hook never runs.
 2. **Pre-push hook (`ops/scripts/pre-push-pull`).** Runs only if the lock gate passed. Verifies
-   `core.hooksPath` points at `~/.hermes-cortex/hooks`, requires an active lock file, and — only
+   `core.hooksPath` points at `~/.steadfaste-fleet/hooks`, requires an active lock file, and — only
    when the range touches an always-review path — requires a CLEAN review receipt covering that
    range. The same path also runs the update/deploy, the doctor and the landing verification.
 3. **Remote.** A non-fast-forward push is rejected only after all of the above passed.
@@ -49,7 +49,7 @@ begin_change(task_id="push-<change>",
              description="Hold the lock the push gate requires; no content change")
 
 # 3. Deploy, then push, then verify from ORIGIN (never from your own branch).
-bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force     # deploy is the LAST step; nothing committed after it
+bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force     # deploy is the LAST step; nothing committed after it
 git push origin main
 git fetch origin --quiet
 git log --oneline -1 origin/main                            # shows your commit

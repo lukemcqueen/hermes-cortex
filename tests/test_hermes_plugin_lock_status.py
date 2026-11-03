@@ -46,14 +46,14 @@ def _targets() -> list:
     home = os.path.expanduser("~")
     return [
         f"{home}/.hermes/plugins/governance-enforcer/__init__.py",
-        f"{home}/.hermes-cortex/scripts/pre-commit-score",
-        f"{home}/.hermes-cortex/scripts/pre-push-pull",
-        f"{home}/.hermes-cortex/scripts/post-commit-audit",
-        f"{home}/.hermes-cortex/scripts/post-push-audit",
-        f"{home}/.hermes-cortex/hooks/post-merge",
-        f"{home}/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py",
-        f"{home}/.hermes-cortex/hooks",
-        f"{home}/.hermes-cortex/scripts/hermes-plugin-lock",
+        f"{home}/.steadfaste-fleet/scripts/pre-commit-score",
+        f"{home}/.steadfaste-fleet/scripts/pre-push-pull",
+        f"{home}/.steadfaste-fleet/scripts/post-commit-audit",
+        f"{home}/.steadfaste-fleet/scripts/post-push-audit",
+        f"{home}/.steadfaste-fleet/hooks/post-merge",
+        f"{home}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py",
+        f"{home}/.steadfaste-fleet/hooks",
+        f"{home}/.steadfaste-fleet/scripts/hermes-plugin-lock",
     ]
 
 
@@ -63,7 +63,7 @@ def test_old_form_really_did_report_a_child_control():
     If this ever stops holding (e.g. lsattr starts being dir-aware by default) the
     'bug' framing in the commit is wrong and this test should be re-examined.
     """
-    hooks = os.path.expanduser("~/.hermes-cortex/hooks")
+    hooks = os.path.expanduser("~/.steadfaste-fleet/hooks")
     if not os.path.isdir(hooks):
         print("  (hooks dir absent on this host — control skipped)")
         return

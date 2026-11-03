@@ -3,7 +3,7 @@ name: task-persistence
 version: 2.1.0
 category: devops
 description: "Cross-session tasks via task-db.py or task_* MCP tools. v2: story/slices, paused, switch, bus-as-tasks, Telegram events."
-author: Hermes Cortex
+author: Steadfaste Fleet
 platforms: [linux, macos]
 aliases: [todo-persistence]
 metadata:
@@ -63,7 +63,7 @@ Agent Session
 
 Agent identity (`PROFILE`, `CRUD_ROLE`) resolves from, in order:
 `HERMES_PROFILE` env → `AGENT_NAME` env → `AGENT_NAME` in
-`~/.hermes-cortex/agent.env` → `~/hermes-cortex/.env` → `~/hermes-cortex/.env`.
+`~/.steadfaste-fleet/agent.env` → `~/steadfaste-fleet/.env` → `~/steadfaste-fleet/.env`.
 **There is NO hostname/whoami fallback** — if no agent variable is found,
 task-db.py exits 1 with a clear error. A misconfigured host fails loudly
 instead of silently writing rows as the machine name. Same rule in
@@ -71,7 +71,7 @@ instead of silently writing rows as the machine name. Same rule in
 
 ### CLI + MCP
 
-- **Deployed to:** `~/.hermes-cortex/scripts/task-db.py` (register in cortex-update.sh)
+- **Deployed to:** `~/.steadfaste-fleet/scripts/task-db.py` (register in cortex-update.sh)
 - **MCP server:** `mcp-servers/task-mcp.py`, registered as `todos`
   (tools: task_add, task_list, task_pending, task_update, task_switch,
   task_save_end, task_prune). All agents — not orchestrator-only.
@@ -88,11 +88,11 @@ instead of silently writing rows as the machine name. Same rule in
 ```bash
 # List my tasks (union of personal + locally-present fleet rows)
 task-db.py list [--status pending|in_progress|paused|completed|cancelled]
-task-db.py list --project hermes-cortex --repo hermes-cortex
+task-db.py list --project steadfaste-fleet --repo steadfaste-fleet
 
 # Add a task (tag it: project/repo/scope/source). v2: story/slice hierarchy.
 task-db.py add "Fix dashboard health check" --priority 2 \
-    --project hermes-cortex --repo hermes-cortex --scope personal --source manual
+    --project steadfaste-fleet --repo steadfaste-fleet --scope personal --source manual
 task-db.py add "Story: fleet observability" --kind story
 task-db.py add "Slice: bus task wiring" --kind slice --parent <story-uuid>
 task-db.py add "EXEC: cortex-doctor.py" --source inbox --correlation-id <corr>
@@ -231,17 +231,17 @@ doctor now runs a **write-probe** (seed → list → archive) to catch the
 v005's `task_upsert` ON CONFLICT used `COALESCE(EXCLUDED.x, existing)` but
 EXCLUDED.x is never NULL (INSERT defaults) → every status-only update
 clobbered source (inbox→manual), scope (fleet→personal), priority (→0),
-project (→hermes-cortex), created_by. v007 fixes the DO UPDATE clause to
+project (→steadfaste-fleet), created_by. v007 fixes the DO UPDATE clause to
 coalesce against the function parameter. Regression-locked in
 test-tasks-schema.sh.
 
 ## Reference
 
-- Design: `~/hermes-cortex/docs/design/task-workflow.md`
-- Lifecycle v2: `~/hermes-cortex/docs/design/task-lifecycle-v2.md`
-- CLI: `~/hermes-cortex/ops/scripts/manage/task-db.py`
-- MCP: `~/hermes-cortex/mcp-servers/task-mcp.py`
-- Migration runner: `~/hermes-cortex/ops/services/tasks/migrate.py`
-- Notify: `~/hermes-cortex/ops/scripts/lib/telegram_notify.py`
+- Design: `~/steadfaste-fleet/docs/design/task-workflow.md`
+- Lifecycle v2: `~/steadfaste-fleet/docs/design/task-lifecycle-v2.md`
+- CLI: `~/steadfaste-fleet/ops/scripts/manage/task-db.py`
+- MCP: `~/steadfaste-fleet/mcp-servers/task-mcp.py`
+- Migration runner: `~/steadfaste-fleet/ops/services/tasks/migrate.py`
+- Notify: `~/steadfaste-fleet/ops/scripts/lib/telegram_notify.py`
 - psql pitfalls: skill `psql-automation`
 - Session restore: skill `session-start-discipline`

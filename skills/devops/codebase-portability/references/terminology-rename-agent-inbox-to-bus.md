@@ -1,7 +1,7 @@
 # Worked Example: Agent Inbox → Agent Bus Terminology Rename
 
 **Date:** 2026-07-15
-**Scope:** ~/hermes-cortex/docs/ — 17 files, 60+ patches
+**Scope:** ~/steadfaste-fleet/docs/ — 17 files, 60+ patches
 **Pattern:** Pattern H — Cross-file terminology rename
 
 ## Setup
@@ -53,7 +53,7 @@ Three concurrent searches found 22+41+12 unique files touching the org:
 | cloud-deploy.md | Change | Security group table entry |
 | integration-audit.md | Historical | Migration record of service files — intentional stale refs |
 | elicit/2026-07-09_systemd-decision-party.md | Name-only | Service name in install command |
-| research/enterprise-grade-hermes-cortex.md | Historical | Research about original design |
+| research/enterprise-grade-steadfaste-fleet.md | Historical | Research about original design |
 | docs/templates/com.hermes.health-push.plist | Excluded | systemd/launchd template; excluded per instructions |
 
 ## Key Pitfalls Encountered

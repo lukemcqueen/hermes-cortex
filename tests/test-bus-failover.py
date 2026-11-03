@@ -9,7 +9,7 @@ Tests the end-to-end Moses↔Esther failover paths:
   4. External peer reachability (when Esther is up)
   5. Queue state consistency after sync
 
-Run via: cd hermes-cortex && python3 test-bus-failover.py
+Run via: cd steadfaste-fleet && python3 test-bus-failover.py
 Safe to run when peer is down — peer-dependent tests skip gracefully.
 
 Returns exit code 0 = all critical tests pass, peer tests skipped as expected.
@@ -32,7 +32,7 @@ SKIP = 0
 
 HOME = Path.home()
 BUS_URL = "http://127.0.0.1:8903"
-CONFIG_FILE = HOME / "hermes-cortex" / ".env"
+CONFIG_FILE = HOME / "steadfaste-fleet" / ".env"
 
 # Load token from config
 TOKEN = ""

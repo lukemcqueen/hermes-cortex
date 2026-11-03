@@ -50,7 +50,7 @@ from hermes_models import get_model
 
 CACHE_DIR = Path(os.environ.get(
     "WEB_CACHE_DIR",
-    Path.home() / ".hermes-cortex" / "web-cache"
+    Path.home() / ".steadfaste-fleet" / "web-cache"
 ))
 DB_PATH = CACHE_DIR / "cache.db"
 DEFAULT_LIMIT_MB = 200          # Max cache size before LRU eviction
@@ -71,7 +71,7 @@ OLLAMA_MODEL = _OLLAMA_EMBED_MODEL or get_model("EMBEDDING_MODEL", "nomic-embed-
 EMBED_DIMS = int(os.environ.get("WEB_CACHE_EMBED_DIMS", "768"))
 
 # ── Local Venv Python ──────────────────────────────────────────
-VENV_PYTHON = Path.home() / ".hermes-cortex" / "web-cache" / ".venv" / "bin" / "python3"
+VENV_PYTHON = Path.home() / ".steadfaste-fleet" / "web-cache" / ".venv" / "bin" / "python3"
 
 # ── SQLite Schema ──────────────────────────────────────────────
 

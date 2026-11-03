@@ -11,7 +11,7 @@
 set -euo pipefail
 
 CORTEX_REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}"
 SOURCE_FILE="${CORTEX_REPO}/ops/install/deploy/nginx/hermes-security"
 # Single sudoers file policy (2026-07-31): ALL hermes rules deploy to
 # /etc/sudoers.d/hermes. hermes-security was the old split target — kept
@@ -48,11 +48,11 @@ fi
 
 # Resolve the sudo user list (2026-08-05): real account names are PII and
 # must NOT live in the public template. Read CORTEX_SUDO_USERS from the
-# host's PRIVATE env (~/hermes-cortex/.env, never committed); fall back
+# host's PRIVATE env (~/steadfaste-fleet/.env, never committed); fall back
 # to the user running this deploy.
 SUDO_USERS=""
-if [ -z "$SUDO_USERS" ] && [ -f "$HOME/hermes-cortex/.env" ]; then
-  SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$HOME/hermes-cortex/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if [ -z "$SUDO_USERS" ] && [ -f "$HOME/steadfaste-fleet/.env" ]; then
+  SUDO_USERS="$(grep '^CORTEX_SUDO_USERS=' "$HOME/steadfaste-fleet/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
 fi
 if [ -z "$SUDO_USERS" ]; then
   SUDO_USERS="$(id -un)"

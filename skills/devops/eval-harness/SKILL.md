@@ -2,7 +2,7 @@
 name: eval-harness
 description: "Systematic evaluation framework for agent capabilities — capability tests, regression suites, failure analysis"
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 metadata:
   tags: [eval, testing, reliability, autonomous-agents, quality-gates]
 ---
@@ -189,7 +189,7 @@ Transcripts flagged for review:
 
 ```bash
 # Open specific transcript
-cat ~/.hermes-cortex/evals/traces/eval-run-20260619-143022-existing-install-trace-7.json | jq
+cat ~/.steadfaste-fleet/evals/traces/eval-run-20260619-143022-existing-install-trace-7.json | jq
 
 # Or view in Langfuse UI
 open https://langfuse.local/project/.../traces/eval-run-20260619-143022-existing-install-trace-7
@@ -326,7 +326,7 @@ Recommended fixes:
 - Add conflict surfacing requirement to task contract
 - Add checkpoint verification before "complete" status
 
-Full report: ~/.hermes-cortex/evals/reports/weekly-failure-2026-W24.md
+Full report: ~/.steadfaste-fleet/evals/reports/weekly-failure-2026-W24.md
 ```
 
 ### Failure Clustering
@@ -396,7 +396,7 @@ a second daily-regression cron.
 
 ```bash
 # Manual invocation (same as the cron runs)
-python3 ~/.hermes-cortex/scripts/run-evals.py --suite regression --standalone
+python3 ~/.steadfaste-fleet/scripts/run-evals.py --suite regression --standalone
 
 # Add a NEW golden task → edit evals/regression-golden.yaml, add a grader
 # function with @grader("name") in run-evals.py, reference it in the task.
@@ -450,8 +450,8 @@ run manually when needed.
 | `ops/scripts/orch-daily-regression-gate.sh` | F-008 daily golden gate wrapper (no_agent cron, silent on pass, report+exit 1 on fail) |
 | `evals/regression-golden.yaml` | Golden task suite v1 — bus send/read, task lifecycle, EXEC round-trip, doctor clean, core skills |
 | `evals/suites/regression.yaml` | Regression suite manifest (lists `regression-golden`) |
-| `~/.hermes-cortex/evals/traces/` | Captured eval traces |
-| `~/.hermes-cortex/evals/reports/` | Generated reports (JSON, one per run, trend trackable) |
+| `~/.steadfaste-fleet/evals/traces/` | Captured eval traces |
+| `~/.steadfaste-fleet/evals/reports/` | Generated reports (JSON, one per run, trend trackable) |
 
 **Golden suite v1** (F-008, orchestrator daily gate `orch-daily-regression-gate` at 03:15):
 - `bus_round_trip` — send→read(vt-hidden)→archive probe on `inbox_esther` via the ACTIVE `CORTEX_BUS_URL`
@@ -460,7 +460,7 @@ run manually when needed.
 - `doctor_clean` — `cortex-doctor.py --json` summary.fail == 0 (warns tolerated)
 - `core_skills` — every always-section skill in skills.yaml resolves to a loadable SKILL.md
 
-Run: `python3 ~/.hermes-cortex/scripts/run-evals.py --suite regression --standalone`.
+Run: `python3 ~/.steadfaste-fleet/scripts/run-evals.py --suite regression --standalone`.
 Add graders: register a function with `@grader("name")` returning `(passed, detail)`; reference it in a task's `grading.deterministic` list.
 
 ## Related Skills

@@ -5,7 +5,7 @@ structured tools. Both are written in Python using the `mcp` SDK (v1.26+).
 
 ## Registration
 
-Both servers are pre-installed in `~/hermes-cortex/runtime/mcp-servers/`.
+Both servers are pre-installed in `~/steadfaste-fleet/runtime/mcp-servers/`.
 Register with Hermes:
 
 ```bash

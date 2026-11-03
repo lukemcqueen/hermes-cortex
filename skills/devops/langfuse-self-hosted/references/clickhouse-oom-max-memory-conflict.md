@@ -116,7 +116,7 @@ If a health-check cron tracks `TotalMergeFailures`:
 # Get the current (stable) failure count
 FAILURES=$(docker exec langfuse-clickhouse-1 clickhouse-client \
   --query "SELECT value FROM system.metrics WHERE metric = 'TotalMergeFailures'")
-echo "$FAILURES" > ~/.hermes-cortex/state/langfuse-ch-merge.state
+echo "$FAILURES" > ~/.steadfaste-fleet/state/langfuse-ch-merge.state
 ```
 
 The next watchdog run will compare against this new baseline and report healthy.

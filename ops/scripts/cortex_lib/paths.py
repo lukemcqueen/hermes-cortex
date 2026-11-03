@@ -25,7 +25,7 @@ def ensure_scripts_path() -> None:
     """Add the scripts directory to sys.path if not already present.
 
     Works both in-repo (ops/offline/, ops/services/, mcp-servers/) and at
-    deployment (~/.hermes-cortex/scripts). This module now lives at
+    deployment (~/.steadfaste-fleet/scripts). This module now lives at
     ops/scripts/cortex_lib/, so the canonical scripts dir (ops/scripts) is
     its parent — NOT the old hermes_paths.py location where `scripts` was a
     sibling of this module's dir.
@@ -34,7 +34,7 @@ def ensure_scripts_path() -> None:
     # Check both the repo layout and the deployed layout.
     candidates = [
         cortex_lib_dir.parent,              # ops/scripts/         (in-repo, canonical)
-        Path.home() / ".hermes-cortex" / "scripts",
+        Path.home() / ".steadfaste-fleet" / "scripts",
     ]
     for candidate in candidates:
         resolved = candidate.resolve()

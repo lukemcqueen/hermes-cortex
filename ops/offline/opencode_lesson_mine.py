@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — OpenCode Session Lesson Miner
+Steadfaste Fleet — OpenCode Session Lesson Miner
 ─────────────────────────────────────────────
 Mines OpenCode session history for bug-fix lessons.
 Seeds the ~/brain/lessons/ database from OpenCode's rich history.

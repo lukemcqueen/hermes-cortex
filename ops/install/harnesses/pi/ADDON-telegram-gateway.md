@@ -20,8 +20,8 @@ launchd pitfalls) that is not part of the generic contract.
 | **Backend** | Pi (`kind: command` — one `pi` invocation per turn) |
 | **Bot** | `@TitusPiBot` (distinct from the Hermes bot) |
 | **Service name** | `com.steadfaste.gateway` |
-| **Config** | `~/.hermes-cortex/gateway.yaml` |
-| **Env** | `~/hermes-cortex/.env` (same canonical file as everything else) |
+| **Config** | `~/.steadfaste-fleet/gateway.yaml` |
+| **Env** | `~/steadfaste-fleet/.env` (same canonical file as everything else) |
 
 Both gateways run in parallel: Hermes (`ai.hermes.gateway`) owns one bot token,
 steadfaste (`com.steadfaste.gateway`) owns another. Telegram allows one poller
@@ -41,7 +41,7 @@ per bot, so there is no 409 conflict.
 
 ---
 
-## 2. Env vars to add to `~/hermes-cortex/.env`
+## 2. Env vars to add to `~/steadfaste-fleet/.env`
 
 ```bash
 # Bot token — NEVER this repo; keep it outside
@@ -94,12 +94,12 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
       },
       "commands": {
         "compact": {
-          "argv": ["/usr/bin/python3", "/Users/luke/.hermes-cortex/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
                    "compact", "--session-id", "{session_id}", "--model", "{model}"],
           "timeout_s": 420
         },
         "check_model": {
-          "argv": ["/usr/bin/python3", "/Users/luke/.hermes-cortex/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
                    "check-model", "{model}"],
           "timeout_s": 30
         }
@@ -125,7 +125,7 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
 }
 ```
 
-Place at `~/.hermes-cortex/gateway.yaml` (outside the repo).
+Place at `~/.steadfaste-fleet/gateway.yaml` (outside the repo).
 
 `stream: true` turns on **live streaming**: while the agent works, Telegram shows a
 "typing…" indicator and the single reply message is edited in place as output
@@ -154,7 +154,7 @@ Copy and edit `docs/templates/com.hermes.cortex-gateway.plist`:
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>set -a; . "$HOME/hermes-cortex/.env"; set +a; exec /usr/bin/python3 "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "$HOME/.hermes-cortex/gateway.yaml"</string>
+        <string>set -a; . "$HOME/steadfaste-fleet/.env"; set +a; exec /usr/bin/python3 "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -164,7 +164,7 @@ Copy and edit `docs/templates/com.hermes.cortex-gateway.plist`:
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/luke/.hermes-cortex/scripts</string>
+    <string>/Users/luke/.steadfaste-fleet/scripts</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -223,10 +223,10 @@ launchctl list com.steadfaste.gateway | grep PID
 curl -s "https://api.telegram.org/bot<PI_TELEGRAM_BOT_TOKEN>/getMe"
 
 # Config valid? (dry-run: builds gateway, does not poll)
-cd ~/.hermes-cortex/scripts && \
-  set -a && source ~/hermes-cortex/.env && set +a && \
+cd ~/.steadfaste-fleet/scripts && \
+  set -a && source ~/steadfaste-fleet/.env && set +a && \
   python3 -c "from cortex_gateway.daemon import build_gateway; \
-              gw = build_gateway(Path('~/.hermes-cortex/gateway.yaml')); \
+              gw = build_gateway(Path('~/.steadfaste-fleet/gateway.yaml')); \
               print('OK:', list(gw.backends.keys()))"
 
 # Send /status then /restart to the bot on Telegram

@@ -23,7 +23,7 @@ RESOLVER="$REPO/ops/scripts/lib/python-with-module.sh"
 if [ -x "$RESOLVER" ]; then
   :
 else
-  RESOLVER="${HOME}/.hermes-cortex/scripts/lib/python-with-module.sh"
+  RESOLVER="${HOME}/.steadfaste-fleet/scripts/lib/python-with-module.sh"
   # Say so. A silent fallback swaps WHICH resolver decides the interpreter, which is exactly the
   # kind of substituted signal this fleet keeps getting bitten by: the run looks identical and is
   # running different code.
@@ -53,7 +53,7 @@ fi
 if [ -z "$PY" ]; then
   echo "COULD NOT VERIFY: no interpreter on this host can import pytest." >&2
   echo "  Tried: ${RESOLVER} (and the repo copy), then python3/python on PATH" >&2
-  echo "  Fix:   ${HOME}/.hermes-cortex/scripts/manage/fix-cortex-venv.py" >&2
+  echo "  Fix:   ${HOME}/.steadfaste-fleet/scripts/manage/fix-cortex-venv.py" >&2
   echo "  No interpreter means no verdict — this is NOT a pass." >&2
   exit 3
 fi

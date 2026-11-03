@@ -50,7 +50,7 @@ def _cron_ts(name: str) -> str:
     """Return non-LLM cron prefix: [YYYY-MM-DD HH:MM KST] <name>:"""
     kst = format_timestamp("[%Y-%m-%d %H:%M %Z]")
     return f"{kst} {name}:"
-CORTEX_DEPLOY_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
+CORTEX_DEPLOY_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 BRAIN_SHARED = Path.home() / "brain" / "shared"
 
@@ -228,7 +228,7 @@ def check_gateway_log() -> dict:
     On Linux: check systemd service + journald activity.
     On macOS: check launchd job (ai.hermes.gateway).
 
-    The old approach of checking ~/.hermes-cortex/logs/*.log caused
+    The old approach of checking ~/.steadfaste-fleet/logs/*.log caused
     false-positive alerts because that directory only contains the
     cortex-dashboard log (a separate local Flask server).
     """
@@ -271,7 +271,7 @@ def check_mycortex() -> dict:
     the legacy brain was decommissioned 2026-08-02; mycortex is a cron-synced Postgres
     index with no daemon. Doctor verifies schema version + source freshness.
     """
-    cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+    cli = Path.home() / ".steadfaste-fleet" / "scripts" / "mycortex"
     if not cli.exists():
         return {"status": "UNKNOWN", "detail": "mycortex CLI not installed"}
     try:
@@ -423,7 +423,7 @@ def check_resources():
 # ── Loop Governance Health ──────────────────────────────
 
 def check_loop_gov():
-    LOOP_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+    LOOP_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
     try:
         ollama_up = False
         try:

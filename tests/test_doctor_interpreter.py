@@ -113,8 +113,8 @@ def test_candidates_prefer_the_declaration_and_skip_the_current_interpreter(doct
     monkeypatch.setenv("CORTEX_PYTHON", str(declared))
     monkeypatch.setattr(doctor.os.path, "expanduser", lambda p: str(tmp_path))
     monkeypatch.setattr(doctor, "os", doctor.os)  # keep os patched consistently
-    # fleet venv path is <home>/.hermes-cortex/venv/bin/python3
-    venv_bin = tmp_path / ".hermes-cortex" / "venv" / "bin"
+    # fleet venv path is <home>/.steadfaste-fleet/venv/bin/python3
+    venv_bin = tmp_path / ".steadfaste-fleet" / "venv" / "bin"
     venv_bin.mkdir(parents=True)
     (venv_bin / "python3").write_text("#!/bin/sh\n")
 

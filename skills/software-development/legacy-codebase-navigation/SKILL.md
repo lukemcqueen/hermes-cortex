@@ -2,7 +2,7 @@
 name: legacy-codebase-navigation
 description: "Navigate, understand, and debug large legacy codebases (Rails, Django, early Node). Techniques for tracing data through deep helper chains, reading mutation-heavy code without getting lost, and finding the exact transformation that damaged your data."
 version: 1.0.0
-author: Hermes Cortex (troubleshooter)
+author: Steadfaste Fleet (troubleshooter)
 license: MIT
 platforms: [macos, linux]
 metadata:

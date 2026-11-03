@@ -20,14 +20,14 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".hermes-cortex"))
+CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
 TRACKER_DB = CORTEX_HOME / "data" / "message-tracker.json"
 BUS_URL = os.environ.get("CORTEX_BUS_URL", "http://127.0.0.1:8903")
 BUS_FALLBACK_URL = os.environ.get(
     "CORTEX_BUS_FALLBACK_URL",
     os.environ.get("CORTEX_BUS_FALLBACK_URL", ""),
 )
-CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
+CONFIG_FILE = Path.home() / "steadfaste-fleet" / ".env"
 
 
 def _read_config(key: str) -> str:

@@ -42,10 +42,10 @@ from typing import Any
 
 # ── Config ──────────────────────────────────────────────────────
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 SKILLS_DIR = HOME / ".hermes" / "skills"
 LESSONS_DIR = HOME / "brain" / "lessons"
-SESSION_DB = HOME / ".hermes-cortex" / "sessions.db"
+SESSION_DB = HOME / ".steadfaste-fleet" / "sessions.db"
 STATE_FILE = STATE_DIR / "agent-learning-collector-state.json"
 
 # Agent identity — env → agent.env → .env. NEVER hostname: a machine name
@@ -53,7 +53,7 @@ STATE_FILE = STATE_DIR / "agent-learning-collector-state.json"
 # (Luke directive 2026-08-14). Missing identity fails loudly.
 AGENT_NAME = os.environ.get("AGENT_NAME", "").strip()
 if not AGENT_NAME:
-    for _idf in (HOME / ".hermes-cortex" / "agent.env", HOME / "hermes-cortex" / ".env"):
+    for _idf in (HOME / ".steadfaste-fleet" / "agent.env", HOME / "steadfaste-fleet" / ".env"):
         try:
             if _idf.is_file():
                 for _line in _idf.read_text().splitlines():
@@ -67,12 +67,12 @@ if not AGENT_NAME:
             continue
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME",
+          "~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME",
           file=sys.stderr)
     sys.exit(1)
 
 # Repo path
-CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", HOME / "hermes-cortex"))
+CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", HOME / "steadfaste-fleet"))
 
 # ── Report thresholds ─────────────────────────────────────────
 MAX_SKILLS_IN_REPORT = 20       # don't send more than this per cycle
@@ -405,7 +405,7 @@ def _resolve_env(key: str, default: str = "") -> str:
     if val:
         return val
     for cfg in [
-        HOME / "hermes-cortex" / ".env",
+        HOME / "steadfaste-fleet" / ".env",
         CORTEX_REPO / ".env",
     ]:
         if cfg.exists():

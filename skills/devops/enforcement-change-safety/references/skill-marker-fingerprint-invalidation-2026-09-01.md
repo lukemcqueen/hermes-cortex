@@ -7,7 +7,7 @@ of the 7 — it wasn't in the manifest's always list I loaded."
 
 ## The mechanism
 
-The per-session marker (`~/.hermes-cortex/state/skills-loaded/<session_id>`) is
+The per-session marker (`~/.steadfaste-fleet/state/skills-loaded/<session_id>`) is
 `session:{id}|skills:{fingerprint}`, where the fingerprint is an md5 of the
 **CONTENT of the 7 always-skill SKILL.md files** (`_skills_fingerprint()`,
 Rule 14d). **Updated 2026-09-23:** it used to hash their MTIMES, which made the

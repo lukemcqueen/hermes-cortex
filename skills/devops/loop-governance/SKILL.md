@@ -2,8 +2,8 @@
 name: loop-governance
 version: 1.5.0
 category: devops
-description: "TDD cycle scoring, self-improvement, and governance system for Hermes Cortex. Scores completeness/quality/progress per cycle with nomic embeddings, logs to SQLite, collects user feedback via CLI, auto-applies config patches with safety bounds, and integrates weekly evaluation + retention. Runtime config, test suite, setup/verify/update scripts, and auto-remediation health checks."
-author: Hermes Cortex
+description: "TDD cycle scoring, self-improvement, and governance system for Steadfaste Fleet. Scores completeness/quality/progress per cycle with nomic embeddings, logs to SQLite, collects user feedback via CLI, auto-applies config patches with safety bounds, and integrates weekly evaluation + retention. Runtime config, test suite, setup/verify/update scripts, and auto-remediation health checks."
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
@@ -94,13 +94,13 @@ similarity (>0.75), +1 boost. This means scoring improves as the cache grows.
 
 ### Installation & invocation
 
-The scorer module lives at `loop_scorer.py` in the installed tool directory `~/.hermes-cortex/tools/loop-governance/` (underscore so Python can import it directly). Run a demo from any directory:
+The scorer module lives at `loop_scorer.py` in the installed tool directory `~/.steadfaste-fleet/tools/loop-governance/` (underscore so Python can import it directly). Run a demo from any directory:
 
 ```bash
-python3 ~/.hermes-cortex/tools/loop-governance/loop_scorer.py
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_scorer.py
 ```
 
-> Do NOT use `~/.hermes/skills/devops/loop-governance/scripts/...` — the installed skill directory contains only SKILL.md + references; the Python modules live in `~/.hermes-cortex/tools/loop-governance/`.
+> Do NOT use `~/.hermes/skills/devops/loop-governance/scripts/...` — the installed skill directory contains only SKILL.md + references; the Python modules live in `~/.steadfaste-fleet/tools/loop-governance/`.
 
 Import the functions directly:
 
@@ -252,8 +252,8 @@ Two complementary storage backends:
 
 | Backend | Purpose | Location |
 |---------|---------|----------|
-| **SQLite** (`loop_db.py`) | Structured querying, aggregation, analysis | `~/.hermes-cortex/data/loop-governance.db` |
-| **JSON events** (built into `LoopDB.log_cycle`) | Streaming backup, portability, disaster recovery | `~/.hermes-cortex/data/loop-events/YYYY-MM-DD.jsonl` |
+| **SQLite** (`loop_db.py`) | Structured querying, aggregation, analysis | `~/.steadfaste-fleet/data/loop-governance.db` |
+| **JSON events** (built into `LoopDB.log_cycle`) | Streaming backup, portability, disaster recovery | `~/.steadfaste-fleet/data/loop-events/YYYY-MM-DD.jsonl` |
 
 ### Schema (auto-created)
 
@@ -268,12 +268,12 @@ config_history    - Config change log for rollback
 **Option 1: Via env vars (any script can use this)**
 
 ```bash
-SCORE_DB_PATH=~/.hermes-cortex/data/loop-governance.db \
+SCORE_DB_PATH=~/.steadfaste-fleet/data/loop-governance.db \
 SCORE_TASK_ID=my-feature \
 SCORE_CYCLE_NUM=1 \
 SCORE_SPEC="Add two numbers" \
 SCORE_OUTPUT="def add(a,b): return a+b" \
-python3 ~/.hermes-cortex/tools/loop-governance/loop_scorer.py --score
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_scorer.py --score
 ```
 
 Output includes `logged: true` on success.
@@ -455,13 +455,13 @@ auto-apply --dry-run --json
 
 ### Runtime config
 
-Thresholds and weights live in `~/.hermes-cortex/data/loop-governance-config.json` and are read by `composite_score()` on every call:
+Thresholds and weights live in `~/.steadfaste-fleet/data/loop-governance-config.json` and are read by `composite_score()` on every call:
 
 ```bash
 # View current config
 loop-config --show
 # or directly:
-python3 ~/.hermes-cortex/tools/loop-governance/loop_config.py --show
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_config.py --show
 
 # Set a value manually
 loop-config --set weights.completeness 0.45
@@ -548,7 +548,7 @@ once and an adversarial review filed the mismatch as fabrication; if you touch
 
 ```bash
 # Full report (module lives in the installed tool dir, not the skill dir)
-python3 ~/.hermes-cortex/tools/loop-governance/loop_evaluator.py
+python3 ~/.steadfaste-fleet/tools/loop-governance/loop_evaluator.py
 
 # JSON output (for programmatic consumption)
 python3 loop_evaluator.py --json
@@ -580,7 +580,7 @@ refusal names this, re-issue the push by itself instead of opening a cycle for i
 deadline, so a client-side timeout on `end_change` (the MCP call ceiling) can land while the
 reviewer is still working — the close then finishes and RELEASES the lock, with the receipt
 already written. Do not re-run the review and do not assume failure: the lock file
-(`ls ~/.hermes-cortex/state/.governance-*.json` — gone means released) is the state, and a
+(`ls ~/.steadfaste-fleet/state/.governance-*.json` — gone means released) is the state, and a
 repeated `end_change` answering "no governance session active" is the confirmation it closed.
 The receipt from that close is what then authorises the push.
 
@@ -842,7 +842,7 @@ Every score call ──► loop_scorer.py ──► LoopDB (SQLite + JSON)
 
 Lock files and the immutable chain have failure modes beyond the skills marker. Hard-won lessons from P1-A (2026-07-31). Full detail: `references/lock-lifecycle-race.md` (mechanism + verification) and `references/enforcement-update-surface.md` (complete write-path audit + sanctioned-caller gate design).
 
-**A lock opened through the non-Hermes CLI (`loop-gov.py`) is not tagged by the enforcer — a coding-agent harness (pi/Claude Code/Codex/aider/cursor) must stamp the repo itself.** The gateway's enforcer only injects `repo_path`/`repo_slug` into `mcp__loop_governance__*` MCP calls it intercepts; a harness driving `loop-gov begin_change` calls the handlers directly and skips that hook entirely, so `_derive_slug` falls to Priority 1 = the host-canonical `~/hermes-cortex` whenever that dir exists. A lock tagged hermes-cortex while the session works in another repo makes the close gate audit a tree that cannot contain the work — permanent FINDINGS, uncloseable cycle (the Titus/steadfaste symptom). Fix at the CLI, not the MCP server: resolve the cwd git root (`git rev-parse --show-toplevel`) and inject BOTH `repo_path` (absolute) and `repo_slug` (name) onto the payload, mirroring the enforcer's pair. **Fail closed for `begin_change` when the repo cannot be resolved** — a git timeout or missing-git is "unexpected" and must refuse (exit 1, a decision not a crash), else the unstamped payload silently recreates the wrong-repo lock; only a clean rc!=0 ("not a git repo") no-ops. Never clobber an explicit caller-supplied repo identity.
+**A lock opened through the non-Hermes CLI (`loop-gov.py`) is not tagged by the enforcer — a coding-agent harness (pi/Claude Code/Codex/aider/cursor) must stamp the repo itself.** The gateway's enforcer only injects `repo_path`/`repo_slug` into `mcp__loop_governance__*` MCP calls it intercepts; a harness driving `loop-gov begin_change` calls the handlers directly and skips that hook entirely, so `_derive_slug` falls to Priority 1 = the host-canonical `~/steadfaste-fleet` whenever that dir exists. A lock tagged steadfaste-fleet while the session works in another repo makes the close gate audit a tree that cannot contain the work — permanent FINDINGS, uncloseable cycle (the Titus/steadfaste symptom). Fix at the CLI, not the MCP server: resolve the cwd git root (`git rev-parse --show-toplevel`) and inject BOTH `repo_path` (absolute) and `repo_slug` (name) onto the payload, mirroring the enforcer's pair. **Fail closed for `begin_change` when the repo cannot be resolved** — a git timeout or missing-git is "unexpected" and must refuse (exit 1, a decision not a crash), else the unstamped payload silently recreates the wrong-repo lock; only a clean rc!=0 ("not a git repo") no-ops. Never clobber an explicit caller-supplied repo identity.
 
 **Mid-write lock theft:** every purge path — the enforcer's `_has_governance_lock()` pre-scan + Phase 2 scan, the MCP's `_purge_stale_locks()`, and `purge-stale-governance-locks.py` — used to delete any `.governance-*.json` that failed `json.loads`. `_write_lock()` wrote non-atomically (`write_text`), so a concurrent purge read mid-write caught partial JSON and deleted a FRESH lock. Symptom: `begin_change` succeeds, then seconds later `check_lock` says inactive and the file is gone. **Fix (shipped):** atomic writes (temp + rename, same fs) + purge loops skip unparseable files (never delete what you can't parse — it is being written). Locks now carry `session_type` (cron/bg/interactive); cron/bg sessions never purge interactive locks.
 
@@ -853,7 +853,7 @@ It is now obsolete — markers are per-session files (`state/skills-loaded/<sess
 so no concurrent session can steal the marker in the first place. The lock-based
 exception and the daemon/subagent guards were removed with the shared file.
 
-**Session-identity marker race (`.hermes-session-current.id`) — FIXED (2026-08-02):** the enforcer resolves the *current session id* from the shared fixed-path file `~/.hermes-cortex/state/.hermes-session-current.id`, which ANY concurrent session (party subagents, background workers, parallel conversations) can overwrite. Symptom (confirmed 2026-07-31): your fresh `.governance-<session>.json` lock exists with a valid heartbeat, yet `check_lock` returns inactive and write tools block with "GOVERNANCE LOCK REQUIRED" — the enforcer looks up the lock under the stomped id. State dir shows two+ lock files (yours + a subagent's) and the marker holding a third, unrelated id. **Fix (shipped in b26ea929):** the enforcer now INJECTS `args["session_id"]` into every `mcp__loop_governance__*` call at pre_tool_call, and the MCP server's `get_session_id(args)` reads it as **Priority 0** — beating the shared marker. The marker bridge remains only as legacy fallback for direct MCP callers. Recovery for pre-fix locks: re-acquire with `begin_change()` (creates the lock under the currently-resolved id), reload the 8 always-skills so the marker matches, then proceed. This compounds with Pitfall 3 (skills marker) — both live in the same shared state dir.
+**Session-identity marker race (`.hermes-session-current.id`) — FIXED (2026-08-02):** the enforcer resolves the *current session id* from the shared fixed-path file `~/.steadfaste-fleet/state/.hermes-session-current.id`, which ANY concurrent session (party subagents, background workers, parallel conversations) can overwrite. Symptom (confirmed 2026-07-31): your fresh `.governance-<session>.json` lock exists with a valid heartbeat, yet `check_lock` returns inactive and write tools block with "GOVERNANCE LOCK REQUIRED" — the enforcer looks up the lock under the stomped id. State dir shows two+ lock files (yours + a subagent's) and the marker holding a third, unrelated id. **Fix (shipped in b26ea929):** the enforcer now INJECTS `args["session_id"]` into every `mcp__loop_governance__*` call at pre_tool_call, and the MCP server's `get_session_id(args)` reads it as **Priority 0** — beating the shared marker. The marker bridge remains only as legacy fallback for direct MCP callers. Recovery for pre-fix locks: re-acquire with `begin_change()` (creates the lock under the currently-resolved id), reload the 8 always-skills so the marker matches, then proceed. This compounds with Pitfall 3 (skills marker) — both live in the same shared state dir.
 
 **Enforcement update surface:** to enforce "cortex-update is the ONLY way to update locked files", audit ALL write paths, not just the lock helper: the pre-commit DOGFOOD self-heal (auto-deploys the enforcer on commit — convert to a BLOCK), doctor remediation hints that say `cp` hooks directly (re-point to cortex-update.sh), the `hermes-plugin-lock update` self-update channel, and sudoers env_reset (callers must use explicit `sudo CORTEX_UPDATE=1 cmd` assignment — plain `export` does not survive sudo). macOS chflags needs no root → script-level gating is the only lever there.
 
@@ -864,7 +864,7 @@ The scoring pipeline **must not block development** when a dependency is down. E
 | Failure point | Behaviour | Recovery |
 |--------------|-----------|----------|
 | **Ollama down** (embedding unavailable) | embed() returns None — each scorer falls back to heuristic/pass-rate values. full_score() adds warnings that Ollama is unavailable. Cycle still logs to DB with logged: True. | system-alert.py (every 10 min) detects unresponsive Ollama and attempts restart (retry loop, 5x2s). Auto-remediation cron also handles it. |
-| **DB locked / write failure** | Cycle scores proceed normally; result is returned with `logged: false` and `log_error`. JSON event still written to `~/.hermes-cortex/data/loop-events/`. | Next cycle retries automatically. Remediation sensor checks DB writability. |
+| **DB locked / write failure** | Cycle scores proceed normally; result is returned with `logged: false` and `log_error`. JSON event still written to `~/.steadfaste-fleet/data/loop-events/`. | Next cycle retries automatically. Remediation sensor checks DB writability. |
 | **Config file corrupt** | `get_config()` falls back to hardcoded defaults. Warning logged but scoring continues. | Remediation sensor detects corrupt JSON and restores from `config_history`. |
 | **nomic model not pulled** | Ollama returns 404 → fallback zero vector. User sees abnormally low scores. | `setup.sh` pre-pulls the model. Auto-remediation runs `ollama pull nomic-embed-text` on detection. |
 | **score-cycle CLI fails** | Non-zero exit code + error message to stderr. No silent failures. | Logged to cron job error tracker. Auto-remediation applies known fixes. |
@@ -908,7 +908,7 @@ Every piece of the loop-governance system lives in a predictable location. This 
 lets any agent find the tools regardless of which Hermes profile or project it's working in.
 
 ```
-~/hermes-cortex/                                ← Repo root
+~/steadfaste-fleet/                                ← Repo root
 ├── src/
 │   ├── loop-governance/                        ← Scoring, DB, CLI tools (detailed below)
 │   ├── mcp-servers/                            ← MCP servers (registered with Hermes)
@@ -920,12 +920,12 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 ├── AGENTS.md                                   ← Agent guidelines
 └── README.md                                   ← Public docs
 
-~/hermes-cortex/               ← DEPRECATED: core/governance/ removed July 2026
+~/steadfaste-fleet/               ← DEPRECATED: core/governance/ removed July 2026
                               ← Current governance is MCP-based:
-                              ←   ~/.hermes-cortex/scripts/loop-gov-mcp.py
+                              ←   ~/.steadfaste-fleet/scripts/loop-gov-mcp.py
                               ←   MCP tools: begin_change, cycle_query, feedback_accept/override, end_change
                               ←   Plugin: ~/.hermes/plugins/governance-enforcer/
-                              ←   DB: ~/.hermes-cortex/data/loop-governance.db
+                              ←   DB: ~/.steadfaste-fleet/data/loop-governance.db
                               ←   Skill: skills/devops/loop-governance/ (this file)
 │   ├── agent-inbox-architecture.md           Cross-machine inbox design
 │   ├── cron-management.md                    Cron template + argument order pitfall
@@ -934,16 +934,16 @@ lets any agent find the tools regardless of which Hermes profile or project it's
 │   └── macos-compatibility.md                Platform-specific details
 └── tests/                                    Test suite (see below)
 
-~/.hermes-cortex/tools/loop-governance/       ← Installed copy (per-machine, created by setup.sh)
+~/.steadfaste-fleet/tools/loop-governance/       ← Installed copy (per-machine, created by setup.sh)
 ~/.local/bin/score-cycle                       ← Symlinks to installed copy
 ~/.local/bin/loop-feedback
 ~/.local/bin/auto-apply
 ~/.local/bin/loop-config
 ~/.local/bin/session-cache-build
 
-~/.hermes-cortex/data/loop-governance.db             ← SQLite database (per-machine)
-`~/.hermes-cortex/data/loop-governance-config.json`    ← Runtime config (per-machine)
-`~/.hermes-cortex/data/loop-events/`                   ← JSON event backup (per-machine)
+~/.steadfaste-fleet/data/loop-governance.db             ← SQLite database (per-machine)
+`~/.steadfaste-fleet/data/loop-governance-config.json`    ← Runtime config (per-machine)
+`~/.steadfaste-fleet/data/loop-events/`                   ← JSON event backup (per-machine)
 
 **MCP Servers** (registered with `hermes mcp add`):
 
@@ -977,7 +977,7 @@ The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_cha
 
 **Close-out is ENFORCED (2026-08-08, Luke directive):** `end_change()` refuses to release the lock while the task's cycle is unscored, and `begin_change()` refuses a new task while this session still holds unscored PENDING cycles. There is no warning-only path anymore — score every cycle (step 3) BEFORE `end_change`, and never start a new task until the previous one is scored and closed. Hook-created cycles (`precommit-*` task ids, `session_id NULL`) do not trip the gate.
 
-**Interpreter reads of repo scripts are write-class — point scheduled passes at the deployed copy (2026-09-26):** the read-only allowlist never covers interpreter forms, so `python3 ~/hermes-cortex/ops/scripts/manage/task-db.py list --board` — a pure listing — demands a lock because the path sits inside the governed repo; the Sep 26 evening pass burned 8+ calls retrying it. Lock-free pattern: keep read compounds to allowlisted primitives only (`2>&1` is write-class, `echo` is not allowlisted), or use `read_file`/`search_files`, which are never gated. **A DEPLOYED copy is NOT lock-free — the script's LOCATION is irrelevant to the classifier:** what an interpreter call needs is a RESOLVED GOVERNED REPO (a path-like argument on the call, else the repo the SESSION already resolved), and `~/.hermes-cortex` is not a git repo (checked 2026-10-25: no `.git`; `git -C ~/.hermes-cortex rev-parse` exits 128), so its path contributes nothing. With neither source the call is refused with its OWN message — `No governed repo could be resolved for this call` — which is NOT the lock rule and is not cured by finding a lock. So the ORDER is the fix: take the lock deliberately first (begin_change → work → scored feedback_accept → end_change, the morning-pass pattern), and the deployed-copy read then passes from ANY cwd (measured 2026-10-25: `python3 ~/.hermes-cortex/scripts/task-db.py list --repo ALL --claimable --limit 3` from `~` → rc=0 with a cycle open, refused at session start before one). A job with no governance MCP toolset cannot mint a lock at all, so its read path must be an unGATED surface (`read_file`/`search_files`/MCP), never a CLI.
+**Interpreter reads of repo scripts are write-class — point scheduled passes at the deployed copy (2026-09-26):** the read-only allowlist never covers interpreter forms, so `python3 ~/steadfaste-fleet/ops/scripts/manage/task-db.py list --board` — a pure listing — demands a lock because the path sits inside the governed repo; the Sep 26 evening pass burned 8+ calls retrying it. Lock-free pattern: keep read compounds to allowlisted primitives only (`2>&1` is write-class, `echo` is not allowlisted), or use `read_file`/`search_files`, which are never gated. **A DEPLOYED copy is NOT lock-free — the script's LOCATION is irrelevant to the classifier:** what an interpreter call needs is a RESOLVED GOVERNED REPO (a path-like argument on the call, else the repo the SESSION already resolved), and `~/.steadfaste-fleet` is not a git repo (checked 2026-10-25: no `.git`; `git -C ~/.steadfaste-fleet rev-parse` exits 128), so its path contributes nothing. With neither source the call is refused with its OWN message — `No governed repo could be resolved for this call` — which is NOT the lock rule and is not cured by finding a lock. So the ORDER is the fix: take the lock deliberately first (begin_change → work → scored feedback_accept → end_change, the morning-pass pattern), and the deployed-copy read then passes from ANY cwd (measured 2026-10-25: `python3 ~/.steadfaste-fleet/scripts/task-db.py list --repo ALL --claimable --limit 3` from `~` → rc=0 with a cycle open, refused at session start before one). A job with no governance MCP toolset cannot mint a lock at all, so its read path must be an unGATED surface (`read_file`/`search_files`/MCP), never a CLI.
 
 **Adversarial review hard gate (2026-09-24, Luke directive):** `end_change()` runs an **independent adversarial reviewer** before closing any COMPLEX cycle, synchronously on the completion event. A sweep cron that polled for completed-but-unreviewed cycles was deleted (live job + install scripts) — review fires in `end_change` itself; never substitute a poll for a missing event hook, build the hook.
 
@@ -1011,7 +1011,7 @@ The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_cha
 - **Send the model CODE and ARTIFACTS, not prose about them.** A prose brief of your own design is reviewed as prose and comes back as opinion; extract the functions under review from the file with `ast` (never retype them, so they cannot drift from what runs), splice in artifacts read back from the live system — DB rows, the lock file, an accepted receipt, the log lines from the failure — and keep the instruction to a few sentences. The payload is the point: ~40k chars of code plus real data (~10k input tokens) stays answerable and yields findings by function and line number that no prose summary produced.
 - **Consult the reviewer model on your own numbers, then judge its advice.** Give it the REAL semantics (what is measured, what counts, what it can see) plus your own outcome rows, and ask what it would change. Expect it to be right about the blind spot you cannot see and wrong about the trade-off you can: record accept/reject WITH reasons, and verify any factual claim it makes against the shipped file before acting on it.
 - **Complexity is measured, never self-reported** — computed from the session's actual git diff: ≥50 lines (added+removed counted separately) or ≥3 files (non-noise); touching an always-review path (`plugins/governance-enforcer/`, `mcp-servers/loop-gov-mcp.py`, `core/governance/`, `ops/scripts/pre-commit-score`, `pre-push-pull`, `post-commit-audit`, `post-push-audit`, `ops/scripts/cortex-update.sh`, `ops/scripts/quality/adversarial-verify.py`, `ops/install/hooks/`) gates regardless of size — trust the SHARED list file `ops/scripts/lib/always-review-paths.txt` over any path list quoted in prose, including this one: the file WINS at load time, so it is the only current answer, and a stale quote here is how a session concludes a surface is ungated when it is not. Uncommitted work counts (staged + unstaged + untracked — no "create big file, don't add, dodge"); exact-name lockfiles (`Cargo.lock`, `package-lock.json`, …) are discounted, checked AFTER always-review paths. Trivial changes skip review.
-- **Reviewer independence** — the reviewer runs in the MCP daemon with a distinct model and a fixed, committed orchestrator-owned prompt (`docs/templates/adversarial-reviewer-prompt.md`, deployed copy `~/.hermes-cortex/templates/`); the reviewer prompt can neither be edited by the worker nor supplied from worker text. A WORKER invokes the plan-review gate's reviewer themselves — `python3 ~/.hermes-cortex/scripts/adversarial-review.py --cycle-id N --material-file <plan> --review --reviewer-id plan-<slug>` is a sanctioned lock-free write (2026-10-30), so no orchestrator and no second lock is needed; independence comes from the fixed prompt + distinct model + recorded reviewer_id, not from who runs the script.
+- **Reviewer independence** — the reviewer runs in the MCP daemon with a distinct model and a fixed, committed orchestrator-owned prompt (`docs/templates/adversarial-reviewer-prompt.md`, deployed copy `~/.steadfaste-fleet/templates/`); the reviewer prompt can neither be edited by the worker nor supplied from worker text. A WORKER invokes the plan-review gate's reviewer themselves — `python3 ~/.steadfaste-fleet/scripts/adversarial-review.py --cycle-id N --material-file <plan> --review --reviewer-id plan-<slug>` is a sanctioned lock-free write (2026-10-30), so no orchestrator and no second lock is needed; independence comes from the fixed prompt + distinct model + recorded reviewer_id, not from who runs the script.
 - **Scratch cleanup in `/tmp` is lock-free (2026-10-30).** `rm -f /tmp/x /tmp/y && rm -rf /tmp/sub && echo cleaned` is a sanctioned carve-out — deleting scratch that lives outside any repo must not demand a repo lock a finished task no longer holds (a closed task literally cannot hold one). The carve-out is NARROW: only `rm`/`rmdir` (+ -f/-r/-rf/-d) whose realpath-resolved operands land STRICTLY under `/tmp`, chained only by `&&`, with at most one trailing `echo <word>`. It refuses every escape: the bare `/tmp` root, `/home`, repo/`..` paths, wildcards, sudo/mv/cd/, `;`, pipes, redirects, and a hostile `$TMPDIR=/home/x` (only `/tmp` is the scratch root; a `$TMPDIR/...` operand must still resolve under `/tmp`). Anything else needs a lock exactly as before — this gate only removes the lock on the agent's own scratch files.
 - **`adversarial_reviews` is APPEND-ONLY — never DELETE rows to clear a verdict (2026-10-30).** A worker doing `sqlite3 ... "DELETE FROM adversarial_reviews WHERE cycle_id=N"` then re-recording is the re-roll-until-CLEAN loophole and an audit-tamper. A FINDINGS you disagree with does not get to cease existing. The legitimate need — a fresh verdict after improving your material — is `--re-review`, which moves the current verdict into `adversarial_reviews_history` (append-only) and records a fresh current row. Re-review is a sanctioned lock-free write too; the enforcer blocks raw sqlite3/python mutation of the store and redirects to `--re-review`. Nothing is ever deleted; a superseded FINDINGS is always recoverable.
   **The close gate DEPENDS on ONE current row per cycle** — `loop-gov-mcp.py` writes `adversarial_reviews` with `cycle_id UNIQUE` + `ON CONFLICT(cycle_id) DO UPDATE` and reads it with a bare `fetchone()`. So the PRIMARY table must stay single-row-per-cycle; appending history is done via a SEPARATE `adversarial_reviews_history` table (move-then-upsert in one transaction), not by making the primary multi-row. Also bump `review_id` on the UPSERT (include `review_id=excluded.review_id` in the DO UPDATE SET) — otherwise the history INSERT collides on the review_id PRIMARY KEY the second time a cycle is re-reviewed.
@@ -1021,7 +1021,7 @@ The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_cha
 - **There are TWO verdict stores, and only one of them makes a finding re-reviewable.** Whole-range verdicts land in `adversarial_reviews` keyed by `cycle_id`; per-blob verdicts land in `blob_reviews` keyed by `blob_sha` (content-addressed, so an edited file is a new blob judged again, and a byte-identical one is never re-bought). `rereview_change` reads ONLY `adversarial_reviews`, so a cycle refused on a PER-BLOB finding answers *"no recorded review — nothing to re-review"* and the documented exit from a FINDINGS verdict is unreachable on that path. Name the store whenever you call findings durable: read the refusal text for what was found, and check whether a cycle row exists before promising a re-review. When only per-blob findings block, the honest exits are: fix the blob (a new blob is re-judged on its own), park the task (see `request_interruption` below), or escalate — not an override.
 - **Every verdict must NAME the judge that produced it.** A `reviewer_model` column that is empty in every row is not observability: it is how a wrong default survives, because no query can show which judge produced a verdict. 
   **A writer that ACCEPTS a field is not a writer that FILLS it** — when a stored field is uniformly empty, suspect the CALL SITE before the schema: here the column existed, the insert listed it, and the caller passed neither model nor reviewer id. Assert the value on a fresh row from the real call path, and treat an empty one as a defect in the caller.
-  **Read the record; never describe it from memory.** `SELECT cycle_id, verdict, reviewer_model, findings_json, summary FROM adversarial_reviews ORDER BY cycle_id DESC` over `~/.hermes-cortex/data/loop-governance.db`. The `reviewer_model` column is the ONLY proof of which model judged a change, so it is how a model/tiering change is verified to be LIVE: if no row names the model you expect, the code is not in effect yet (the daemon serves the module it loaded at startup) and a saving you cannot show in these rows is not a saving yet — say so instead of citing the unit test. Read the parsed `findings_json`; `summary` holds the reviewer's raw response, fences and all. `blob_reviews` is the per-blob equivalent, keyed by `blob_sha`.
+  **Read the record; never describe it from memory.** `SELECT cycle_id, verdict, reviewer_model, findings_json, summary FROM adversarial_reviews ORDER BY cycle_id DESC` over `~/.steadfaste-fleet/data/loop-governance.db`. The `reviewer_model` column is the ONLY proof of which model judged a change, so it is how a model/tiering change is verified to be LIVE: if no row names the model you expect, the code is not in effect yet (the daemon serves the module it loaded at startup) and a saving you cannot show in these rows is not a saving yet — say so instead of citing the unit test. Read the parsed `findings_json`; `summary` holds the reviewer's raw response, fences and all. `blob_reviews` is the per-blob equivalent, keyed by `blob_sha`.
   **A high FINDINGS share is not by itself a problem — count SEVERITY.** Findings at `info` are recorded and do not block, which is exactly the shape a window/bound observation should take; a fleet whose rows are mostly FINDINGS can still be closing every cycle cleanly.
 - **Recovery/closeout cycles can't hide an always-review-path diff.** Complexity is measured from the whole branch diff, not just "work done in this cycle." If you opened a small recovery/lock-clear cycle while a PRIOR cycle's unmerged change already touched an always-review path (e.g. `mcp-servers/loop-gov-mcp.py`, `plugins/governance-enforcer/`), THIS cycle's `end_change` is force-reviewed no matter how trivial its own delta, and the reviewer will flag the unrelated path diff as scope-drift forever. Don't chain a recovery cycle on top of unreviewed always-path work: land/review that work under its own cycle first, keep the recovery branch clean, and traverse list-returning queries with `--json`/`-q` when the diff must stay minimal.
 
@@ -1031,9 +1031,9 @@ The old intermediate `cycle_query(task_id="...")` call is eliminated: `begin_cha
 
 **PENDING vs scored-unreviewed — don't mass-accept hook cycles (2026-08-05):** the pre-commit hook auto-logs one cycle per commit with a LOOP/MOVE_ON/STOP decision and `user_overrode IS NULL`. These accumulate by the hundred and look like "unreviewed" via `cycle_query(unreviewed=true)`, but they are NOT failures: the doctor only fails on `decision='PENDING'` cycles. Only resolve genuinely PENDING cycles (fresh <24h, no live lock for that task). To tell them apart, query the DB directly: `SELECT id, task_id, decision, user_overrode, timestamp FROM loop_cycles WHERE decision='PENDING' OR (user_overrode IS NULL) ORDER BY id` — check `decision` per row, don't bulk-accept. Upstream doctor (63981498+) refines this further: a PENDING cycle whose task_id has NO active `.governance-*.json` lock is a LEAK (FAIL, blocks push); a PENDING cycle whose task holds a live lock is the current task (INFO, expected mid-session).
 
-**Lock STATUS field and the doctor's PENDING-cycle check (2026-08-08):** `begin_change` writes the lock with `status: "planning"` when a plan is provided (loop-gov-mcp.py), `"executing"` otherwise. The doctor's leak check used to count ONLY `status == "executing"` locks as active — so every planned task's PENDING cycle was misreported as a LEAK (❌ FAIL) even while the task held its lock, and the doctor blocked the push mid-task. The lock's EXISTENCE is the active signal (`end_change` unlinks it on release); the doctor now accepts any non-terminal status (`completed`/`cancelled` excluded). If you see "❌ PENDING cycles" for a task whose lock you can see in `~/.hermes-cortex/state/.governance-*.json`, check the deployed `cortex_doctor/checks.py` matches repo — a stale deployed copy with the old `== "executing"` filter produces exactly this false FAIL.
+**Lock STATUS field and the doctor's PENDING-cycle check (2026-08-08):** `begin_change` writes the lock with `status: "planning"` when a plan is provided (loop-gov-mcp.py), `"executing"` otherwise. The doctor's leak check used to count ONLY `status == "executing"` locks as active — so every planned task's PENDING cycle was misreported as a LEAK (❌ FAIL) even while the task held its lock, and the doctor blocked the push mid-task. The lock's EXISTENCE is the active signal (`end_change` unlinks it on release); the doctor now accepts any non-terminal status (`completed`/`cancelled` excluded). If you see "❌ PENDING cycles" for a task whose lock you can see in `~/.steadfaste-fleet/state/.governance-*.json`, check the deployed `cortex_doctor/checks.py` matches repo — a stale deployed copy with the old `== "executing"` filter produces exactly this false FAIL.
 
-Or via the main installer: `bash hermes-cortex/install.sh` (loop-governance step removed in July 2026 — use cortex-update.sh instead).
+Or via the main installer: `bash steadfaste-fleet/install.sh` (loop-governance step removed in July 2026 — use cortex-update.sh instead).
 
 ## Database Retention
 
@@ -1067,7 +1067,7 @@ db.close()
 ```
 
 The weekly evaluation cron can be extended to include a retention step.
-For high-volume environments, archive the JSON events directory (`~/.hermes-cortex/data/loop-events/`) to cold storage before deleting.
+For high-volume environments, archive the JSON events directory (`~/.steadfaste-fleet/data/loop-events/`) to cold storage before deleting.
 
 ## Test Suite
 
@@ -1083,7 +1083,7 @@ Every loop-governance module must have corresponding tests in `scripts/tests/`:
 
 Run with:
 ```bash
-cd ~/hermes-cortex/src/loop-governance
+cd ~/steadfaste-fleet/src/loop-governance
 python3 -m pytest tests/ -v
 ```
 
@@ -1132,7 +1132,7 @@ next version bump.
 ## Adoption Enforcement
 
 The change-test-loop skill's **Iron Law** includes: *"NO CYCLE WITHOUT SCORING AND LOGGING
-TO THE GOVERNANCE DB."* Every agent working on code in a hermes-cortex-managed repo
+TO THE GOVERNANCE DB."* Every agent working on code in a steadfaste-fleet-managed repo
 must:
 
 1. Run `score-cycle` after every completed LEARN→RED→GREEN→REFACTOR cycle
@@ -1194,7 +1194,7 @@ The fleet has one orchestrator (Moses) and several agent machines (Titus, Gisu, 
 Kustos). Only the orchestrator runs cross-agent tasks. Regular agents run local-only tasks
 (agent-session-cache-build, local-weekly-loop-eval).
 
-**Agent registry:** `~/hermes-cortex/ops/services/agent-registry.json` defines each agent's role,
+**Agent registry:** `~/steadfaste-fleet/ops/services/agent-registry.json` defines each agent's role,
 hostname, whether it's server-reachable (`accessible`), and whether it's the orchestrator
 (`is_orchestrator`). The `install-crons.py` script reads this registry and compares the
 local hostname against the orchestrator's hostname to decide which crons to install.

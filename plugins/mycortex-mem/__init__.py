@@ -61,12 +61,12 @@ _LEVEL_ORDER = {"minimal": 0, "low": 1, "medium": 2, "high": 3, "max": 4}
 # with self._store's resolve_mem_password. Env override first (a harness may
 # set it), then the canonical cortex .env — the read-from-disk fallback is what
 # makes the provider available in launchd/systemd gateway services that do not
-# inherit ~/hermes-cortex/.env, without any service-specific env injection.
+# inherit ~/steadfaste-fleet/.env, without any service-specific env injection.
 
 
 def _canonical_mem_env_paths() -> list[Path]:
-    return [Path.home() / "hermes-cortex" / ".env",
-            Path.home() / ".hermes-cortex" / ".env"]
+    return [Path.home() / "steadfaste-fleet" / ".env",
+            Path.home() / ".steadfaste-fleet" / ".env"]
 
 
 def resolve_mem_password(env_paths=None) -> str:
@@ -558,7 +558,7 @@ class MycortexMemMemoryProvider(MemoryProvider):
         if tools is None:
             return tool_error(
                 "cortex context_tools is unavailable — the shared mem_* surface "
-                "could not be loaded (checked ~/.hermes-cortex/services/mycortex-mem/)."
+                "could not be loaded (checked ~/.steadfaste-fleet/services/mycortex-mem/)."
             )
         if tool_name not in tools.HANDLERS:
             return tool_error(f"Unknown tool: {tool_name}")
@@ -748,7 +748,7 @@ def _load_context_tools():
     import importlib.util
 
     candidates = [
-        Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "context_tools.py",
+        Path.home() / ".steadfaste-fleet" / "services" / "mycortex-mem" / "context_tools.py",
         Path(__file__).resolve().parents[2] / "ops" / "services" / "mycortex-mem" / "context_tools.py",
     ]
     for path in candidates:

@@ -24,7 +24,7 @@ The client agent sends a JSON body via `health-vector-push.sh` to queue
 | `t` | `int` | Unix timestamp |
 
 Config: `health-vector-push.sh` reads `CORTEX_BUS_URL` + `CORTEX_BASIC_AUTH`
-(or Bearer `CORTEX_BUS_TOKEN`) from `~/hermes-cortex/.env`.
+(or Bearer `CORTEX_BUS_TOKEN`) from `~/steadfaste-fleet/.env`.
 
 ## Push Format — Rich Health-Report (optional)
 
@@ -40,8 +40,8 @@ Today the pipeline is:
 Every 10 min:
   1. orch-clean-health-queue.py drains inbox_health_check (bus_read + archive)
   2. For each ping it persists the agent's LATEST vector to
-     ~/.hermes-cortex/state/inbox-health-state.json  →  {"<agent>": {"vector": [...], "ts": "<iso>"}}
-  3. It also updates ~/.hermes-cortex/state/last-seen.json (laptop grace)
+     ~/.steadfaste-fleet/state/inbox-health-state.json  →  {"<agent>": {"vector": [...], "ts": "<iso>"}}
+  3. It also updates ~/.steadfaste-fleet/state/last-seen.json (laptop grace)
 ```
 
 Consumers (`orch-health-report.py`, dashboard) read `inbox-health-state.json`
@@ -49,7 +49,7 @@ instead of polling the queue — the queue is transient (drained every 10 min),
 the state file always holds the latest vector per agent.
 
 ```python
-state_file = Path.home() / ".hermes-cortex" / "state" / "inbox-health-state.json"
+state_file = Path.home() / ".steadfaste-fleet" / "state" / "inbox-health-state.json"
 entry = json.loads(state_file.read_text()).get("titus")
 vec = entry["vector"] if entry else None
 ```
@@ -77,6 +77,6 @@ queue.
 | Read | `POST /api/pgmq/read` with `{"queue": "inbox_health_check", "vt": 60}` |
 | Archive | `POST /api/pgmq/archive` with `{"queue": ..., "msg_id": ...}` |
 | Depth | `GET /api/pgmq/depth/inbox_health_check` |
-| Auth | Basic Auth with `CORTEX_BASIC_AUTH` or Bearer `CORTEX_BUS_TOKEN` from `~/hermes-cortex/.env` |
+| Auth | Basic Auth with `CORTEX_BASIC_AUTH` or Bearer `CORTEX_BUS_TOKEN` from `~/steadfaste-fleet/.env` |
 | Timeout | 5 seconds per request |
 | Retired | `GET /api/inbox`, `DELETE /api/delete/{filename}` — 404 on the PGMQ bus |

@@ -39,7 +39,7 @@ The Langfuse Python SDK v4+ exports traces via OpenTelemetry OTLP protocol (HTTP
     └── 03-profile-defaults.xml      # Per-query limits (users.d/)
 ```
 
-Source of truth for compose + configs: `hermes-cortex/deploy/`:
+Source of truth for compose + configs: `steadfaste-fleet/deploy/`:
 - `docker-compose.langfuse.yml`
 - `clickhouse-config.d/*.xml`
 - `README-langfuse-clickhouse.md`
@@ -268,7 +268,7 @@ stuck, `Merge=0`, log showing `MEMORY_LIMIT_EXCEEDED`.
 after applying. If `changed=0`, the config file wasn't read (common cause: stale
 deployed copy in `~/langfuse/clickhouse-config.d/`).
 
-For the full config reference, see `hermes-cortex/ops/install/deploy/README-langfuse-clickhouse.md`
+For the full config reference, see `steadfaste-fleet/ops/install/deploy/README-langfuse-clickhouse.md`
 and the `auto-remediation` skill's `references/clickhouse-low-memory-tuning.md`.
 
 ## Troubleshooting
@@ -314,7 +314,7 @@ The local `qwen2.5-coder:3b` model emits 1 token of whitespace/empty content
 on every prompt (verified sha256-clean blobs, AVX2 CPU, Ollama 0.30.10).
 Code-completion tuning makes it unusable for rubric JSON. The fleet switched
 the judge model to `qwen2.5:3b` (2026-08-11): repo default and the per-host
-`JUDGE_MODEL` in `~/hermes-cortex/.env` (gitignored, per-host) both use the
+`JUDGE_MODEL` in `~/steadfaste-fleet/.env` (gitignored, per-host) both use the
 verified-working instruct variant. Pull it first: `ollama pull qwen2.5:3b`.
 
 ### Doctor surfaces Langfuse health (cortex-doctor)
@@ -552,10 +552,10 @@ sed -i.bak 's/^LANGFUSE_INIT_USER_PASSWORD=.*/LANGFUSE_INIT_USER_PASSWORD=new_pa
 
 ## References
 
-- `hermes-cortex/deploy/README-langfuse-clickhouse.md` — Full deployment guide
-- `hermes-cortex/deploy/docker-compose.langfuse.yml` — Canonical compose file
-- `hermes-cortex/deploy/clickhouse-config.d/` — ClickHouse config files
-- `hermes-cortex/ops/scripts/cortex-setup-langfuse.sh` — Automated setup script
+- `steadfaste-fleet/deploy/README-langfuse-clickhouse.md` — Full deployment guide
+- `steadfaste-fleet/deploy/docker-compose.langfuse.yml` — Canonical compose file
+- `steadfaste-fleet/deploy/clickhouse-config.d/` — ClickHouse config files
+- `steadfaste-fleet/ops/scripts/cortex-setup-langfuse.sh` — Automated setup script
 - `references/clickhouse-merge-failure-repair.md` — Diagnose and fix CHECKSUM_DOESNT_MATCH merge loops
 - `references/clickhouse-oom-max-memory-conflict.md` — Diagnose per-query max_memory_usage exceeding server max_server_memory_usage (silent OOM loop)
 - `references/clickhouse-stale-huge-parts-nuke.md` — **NEW:** Nuke data volume when low-memory config is deployed but OLD parts from the pre-config era cause MEMORY_LIMIT_EXCEEDED on every merge

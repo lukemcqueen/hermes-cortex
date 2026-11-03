@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # cleanup-ollama.sh — remove all Ollama models except the 2 essential ones
-# Reads EMBEDDING_MODEL and JUDGE_MODEL from ~/hermes-cortex/.env
+# Reads EMBEDDING_MODEL and JUDGE_MODEL from ~/steadfaste-fleet/.env
 # Default: nomic-embed-text:v1.5 + qwen2.5:3b
 
 # Source model configuration
-MODELS_ENV="${HOME}/hermes-cortex/.env"
+MODELS_ENV="${HOME}/steadfaste-fleet/.env"
 if [ -f "$MODELS_ENV" ]; then
   set -a
   source "$MODELS_ENV"

@@ -1,8 +1,8 @@
 ---
 name: repo-organization
-description: "Canonical repo organization for Hermes Cortex — structure, naming, consolidation, symlinks, and audit procedures."
+description: "Canonical repo organization for Steadfaste Fleet — structure, naming, consolidation, symlinks, and audit procedures."
 version: 1.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -11,10 +11,10 @@ metadata:
     related_skills: [code-review, project-map, hermes-agent-skill-authoring]
 ---
 
-# Hermes Cortex — Repo Organization Standard
+# Steadfaste Fleet — Repo Organization Standard
 
-This skill defines the canonical structure for Hermes Cortex repos. Use it when:
-- Setting up a new Hermes Cortex installation
+This skill defines the canonical structure for Steadfaste Fleet repos. Use it when:
+- Setting up a new Steadfaste Fleet installation
 - Auditing an existing repo for structural issues
 - Deciding where a new file should live
 - Renaming or consolidating scattered data
@@ -23,12 +23,12 @@ This skill defines the canonical structure for Hermes Cortex repos. Use it when:
 
 ## 1. Core Principle: Three-Layer Model
 
-Hermes Cortex uses three distinct layers, each with a clear purpose:
+Steadfaste Fleet uses three distinct layers, each with a clear purpose:
 
 | Layer | Path | Purpose | Backed up? |
 |-------|------|---------|------------|
-| **Repo** | `~/hermes-cortex/` | Public source code, skills, docs, installer | ✅ Git (GitHub) |
-| **Consumer overlay** | `<project>/.hermes-cortex/` | Per-PROJECT agent data (sessions, memory, skills) for consumer projects seeded by `seed-project.sh`. The Cortex repo itself must NOT carry one (removed 2026-10-07) — `cortex-update.sh` skips it when the repo is the Cortex repo. | ✅ Git (in that project) |
+| **Repo** | `~/steadfaste-fleet/` | Public source code, skills, docs, installer | ✅ Git (GitHub) |
+| **Consumer overlay** | `<project>/.steadfaste-fleet/` | Per-PROJECT agent data (sessions, memory, skills) for consumer projects seeded by `seed-project.sh`. The Cortex repo itself must NOT carry one (removed 2026-10-07) — `cortex-update.sh` skips it when the repo is the Cortex repo. | ✅ Git (in that project) |
 | **Hermes Config** | `~/.hermes/` | Hermes Agent runtime (config, logs, cache, DBs) | ❌ Machine-local |
 
 **Rule:** Never put agent-generated data in the repo root. Never put source code in `~/.hermes/`. Never put logs in the repo.
@@ -38,7 +38,7 @@ Hermes Cortex uses three distinct layers, each with a clear purpose:
 ## 2. Canonical Directory Structure
 
 ```
-hermes-cortex/
+steadfaste-fleet/
 ├── AGENTS.md                  # Agent guidelines — orients every agent on entry
 ├── README.md                  # Human-readable intro + quick-start
 ├── LICENSE                    # MIT
@@ -66,12 +66,12 @@ hermes-cortex/
 │   ├── agent-registry.json    # Canonical agent list (who, where, accessible?)
 │   └── project-map/           # Dependency graph analysis
 │
-├── (this repo carries NO .hermes-cortex/)
-│                              # The runtime infra dir is ~/.hermes-cortex/ — it holds
+├── (this repo carries NO .steadfaste-fleet/)
+│                              # The runtime infra dir is ~/.steadfaste-fleet/ — it holds
 │                              # sessions/current.md, archive/, memory/ and skills.yaml.
-│                              # Inside ~/hermes-cortex a repo-local .hermes-cortex/ would
+│                              # Inside ~/steadfaste-fleet a repo-local .steadfaste-fleet/ would
 │                              # SHADOW that runtime dir (doctor check: Repo-local
-│                              # .hermes-cortex). A consumer project may keep its own
+│                              # .steadfaste-fleet). A consumer project may keep its own
 │                              # repo-local overlay — this repo must not.
 │
 ├── deploy/                    # Deployment configs
@@ -135,7 +135,7 @@ hermes-cortex/
 
 ### What goes where
 
-| This belongs in the repo (`src/`) | This belongs in `~/.hermes-cortex/` | This stays in `~/.hermes/` |
+| This belongs in the repo (`src/`) | This belongs in `~/.steadfaste-fleet/` | This stays in `~/.hermes/` |
 |-----------------------------------|-----------------------------------|----------------------------|
 | Runable scripts | Session state | Agent config (config.yaml) |
 | Skill source code | Agent memory (MEMORY.md, USER.md) | Runtime DBs (loop-governance.db) |
@@ -194,7 +194,7 @@ Use symlinks ONLY when:
 **What NOT to symlink:**
 - Config files — use references or imports instead
 - Secrets — never symlink across boundaries
-- Agent memory — it's per-user and should stay in `~/.hermes-cortex/memory/` (a consumer project keeps its own repo-local overlay instead)
+- Agent memory — it's per-user and should stay in `~/.steadfaste-fleet/memory/` (a consumer project keeps its own repo-local overlay instead)
 
 ---
 
@@ -204,7 +204,7 @@ Run this checklist when auditing the repo:
 
 ```
 [ ] No source code in ~/.hermes/
-[ ] No agent data in ~/hermes-cortex/ root
+[ ] No agent data in ~/steadfaste-fleet/ root
 [ ] All cron names follow `agent-*` (fleet-wide) or `orch-*` (orchestrator-only) convention
 [ ] All skill directory names match name: field in SKILL.md
 [ ] No stale .cron-version markers in git tracking

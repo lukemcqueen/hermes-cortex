@@ -5,7 +5,7 @@ Designed to run as a no_agent cron (every 6h). Reads the skills
 manifest written by agent-collect-skills.sh and sends it to Moses
 via PGMQ Agent Bus. Silent when no custom skills to report.
 
-Requires (from ~/hermes-cortex/.env, ~/hermes-cortex/.env,
+Requires (from ~/steadfaste-fleet/.env, ~/steadfaste-fleet/.env,
   or env vars):
   CORTEX_BUS_URL         — Moses Agent Bus URL (primary)
   CORTEX_BUS_FALLBACK_URL — Esther Agent Bus URL (fallback)
@@ -50,7 +50,7 @@ def _resolve_var(key: str, default: str = "") -> str:
     if val:
         return val
     for cfg_path in [
-        HOME / "hermes-cortex" / ".env",
+        HOME / "steadfaste-fleet" / ".env",
     ]:
         cfg = _load_env(cfg_path)
         if key in cfg and cfg[key]:
@@ -70,7 +70,7 @@ BUS_TOKEN = _resolve_var("CORTEX_BUS_TOKEN")
 AGENT_NAME = _resolve_var("AGENT_NAME")
 if not AGENT_NAME or AGENT_NAME == "unknown":
     print("❌ AGENT_NAME not configured — set AGENT_NAME= in "
-          "~/.hermes-cortex/agent.env / .env / ~/hermes-cortex/.env "
+          "~/.steadfaste-fleet/agent.env / .env / ~/steadfaste-fleet/.env "
           "or export AGENT_NAME", file=sys.stderr)
     sys.exit(1)
 
@@ -99,16 +99,16 @@ def _build_auth_headers(url: str) -> dict[str, str]:
 if not BUS_URL or not BUS_TOKEN:
     sys.exit(0)
 
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 MANIFEST_FILE = STATE_DIR / "skills-manifest.json"
 CONTENTS_FILE = STATE_DIR / "skills-contents.json"
 
 # ── Rebuild manifest from current skills ──
-collect_script = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "agent-collect-skills.sh"
+collect_script = HOME / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "agent-collect-skills.sh"
 if collect_script.exists():
     subprocess.run(["bash", str(collect_script)], capture_output=True)
 else:
-    deployed = HOME / ".hermes-cortex" / "scripts" / "agent-collect-skills.sh"
+    deployed = HOME / ".steadfaste-fleet" / "scripts" / "agent-collect-skills.sh"
     if deployed.exists():
         subprocess.run(["bash", str(deployed)], capture_output=True)
 

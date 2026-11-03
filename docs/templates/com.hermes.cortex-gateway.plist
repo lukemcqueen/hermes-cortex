@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Hermes Cortex — cortex-gateway Launchd Plist (macOS counterpart of
+  Steadfaste Fleet — cortex-gateway Launchd Plist (macOS counterpart of
   docs/templates/cortex-gateway.service, which is Linux/systemd only).
 
   The decoupled messaging gateway daemon. Independent of com.hermes.gateway:
   no dependency on the Hermes runtime (see docs/design/cortex-gateway.md).
 
   launchd has no systemd-style EnvironmentFile, so the wrapper sources the ONE
-  canonical cortex env (~/hermes-cortex/.env) before exec'ing the daemon. That
+  canonical cortex env (~/steadfaste-fleet/.env) before exec'ing the daemon. That
   is the same file the systemd unit reads — no macOS-specific env name.
 
   PORTABLE + SELF-DIAGNOSING (2026-10-13). It hardcoded /Users/luke for
@@ -44,7 +44,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/hermes-cortex/.env"; set +a; . "$HOME/.hermes-cortex/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py"; exec "$HOME/.hermes-cortex/venv/bin/python3" "$HOME/.hermes-cortex/scripts/cortex_gateway/daemon.py" --config "$HOME/.hermes-cortex/gateway.yaml"</string>
+        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/steadfaste-fleet/.env"; set +a; . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py"; exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>

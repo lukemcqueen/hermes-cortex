@@ -2,7 +2,7 @@
 name: shared-repo-push-gates
 description: "Shared-repo push blocked? Know the gates that block you."
 version: 1.2.0
-author: Hermes Cortex (Esther)
+author: Steadfaste Fleet (Esther)
 license: MIT
 platforms: [linux, macos]
 metadata:
@@ -23,7 +23,7 @@ two sides adding rows — resolve to the UNION, then `GIT_EDITOR=true git rebase
 
 **The deploy-sync check runs before the push.** `Deploy sync ❌` with several `Checksum: <file>`
 lines means the deployed tree is behind the repo — typical after a rebase pulled in a peer's edits.
-The gate prints its own remedy (`bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`); run it,
+The gate prints its own remedy (`bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`); run it,
 never hand-copy files into the deploy tree.
 
 **ORDER: close, then push BARE — do not open a cycle to "hold the lock" while you push.**
@@ -39,8 +39,8 @@ the carve-out's own output line are under *A lock is required to `git push`* bel
 module's mtime:
 
     ps -o lstart= -p $(pgrep -f tools/loop-governance/loop-gov-mcp.py)
-    stat -c %y ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py 2>/dev/null \
-      || stat -f '%Sm' ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py   # GNU, else BSD
+    stat -c %y ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py 2>/dev/null \
+      || stat -f '%Sm' ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py   # GNU, else BSD
 
 A daemon started BEFORE your deploy keeps refusing on rules you have already fixed, and the refusal
 reads as authoritative. Only a gateway restart replaces it, and you cannot restart the gateway from
@@ -53,7 +53,7 @@ working tree), not a problem with your diff.
 
 ## When to Use
 
-- Any git commit/push in `~/hermes-cortex` (the shared fleet repo)
+- Any git commit/push in `~/steadfaste-fleet` (the shared fleet repo)
 - A push or commit was rejected and the cause isn't obvious
 - Writing docs or scripts to the shared surface (repo or `~/.hermes/skills`)
 
@@ -92,7 +92,7 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   already authorise your push.** A close writes the receipt with BASE = `git merge-base
   origin/main HEAD`, so a peer session that just closed its own cycle has written a CLEAN
   receipt covering every unpushed commit behind it, yours included, even though they have
-  not pushed yet. Check before looping: `ls ~/.hermes-cortex/state/.reviewed-hermes-cortex-<tip>*.json`
+  not pushed yet. Check before looping: `ls ~/.steadfaste-fleet/state/.reviewed-steadfaste-fleet-<tip>*.json`
   and read its `verdict`/`base_sha`/`tip_sha`. A receipt found this way can let the push
   through with no new cycle at all.
 - **A PERMITTED close that writes NO receipt means the lock had no repo identity — re-take
@@ -116,7 +116,7 @@ and invalidates the receipt, so push immediately after closing. Full detail:
   and still writes `verdict: CLEAN` bound to `base..tip`. The gate then accepts a whole unpushed
   range nobody judged — and on an always-review path that is the entire point of the binding thrown
   away. Two cheap reads separate a real receipt from a hollow one: the gate log
-  (`grep -e '<cycle id>' -e 'simple' ~/.hermes-cortex/logs/loop-governance.log`; a line reading
+  (`grep -e '<cycle id>' -e 'simple' ~/.steadfaste-fleet/logs/loop-governance.log`; a line reading
   `self-adversarial review: cycle N simple (L lines, F files) — skip` means NOTHING was judged, and
   `L`/`F` are the WINDOW's numbers, never the range's) and the receipt's own `reviewed_blobs` — an
   empty map beside a `reviewed_files` list naming every file of the range is the tell, because the
@@ -413,7 +413,7 @@ does not apply.
     reasoning model spent the whole output budget thinking. The documented knob is
     `REVIEWER_MAX_TOKENS`, read at CALL time (never at import), so raising it takes effect on
     the retry with no restart: append `REVIEWER_MAX_TOKENS=<n>` to the cortex `.env`
-    (`$HOME/hermes-cortex/.env`, or `$CORTEX_ENV_FILE`; the reader also checks the deploy
+    (`$HOME/steadfaste-fleet/.env`, or `$CORTEX_ENV_FILE`; the reader also checks the deploy
     root and `~/.hermes/.env`). Ceiling is 128000 — a value above it is clamped and warned.
     Then call `end_change` again on the SAME session: the refused close leaves the lock FILE
     removed while the governance SESSION stays live, so `begin_change` refuses with "A
@@ -454,7 +454,7 @@ does not apply.
 3. **`adversarial-verifier` skill required for commits** while any
    `ops/scripts/` working-tree change exists — even for docs-only commits.
    Load the skill, run
-   `python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
+   `python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <your-staged-files> --level A2 --gate`,
    then commit.
    - **The scan judges the whole FILE, so an OLD file's pre-existing findings block a one-line
      change to it — attribute before you edit.** Measured on a 1,300-line CLI: adding a single
@@ -510,7 +510,7 @@ does not apply.
    - **Per-task `cycle_query(task_id=...)` does NOT show other tasks' leaked
      cycles** — if the doctor still reports PENDING after scoring your own,
      find the leak directly:
-     `python3 -c "import sqlite3; c=sqlite3.connect('$HOME/.hermes-cortex/data/loop-governance.db'); [print(r) for r in c.execute(\"SELECT id, task_id, session_id FROM loop_cycles WHERE decision='PENDING'\")]"`
+     `python3 -c "import sqlite3; c=sqlite3.connect('$HOME/.steadfaste-fleet/data/loop-governance.db'); [print(r) for r in c.execute(\"SELECT id, task_id, session_id FROM loop_cycles WHERE decision='PENDING'\")]"`
      (DB table is `loop_cycles`, not `cycles`.) 2026-09-02: the blocker was
      `bus-poison-filter` from bg session `bg_090100_065b51` — an async
      delegation's cycle never scored.
@@ -526,7 +526,7 @@ does not apply.
      `UPDATE loop_cycles SET completeness=1, quality=1, progress=1,
      composite=1, decision='STOP', outcome_note='<verification evidence>'
      WHERE id=<cycle_id>;` then delete the session lock
-     `~/.hermes-cortex/state/.governance-<session>.json`. Last resort only
+     `~/.steadfaste-fleet/state/.governance-<session>.json`. Last resort only
      (3 MCP retries max) — it writes the same fields feedback_accept writes;
      never skip the score, and state the workaround in your report.
 5. **Deploy-sync gate fires before push.** The push gate requires deployed
@@ -537,7 +537,7 @@ does not apply.
    every form: run `bash ops/scripts/cortex-update.sh` (deploy), then push.
    Order is always commit → cortex-update → push. For the full dogfood
    (pull → deploy → doctor → verify):
-   `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`.
+   `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`.
    (Its own pull step SKIPS itself when unpushed local commits exist — it prints
    `(unpushed local commits present — skipping pull; local work is what we verify)` — so the
    deploy+doctor run against YOUR tree with no peer merge; read that line rather than reporting a
@@ -570,10 +570,10 @@ does not apply.
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
    - **A `❌ Deploy sync` with NO code change you can account for is usually
      SKILL DRIFT: a deployed skill copy is newer than its repo source, because
-     `skill_manage` — and the skill/lesson pipeline, with you running nothing at all — writes ONLY the deployed copy (`$HOME/.hermes/skills/...`; confirm the root from the doctor's own paths rather than assuming, some builds use `~/.hermes-cortex/skills`) and leaves the repo
+     `skill_manage` — and the skill/lesson pipeline, with you running nothing at all — writes ONLY the deployed copy (`$HOME/.hermes/skills/...`; confirm the root from the doctor's own paths rather than assuming, some builds use `~/.steadfaste-fleet/skills`) and leaves the repo
      file untouched — so a lesson that is not copied back and committed stays on one host, and a commit
      message claiming it rode along is false while the diff shows nothing. Verify with
-     `diff skills/<cat>/<name>/SKILL.md ~/.hermes-cortex/skills/<cat>/<name>/SKILL.md` before believing
+     `diff skills/<cat>/<name>/SKILL.md ~/.steadfaste-fleet/skills/<cat>/<name>/SKILL.md` before believing
      a lesson shipped.** The deploy's own
      `⚠ SKILL DRIFT: <skill>` warning is the tell, and the cure is to `cp` the
      deployed SKILL.md back to `skills/<cat>/<name>/SKILL.md` and commit it
@@ -727,7 +727,7 @@ May need several rounds on active days; each round's dogfood re-runs clean.
 - **`❌ Deploy sync` after a successful dogfood race-recovery**: if you
   commit AGAIN after a deploy ran (the raced push deployed your first
   commit; the second commit is now undeployed), the gate flips to
-  Deploy-sync. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh`
+  Deploy-sync. Run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`
   (deploy), confirm `Updated: <sha> → <sha>`, then push. Order is always
   commit → deploy → push.
 - **Deploy-sync can LIVELOCK against a peer's commit stream.** On a host where

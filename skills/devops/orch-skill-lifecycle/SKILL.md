@@ -3,7 +3,7 @@ name: orch-skill-lifecycle
 category: devops
 description: "Unified daily skill lifecycle pipeline — collects lessons, evaluates quality, and upgrades skills/SOUL.md. Replaces skill-miner, harvest-lessons, skill-triage, soul-refinement, and agent-weekly-loop-eval."
 version: 1.5.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 ---
@@ -16,7 +16,7 @@ Recurring cron that replaces 5 separate processes. Runs the full skill lifecycle
 
 **Read the live schedule; do not assume it.** It is Mon/Wed/Fri with a per-host minute offset (`34 4 * * 1,3,5` on moses, `39 4 * * 1,3,5` on esther) — check `hermes cron list` rather than trusting a "daily 04:00" written anywhere, and treat a cadence claim that a run did not happen as unfalsified until you read the entry.
 
-The cron has `terminal` + `file` + `web` tool access. Agents push structured reports every 6h to `inbox_orchestrator`, but the pipeline does **not** read that queue: `agent-message-handler` early-archives each report within ~5 minutes (5-minute tick) and stages the body to `~/.hermes-cortex/state/learning-reports/`. **The staged files are the authoritative input** — read the newest file per agent there.
+The cron has `terminal` + `file` + `web` tool access. Agents push structured reports every 6h to `inbox_orchestrator`, but the pipeline does **not** read that queue: `agent-message-handler` early-archives each report within ~5 minutes (5-minute tick) and stages the body to `~/.steadfaste-fleet/state/learning-reports/`. **The staged files are the authoritative input** — read the newest file per agent there.
 
 ## Replacements
 
@@ -44,7 +44,7 @@ This pipeline collects from ALL agents in the fleet. Each agent runs `agent-lear
 
 ### Bus Message Format
 
-Each agent sends a `Learning Report` every 6h via `agent-learning-collector` to `inbox_orchestrator`, from where `agent-message-handler` stages the body to `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`:
+Each agent sends a `Learning Report` every 6h via `agent-learning-collector` to `inbox_orchestrator`, from where `agent-message-handler` stages the body to `~/.steadfaste-fleet/state/learning-reports/<agent>-<ts>.md`:
 
 ```
 Subject: LEARNING_REPORT (bus protocol name — UPPER_CASE A-Z0-9_ per
@@ -91,7 +91,7 @@ Gather raw material from all sources:
    - Heartbeat (no changes, but agent is alive)
    - **⚠️ Data source (verified 2026-08-12):** the agent-message-handler
      early-archives Learning Reports within seconds of receipt and stages the
-     full body to `~/.hermes-cortex/state/learning-reports/<agent>-<ts>.md`
+     full body to `~/.steadfaste-fleet/state/learning-reports/<agent>-<ts>.md`
      (so the queue reads depth 0 even with fresh reports). The staged files
      are the authoritative pipeline input — read the newest per-agent file
      there, not the queue. For archived bus messages use
@@ -128,7 +128,7 @@ Gather raw material from all sources:
    - List all SKILL.md files with modification dates
    - Check for stale references (paths, commands, URLs that no longer exist)
 
-7. **Pre-commit trail** — Check recent git commits in `~/hermes-cortex/` for:
+7. **Pre-commit trail** — Check recent git commits in `~/steadfaste-fleet/` for:
    - Self-improvement patches that may need broader consolidation
    - Patterns across multiple commits
 
@@ -215,7 +215,7 @@ Execute all approved actions:
      content) and list it as a stub in the run report. Never commit a
      placeholder body to the repo; that is how 28 marketing skills became
      stubs fleet-wide (auto-upstream 8587b511, Jul 17).
-   - Create `hermes-cortex/skills/<category>/<name>/SKILL.md`
+   - Create `steadfaste-fleet/skills/<category>/<name>/SKILL.md`
    - **Version field required** — verify `version: x.y.z` is present in the
      frontmatter BEFORE committing (fleet skill `cron-job-management`
      was upstreamed without it in f7a11579 and tripped the doctor's
@@ -223,7 +223,7 @@ Execute all approved actions:
    3. `git add`, commit, push
       - **Push gate fires with `❌ Deploy sync` after a skill commit** — the skills
         gate compares deployed vs repo, so BOTH commits and upstreams block until
-        `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force` runs (pull →
+        `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` runs (pull →
         deploy → doctor → verify). Run it, confirm `✅ DOGFOOD PASSED`, then push;
         the deploy is what lands the new/changed skill into the live tree.
       - **Long commit messages via `-m` trip the cron security scanner**
@@ -319,7 +319,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   `docker exec mycortex-postgres psql -U mycortex -d mycortex -c "SELECT ... FROM bus.archives WHERE jsonb_typeof(body::jsonb)='object' AND (body::jsonb #>> '{}')::jsonb->>'subject' LIKE 'Learning Report%' ..."` (user is `mycortex`, not `postgres`).
   **The HTTP archive path works too — with the token (verified):** from the orchestrator's own
   host, source its env and send the Bearer header — no psql needed:
-  `set -a; . ~/.hermes-cortex/.env; set +a; curl -s -H "Authorization: Bearer $CORTEX_BUS_TOKEN" "http://127.0.0.1:8903/api/pgmq/archives/inbox_orchestrator?limit=2000&since_minutes=300000"`.
+  `set -a; . ~/.steadfaste-fleet/.env; set +a; curl -s -H "Authorization: Bearer $CORTEX_BUS_TOKEN" "http://127.0.0.1:8903/api/pgmq/archives/inbox_orchestrator?limit=2000&since_minutes=300000"`.
   A 401 means no token was sent (a bare `curl` always 401s); read the value in a subshell and
   never echo it. `/api/pgmq/peek/{queue}` and `/api/pgmq/depth/{queue}` are the same shape.
 - **Fleet skill content is NOT in Learning Reports (2026-08-28)** →
@@ -377,7 +377,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   `LEARNING_REPORT` (handler matches both), so Phase 1 prints nothing even
   though `agent-learning-collector` is reporting every 6h. Do NOT read that
   silence as "no reports": read the staged bodies directly from
-  `~/.hermes-cortex/state/learning-reports/` (newest per agent), which is the
+  `~/.steadfaste-fleet/state/learning-reports/` (newest per agent), which is the
   authoritative input. The processor's queue path is effectively dead for
   current-format reports.
 - **Staged-file union inflates over time (2026-10-06)** → the
@@ -490,7 +490,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
   proposals — and if the content is already committed, there is nothing to merge.
 - **The commit-time ritual gate enumerates always-skills ONE refusal per attempt (2026-11-02)** → the pre-commit reflexion gate refuses `git commit` with NOT-LOADED, one skill per try: this run needed `reflexion-check`, then `survey-before-action`, then `prove-before-create`, then `agent-contract` — 4 blocked commits before the 5th landed. Preload the whole set via `skill_view` BEFORE the first commit attempt of any session that will touch the cortex repo; do not burn a round trip per name.
-- **The parity "absent from repo" class (131 never-committed) is upstream Hermes-bundle references, not fleet work (2026-11-02)** → baoyu-comic/art-styles, pixel-art, agent-health-monitoring and hermes-cortex-skill reference files deploy with the Hermes bundle (`hermes update`), never via cortex-update.sh, so the cortex repo does not own them. Do not "fix" the parity FAIL by bulk-committing them — that re-imports upstream bundle content into the fleet repo. Pass bar stays the doctor's own content-based Skill drift check: stranded-in-place = 0; the parity checker's FAIL on the absent class is expected, chronic, and correct.
+- **The parity "absent from repo" class (131 never-committed) is upstream Hermes-bundle references, not fleet work (2026-11-02)** → baoyu-comic/art-styles, pixel-art, agent-health-monitoring and steadfaste-fleet-skill reference files deploy with the Hermes bundle (`hermes update`), never via cortex-update.sh, so the cortex repo does not own them. Do not "fix" the parity FAIL by bulk-committing them — that re-imports upstream bundle content into the fleet repo. Pass bar stays the doctor's own content-based Skill drift check: stranded-in-place = 0; the parity checker's FAIL on the absent class is expected, chronic, and correct.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **The collector walks INTO `skills/.archive/` — retired skills arrive as live deltas (2026-10-28)** →
   `agent-learning-collector._get_skill_delta()` enumerates with

@@ -30,13 +30,13 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-TASK_DB = HOME / "hermes-cortex" / "ops" / "scripts" / "manage" / "task-db.py"
+TASK_DB = HOME / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "task-db.py"
 
 
 def taskdb(*args: str) -> str:
     r = subprocess.run(
         ["python3", str(TASK_DB), *args], capture_output=True, text=True,
-        timeout=60, cwd=str(HOME / "hermes-cortex"))
+        timeout=60, cwd=str(HOME / "steadfaste-fleet"))
     if r.returncode != 0:
         print(r.stderr.strip(), file=sys.stderr)
         sys.exit(r.returncode)

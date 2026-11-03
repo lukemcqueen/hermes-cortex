@@ -29,7 +29,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-# cortex_lib deploys alongside this script (~/.hermes-cortex/scripts/cortex_lib/) and
+# cortex_lib deploys alongside this script (~/.steadfaste-fleet/scripts/cortex_lib/) and
 # lives at ops/scripts/cortex_lib in the repo, so the script's own directory is the
 # import root. Imported-as-a-module (tests) can put a foreign dir first on sys.path.
 try:
@@ -141,7 +141,7 @@ LLM_KEY_ENV = "OPENROUTER_API_KEY"
 ENV_FILE = HOME / ".hermes" / ".env"
 
 # This is the fleet's CREATIVE-text path, so the model id now comes from the model
-# contract (CREATIVE_MODEL in ~/hermes-cortex/.env) rather than a hardcoded string.
+# contract (CREATIVE_MODEL in ~/steadfaste-fleet/.env) rather than a hardcoded string.
 # qualify_model() falls back LOUDLY to the endpoint's served equivalent when a host's
 # .env carries a bare id the endpoint cannot resolve (cortex_lib/models.py).
 LLM_MODEL_DEFAULT = "deepseek/deepseek-chat"
@@ -173,7 +173,7 @@ def detect_agent_name() -> str:
                     return val
 
     # 1c. agent.env — canonical per-host identity written by cortex-update.sh
-    agent_env = HOME / ".hermes-cortex" / "agent.env"
+    agent_env = HOME / ".steadfaste-fleet" / "agent.env"
     if agent_env.exists():
         for line in agent_env.read_text().splitlines():
             line = line.strip()
@@ -215,7 +215,7 @@ def detect_agent_name() -> str:
     host_default = os.uname().nodename.split(".")[0] or "agent"
     print(
         f"⚠️  AGENT_NAME not found anywhere — using hostname-derived '{host_default}'. "
-        f"Set AGENT_NAME in ~/.hermes-cortex/agent.env to fix.",
+        f"Set AGENT_NAME in ~/.steadfaste-fleet/agent.env to fix.",
         file=sys.stderr,
     )
     return host_default

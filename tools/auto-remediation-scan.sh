@@ -3,9 +3,9 @@
 # remediate-scan governance close-out. Read-only: never writes state.
 # Usage: bash tools/auto-remediation-scan.sh
 set -euo pipefail
-CORTEX_REPO="${CORTEX_REPO:-$HOME/hermes-cortex}"
+CORTEX_REPO="${CORTEX_REPO:-$HOME/steadfaste-fleet}"
 JOBS_FILE="${JOBS_FILE:-$HOME/.hermes/cron/jobs.json}"
-SENSOR_SCRIPT="${SENSOR_SCRIPT:-$HOME/.hermes-cortex/scripts/agent-remediation-sensor.py}"
+SENSOR_SCRIPT="${SENSOR_SCRIPT:-$HOME/.steadfaste-fleet/scripts/agent-remediation-sensor.py}"
 FAIL=0
 
 echo "== FENCE BALANCE =="

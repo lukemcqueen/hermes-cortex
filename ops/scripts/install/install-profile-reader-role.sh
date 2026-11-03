@@ -49,7 +49,7 @@ if [[ -z "$PROFILE" ]]; then
 fi
 if [[ -z "$PROFILE" ]]; then
   echo "❌ Cannot resolve profile: HERMES_PROFILE and AGENT_NAME are both unset." >&2
-  echo "   Set AGENT_NAME= in ~/.hermes-cortex/agent.env / ~/hermes-cortex/.env or export AGENT_NAME" >&2
+  echo "   Set AGENT_NAME= in ~/.steadfaste-fleet/agent.env / ~/steadfaste-fleet/.env or export AGENT_NAME" >&2
   exit 1
 fi
 
@@ -82,14 +82,14 @@ EOF
 # RLS violation, the orchestrator can't decompose stories into fleet slices,
 # and the worker claim pool stays empty (reported 2026-10-15, slice ed6055b7).
 #
-# Oracle: `IS_ORCHESTRATOR=true` in ~/hermes-cortex/.env is the single source
+# Oracle: `IS_ORCHESTRATOR=true` in ~/steadfaste-fleet/.env is the single source
 # of truth (install.sh bootstraps it; v001 hardcodes moses/esther to match).
 # Mirror that here — granting to a worker profile would quietly break the
 # read-only-on-fleet-rows design (RLS WITH CHECK), so this is a NO-OP for
 # workers. Reader role membership is also fortified for pre-existing roles:
 # GRANT is idempotent and always re-applied so a host that already migrated
 # (v001 ran when the role existed) stays correct after a re-install.
-ORCHESTRATOR_ENV_FILE="${HOME_DIR}/hermes-cortex/.env"
+ORCHESTRATOR_ENV_FILE="${HOME_DIR}/steadfaste-fleet/.env"
 if [[ -f "${ORCHESTRATOR_ENV_FILE}" ]]; then
   IS_ORCHESTRATOR="$(grep -E '^IS_ORCHESTRATOR=' "${ORCHESTRATOR_ENV_FILE}" | tail -n1 | cut -d= -f2 | tr -d '"\r' | tr '[:upper:]' '[:lower:]')"
 fi

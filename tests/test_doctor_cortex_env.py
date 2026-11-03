@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The deploy-dir .env must be the SANCTIONED symlink, never a real file.
 
-The 2026-10-17 env-symlink rename made `~/.hermes-cortex/.env` the sanctioned
-back-compat symlink to the canonical `~/hermes-cortex/.env`, and retired
+The 2026-10-17 env-symlink rename made `~/.steadfaste-fleet/.env` the sanctioned
+back-compat symlink to the canonical `~/steadfaste-fleet/.env`, and retired
 `cortex-bus.conf`. `check_cortex_env` must FAIL on a REAL file (not a symlink) at
 the deploy-dir .env path — historically that path held a stray symlink to
 `~/langfuse/.env` — and PASS when the symlink correctly resolves.
@@ -57,12 +57,12 @@ def _host(tmp_path):
     """Point HOME and CORTEX_HOME at fixtures so check_cortex_env is hermetic.
 
     The check derives paths from these two module constants exactly as the real
-    host does: canon = HOME/"hermes-cortex"/.env, deploy = CORTEX_HOME/.env.
+    host does: canon = HOME/"steadfaste-fleet"/.env, deploy = CORTEX_HOME/.env.
     """
     c = _checks()
     home = tmp_path / "home"
-    deploy = home / ".hermes-cortex"          # ~/.hermes-cortex (deploy dir)
-    cortex = home / "hermes-cortex"           # ~/hermes-cortex (canonical)
+    deploy = home / ".steadfaste-fleet"          # ~/.steadfaste-fleet (deploy dir)
+    cortex = home / "steadfaste-fleet"           # ~/steadfaste-fleet (canonical)
     deploy.mkdir(parents=True); cortex.mkdir(parents=True)
     c.HOME = home
     c.CORTEX_HOME = deploy

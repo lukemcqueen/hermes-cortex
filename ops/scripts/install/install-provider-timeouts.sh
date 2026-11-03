@@ -29,10 +29,10 @@ set -euo pipefail
 
 HOME_DIR="${HOME:?}"
 HERMES_HOME="${HERMES_HOME:-${HOME_DIR}/.hermes}"
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-${HOME_DIR}/.steadfaste-fleet}"
 STATE_FILE="${CORTEX_DEPLOY_HOME}/state/provider-timeouts"
 
-# Values (override per machine via ~/hermes-cortex/.env)
+# Values (override per machine via ~/steadfaste-fleet/.env)
 REQUEST_TIMEOUT="${DEEPSEEK_REQUEST_TIMEOUT:-300}"
 STALE_TIMEOUT="${DEEPSEEK_STALE_TIMEOUT:-300}"
 

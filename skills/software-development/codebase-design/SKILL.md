@@ -2,7 +2,7 @@
 name: codebase-design
 description: "Deep module vocabulary and design principles — module, interface, depth, seam, adapter, leverage, locality. Use when designing or improving a module's interface, finding deepening opportunities, deciding where a seam goes, or making code more testable."
 version: 1.0.0
-author: Hermes Cortex (ported from Matt Pocock's skills)
+author: Steadfaste Fleet (ported from Matt Pocock's skills)
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

@@ -200,7 +200,7 @@ Cortex Core keeps (runtime-agnostic):
    bus agent; matches the abstraction and the task model.
 2. **DeepSeek Claude-compat**: verify `claude` CLI → DeepSeek Anthropic
    endpoint honors sonnet→V4-Flash / opus→V4-Pro aliases (cost-critical).
-3. **Where does the adapter layer live**: `hermes-cortex` as the Execution
+3. **Where does the adapter layer live**: `steadfaste-fleet` as the Execution
    Controller repo (Cortex is becoming the control plane — Luke's earlier
    "this should be an orchestrator" direction) — confirm.
 4. **Registry schema**: `executors.yaml` vs. bus capability cards — I

@@ -30,7 +30,7 @@ Two independent layers can hold a stale model/provider:
 
 | Layer | File | Notes |
 |---|---|---|
-| Env chain (primary) | `~/hermes-cortex/.env` | `LLM_CRON_MODEL` + `LLM_CRON_PROVIDER` + `LLM_CRON_FALLBACK1..3_*`. Gitignored — host-local. |
+| Env chain (primary) | `~/steadfaste-fleet/.env` | `LLM_CRON_MODEL` + `LLM_CRON_PROVIDER` + `LLM_CRON_FALLBACK1..3_*`. Gitignored — host-local. |
 | Per-job pin | `~/.hermes/cron/jobs.json` | Survives env changes; a job with `model`/`provider` set does **not** follow the env chain. |
 | Operator fallback chain | `~/.hermes/config.yaml` → `fallback_providers` | Resolved at runtime when the pinned route fails. |
 
@@ -55,7 +55,7 @@ to stop the installer re-pinning it.
 
 ### 3.1 Set the env pair (prevents re-pinning)
 
-Edit `~/hermes-cortex/.env`, changing **only** the `LLM_CRON*` keys:
+Edit `~/steadfaste-fleet/.env`, changing **only** the `LLM_CRON*` keys:
 
 ```
 LLM_CRON_MODEL=<model-id>
@@ -141,7 +141,7 @@ hermes config set fallback_providers.1.model <model-id>   # dotted path indexing
 ## 6. Rollback
 
 Restore the `.env` backup (`.env.bak-<timestamp>`) and re-run
-`bash ~/hermes-cortex/ops/scripts/cortex-update.sh` to redeploy. Re-pin any job
+`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` to redeploy. Re-pin any job
 that was previously pinned with `hermes cron edit <job_id> --pin`.
 
 ## Related

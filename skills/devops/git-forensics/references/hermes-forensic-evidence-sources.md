@@ -1,7 +1,7 @@
 # Hermes Forensic Evidence Sources — Worked Example
 
 Exact evidence locations and the 2026-08-01 investigation that proved the
-`agent-hermes-cortex-sync` cron was NOT the deleter of 10 security files.
+`agent-steadfaste-fleet-sync` cron was NOT the deleter of 10 security files.
 
 ## Evidence paths (Hermes on moses host)
 
@@ -48,12 +48,12 @@ Chain of proof (each step ruled out one suspect):
    reachable after "Dropped refs/stash@{0}") had parent = HEAD at stash time
    and contained the 10 deletions → they existed BEFORE 22:33:27.
 4. **Cron output**: `~/.hermes/cron/output/462eb6bd42a6/2026-08-01_22-33-28.md`
-   = `agent-hermes-cortex-sync` (script stashes → fetches → pops). Its
+   = `agent-steadfaste-fleet-sync` (script stashes → fetches → pops). Its
    `deleted:` lines are the pre-existing state it saved and restored.
 5. **Session sweep**: queried state.db `tool_calls` for ALL terminal
    commands 21:00–22:35 across all sessions → zero rm/git-rm/checkout/clean
    on those paths. Every session's commands were read-only diagnostics.
-6. **Backup window**: the 21:03 git bundle (`repos/hermes-cortex-public.bundle`)
+6. **Backup window**: the 21:03 git bundle (`repos/steadfaste-fleet-public.bundle`)
    contained all 10 files (`git cat-file -e FETCH_HEAD:<path>` PRESENT) →
    deletion happened between 21:03 (bundle) and 22:33:27 (stash).
 7. **Shell caveat**: zsh history showed no rm, BUT the user rebooted 4× in
@@ -70,7 +70,7 @@ files were never committed — remote safe, working tree restorable.
 
 ## Verified-innocent cron pattern
 
-`agent-hermes-cortex-sync.sh` (no_agent, daily 22:33 KST):
+`agent-steadfaste-fleet-sync.sh` (no_agent, daily 22:33 KST):
 ```
 if ! git diff --quiet || ! git diff --cached --quiet; then
     git stash push -m "auto-stash before cortex-sync ..."
@@ -90,9 +90,9 @@ for `git show --stat`.
 - Hardline blocklist error at 21:49 was a `grep -c "hc.e2fsck_fcc"` command
   with regex chars the parser rejected — not a deletion attempt. Always read
   the assistant message immediately before the block.
-- `search_files` returned 0 for `.hermes`/`.hermes-cortex` paths that
+- `search_files` returned 0 for `.hermes`/`.steadfaste-fleet` paths that
   demonstrably exist — ripgrep skips hidden dirs. Use `ls`/`find`/`git
   ls-files` to confirm absence.
-- The `.hermes-cortex/.governance-lock` file inside the repo (a cron
+- The `.steadfaste-fleet/.governance-lock` file inside the repo (a cron
   session's lock) is untracked and unrelated to working-tree deletions —
   don't chase it as a deletion suspect.

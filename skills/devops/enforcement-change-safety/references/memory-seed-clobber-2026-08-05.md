@@ -34,7 +34,7 @@ manual restore. First reported by Joseph (non-orchestrator) with evidence.
 | Path | On esther | Role |
 |---|---|---|
 | `~/.hermes/memories/MEMORY.md` | 2150 B, personalized | LIVE — Hermes reads `get_hermes_home()/memories`, default `HERMES_HOME=~/.hermes` (hermes_constants.py; no override in host .env) |
-| `~/.hermes-cortex/memories/MEMORY.md` | 1283 B = pristine seed | Deploy target — dead copy unless `HERMES_HOME=$HOME/.hermes-cortex` (commented option in `hermes-cortex.env.example`) or `~/.hermes/memories` → symlink |
+| `~/.steadfaste-fleet/memories/MEMORY.md` | 1283 B = pristine seed | Deploy target — dead copy unless `HERMES_HOME=$HOME/.steadfaste-fleet` (commented option in `steadfaste-fleet.env.example`) or `~/.hermes/memories` → symlink |
 
 So on most hosts the clobber hits a dead copy (harmless but the doctor check is
 meaningless there); on hosts with the HERMES_HOME override / symlink it hits
@@ -68,7 +68,7 @@ That wrong path claim is exactly why the topology is confusing.
    lines, PASS if dest exists, WARN if missing, NEVER content-compare.
 
 3. **Scope (Luke correction mid-session: "We shouldn't touch the hermes one")**:
-   fix stays in the hermes-cortex repo (`ops/scripts/cortex-update.sh` +
+   fix stays in the steadfaste-fleet repo (`ops/scripts/cortex-update.sh` +
    `cortex_doctor/checks.py` + docs). Do NOT write to `~/.hermes/memories/`
    (Hermes owns that file) and do NOT patch `~/.hermes/hermes-agent` upstream
    code. Upstream preference unchanged: local workaround + environment
@@ -76,9 +76,9 @@ That wrong path claim is exactly why the topology is confusing.
 
 ## Verification plan (used / to use)
 
-1. Back up `~/.hermes-cortex/memories/MEMORY.md`; write a personalized marker
+1. Back up `~/.steadfaste-fleet/memories/MEMORY.md`; write a personalized marker
    line into it (simulating Joseph's state).
-2. Run `bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (full mode) → assert
+2. Run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (full mode) → assert
    the personalized file is UNTOUCHED (hash identical), no backup created.
 3. Remove the file → deploy → assert it re-seeds from template (dest-missing
    path still works).

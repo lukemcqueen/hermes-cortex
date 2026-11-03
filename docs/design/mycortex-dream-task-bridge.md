@@ -52,7 +52,7 @@ Two mechanisms, both wanted by Luke:
 | Piece | Reality |
 |---|---|
 | Task DB | `tasks.tasks` on per-host `mycortex-postgres` (bus.todos retired — workers never had it) |
-| CLI | `~/.hermes-cortex/scripts/task-db.py` — `add <content> [--agent N] [--priority n] [--project P] [--repo R] [--scope S] [--source X]`, `list [--status]`, `pending`, `update <id> --status` |
+| CLI | `~/.steadfaste-fleet/scripts/task-db.py` — `add <content> [--agent N] [--priority n] [--project P] [--repo R] [--scope S] [--source X]`, `list [--status]`, `pending`, `update <id> --status` |
 | Agent attribution | PROFILE (HERMES_PROFILE → AGENT_NAME → hostname), per multi-tenancy doc |
 | Restore | Session-start protocol: `task-db.py pending` → `todo()` merge |
 | Dream crons | 3 tiers in `install-dream-crons.sh`, `deliver: origin`, toolsets `terminal,file` (task-db.py runs via terminal — already available) |

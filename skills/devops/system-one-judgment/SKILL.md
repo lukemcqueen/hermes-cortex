@@ -13,7 +13,7 @@ answers (Noul yes/no probability, Choice pick+distribution, Score ordinal) that
 code composes with thresholds. Covers replacing an LLM prompt-and-parse step
 with a cheap typed judgment, wiring a judgment model into a cron/gate, and the
 hot-swap provider abstraction (design doc: steadfaste
-`docs/design/judgment-abstraction.md`; reference client: hermes-cortex
+`docs/design/judgment-abstraction.md`; reference client: steadfaste-fleet
 `ops/scripts/judgment.py`).
 
 ## Canonical interface
@@ -37,7 +37,7 @@ hot-swap provider abstraction (design doc: steadfaste
 - Live docs are the source of truth for request/response shape — read the
   API page before assuming an unknown field is tolerated.
 
-## Client rules (ops/scripts/judgment.py in hermes-cortex is the reference)
+## Client rules (ops/scripts/judgment.py in steadfaste-fleet is the reference)
 
 - **Validate every provider response**: answers must be a dict whose keys
   exactly match the question ids with matching `type`s. Anything else is a

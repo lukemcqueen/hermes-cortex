@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hermes Cortex — Project Map (Static Analysis)
+Steadfaste Fleet — Project Map (Static Analysis)
 ───────────────────────────────────────────────
 Builds a dependency graph and structural map for any project.
 The agent reads this before making multi-file changes instead
@@ -12,7 +12,7 @@ Usage:
   project-map status               → Show current map info
   project-map stats                → Summary stats of project
 
-Output: .hermes-cortex/project-map.json or project-map.json
+Output: .steadfaste-fleet/project-map.json or project-map.json
 """
 
 import argparse
@@ -33,7 +33,7 @@ DEFAULT_EXCLUDES = {
     ".git", "__pycache__", "node_modules", ".venv", "venv",
     ".egg-info", "dist", "build", ".next", ".turbo",
     "coverage", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    "site-packages", ".hermes", ".hermes-cortex/memory", ".mycortex",
+    "site-packages", ".hermes", ".steadfaste-fleet/memory", ".mycortex",
 }
 
 EXTENSION_LANGUAGES = {
@@ -169,8 +169,8 @@ def analyze_project(project_root: str) -> dict:
     # Detect framework
     framework = _detect_framework(modules)
 
-    # Find .hermes-cortex dir
-    hc_dir = root / ".hermes-cortex"
+    # Find .steadfaste-fleet dir
+    hc_dir = root / ".steadfaste-fleet"
     has_hc = hc_dir.exists()
 
     return {
@@ -212,7 +212,7 @@ def _discover_files(root: Path, max_files: int = 2000) -> list:
             if path.is_file():
                 # Skip hidden files at root level except allowed ones
                 if path.name.startswith(".") and path.parent == root:
-                    if path.name not in (".hermes-cortex", ".github"):
+                    if path.name not in (".steadfaste-fleet", ".github"):
                         continue
                 ext = path.suffix.lower()
                 if ext in EXTENSION_LANGUAGES or not ext:
@@ -463,10 +463,10 @@ def _detect_framework(modules: list) -> dict:
 # ── CLI ──────────────────────────────────────────────────────
 
 def _find_project_root(start: str = None) -> Path:
-    """Walk up from cwd to find project root (has .git or .hermes-cortex)."""
+    """Walk up from cwd to find project root (has .git or .steadfaste-fleet)."""
     start = Path(start or os.getcwd()).resolve()
     for parent in [start] + list(start.parents):
-        if (parent / ".git").exists() or (parent / ".hermes-cortex").exists():
+        if (parent / ".git").exists() or (parent / ".steadfaste-fleet").exists():
             return parent
         # Also check for common project files
         if (parent / "package.json").exists() or (parent / "pyproject.toml").exists() or \
@@ -477,8 +477,8 @@ def _find_project_root(start: str = None) -> Path:
 
 
 def _write_map(project_root: Path, data: dict):
-    """Write project map to .hermes-cortex/ or project root."""
-    hc_dir = project_root / ".hermes-cortex"
+    """Write project map to .steadfaste-fleet/ or project root."""
+    hc_dir = project_root / ".steadfaste-fleet"
     if not hc_dir.exists():
         hc_dir.mkdir(parents=True, exist_ok=True)
 
@@ -550,7 +550,7 @@ def main(args: Optional[list] = None):
     # analyze
     ap = sub.add_parser("analyze", help="Full project analysis")
     ap.add_argument("path", nargs="?", default=None, help="Project root path (default: auto-detect)")
-    ap.add_argument("--output", "-o", help="Output path (default: .hermes-cortex/project-map.json)")
+    ap.add_argument("--output", "-o", help="Output path (default: .steadfaste-fleet/project-map.json)")
 
     # status
     sp = sub.add_parser("status", help="Show current project map")
@@ -587,7 +587,7 @@ def main(args: Optional[list] = None):
     elif parsed.command == "status":
         # Read existing map
         candidates = [
-            proj_root / ".hermes-cortex" / "project-map.json",
+            proj_root / ".steadfaste-fleet" / "project-map.json",
             proj_root / "project-map.json",
         ]
         for c in candidates:

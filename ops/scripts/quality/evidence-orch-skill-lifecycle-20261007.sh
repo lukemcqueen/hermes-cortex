@@ -2,8 +2,8 @@
 # orch-skill-lifecycle run evidence — 2026-10-07 (cycle #10787)
 # Re-runnable: reproduces every claim made in the cycle note at the named revision.
 set -uo pipefail
-REPO="${HOME}/hermes-cortex"
-STAGE="${HOME}/.hermes-cortex/state/learning-reports"
+REPO="${HOME}/steadfaste-fleet"
+STAGE="${HOME}/.steadfaste-fleet/state/learning-reports"
 REV="6b3c2aaa"
 FAIL=0
 

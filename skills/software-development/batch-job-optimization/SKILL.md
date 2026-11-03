@@ -2,7 +2,7 @@
 name: batch-job-optimization
 description: "Systematically analyze and optimize database-bound batch processing jobs (imports, exports, ETL, bulk updates) in Rails and similar frameworks."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux]
 metadata:

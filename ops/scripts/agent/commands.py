@@ -24,21 +24,21 @@ from typing import Any, Callable
 
 # ── Paths ──
 HOME = Path.home()
-CORTEX_REPO = HOME / "hermes-cortex"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
-SCRIPTS_DIR = HOME / ".hermes-cortex" / "scripts"
+SCRIPTS_DIR = HOME / ".steadfaste-fleet" / "scripts"
 COLLECTOR_SCRIPT = SCRIPTS_DIR / "agent-learning-collector.py"
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 def _agent_name() -> str:
     """Resolve agent identity from env → .env (.env is a symlink
     to the consolidated .env; agent.env is the per-host identity file).
     Never falls back to whoami/hostname (Luke directive 2026-08-10): a
     missing identity is a hard error, not a guess."""
     for path in (
-        HOME / ".hermes-cortex" / "agent.env",
-        HOME / "hermes-cortex" / ".env",
-        HOME / "hermes-cortex" / ".env",
+        HOME / ".steadfaste-fleet" / "agent.env",
+        HOME / "steadfaste-fleet" / ".env",
+        HOME / "steadfaste-fleet" / ".env",
     ):
         try:
             if path.is_file():
@@ -51,7 +51,7 @@ def _agent_name() -> str:
             continue
     raise RuntimeError(
         "AGENT_NAME not configured — set AGENT_NAME= in "
-        "~/.hermes-cortex/agent.env / .env or export AGENT_NAME")
+        "~/.steadfaste-fleet/agent.env / .env or export AGENT_NAME")
 
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "") or _agent_name()
@@ -308,11 +308,11 @@ def handle_git_auth(msg_body: dict, msg_raw: dict) -> dict:
     r = _run(["git", "-C", str(CORTEX_REPO), "remote", "get-url", "origin"], timeout=5)
     remote_url = r["stdout"].strip() if r["success"] else ""
     # Owner-agnostic canonical match (2026-11-03 rename): accept the repo under its
-    # legacy name (hermes-cortex) or its renamed name (steadfaste-fleet), https/ssh.
+    # legacy name (steadfaste-fleet) or its renamed name (steadfaste-fleet), https/ssh.
     _u = (remote_url or "").strip()
     _canon = ("fleet-operator" not in _u and
               (_u.startswith("https://github.com/") or _u.startswith("git@github.com:")) and
-              _u.endswith(("/hermes-cortex.git", ":hermes-cortex.git",
+              _u.endswith(("/steadfaste-fleet.git", ":steadfaste-fleet.git",
                            "/steadfaste-fleet.git", ":steadfaste-fleet.git")))
     checks.append({"name": "remote URL", "pass": _canon or (bool(expected_url) and expected_url in _u), "detail": remote_url})
 
@@ -332,7 +332,7 @@ def handle_git_auth(msg_body: dict, msg_raw: dict) -> dict:
 
 # ── EXEC → EXEC_RESULT ──
 
-@command("EXEC_RESULT", "Run a script under ~/.hermes-cortex/scripts/")
+@command("EXEC_RESULT", "Run a script under ~/.steadfaste-fleet/scripts/")
 def handle_exec(msg_body: dict, msg_raw: dict) -> dict:
     request = _parse_body(msg_body.get("body", {}))
     # Tolerate the generic `hc send` body wrapper (commit 458b1594 rewired
@@ -707,7 +707,7 @@ register_custom("DIAGNOSTIC_REQUEST", "DIAGNOSTIC_RESULT", handle_diagnostic,
 
 # Bus message subjects that don't match the XXX_REQUEST naming convention
 register_custom("EXEC", "EXEC_RESULT", handle_exec,
-                "Run a script under ~/.hermes-cortex/scripts/")
+                "Run a script under ~/.steadfaste-fleet/scripts/")
 register_custom("GIT_AUTH_CHECK", "GIT_AUTH_RESULT", handle_git_auth,
                 "Verify git can ls-remote origin")
 register_custom("TASK_REQUEST", "TASK_RESULT", handle_task,

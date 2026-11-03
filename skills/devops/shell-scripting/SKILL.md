@@ -1,14 +1,14 @@
 ---
 name: shell-scripting
-description: Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in the Hermes Cortex ecosystem.
+description: Shell scripting patterns, portability pitfalls, and cross-platform compatibility for bash/awk scripts in the Steadfaste Fleet ecosystem.
 version: 1.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 platforms: [linux, macos]
 ---
 
 # Shell Scripting Patterns
 
-Patterns, pitfalls, and portability guidance for shell scripts in the Hermes Cortex ecosystem. Covers bash and awk — the two most common scripting languages in the repo.
+Patterns, pitfalls, and portability guidance for shell scripts in the Steadfaste Fleet ecosystem. Covers bash and awk — the two most common scripting languages in the repo.
 
 ## Bash Pitfalls
 
@@ -396,7 +396,7 @@ real commit:
 5. **sed delimiter pitfall:** when the pattern contains `||`, `s|old|new|`
    dies with "unknown option to `s'`" — use `@`: `s@old@new@`.
 6. **For a script the fleet RUNS, drive the DEPLOYED copy — the runtime tree is the truth.**
-   The repo source may differ from `~/.hermes-cortex/scripts/` (SOURCE header added, drift, an
+   The repo source may differ from `~/.steadfaste-fleet/scripts/` (SOURCE header added, drift, an
    old deploy). Extract the function from the DEPLOYED file, run it against a THROWAWAY HOME and a
    fake `PATH`, and expect a repo-only green to be refused as proving nothing about what the fleet
    actually executed. Grep the deployed copy for the fix marker before the probe, so the harness
@@ -523,7 +523,7 @@ path-walk-up bug, grep the whole tree for the same pattern:
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORTEX_REPO="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$CORTEX_REPO" ] || [ ! -d "$CORTEX_REPO" ]; then
-  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd 2>/dev/null || echo "$HOME/hermes-cortex")"
+  CORTEX_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd 2>/dev/null || echo "$HOME/steadfaste-fleet")"
 fi
 ```
 
@@ -831,7 +831,7 @@ interpreter known to lack it:
 
 ```bash
 # ❌ the guard never fires: the FILE exists, the MODULE does not
-PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
+PY_CMD="${HOME}/.steadfaste-fleet/venv/bin/python3"
 [[ -x "$PY_CMD" ]] || PY_CMD="python3"        # and this python3 lacks it too
 ```
 
@@ -840,7 +840,7 @@ PY_CMD="${HOME}/.hermes-cortex/venv/bin/python3"
 candidates() {
   [[ -n "${PYTHON:-}" ]] && printf '%s\n' "$PYTHON"
   [[ -n "${HERMES_VENV:-}" ]] && printf '%s\n' "${HERMES_VENV}/bin/python3"
-  printf '%s\n' "${HOME}/.hermes-cortex/venv/bin/python3"        # the FLEET venv, first
+  printf '%s\n' "${HOME}/.steadfaste-fleet/venv/bin/python3"        # the FLEET venv, first
   printf '%s\n' "${HOME}/.hermes/hermes-agent/venv/bin/python3" # last resort: migrating away
   command -v python3 2>/dev/null || true
 }
@@ -918,7 +918,7 @@ exit 3
 - **Declare ONE interpreter; never let each caller re-derive a path.** A rule copied into seven
   scripts is seven chances to write it differently, and the copies WILL disagree — one check calls
   a venv healthy while another warns about it, and a validator blames a file. Provision a per-host
-  declaration (`CORTEX_PYTHON` in `~/.hermes-cortex/agent.env`; the deploy writes the default) and
+  declaration (`CORTEX_PYTHON` in `~/.steadfaste-fleet/agent.env`; the deploy writes the default) and
   have the arbiter read it before its built-in order, after `PYTHON=`. Two rules make a declaration
   safe: **never overwrite an operator's value** (a host may legitimately point elsewhere — a
   Homebrew python on macOS, a different venv; prove it by deploying twice and asserting the file
@@ -1002,7 +1002,7 @@ prerequisites, `HOME` redirected to a temp dir) so the age-gate-refused, unusabl
 missing-prerequisite paths are exercised on any host. That an age gate ran BEFORE the installer is
 provable only from the installer stub's own log — source order is not evidence.
 
-**Prefer the CORTEX venv (`~/.hermes-cortex/venv/bin/python3`) — it is the venv the fleet runs
+**Prefer the CORTEX venv (`~/.steadfaste-fleet/venv/bin/python3`) — it is the venv the fleet runs
 its services with** (`cortex-update.sh` registers every MCP server against it). The Hermes venv
 is a last resort: fleet tooling should not depend on the tree we are migrating away from.
 Ordering only breaks a *tie* — a candidate must still import the module to be chosen, so a
@@ -1252,7 +1252,7 @@ fi
 
 ```bash
 echo "${USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /bin/mkdir, /bin/cp, /bin/chmod, /bin/ln" \
-  | sudo tee /etc/sudoers.d/hermes-cortex
+  | sudo tee /etc/sudoers.d/steadfaste-fleet
 ```
 
 This lets the user fix it in one copy-paste next time.
@@ -1338,9 +1338,9 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
    ```
    Standardize ALL calls to multi-line. The grep to find compact patterns: `grep -n '"" "[^"]*" "" "' ops/scripts/install-crons.sh` (matches consecutive quoted empties).
 
-5. **Path validation for file-based lookups** — When the script reads or writes a file at a hardcoded path (`CRON_JOBS_FILE`, `STATE_FILE`), verify against the actual runtime path. Common mismatch: `$HERMES_HOME` defaulting to `~/.hermes-cortex/` when the runtime expects `~/.hermes/`. Test by running outside the normal execution context.
+5. **Path validation for file-based lookups** — When the script reads or writes a file at a hardcoded path (`CRON_JOBS_FILE`, `STATE_FILE`), verify against the actual runtime path. Common mismatch: `$HERMES_HOME` defaulting to `~/.steadfaste-fleet/` when the runtime expects `~/.hermes/`. Test by running outside the normal execution context.
 
-6. **Script exists check coverage** — The `script_exists` helper typically checks `~/.hermes-cortex/scripts/` and the repo source. If the script could also be a CLI wrapper symlink in `~/.local/bin/`, add that path. Missing paths produce "Script not found" warnings silently — no delivery, no alert, just a scroll-past in the output.
+6. **Script exists check coverage** — The `script_exists` helper typically checks `~/.steadfaste-fleet/scripts/` and the repo source. If the script could also be a CLI wrapper symlink in `~/.local/bin/`, add that path. Missing paths produce "Script not found" warnings silently — no delivery, no alert, just a scroll-past in the output.
 
 7. **The exit code of a subprocess is not evidence the thing landed.** An installer that runs `pi install … >/dev/null 2>&1`, `npm i … >/dev/null`, or any fetcher and then keys success on `$?` reports a green line for a no-op: the declaration can be written while nothing arrives. Two rules, both cheap:
 

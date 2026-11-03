@@ -9,7 +9,7 @@
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_DIR="${HOME}/hermes-cortex"
+REPO_DIR="${HOME}/steadfaste-fleet"
 SOUL_MERGE="${REPO_DIR}/ops/scripts/manage/soul-merge.py"
 # profiles removed from repo — no longer synced from repo paths
 CHANGED=0

@@ -47,7 +47,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SERVER = Path(os.environ.get("SERVER_UNDER_TEST") or (REPO / "mcp-servers" / "loop-gov-mcp.py"))
-LIVE_DB = Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"
+LIVE_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"
 SID = "sess-test"
 
 
@@ -94,7 +94,7 @@ def _lock(mod):
 def _write_parent_lock(mod, task_id="parent-task"):
     """The state a real session is in when the operator interrupts it."""
     (mod.GOVERNANCE_STATE_DIR / f".governance-{SID}.json").write_text(json.dumps({
-        "task_id": task_id, "description": "the parent work", "repo_slug": "hermes-cortex",
+        "task_id": task_id, "description": "the parent work", "repo_slug": "steadfaste-fleet",
         "session_id": SID, "status": "executing", "started_at": "2026-10-18T00:00:00Z",
         "heartbeat_at": "2026-10-18T00:00:00Z", "task_stack": [], "acceptance_criteria": [],
         "allowed_scope": [], "plan": [], "ttl_seconds": 3600,

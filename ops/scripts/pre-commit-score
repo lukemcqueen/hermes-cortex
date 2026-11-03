@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ── Commit-scope guard: the decision ────────────────────────────────────────
-# Several agents commit into ONE working tree (~/hermes-cortex) and therefore share ONE git
+# Several agents commit into ONE working tree (~/steadfaste-fleet) and therefore share ONE git
 # index. A staged entry records nothing about which session staged it, so `git commit` with no
 # pathspec commits WHATEVER happens to be staged — measured for real: a commit captured 17 files
 # where 8 were intended, the extra 9 being another session's staged evidence files.
@@ -224,7 +224,7 @@ PROBE
   #    real path end to end — it could not while the guard was cortex-scoped. GIT_INDEX_FILE is
   #    set (empty) on every case so the verdict never depends on the CWD this test runs in.
   _st_decide() { if _commit_scope_guard "$1" "$2"; then echo refuse; else echo allow; fi; }
-  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/hermes-cortex" 0)" == "refuse" ]] \
+  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/steadfaste-fleet" 0)" == "refuse" ]] \
     && _st_ok "the cortex repo REFUSES a bare commit" \
     || _st_bad "the cortex repo did not refuse a bare commit"
   [[ "$(GIT_INDEX_FILE= _st_decide "$_st_repo" 0)" == "refuse" ]] \
@@ -233,10 +233,10 @@ PROBE
   [[ "$(GIT_INDEX_FILE= _st_decide "$_st_dir/a/repo/this/host/does/not/own" 0)" == "refuse" ]] \
     && _st_ok "an arbitrary repo path is in scope too (no path comparison is left)" \
     || _st_bad "an arbitrary repo path was allowed a bare commit"
-  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/hermes-cortex" 1)" == "allow" ]] \
+  [[ "$(GIT_INDEX_FILE= _st_decide "${HOME}/steadfaste-fleet" 1)" == "allow" ]] \
     && _st_ok "a SANCTIONED pipeline commit is exempt" \
     || _st_bad "the sanctioned pipeline commit was refused"
-  [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "${HOME}/hermes-cortex" 0)" == "allow" ]] \
+  [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "${HOME}/steadfaste-fleet" 0)" == "allow" ]] \
     && _st_ok "the cortex repo ALLOWS a partial commit (the remedy actually works)" \
     || _st_bad "a partial commit in the cortex repo was refused — the remedy would be blocked"
   [[ "$(GIT_INDEX_FILE="$_st_dir/other-index" _st_decide "$_st_repo" 0)" == "allow" ]] \
@@ -342,7 +342,7 @@ _detect_orch() {
 # When an AGENT_ID claims moses|esther but this host is NOT an
 # orchestrator, that is an impersonation attempt. LOUD: append to
 # the alert file (delivered to Telegram by a no_agent watchdog).
-ALERT_FILE="${HOME}/.hermes-cortex/state/impersonation-alerts.log"
+ALERT_FILE="${HOME}/.steadfaste-fleet/state/impersonation-alerts.log"
 _log_impersonation() {
   local claimed="${1:-unknown}"
   {
@@ -351,11 +351,11 @@ _log_impersonation() {
 }
 
 # ── Agent identity (git authorship) ─────────────────────────
-# ~/.hermes-cortex/agent.env is the per-host identity file (gitignored).
+# ~/.steadfaste-fleet/agent.env is the per-host identity file (gitignored).
 # cortex-update.sh sets the repo's git user from it; this hook VERIFIES
 # the commit author matches, so agent commits are attributed to the agent
 # (never the shared human account) without requiring AGENT_ID at runtime.
-AGENT_ENV_FILE="${HOME}/.hermes-cortex/agent.env"
+AGENT_ENV_FILE="${HOME}/.steadfaste-fleet/agent.env"
 AGENT_NAME="${AGENT_NAME:-}"
 if [[ -z "$AGENT_NAME" && -f "$AGENT_ENV_FILE" ]]; then
   AGENT_NAME=$(grep -E '^AGENT_NAME=' "$AGENT_ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
@@ -368,9 +368,9 @@ _AUTHOR_EMAIL=$(git var GIT_AUTHOR_IDENT 2>/dev/null | sed -E 's/^.*<([^>]*)>.*$
 if [[ -z "${AGENT_NAME:-}" || "$AGENT_NAME" == "unknown" ]]; then
   echo ""
   echo "❌  Agent identity not provisioned."
-  echo "    ~/.hermes-cortex/agent.env is missing AGENT_NAME."
-  echo "    Run: echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env"
-  echo "    Then: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "    ~/.steadfaste-fleet/agent.env is missing AGENT_NAME."
+  echo "    Run: echo 'AGENT_NAME=<your-agent>' > ~/.steadfaste-fleet/agent.env"
+  echo "    Then: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
   echo "    (This keeps agent commits attributed to the agent, not the human.)"
   echo ""
   exit 1
@@ -383,7 +383,7 @@ if _detect_orch; then
     _log_impersonation "AGENT_NAME=${AGENT_NAME} on host ${_host_now}"
     echo ""
     echo "❌  agent.env AGENT_NAME (${AGENT_NAME}) does not match orchestrator host (${_host_now})."
-    echo "    Fix: echo 'AGENT_NAME=${_host_now}' > ~/.hermes-cortex/agent.env"
+    echo "    Fix: echo 'AGENT_NAME=${_host_now}' > ~/.steadfaste-fleet/agent.env"
     echo ""
     exit 1
   fi
@@ -395,7 +395,7 @@ fi
 # The REAL danger is when hooksPath points elsewhere entirely,
 # meaning NO governance hooks run at all. We verify at the
 # start of every commit that the hooks directory is ours.
-EXPECTED_HOOKS="${HOME}/.hermes-cortex/hooks"
+EXPECTED_HOOKS="${HOME}/.steadfaste-fleet/hooks"
 ACTUAL_HOOKS=$(git config --get core.hooksPath 2>/dev/null || echo "")
 if [[ -z "$ACTUAL_HOOKS" ]]; then
     echo ""
@@ -435,7 +435,7 @@ fi
 # Written at hook start. Post-commit hook checks for this file.
 # If missing, --no-verify was used and the event gets logged.
 SENTINEL="${GIT_DIR:-.git}/.pre-commit-ran"
-LOGDIR="${HOME}/.hermes-cortex/state"
+LOGDIR="${HOME}/.steadfaste-fleet/state"
 NO_VERIFY_LOG="${LOGDIR}/no-verify-log.json"
 mkdir -p "$LOGDIR"
 touch "$SENTINEL"
@@ -448,7 +448,7 @@ if [[ ! -f "$ENFORCER_PLUGIN" ]]; then
   echo "❌  Governance enforcer plugin not found at:"
   echo "    ${ENFORCER_PLUGIN}"
   echo "    Install it via the sanctioned deploy path:"
-  echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "      bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
   echo "    Then run: /reset to load the plugin."
   echo ""
   exit 1
@@ -491,20 +491,20 @@ _sha256() {
 #     pre-push). The orchestrator is the sanctioned author of this file.
 #   • Everyone else with HEAD ≠ deployed → HARD BLOCK: run cortex-update.sh.
 #     No silent drift acceptance.
-DOGFOOD_REPO="${HOME}/hermes-cortex/plugins/governance-enforcer/__init__.py"
+DOGFOOD_REPO="${HOME}/steadfaste-fleet/plugins/governance-enforcer/__init__.py"
 DOGFOOD_DEPLOY="${HOME}/.hermes/plugins/governance-enforcer/__init__.py"
-DOGFOOD_HEAD=$(cd "${HOME}/hermes-cortex" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | _sha256 | cut -d' ' -f1 || echo "")
-# ── Scope guard (2026-10-01): the hermes-cortex repo ONLY ─────
-# core.hooksPath is GLOBAL (~/.hermes-cortex/hooks), so this hook runs in
+DOGFOOD_HEAD=$(cd "${HOME}/steadfaste-fleet" && git show HEAD:plugins/governance-enforcer/__init__.py 2>/dev/null | _sha256 | cut -d' ' -f1 || echo "")
+# ── Scope guard (2026-10-01): the steadfaste-fleet repo ONLY ─────
+# core.hooksPath is GLOBAL (~/.steadfaste-fleet/hooks), so this hook runs in
 # EVERY repo on the host — client repos, projects, steadfaste. The DOGFOOD
 # check compares THIS repo's committed enforcer against the DEPLOYED copy,
 # a cortex-internal sync state no other repo can act on. Unscoped, a single
 # stale deploy on one host hard-blocked every ordinary commit in every
 # unrelated repo (Titus: "push from a regular non-hc repo"). That is exactly
-# the "gates are scoped to what they govern" rule. Same ${HOME}/hermes-cortex
+# the "gates are scoped to what they govern" rule. Same ${HOME}/steadfaste-fleet
 # pattern as the IS_CORTEX_REPO guard further down.
 _DOGFOOD_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
-if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" && -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
+if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/steadfaste-fleet" && -n "$DOGFOOD_HEAD" && -f "$DOGFOOD_DEPLOY" ]]; then
   DEPLOY_HASH=$(_sha256 "$DOGFOOD_DEPLOY" | cut -d' ' -f1)
   STAGED_ENFORCER=$(git diff --cached --name-only 2>/dev/null | grep -c '^plugins/governance-enforcer/__init__.py$' || true)
   IS_ORCH=0
@@ -544,7 +544,7 @@ if [[ "$_DOGFOOD_TOPLEVEL" == "${HOME}/hermes-cortex" && -n "$DOGFOOD_HEAD" && -
       echo "❌  DOGFOOD — governance enforcer deployed copy differs from committed repo source."
       echo "    The enforcement chain may only be updated via the sanctioned path."
       echo "    Run (allowed for every agent):"
-      echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+      echo "      bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
       echo "    It deploys, relocks, and verifies automatically."
       echo "    Or send an inbox PROPOSAL to Moses/Esther to ship the change fleet-wide."
       echo ""
@@ -560,7 +560,7 @@ fi
 # `git commit --no-verify`, which skipped EVERY gate (adversarial
 # scan, append-only guard, scoring) and flooded the no-verify audit log.
 # Now it runs the hook. A commit is sanctioned ONLY when BOTH:
-#   1. A FRESH pipeline marker exists (~/.hermes-cortex/state/
+#   1. A FRESH pipeline marker exists (~/.steadfaste-fleet/state/
 #      .pipeline-commit, written by the pipeline right before its
 #      commit; must be < 10 min old so a crashed run's stale marker
 #      can't sanction commits indefinitely). The commit message is
@@ -578,7 +578,7 @@ fi
 # marker) is NOT sanctioned — every gate fires. (2026-08-05 loophole
 # closure)
 SANCTIONED_PIPELINE=0
-_PIPE_MARKER="${HOME}/.hermes-cortex/state/.pipeline-commit"
+_PIPE_MARKER="${HOME}/.steadfaste-fleet/state/.pipeline-commit"
 if [[ -f "$_PIPE_MARKER" ]] && find "$_PIPE_MARKER" -mmin -10 2>/dev/null | grep -q .; then
   _PIPELINE_STAGED=$(git diff --cached --name-only 2>/dev/null | grep -vE '^ops/install/deploy/nginx/blocked_ips\.(add|submit)$' || true)
   if [[ -z "$_PIPELINE_STAGED" ]]; then
@@ -618,7 +618,7 @@ if [[ ! -f "$AGENTS_LOCAL" ]]; then
   echo ""
   echo "❌  ~/.hermes/AGENTS.md not found."
   echo "    Governance: the agent's operating rules are missing."
-  echo "    Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md"
+  echo "    Run: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md"
   echo "    ⚠️  If local customizations exist, backup: cp ~/.hermes/AGENTS.md ~/.hermes/AGENTS.md.local"
   echo "    No bypass flags — governance is non-negotiable."
   echo ""
@@ -633,7 +633,7 @@ if [[ -f "AGENTS.md" ]]; then
     echo ""
     echo "❌  ~/.hermes/AGENTS.md is missing ${MISSING} numbered rule(s)"
     echo "    Local has ${LOCAL_RULES}, template has ${REPO_RULES}"
-    echo "    Run: cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md"
+    echo "    Run: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md"
     echo "    ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local"
     echo "    No bypass flags — governance is non-negotiable."
     echo ""
@@ -686,7 +686,7 @@ if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
     echo "❌  ~/.hermes/SOUL.md is out of sync with the template."
     echo "    Template has ~${TMPL_COUNT} principle markers, local has ~${LOCAL_COUNT} — ${MISSING} missing."
     echo "    Governance: identity document must follow the template."
-    echo "    Run: python3 ~/hermes-cortex/ops/scripts/manage/soul-merge.py"
+    echo "    Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py"
     echo "    No bypass flags — governance is non-negotiable."
     echo ""
     exit 1
@@ -752,14 +752,14 @@ fi
 
 # ── Repo scope guard (Luke 2026-08-06) ─────────────────────
 # Session-gated checks (reflexion proof, governance lock) and the
-# AGENTS.md audit apply ONLY in the hermes-cortex repo. Non-HC repos
+# AGENTS.md audit apply ONLY in the steadfaste-fleet repo. Non-HC repos
 # (client-mwi, client-works, projects) receive MANUAL commits by humans
 # too — a human has no Hermes session and no governance lock, so these
 # gates blocked ordinary manual work on Titus (reproduced: manual commit
 # blocked at the reflexion gate, manual push at the pre-push lock gate).
 # Quality gates (adversarial, secret-leak, doc audit, syntax) still run
-# in every repo. Rule 11 pattern: ${HOME}/hermes-cortex comparison.
-if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
+# in every repo. Rule 11 pattern: ${HOME}/steadfaste-fleet comparison.
+if [[ "$REPO_ROOT" == "${HOME}/steadfaste-fleet" ]]; then
   IS_CORTEX_REPO=1
 else
   IS_CORTEX_REPO=0
@@ -905,21 +905,21 @@ fi
 # SKIPPED for sanctioned pipeline commits — no_agent cron has no session;
 # those commits are gated by the append-only guard + adversarial + scoring.
 # SCOPE (Luke 2026-10-29): reflexion governs ALL development, not just the
-# hermes-cortex repo. In a non-HC repo, a commit with NO active governance
+# steadfaste-fleet repo. In a non-HC repo, a commit with NO active governance
 # session is an ungoverned/human commit — pass it through (--skip-no-session);
 # a Pi/agent commit HAS a lock, so its session is judged. In the HC repo a
 # no-session commit is still refused (HC commits must be governed).
 if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
   HC_REFLEXION_CHECK=""
   for _cand in "$REPO_ROOT/ops/scripts/hc-reflexion-check.py" \
-               "$HOME/.hermes-cortex/scripts/hc-reflexion-check.py" \
+               "$HOME/.steadfaste-fleet/scripts/hc-reflexion-check.py" \
                "$HOME/.local/bin/hc-reflexion-check.py"; do
     if [[ -f "$_cand" ]]; then HC_REFLEXION_CHECK="$_cand"; break; fi
   done
   if [[ -z "$HC_REFLEXION_CHECK" ]]; then
     echo ""
     echo "❌  Reflexion gate verifier missing (hc-reflexion-check.py)."
-    echo "    Re-run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+    echo "    Re-run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
     echo "    Failing closed — a gate that cannot verify must not pass."
     echo ""
     exit 1
@@ -928,7 +928,7 @@ if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
   # generic (--skill <name>), so ask it for the whole survey-before-build
   # ritual — reflexion-check, survey-before-action, prove-before-create,
   # and agent-contract (verify / test-first / say-so-when-unsure). The
-  # questions apply to ANY development, not just hermes-cortex: did you survey
+  # questions apply to ANY development, not just steadfaste-fleet: did you survey
   # the codebase / existing functionality before writing, prove you are not
   # rebuilding what exists, reflect before delivering, and hold the core
   # operating rules (right first time, test edge cases, escalate on
@@ -961,13 +961,13 @@ fi
 # A non-trivial slice of development must carry an adversarial plan review on
 # its active cycle before the implementation commit lands. Applies to ANY repo
 # a governed agent develops in (--skip-no-session leaves ungoverned/human
-# commits alone). hermes-cortex's own close-review already covers its slices,
+# commits alone). steadfaste-fleet's own close-review already covers its slices,
 # so this targets the project repos where Titus works; widening it to
-# hermes-cortex is one condition away.
+# steadfaste-fleet is one condition away.
 if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -ne 1 ]]; then
   HC_PLAN_REVIEW=""
   for _cand in "$REPO_ROOT/ops/scripts/hc-plan-review-check.py" \
-               "$HOME/.hermes-cortex/scripts/hc-plan-review-check.py" \
+               "$HOME/.steadfaste-fleet/scripts/hc-plan-review-check.py" \
                "$HOME/.local/bin/hc-plan-review-check.py"; do
     if [[ -f "$_cand" ]]; then HC_PLAN_REVIEW="$_cand"; break; fi
   done
@@ -993,7 +993,7 @@ fi
 # session_id). Multiple sessions can each hold a valid lock. The repo_slug
 # is stored INSIDE the lock file's content, not in the filename.
 # This mirrors the MCP plugin's _has_governance_lock() and _derive_slug().
-GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state"
+GOVERNANCE_STATE_DIR="${HOME}/.steadfaste-fleet/state"
 REPO_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'generic')" 2>/dev/null || echo 'generic')
 
 # Scan all .governance-*.json files for one matching this repo
@@ -1023,7 +1023,7 @@ fi
 # it too). ADVISORY ONLY — always exits 0; the review that refused the close is
 # unchanged. See governance-refused-close-advisory.sh for the reasoning.
 if [[ "$LOCK_FOUND" -eq 1 && "$SANCTIONED_PIPELINE" != "1" ]]; then
-  _ADVISORY="${CORTEX_DEPLOY_ROOT:-$HOME/.hermes-cortex}/scripts/governance-refused-close-advisory.sh"
+  _ADVISORY="${CORTEX_DEPLOY_ROOT:-$HOME/.steadfaste-fleet}/scripts/governance-refused-close-advisory.sh"
   [[ -x "$_ADVISORY" ]] || _ADVISORY=$(command -v governance-refused-close-advisory.sh 2>/dev/null || true)
   [[ -n "$_ADVISORY" && -x "$_ADVISORY" ]] && "$_ADVISORY" "$REPO_SLUG" || true
 fi
@@ -1046,15 +1046,15 @@ fi
 
 # ── Level 2: AGENTS.md core requirements check via agents-doc-audit.py ──
 AUDIT_SCRIPT=""
-for candidate in agents-doc-audit.py ~/.hermes-cortex/scripts/agents-doc-audit.py ~/.local/bin/agents-doc-audit.py "$(git rev-parse --show-toplevel 2>/dev/null || echo '')/ops/scripts/agents-doc-audit.py"; do
+for candidate in agents-doc-audit.py ~/.steadfaste-fleet/scripts/agents-doc-audit.py ~/.local/bin/agents-doc-audit.py "$(git rev-parse --show-toplevel 2>/dev/null || echo '')/ops/scripts/agents-doc-audit.py"; do
   if [[ -f "$candidate" ]]; then
     AUDIT_SCRIPT="$candidate"
     break
   fi
 done
 if [[ -z "$AUDIT_SCRIPT" ]]; then
-  # Fallback: find it in hermes-cortex repo
-  for base in ~/hermes-cortex ~/HermesCortex ~/cortex; do
+  # Fallback: find it in steadfaste-fleet repo
+  for base in ~/steadfaste-fleet ~/HermesCortex ~/cortex; do
     candidate="$base/ops/scripts/agents-doc-audit.py"
     if [[ -f "$candidate" ]]; then
       AUDIT_SCRIPT="$candidate"
@@ -1069,7 +1069,7 @@ if [[ -n "$AUDIT_SCRIPT" && "$IS_CORTEX_REPO" -eq 1 ]]; then
     AGENTS_EXIT=$?
     if [[ "$AGENTS_EXIT" -eq 2 ]]; then
       echo "❌  AGENTS.md not found at repo root. Create one before committing."
-      echo "    See ~/hermes-cortex/AGENTS.md as template."
+      echo "    See ~/steadfaste-fleet/AGENTS.md as template."
       exit 1
     fi
     if [[ "$AGENTS_EXIT" -eq 1 ]]; then
@@ -1097,11 +1097,11 @@ fi
 
 # Find score-cycle — try PATH, then common locations (resolve to full path).
 # Include the canonically-deployed scorer (cortex-update.sh registers
-# score_cycle.py to $HOME/.hermes-cortex/tools/loop-governance/ on BOTH
+# score_cycle.py to $HOME/.steadfaste-fleet/tools/loop-governance/ on BOTH
 # Linux and macOS). macOS has no ~/.local/bin in PATH by default, so the
 # deployed-path candidate is what makes the fail-closed check work there.
 SCORE_CYCLE=""
-for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle" "$HOME/.hermes-cortex/tools/loop-governance/score_cycle.py"; do
+for candidate in score-cycle ~/.local/bin/score-cycle "$HOME/.local/bin/score-cycle" "$HOME/.steadfaste-fleet/tools/loop-governance/score_cycle.py"; do
   if resolved=$(command -v "$candidate" 2>/dev/null); then
     SCORE_CYCLE="$resolved"
     break
@@ -1120,7 +1120,7 @@ if [[ -z "$SCORE_CYCLE" ]]; then
   echo "    Scoring is part of the enforcement chain — a commit without"
   echo "    a cycle record is invisible to governance."
   echo "    Install it via the sanctioned path:"
-  echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "      bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
   echo "    No bypass flags — do NOT use --no-verify."
   echo ""
   exit 1
@@ -1153,12 +1153,12 @@ PASS_PCT=100
 MEASURE_WARN=""
 MEASURE_OUT=""
 # TASK 4b (TitusClaude + Luke, verified): generic governance files are
-# DEPLOYED-ONLY (~/.hermes-cortex/scripts/, landed by cortex-update.sh).
+# DEPLOYED-ONLY (~/.steadfaste-fleet/scripts/, landed by cortex-update.sh).
 # No repo copies, no overrides — one source of truth, fixes reach every
 # repo automatically. The repo declares ONLY its test runner via
 # ops/scripts/test-command.sh (a per-repo VALUE the measurer reads, not an
 # override of the measurer itself).
-_DISCOVERY="$HOME/.hermes-cortex/scripts/precommit_test_discovery.py"
+_DISCOVERY="$HOME/.steadfaste-fleet/scripts/precommit_test_discovery.py"
 if [[ -f "$_DISCOVERY" ]]; then
   # Run the discovery module with REPO_ROOT set; parse its PASS_PCT output.
   MEASURE_OUT=$(REPO_ROOT="$REPO_ROOT" python3 "$_DISCOVERY" 2>/dev/null || true)
@@ -1252,7 +1252,7 @@ TASK_ID="precommit-${REPO_NAME}-${BRANCH}/${MSG_SLUG}"
 # DB override: PRE_COMMIT_SCORE_DB points scoring at a SCRATCH sqlite DB (test
 # harnesses set it so commits in temp/test repos never pollute the PROD
 # loop-governance DB — review-queue pollution root cause, slice 74f2ac46).
-DB_PATH="${PRE_COMMIT_SCORE_DB:-$HOME/.hermes-cortex/data/loop-governance.db}"
+DB_PATH="${PRE_COMMIT_SCORE_DB:-$HOME/.steadfaste-fleet/data/loop-governance.db}"
 PREV_CYCLE=$(python3 -c "
 import sqlite3, os
 db = os.path.expanduser('$DB_PATH')
@@ -1312,13 +1312,13 @@ rm -f "$SCORE_STDERR"
 rm -f "$PREV_FILE" "$ALL_CODE_FILE"
 
 # ── Documentation audit (mandatory, no bypass) ──────────
-if [[ -f "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh" ]]; then
-  bash "$HOME/hermes-cortex/ops/scripts/pre-commit-doc-audit.sh"
+if [[ -f "$HOME/steadfaste-fleet/ops/scripts/pre-commit-doc-audit.sh" ]]; then
+  bash "$HOME/steadfaste-fleet/ops/scripts/pre-commit-doc-audit.sh"
 fi
 
 # ── Secret leak detection (mandatory, no bypass) ─────────
-if [[ -f "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh" ]]; then
-  bash "$HOME/hermes-cortex/ops/scripts/secret-leak-detector.sh"
+if [[ -f "$HOME/steadfaste-fleet/ops/scripts/secret-leak-detector.sh" ]]; then
+  bash "$HOME/steadfaste-fleet/ops/scripts/secret-leak-detector.sh"
 fi
 
 # ── Change validation (mandatory, no bypass) ────────────
@@ -1326,16 +1326,16 @@ fi
 # 2026-08-24). No repo copies, no repo overrides — the deployed
 # change-validate.sh contains ALL checks (self-scoping: each fires only
 # when the staged files match its pattern, e.g. alembic revisions).
-_CHANGE_VALIDATE="$HOME/.hermes-cortex/scripts/change-validate.sh"
+_CHANGE_VALIDATE="$HOME/.steadfaste-fleet/scripts/change-validate.sh"
 if [[ -f "$_CHANGE_VALIDATE" ]]; then
   bash "$_CHANGE_VALIDATE"
 fi
 
-# ── Orchestrator-only paths guard (hermes-cortex repo only) ──
+# ── Orchestrator-only paths guard (steadfaste-fleet repo only) ──
 # Only orchestrator agents (moses, esther) may modify these paths.
 # Non-orchestrators: commit changes from an orchestrator agent instead.
 #
-# ⚠️  SCOPE (Titus 2026-08-05): this array is hermes-cortex-SPECIFIC —
+# ⚠️  SCOPE (Titus 2026-08-05): this array is steadfaste-fleet-SPECIFIC —
 # its patterns (tests/, skills/, core/governance/tests/, test_*.py) are
 # governance files in THIS repo only. It must NOT fire in project repos
 # (client-mwi, ebm-website, ...) where test files are ordinary work —
@@ -1343,8 +1343,8 @@ fi
 # repo because the unanchored test_.*\.py$ pattern matched everywhere.
 # The config-driven guard above already handles repo-awareness via
 # docs/orchestrator-only-paths.txt (missing config = no restrictions);
-# this array is gated the same way: hermes-cortex repo only.
-if [[ "$REPO_ROOT" == "${HOME}/hermes-cortex" ]]; then
+# this array is gated the same way: steadfaste-fleet repo only.
+if [[ "$REPO_ROOT" == "${HOME}/steadfaste-fleet" ]]; then
 ORCHESTRATOR_ONLY_PATHS=(
   "^docs/templates/"
   # "^profiles/personal/agent-profiles/"  # removed from repo (commit d43e776)
@@ -1437,11 +1437,11 @@ fi
 # which was a bypass: security/guard changes could land unscanned).
 # Resolve adversarial-verify.py — repo-local copy (cortex repo itself) first,
 # then the canonically-deployed copy (cortex-update.sh registers it to
-# $HOME/.hermes-cortex/scripts/adversarial-verify.py on BOTH Linux and macOS).
+# $HOME/.steadfaste-fleet/scripts/adversarial-verify.py on BOTH Linux and macOS).
 # Project repos have no ops/ tree, so the deployed copy is the only one there.
 # Fail CLOSED if neither exists — a commit without the scan is a bypass.
 ADVERSARIAL_SCRIPT=""
-for candidate in "$REPO_ROOT/ops/scripts/quality/adversarial-verify.py" "$HOME/.hermes-cortex/scripts/adversarial-verify.py"; do
+for candidate in "$REPO_ROOT/ops/scripts/quality/adversarial-verify.py" "$HOME/.steadfaste-fleet/scripts/adversarial-verify.py"; do
   if [[ -f "$candidate" ]]; then
     ADVERSARIAL_SCRIPT="$candidate"
     break
@@ -1454,7 +1454,7 @@ if [[ -z "$ADVERSARIAL_SCRIPT" ]]; then
   echo "    A4 for security/guard/hook/enforcer files). A commit without the scan"
   echo "    is a governance bypass."
   echo "    Install it via the sanctioned path:"
-  echo "      bash ~/hermes-cortex/ops/scripts/cortex-update.sh"
+  echo "      bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
   echo "    No bypass flags — do NOT use --no-verify."
   echo ""
   exit 1

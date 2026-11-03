@@ -50,7 +50,7 @@ save" is not a mechanism.
 ```bash
 cd <pi-project>
 mkdir -p extensions
-cp ~/hermes-cortex/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
+cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
 ```
 
 Launch with the extension and an explicit tool allowlist:
@@ -94,7 +94,7 @@ cortex-context mem_context '{}'      # JSON with "card": [...]
 ```
 
 `memory unavailable — … not an error` means the store is unreachable: fix that
-first (`MYCORTEX_MEM_PASSWORD` in `~/hermes-cortex/.env`; is Postgres up?). Do not
+first (`MYCORTEX_MEM_PASSWORD` in `~/steadfaste-fleet/.env`; is Postgres up?). Do not
 debug the harness while the store is down.
 
 **b. Read path, from inside Pi:** call `mem_context`; your peer card must return.
@@ -107,11 +107,11 @@ debug the harness while the store is down.
    cortex-context session_restore '{}' | grep proof-
    ```
    Missing ⇒ your hook is not firing. The extension's routine markers go to the
-   cortex log (`~/.hermes-cortex/logs/pi-context.log`), not the visible stream — see §4.
+   cortex log (`~/.steadfaste-fleet/logs/pi-context.log`), not the visible stream — see §4.
 
 **d. Session-start injection:** start a SECOND session. The checkpoint must appear
 without being asked, and `CORTEX_RESUME <key> facts=N` is appended to
-`~/.hermes-cortex/logs/pi-context.log` (set `CORTEX_CONTEXT_DEBUG=1` to also see it on
+`~/.steadfaste-fleet/logs/pi-context.log` (set `CORTEX_CONTEXT_DEBUG=1` to also see it on
 stderr).
 
 **e. Fail-open:** stop the store, call a tool, confirm Pi continues with
@@ -121,7 +121,7 @@ stderr).
 
 ## 4. Read the log — it is the difference between "no memory" and "broken"
 
-Routine markers go to `~/.hermes-cortex/logs/pi-context.log` (rotates to
+Routine markers go to `~/.steadfaste-fleet/logs/pi-context.log` (rotates to
 `pi-context.log.1` at `CORTEX_CONTEXT_LOG_MAX_BYTES`, default 1 MiB). **Only failures
 are printed on stderr** — in Pi stderr *is* the prompt area, so a routine line there
 scribbles over what the user is typing. `CORTEX_CONTEXT_DEBUG=1` echoes the routine
@@ -177,7 +177,7 @@ build the checkpoint from `toolResults` + `message`.
 > host cannot drive a `.ts` extension without a TS loader. Prefer running the
 > guard on a host with the npm-managed layout. The extension source is
 > layout-agnostic and still deploys to
-> `~/.hermes-cortex/harnesses/pi/extensions/` via `cortex-update.sh`.
+> `~/.steadfaste-fleet/harnesses/pi/extensions/` via `cortex-update.sh`.
 
 ---
 
@@ -237,10 +237,10 @@ Pi advertises each skill's **name + description** and loads the body on demand.
 **Register it once, at user scope — do not re-copy flags per repo:**
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh
 # → ~/.pi/agent/settings.json: "skills": ["~/.pi/agent/cortex-skills"]
 # → that dir holds ONE symlink per skill in the manifest's `always:` section
-bash ~/hermes-cortex/ops/scripts/install/install-pi-integration.sh --check
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh --check
 ```
 
 Project scope (one repo, explicit flags) is the other half of the same pattern:
@@ -271,7 +271,7 @@ per-harness way in.**
   in `~/.pi/agent/mcp.json`:
 
   ```bash
-  bash ~/hermes-cortex/ops/scripts/install/install-pi-mcp.sh
+  bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh
   pi mcp list          # loop-governance, tasks, executor, agent-bus, cortex-context
   ```
 
@@ -302,7 +302,7 @@ per-harness way in.**
   loop-gov --tools-json        # machine-readable manifest for any harness
   ```
 
-Never hand-write a lock file under `~/.hermes-cortex/state/` — a fabricated lock
+Never hand-write a lock file under `~/.steadfaste-fleet/state/` — a fabricated lock
 is a governance violation and is audited. If governance is unreachable, say so in
 your report; do not pretend otherwise.
 

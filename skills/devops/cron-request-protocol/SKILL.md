@@ -155,7 +155,7 @@ without changing its schedule.
   support triggering immediate execution.
 - **Workaround:** Run the cron's script directly via `terminal`:
   ```bash
-  bash ~/.hermes-cortex/scripts/<script-name>.sh
+  bash ~/.steadfaste-fleet/scripts/<script-name>.sh
   ```
   or for scripts at the canonical path:
   ```bash

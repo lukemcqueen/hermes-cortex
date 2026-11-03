@@ -1,8 +1,8 @@
 ---
 name: inbox-remediation
-description: "Auto-remediate hermes-cortex issues reported by peer agents via the Agent Bus. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
+description: "Auto-remediate steadfaste-fleet issues reported by peer agents via the Agent Bus. Scans pending remediation markers every 10 minutes, reads the original message, applies the fix, and marks the request as done."
 version: 1.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -16,7 +16,7 @@ metadata:
 
 Load this skill when:
 - Setting up the orch-process-agent-messages cron
-- Other agents need to report hermes-cortex issues and have them auto-fixed
+- Other agents need to report steadfaste-fleet issues and have them auto-fixed
 - You want a multi-agent auto-remediation pipeline
 
 ## Architecture
@@ -45,7 +45,7 @@ Load this skill when:
 ### 1. Deploy the companion script
 
 ```bash
-cp hermes-cortex/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
+cp steadfaste-fleet/scripts/orch-inbox-remediate.sh ~/.hermes/scripts/
 chmod +x ~/.hermes/scripts/orch-inbox-remediate.sh
 ```
 
@@ -87,7 +87,7 @@ python3 ~/.hermes/scripts/orch-weekly-auto-fix.py --verbose
 ```bash
 mkdir -p ~/.hermes/state/remediate/done
 mv <marker_file_path> ~/.hermes/state/remediate/done/
-cd ${CORTEX_REPO:-$HOME/hermes-cortex}-private && git add -A && git commit -m "remediation: ..." && git push
+cd ${CORTEX_REPO:-$HOME/steadfaste-fleet}-private && git add -A && git commit -m "remediation: ..." && git push
 ```
 
 ## Step 5: Report compact summary

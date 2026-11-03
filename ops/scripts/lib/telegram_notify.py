@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """lib/telegram_notify.py — Shared Telegram notification module.
 
-Single copy of the Bot API send path for Hermes Cortex (design
+Single copy of the Bot API send path for Steadfaste Fleet (design
 docs/design/task-lifecycle-v2.md §8 — closes R-5, R-6, R-9, R-15, R-20, M-3).
 
 Imported by:
@@ -19,7 +19,7 @@ What this module does:
   - Host-level flock + last-send timestamp file -> global coalescing <=1 msg/2s
     (cross-process — task-db.py is per-invocation, R-5)
   - 429 -> honor Retry-After, bounded retries (2), then drop + count (R-5)
-  - Persisted failure counter (~/.hermes-cortex/state/telegram-notify.json),
+  - Persisted failure counter (~/.steadfaste-fleet/state/telegram-notify.json),
     surfaced via telegram_notify_health() for the doctor (S7)
   - Logs go to a FILE (state/telegram-notify.log), never cron stdout (R-15)
   - Send is post-commit, time-boxed <=3s per attempt, NON-FATAL — a notify
@@ -62,7 +62,7 @@ MAX_DEFERRED = 50                # quiet-hours digest cap (oldest dropped)
 
 def _state_dir() -> Path:
     return Path(os.environ.get("TELEGRAM_NOTIFY_STATE_DIR",
-                               Path.home() / ".hermes-cortex" / "state"))
+                               Path.home() / ".steadfaste-fleet" / "state"))
 
 
 def _state_file() -> Path:

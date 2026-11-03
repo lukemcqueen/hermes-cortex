@@ -14,7 +14,7 @@ useful" — Luke). The proposal assumed `bus.todos` existed ("verified
    avoid the 15432 port conflict; wait ~7s for "database system is ready";
    query; `docker rm -f`). Bus schema had messages/queues/archives/
    permissions/tokens/audit_log — **no todos**.
-2. Migration dump `~/.hermes-cortex/backups/gbrain-migration-*.dump` —
+2. Migration dump `~/.steadfaste-fleet/backups/gbrain-migration-*.dump` —
    `strings | grep -i todo` → nothing.
 3. Current `mycortex-postgres` — no `bus.todos`, no `bus.todo_upsert`.
 

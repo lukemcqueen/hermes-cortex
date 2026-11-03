@@ -2,7 +2,7 @@
 name: git-push-gate-failures
 description: "Use when a push is blocked and the cause is unclear."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 tags: [git, push, hooks, deploy, shell]
 related_skills: [shared-repo-push-gates, enforcement-change-safety, shell-scripting]
 ---
@@ -22,25 +22,25 @@ last deploy" even after `cortex-update.sh` runs "cleanly" (rc 0 or rc 1
 with a normal-looking log tail). The pre-push gate then blocks every push.
 
 **Mechanism:** the doctor compares `git rev-parse HEAD` against
-`~/.hermes-cortex/state/update-commit`, which cortex-update.sh writes near
+`~/.steadfaste-fleet/state/update-commit`, which cortex-update.sh writes near
 the END of its run. If ANY earlier step dies under `set -euo pipefail`, the
 record never advances. The log tail looks fine because the failing section
 (service restarts) is adjacent to the end.
 
 **Simplest cause — check this before `bash -x`:** the deploy was never run.
-Manually `cp`-ing changed files to `~/.hermes-cortex/scripts/` (e.g. to work
+Manually `cp`-ing changed files to `~/.steadfaste-fleet/scripts/` (e.g. to work
 around a slow `cortex-update.sh --force` timeout) does NOT advance
 `state/update-commit` — only cortex-update.sh writes it, so a manual copy
 leaves the marker behind HEAD and the dogfood gate blocks every push. Tell:
 `git log --oneline -1 origin/main` shows your commit while
-`cat ~/.hermes-cortex/state/update-commit` is an older SHA, and `bash -x`
+`cat ~/.steadfaste-fleet/state/update-commit` is an older SHA, and `bash -x`
 finds no dying step because none ran. Fix: `bash ops/scripts/cortex-update.sh
 --force`, confirm `cat state/update-commit` == `git rev-parse HEAD`, push.
 
 **Diagnosis (the tell):**
 
 ```bash
-stat -c '%y' ~/.hermes-cortex/state/update-commit 2>/dev/null || stat -f '%Sm' ~/.hermes-cortex/state/update-commit   # mtime BEFORE your changes? (GNU first, BSD fallback)
+stat -c '%y' ~/.steadfaste-fleet/state/update-commit 2>/dev/null || stat -f '%Sm' ~/.steadfaste-fleet/state/update-commit   # mtime BEFORE your changes? (GNU first, BSD fallback)
 ```
 
 An old mtime while deploys "run clean" = the deploy is dying before the
@@ -139,7 +139,7 @@ pushing that fix, your re-implementation is a wrong-direction commit you
 must then revert and push the revert.
 
 **Mechanism:** the dogfood gate diffs DEPLOYED scripts
-(`~/.hermes-cortex/scripts/`) against repo HEAD. A peer's overlapping commit
+(`~/.steadfaste-fleet/scripts/`) against repo HEAD. A peer's overlapping commit
 changed the same script in the repo; your deployed copy still carries YOUR
 pre-rebase version → checksum mismatch → gate blocks. The gate compares
 deploy state, not your diff — your commit is not the problem.
@@ -149,13 +149,13 @@ checks.py` / `cli.py` on a push whose diff touches neither usually means a
 PEER's merged commit changed them and your host's deploy is stale — not that
 your diff is wrong. Do not chase the named file; it is correct, just not
 deployed. Verify with `git log --oneline origin/main -1` vs
-`cat ~/.hermes-cortex/state/update-commit`: tip-ahead-of-deploy confirms the
+`cat ~/.steadfaste-fleet/state/update-commit`: tip-ahead-of-deploy confirms the
 stale-deploy reading, and the fix is the same re-deploy + push below.
 
 **Fix:** re-run `bash ops/scripts/cortex-update.sh` (deploys the rebased repo
 state, including the peer's version), verify the deployed file matches repo
 (`diff <(grep -v '^# SOURCE:' ops/scripts/X.sh) <(grep -v '^# SOURCE:'
-~/.hermes-cortex/scripts/X.sh)`), then push.
+~/.steadfaste-fleet/scripts/X.sh)`), then push.
 
 **Confirm the push actually landed, not just that the command ran:** after a
 re-deploy the push can still be raced — the threat-pipeline cron pushes its
@@ -195,7 +195,7 @@ all of them in one pass, then grep the set clean before continuing.
 1. **Malformed-heartbeat locks are pinned "never stale".** `_is_lock_stale` (in `loop-gov-mcp.py`, `purge-stale-governance-locks.py`, and the enforcer) previously returned `False` forever when `datetime.fromisoformat` raised: a time-only heartbeat (`09:12:00Z` — no date, fromisoformat needs one) or a naive no-TZ timestamp (aware-vs-naive subtraction raises `TypeError`). Both were caught and treated as fresh, so the crashed session's lock never aged past TTL and was never purged.
 2. **Purge deletes the lock file but leaves the orphaned cycle.** The doctor's leak rule is "PENDING cycle whose task_id has NO live lock = FAIL". Removing the lock does NOT clear the cycle — the doctor still FAILs and blocks. Fix as a pair: when a lock is purged as stale, also resolve that task's PENDING cycle(s) to `MOVE_ON`, and run the purge from `begin_change` (the acquiring gate) not just `_check_lock`.
 
-**Check the deployed copy matches repo first** — `diff` the deployed `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py` against `mcp-servers/loop-gov-mcp.py`; the ONLY allowed difference is the injected `# SOURCE:` / `# Do NOT edit` header lines. Any other diff (or a running gateway process started before the fix — "deploy ≠ load") means the running code is stale and the fix hasn't loaded.
+**Check the deployed copy matches repo first** — `diff` the deployed `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py` against `mcp-servers/loop-gov-mcp.py`; the ONLY allowed difference is the injected `# SOURCE:` / `# Do NOT edit` header lines. Any other diff (or a running gateway process started before the fix — "deploy ≠ load") means the running code is stale and the fix hasn't loaded.
 
 **Same deploy≠load window refuses `end_change` with a reviewer EXCEPTION, not a clean banner.** After deploying a loop-gov change, the RUNNING MCP daemon still executes the old module; a non-trivial close then fails because the in-memory reviewer hits code it does not have yet. The error reads like a reviewer/data bug (`'str' object has no attribute 'get'`) rather than a "restart pending" notice. Recognize the transition window, not a regression: retrying repeats the same error; `feedback_accept`/close what you can, have the operator restart the gateway, then retry `end_change` after the restart. A watchdog alert naming "N loop-gov daemon(s) ... running pre-deploy code" is the same condition. The same window also produces a bogus-looking doctor run — re-read the doctor as a bare `python3 …cortex-doctor.py` AFTER the deploy process exits, and do not chase warns/fails captured mid-deploy.
 
@@ -210,7 +210,7 @@ push on the host — regardless of how unrelated your diff is.
 `ops/scripts/quality/review-provenance-check.py`, which scans every text file
 under `docs/` for a `recorded-in: adversarial_reviews review_id=…` CLAIM in
 its header. A claim is verified against the host's LOCAL loop-governance DB
-(`~/.hermes-cortex/data/loop-governance.db`); if no row carries that id, the
+(`~/.steadfaste-fleet/data/loop-governance.db`); if no row carries that id, the
 file is an unbacked claim → FAIL. A review row lives on the host where
 `adversarial-review.py --cycle-id N --review` RAN, so a docs file committed to
 the shared repo carries a claim only one host can truthfully verify — every
@@ -220,14 +220,14 @@ upstream's) artifact, not yours — but it still blocks you, and you own it.
 **Verify before touching it** (never mark an unbacked claim as if it were
 verifiable):
 ```
-sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+sqlite3 ~/.steadfaste-fleet/data/loop-governance.db \
   "SELECT review_id, cycle_id FROM adversarial_reviews WHERE review_id LIKE '<id>%';"
 ```
 A query with rows = the claim is valid on this host; empty = the row is
 elsewhere or fabricated. Then run the checker standalone to see the
 enumeration and the offending line:
 ```
-~/.hermes-cortex/venv/bin/python3 ops/scripts/quality/review-provenance-check.py --repo .
+~/.steadfaste-fleet/venv/bin/python3 ops/scripts/quality/review-provenance-check.py --repo .
 ```
 
 **Legal fixes (the checker accepts exactly these; both are exact strings —
@@ -264,7 +264,7 @@ intuition, and by design: the review that used to land after the push now gates 
   answers "already reviewed (UNIQUE constraint)" and does NOT re-judge; a fresh judgement needs
   `rereview_change` (opens the cycle's verdict again, requires a note stating what changed plus its
   evidence). Read the recorded row (verdict + findings_json) from
-  `~/.hermes-cortex/data/loop-governance.db` — note this is NOT `state/loop-governance.db`.
+  `~/.steadfaste-fleet/data/loop-governance.db` — note this is NOT `state/loop-governance.db`.
 - **A review whose material was a PATH, not content, returns a hollow CLEAN** — the reviewer reports
   `unverified-claim` on the path itself ("the window contains only this path"). Pass the plan/diff
   CONTENT as material, and treat a CLEAN that names an unreadable window as no approval at all.

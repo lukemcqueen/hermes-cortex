@@ -272,8 +272,8 @@ def _interpreter_with_ruamel() -> str | None:
     """
     candidates = [sys.executable, shutil.which("python3"), "/usr/bin/python3"]
     candidates += [str(Path.home() / v) for v in (
-        ".hermes-cortex/venv/bin/python", ".hermes/hermes-agent/venv/bin/python",
-        "hermes-cortex/.venv/bin/python",
+        ".steadfaste-fleet/venv/bin/python", ".hermes/hermes-agent/venv/bin/python",
+        "steadfaste-fleet/.venv/bin/python",
     )]
     for cand in candidates:
         if not cand or not Path(cand).exists():

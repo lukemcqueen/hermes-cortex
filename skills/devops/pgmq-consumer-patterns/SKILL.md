@@ -2,7 +2,7 @@
 name: pgmq-consumer-patterns
 description: "Use when fixing bus consumers or false-unreachable agents."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 metadata:
   hermes:
     tags: [bus, pgmq, consumers, migration, health]
@@ -34,7 +34,7 @@ consumer fallback: bus_read(queue, vt=60) peek for not-yet-drained pings
 **Example (health pings, fixed 2026-08-04, commit 87df0c73):**
 - `orch-clean-health-queue.py` drains `inbox_health_check` every 10m; while
   archiving it persists each agent's latest vector+ts to
-  `~/.hermes-cortex/state/inbox-health-state.json` and updates `last-seen.json`.
+  `~/.steadfaste-fleet/state/inbox-health-state.json` and updates `last-seen.json`.
 - `orch-health-report.py` reads that state file; live `bus_read` is only a
   fallback for pings the drainer hasn't caught yet.
 
@@ -113,7 +113,7 @@ Full worked example (timeline, SQL queries, hash-recompute snippet):
 - **Direct script runs mislead.** A no_agent cron gets `PYTHONPATH` from
   `build_subprocess_env()`; a bare `python3 script.py` from a random cwd will
   `ModuleNotFoundError: hermes_paths`. Reproduce the cron env
-  (`CORTEX_REPO=~/hermes-cortex PYTHONPATH=~/hermes-cortex/ops/scripts`).
+  (`CORTEX_REPO=~/steadfaste-fleet PYTHONPATH=~/steadfaste-fleet/ops/scripts`).
 - **A queue drained before the consumer runs is NOT proof of a dead producer.**
   Check the drainer's persistence file before blaming the push side.
 - **Deployed copies of scripts/skills are copies.** Fix the repo source, deploy

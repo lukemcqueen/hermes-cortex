@@ -168,7 +168,7 @@ EXEC_SCHEMA = {
     "properties": {
         "command": {
             "type": "string",
-            "description": "Script path relative to ~/.hermes-cortex/scripts/ on target agent",
+            "description": "Script path relative to ~/.steadfaste-fleet/scripts/ on target agent",
             "minLength": 1,
             "pattern": r"^[a-zA-Z0-9_./-]+$"
         },

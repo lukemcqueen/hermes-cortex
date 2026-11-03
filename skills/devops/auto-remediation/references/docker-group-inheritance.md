@@ -108,5 +108,5 @@ print(f'{len(r.stdout.splitlines())} containers accessible')
 
 ## Related
 
-- The `langfuse-health-watchdog.py` fix: commit `814dfb2` in `hermes-cortex`
+- The `langfuse-health-watchdog.py` fix: commit `814dfb2` in `steadfaste-fleet`
 - Auto-remediation skill's fix table has a row for this pattern

@@ -3,7 +3,7 @@ name: alembic-postgres-migrations
 description: Use when debugging Alembic Postgres migration failures.
 version: 1.1.0
 category: devops
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 metadata:

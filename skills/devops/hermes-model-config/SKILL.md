@@ -44,7 +44,7 @@ warning, cron model overrides, model.default regressions after `hermes update`.
    `model` field; `model_snapshot` records what it actually ran as. `no_agent`
    jobs (script-based) ignore `model` entirely.
 4. **Check the whole repo for the convention:** `grep -rn '<model-id>'
-   ~/hermes-cortex --include='*.sh' --include='*.yaml' --include='*.py'` —
+   ~/steadfaste-fleet --include='*.sh' --include='*.yaml' --include='*.py'` —
    install scripts/manifests show the intended per-role model split.
 
 ## Fix
@@ -145,7 +145,7 @@ decision.
   update` — verify before "removing" anything; an empty grep result means the
   warning is already neutralized.
 - model ids evolve: verify the exact id against
-  `grep -n '"model"' ~/.hermes/cron/jobs.json` and `~/hermes-cortex/.env`
+  `grep -n '"model"' ~/.hermes/cron/jobs.json` and `~/steadfaste-fleet/.env`
   before assuming a shorthand ("deepseek-flash" = `deepseek-v4-flash`).
 
   2026-08-18 deepseek-chat regression: investigation trail + verification

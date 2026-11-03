@@ -10,7 +10,7 @@
 
 ## Auth Config
 
-Stored in `~/.hermes-cortex/cortex-bus.conf`:
+Stored in `~/.steadfaste-fleet/cortex-bus.conf`:
 
 ```
 CORTEX_BUS_URL=https://realgospelmessage.com:13004
@@ -40,7 +40,7 @@ The local server requires a Bearer token. Check `CORTEX_BUS_TOKEN` env var or `c
 ### Basic (remote, realgospelmessage.com)
 
 ```bash
-AUTH=$(grep '^CORTEX_BASIC_AUTH=' ~/.hermes-cortex/cortex-bus.conf | cut -d= -f2-)
+AUTH=$(grep '^CORTEX_BASIC_AUTH=' ~/.steadfaste-fleet/cortex-bus.conf | cut -d= -f2-)
 
 # List all queues
 curl -s -H "Authorization: Basic $(echo -n "$AUTH" | base64)" \

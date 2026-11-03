@@ -6,7 +6,7 @@ description: >-
   Agent protocol for mycortex answer cache — inserts a cache-check step
   between RAG miss and model call. Saves tokens by caching LLM answers
   with quality gating, semantic dedup, and RLS isolation per profile.
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 ---
@@ -31,7 +31,7 @@ Query -> mycortex search (hit? use it, 0 tokens)
 
 ## CLI Commands
 
-All via the `mycortex` CLI (`~/.hermes-cortex/scripts/mycortex`):
+All via the `mycortex` CLI (`~/.steadfaste-fleet/scripts/mycortex`):
 
 ### Store an answer
 

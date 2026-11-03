@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 DB_PATH = STATE_DIR / "wave-sessions.db"
 
 WAVES = ["discovery", "impl-core", "impl-polish", "quality", "final"]

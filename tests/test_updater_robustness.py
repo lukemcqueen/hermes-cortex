@@ -9,7 +9,7 @@ something is:
     19 of 99 manage scripts that are deliberately checkout-only, nor for
     ops/scripts/quality/evidence-*.sh — yet it warned on every edit they received.
     It now considers only NEWLY ADDED files.
-  * cortex-update.sh points MCP-server registrations at ~/.hermes-cortex/venv/bin/python3
+  * cortex-update.sh points MCP-server registrations at ~/.steadfaste-fleet/venv/bin/python3
     but never checked that interpreter could import what those servers need. Measured
     2026-10-08: it existed and held only psycopg, so the daily regression gate failed
     every day on PyYAML. It now probes the modules and reports the repair.
@@ -134,7 +134,7 @@ def test_a_venv_that_cannot_import_the_modules_is_reported():
     """A venv EXISTING proves nothing — this is the 2026-10-08 failure, constructed."""
     with tempfile.TemporaryDirectory() as td:
         home = Path(td) / "home"
-        bindir = home / ".hermes-cortex" / "venv" / "bin"
+        bindir = home / ".steadfaste-fleet" / "venv" / "bin"
         bindir.mkdir(parents=True)
         # A python that cannot import anything: exactly the shape of the real venv,
         # which existed with only psycopg while callers expected yaml and mcp.
@@ -152,7 +152,7 @@ def test_a_capable_venv_is_silent():
     """The other direction: with the modules present, nothing is reported."""
     with tempfile.TemporaryDirectory() as td:
         home = Path(td) / "home"
-        bindir = home / ".hermes-cortex" / "venv" / "bin"
+        bindir = home / ".steadfaste-fleet" / "venv" / "bin"
         bindir.mkdir(parents=True)
         # A python that imports whatever it is asked for.
         (bindir / "python3").write_text("#!/usr/bin/env bash\nexit 0\n")

@@ -45,11 +45,11 @@ for arg in "$@"; do
       echo ""
       echo "Wires Hermes Agent with Langfuse integration:"
       echo "  - Generates Hermes-specific API key in Langfuse Postgres"
-      echo "  - Appends Langfuse env vars to ~/hermes-cortex/.env"
+      echo "  - Appends Langfuse env vars to ~/steadfaste-fleet/.env"
       echo "  - Installs Langfuse Python SDK"
       echo "  - Enables Langfuse observability plugin"
       echo ""
-      echo "Output: ~/langfuse/.env + ~/hermes-cortex/.env (appended)"
+      echo "Output: ~/langfuse/.env + ~/steadfaste-fleet/.env (appended)"
       exit 0
       ;;
   esac
@@ -166,8 +166,8 @@ else
 fi
 
 # ── Step 6: Write Langfuse env vars to Cortex .env ─────────────────
-# ⚠ Appends to ~/hermes-cortex/.env — does NOT touch ~/.hermes/.env
-CORTEX_ENV_FILE="${HOME}/hermes-cortex/.env"
+# ⚠ Appends to ~/steadfaste-fleet/.env — does NOT touch ~/.hermes/.env
+CORTEX_ENV_FILE="${HOME}/steadfaste-fleet/.env"
 mkdir -p "$(dirname "$CORTEX_ENV_FILE")"
 
 # Remove any existing Langfuse vars to avoid duplicates on re-run
@@ -278,7 +278,7 @@ fi
 echo ""
 info "✅ Langfuse setup complete with Hermes Agent integration"
 echo "  - Langfuse secrets: ${LANGFUSE_DIR}/.env"
-echo "  - Langfuse env vars appended to: ${HOME}/hermes-cortex/.env"
+echo "  - Langfuse env vars appended to: ${HOME}/steadfaste-fleet/.env"
 echo "  - Langfuse API key: Public=$HAPI_KEY_PUBLIC, Secret saved in Hermes .env"
 if $DO_START; then
   echo "  - Langfuse starting: Started"

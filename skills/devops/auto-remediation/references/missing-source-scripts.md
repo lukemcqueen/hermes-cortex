@@ -4,7 +4,7 @@
 
 A cron job has `last_status: error` with a message like:
 ```
-ERROR: <script>.py not found at /home/$USER/hermes-cortex/ops/services/<path>/<script>.py
+ERROR: <script>.py not found at /home/$USER/steadfaste-fleet/ops/services/<path>/<script>.py
 ```
 
 And the file doesn't exist anywhere in the repo either.
@@ -24,10 +24,10 @@ The design intended the script to exist but it was never created.
 
 ```bash
 # 1. Confirm the file is missing from the repo entirely
-find ~/hermes-cortex -name "<script-name>*" 2>/dev/null
+find ~/steadfaste-fleet -name "<script-name>*" 2>/dev/null
 
 # 2. Find every reference to the missing script name
-grep -r "<script-name>" ~/hermes-cortex/ ~/.hermes/ --include="*.py" --include="*.sh" --include="*.md" --include="*.json" -l
+grep -r "<script-name>" ~/steadfaste-fleet/ ~/.hermes/ --include="*.py" --include="*.sh" --include="*.md" --include="*.json" -l
 
 # 3. Check the wrapper script to understand expected interface
 cat ~/.hermes/scripts/<wrapper>.py
@@ -36,20 +36,20 @@ cat ~/.hermes/scripts/<wrapper>.py
 #   → what output format is expected?
 
 # 4. Check for existing similar scripts to use as template
-ls ~/hermes-cortex/ops/services/*/  # sibling services
-ls ~/hermes-cortex/ops/scripts/*/   # other scripts with similar interface
+ls ~/steadfaste-fleet/ops/services/*/  # sibling services
+ls ~/steadfaste-fleet/ops/scripts/*/   # other scripts with similar interface
 ```
 
 ## Fix Pattern (from generate-agent-card.py creation)
 
-1. **Determine the expected format.** Check for existing output files (e.g. `~/.hermes-cortex/a2a/agent-card.json`) or docs describing the schema.
+1. **Determine the expected format.** Check for existing output files (e.g. `~/.steadfaste-fleet/a2a/agent-card.json`) or docs describing the schema.
 2. **Create the script** following established patterns (shebang, argparse, env var defaults, Path for file ops).
 3. **Fix the wrapper** — ensure it passes `AGENT_NAME` and any other required env vars that the runtime context doesn't provide.
 4. **Verify end-to-end:**
    ```bash
    # Test the new script directly
    AGENT_NAME=esther CORTEX_DOMAIN=example.org CORTEX_A2A_PORT=14004 \
-     python3 ~/hermes-cortex/ops/services/<dir>/<script>.py --output /tmp/test-out.json
+     python3 ~/steadfaste-fleet/ops/services/<dir>/<script>.py --output /tmp/test-out.json
 
    # Validate output
    python3 -c "import json; c=json.load(open('/tmp/test-out.json')); print(c['name'], c['url'])"
@@ -59,7 +59,7 @@ ls ~/hermes-cortex/ops/scripts/*/   # other scripts with similar interface
    ```
 5. **Fleet-first:** commit the new file to the public repo first, push, then it's available to all agents.
    ```bash
-   cd ~/hermes-cortex
+   cd ~/steadfaste-fleet
    git add ops/services/<dir>/<script>.py
    git commit -m "feat(<area>): add <script>.py for <purpose>"
    git pull --rebase origin main && git push origin main
@@ -71,7 +71,7 @@ ls ~/hermes-cortex/ops/scripts/*/   # other scripts with similar interface
 # Script exists, executable, runs clean
 python3 -c "
 from pathlib import Path
-g = Path.home() / 'hermes-cortex/ops/services/<dir>/<script>.py'
+g = Path.home() / 'steadfaste-fleet/ops/services/<dir>/<script>.py'
 assert g.exists() and g.stat().st_size > 200
 assert os.access(str(g), os.X_OK)
 "
@@ -102,14 +102,14 @@ A script intentionally removed from the repo (function deprecated, replaced by a
 
 ```bash
 # 1. Check git history for the script
-git -C ~/hermes-cortex log --all --oneline -- '**/<script>'
+git -C ~/steadfaste-fleet log --all --oneline -- '**/<script>'
 # → shows removal commit like "purge stale X references"
 
 # 2. Read the old version to understand what it did
-git -C ~/hermes-cortex show <removal-commit>^:<old-path>
+git -C ~/steadfaste-fleet show <removal-commit>^:<old-path>
 
 # 3. Check what replaced it
-git -C ~/hermes-cortex log --all --oneline --grep="<keyword from removal msg>"
+git -C ~/steadfaste-fleet log --all --oneline --grep="<keyword from removal msg>"
 
 # 4. Assess if the cron entry is still useful:
 #    - Is the old system/endpoint still running (just updated URL/port)?

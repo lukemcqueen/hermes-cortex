@@ -44,8 +44,8 @@ Before running any tool, check that the deployed state matches the repo:
 
 ```bash
 # Check deployed registry vs repo (common drift source)
-diff ~/.hermes-cortex/state/agent-registry.json \
-     ~/hermes-cortex/ops/install/deploy/agent-registry.json.example \
+diff ~/.steadfaste-fleet/state/agent-registry.json \
+     ~/steadfaste-fleet/ops/install/deploy/agent-registry.json.example \
      2>/dev/null || echo "⚠️  Registry drift detected"
 
 # Check any other state files that might be stale
@@ -174,7 +174,7 @@ that individual system testing missed:
 2. **fleet-audit --registry path** — silently fell back to auto-discovered
    registry when user specified a non-existent path. Fixed by returning None
    for explicit paths that don't exist.
-3. **Deployed registry drift** — `~/.hermes-cortex/state/agent-registry.json`
+3. **Deployed registry drift** — `~/.steadfaste-fleet/state/agent-registry.json`
    was still v3 while repo had v4. Copied v4 example to runtime path.
 
 All three were invisible to individual system tests. Only the integration audit

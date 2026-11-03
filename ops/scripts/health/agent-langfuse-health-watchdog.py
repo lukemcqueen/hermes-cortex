@@ -25,7 +25,7 @@ COMPOSE_DIR = str(Path.home() / "langfuse")
 WEB_URL = "http://localhost:3000"
 TIMEOUT = 10
 CH_CONTAINER = "langfuse-clickhouse-1"
-CH_STATE_FILE = str(Path.home() / ".hermes-cortex" / "state" / "langfuse-ch-merge.state")
+CH_STATE_FILE = str(Path.home() / ".steadfaste-fleet" / "state" / "langfuse-ch-merge.state")
 
 
 def log(msg: str) -> None:

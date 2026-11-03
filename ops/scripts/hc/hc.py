@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-hc — Hermes Cortex CLI for humans. Talks to the Agent Bus over HTTP.
+hc — Steadfaste Fleet CLI for humans. Talks to the Agent Bus over HTTP.
 Host-independent: reads CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL from
 .env (same as every fleet script), so it works identically on
 moses and esther hosts. No docker exec, no local-Postgres assumption.
@@ -24,9 +24,9 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
   hc env               show current config
   hc help              this message
 
-Config: ~/hermes-cortex/.env (optional HC_AGENT; every field falls back)
+Config: ~/steadfaste-fleet/.env (optional HC_AGENT; every field falls back)
   HC_AGENT=esther                          # your agent name (default)
-Bus config comes from ~/hermes-cortex/.env:
+Bus config comes from ~/steadfaste-fleet/.env:
   CORTEX_BUS_URL=https://…:13004           # active bus (Moses)
   CORTEX_BUS_FALLBACK_URL=https://…:14004  # fallback bus (Esther)
   CORTEX_BASIC_AUTH=user:pass              # nginx Basic auth
@@ -46,8 +46,8 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────
 
-CONFIG_FILE = Path.home() / "hermes-cortex" / ".env"
-BUS_CONF_FILE = Path.home() / "hermes-cortex" / ".env"
+CONFIG_FILE = Path.home() / "steadfaste-fleet" / ".env"
+BUS_CONF_FILE = Path.home() / "steadfaste-fleet" / ".env"
 DEFAULT_AGENT = ""
 
 # Make the shared bus client importable from both the repo and the
@@ -57,8 +57,8 @@ DEFAULT_AGENT = ""
 # copy isn't shadowed by a stale deployed copy missing new functions.
 _LIB_CANDIDATES = [
     Path(__file__).resolve().parent.parent,          # repo: ops/scripts
-    Path.home() / ".hermes-cortex" / "scripts",      # deployed: scripts
-    Path.home() / "hermes-cortex" / "ops" / "scripts",
+    Path.home() / ".steadfaste-fleet" / "scripts",      # deployed: scripts
+    Path.home() / "steadfaste-fleet" / "ops" / "scripts",
 ]
 for _lib in _LIB_CANDIDATES:
     if _lib.is_dir() and str(_lib) not in sys.path:
@@ -118,7 +118,7 @@ def load_config() -> dict:
 
     Agent resolution order:
       1. HC_AGENT env var
-      2. HC_AGENT in ~/hermes-cortex/.env
+      2. HC_AGENT in ~/steadfaste-fleet/.env
       3. AGENT_NAME in .env (canonical per-host identity)
       NEVER hostname — a machine name is not an agent identity. Missing
       identity fails loudly (Luke directive 2026-08-14).
@@ -148,8 +148,8 @@ def load_config() -> dict:
         # directive 2026-08-14). Fail loudly with setup instructions.
         print(
             "❌ Cannot determine agent identity. Set one of:\n"
-            "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/hermes-cortex/.env)\n"
-            "   2. AGENT_NAME= in ~/hermes-cortex/.env\n"
+            "   1. export HC_AGENT=<your-agent>   (or add HC_AGENT= to ~/steadfaste-fleet/.env)\n"
+            "   2. AGENT_NAME= in ~/steadfaste-fleet/.env\n"
             "   3. export AGENT_NAME=<your-agent>",
             file=sys.stderr,
         )
@@ -368,8 +368,8 @@ def _load_agent_registry() -> dict:
     the caller warns and proceeds (registry may be stale on some hosts).
     """
     candidates = [
-        Path.home() / ".hermes-cortex" / "state" / "agent-registry.json",
-        Path.home() / "hermes-cortex" / "ops" / "install" / "deploy" / "agent-registry.json.example",
+        Path.home() / ".steadfaste-fleet" / "state" / "agent-registry.json",
+        Path.home() / "steadfaste-fleet" / "ops" / "install" / "deploy" / "agent-registry.json.example",
     ]
     for p in candidates:
         if p.exists():
@@ -724,7 +724,7 @@ def cmd_bus(cfg: dict, args: list):
 
     # ── Queue summary ────────────────────────────────────────
     print("🚌 Agent Bus Dashboard")
-    print(f"   source: local Postgres (docker exec) — {Path.home()}/.hermes-cortex (agent {cfg['agent']})")
+    print(f"   source: local Postgres (docker exec) — {Path.home()}/.steadfaste-fleet (agent {cfg['agent']})")
     print()
 
     total_pending = total_proc = 0
@@ -957,8 +957,8 @@ def cmd_bus(cfg: dict, args: list):
 def cmd_doctor(cfg: dict, args: list):
     """Run cortex-doctor."""
     for path in [
-        Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "cortex-doctor.py",
-        Path.home() / ".hermes-cortex" / "scripts" / "cortex-doctor.py",
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "cortex-doctor.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "cortex-doctor.py",
     ]:
         if path.exists():
             subprocess.run([sys.executable, str(path), "--quiet"])
@@ -1038,7 +1038,7 @@ def cmd_kill(cfg: dict, args: list):
         return
 
     # Build fleet-stop-switch args
-    ks_script = str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "manage" / "fleet-stop-switch.py")
+    ks_script = str(Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "fleet-stop-switch.py")
     ks_args = [sys.executable, ks_script, "--reason", reason]
     if target != "all":
         ks_args.extend(["--agent", target])
@@ -1097,7 +1097,7 @@ def cmd_exec(cfg: dict, args: list):
         print()
         print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
         print()
-        print("Note: command resolves relative to ~/.hermes-cortex/scripts/ on target.")
+        print("Note: command resolves relative to ~/.steadfaste-fleet/scripts/ on target.")
         print("      Use absolute paths with caution.")
         return
 
@@ -1108,12 +1108,12 @@ def cmd_exec(cfg: dict, args: list):
     # Import handoff_schema (available after deployment)
     _validate = lambda _p, _s: (True, [])  # no-op fallback (schema-less)
     try:
-        sys.path.insert(0, str(Path.home() / ".hermes-cortex" / "scripts" / "lib"))
+        sys.path.insert(0, str(Path.home() / ".steadfaste-fleet" / "scripts" / "lib"))
         from handoff_schema import validate_payload as _validate
         _HAS_SCHEMA = True
     except ImportError:
         try:
-            sys.path.insert(0, str(Path.home() / "hermes-cortex" / "ops" / "scripts" / "lib"))
+            sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "lib"))
             from handoff_schema import validate_payload as _validate
             _HAS_SCHEMA = True
         except ImportError:
@@ -1268,8 +1268,8 @@ def _harness_resolver():
     here = Path(__file__).resolve().parent          # repo: ops/scripts/hc
     candidates = [
         here.parent / "lib" / "python-with-module.sh",                    # repo: ops/scripts/lib
-        Path.home() / "hermes-cortex" / "ops" / "scripts" / "lib" / "python-with-module.sh",
-        Path.home() / ".hermes-cortex" / "scripts" / "lib" / "python-with-module.sh",
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "lib" / "python-with-module.sh",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "lib" / "python-with-module.sh",
     ]
     return next((p for p in candidates if p.is_file()), None)
 
@@ -1287,8 +1287,8 @@ def cmd_harness(cfg: dict, args: list):
         here / "hc" / "harness.py",                        # repo: ops/scripts/hc/harness.py
         here / "harness.py",
         here / "hc-harness.py",                            # deployed: scripts/hc-harness.py
-        Path.home() / "hermes-cortex" / "ops" / "scripts" / "hc" / "harness.py",
-        Path.home() / ".hermes-cortex" / "scripts" / "hc-harness.py",   # deployed
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "hc" / "harness.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "hc-harness.py",   # deployed
     ]
     mod_path = next((p for p in candidates if p.is_file()), None)
     if mod_path is None:
@@ -1323,8 +1323,8 @@ def _resolve_script(name: str):
     doing nothing (`bash <missing>` would exit 127 and read as a failed install).
     """
     here = Path(__file__).resolve().parent          # repo: ops/scripts/hc — deployed: scripts
-    repo = Path.home() / "hermes-cortex"
-    deployed = Path.home() / ".hermes-cortex"
+    repo = Path.home() / "steadfaste-fleet"
+    deployed = Path.home() / ".steadfaste-fleet"
     candidates = [
         repo / "ops" / "scripts" / "install" / name,
         repo / "ops" / "scripts" / "manage" / name,
@@ -1502,7 +1502,7 @@ COMMANDS = {
 def main():
     cfg = load_config()
 
-    parser = argparse.ArgumentParser(description="Hermes Cortex CLI", add_help=False)
+    parser = argparse.ArgumentParser(description="Steadfaste Fleet CLI", add_help=False)
     parser.add_argument("command", nargs="?", default="help", help="Command to run")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="Command arguments")
     parsed = parser.parse_args()

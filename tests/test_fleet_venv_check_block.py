@@ -33,7 +33,7 @@ _DEFERRED_FAILURES=()
 error() { echo "ERROR: $*"; }
 info()  { echo "INFO:  $*"; }
 warn()  { echo "WARN:  $*"; }
-CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.hermes-cortex}"
+CORTEX_DEPLOY_HOME="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 """
 EPILOGUE = 'echo "DEFERRED=${#_DEFERRED_FAILURES[@]}"\n'
 
@@ -51,7 +51,7 @@ def extract_block():
 
 
 def _stub_venv(home, rc):
-    py = Path(home) / ".hermes-cortex" / "venv" / "bin" / "python3"
+    py = Path(home) / ".steadfaste-fleet" / "venv" / "bin" / "python3"
     py.parent.mkdir(parents=True, exist_ok=True)
     py.write_text(f'#!/usr/bin/env bash\nexit {rc}\n')
     py.chmod(0o755)
@@ -93,7 +93,7 @@ def test_an_absent_venv_is_created_then_judged():
 def test_a_pruned_venv_is_not_overwritten_and_is_reported():
     """A venv DIRECTORY with no bin/python3 is half-built or pruned: leave it to a human."""
     with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as dep:
-        (Path(home) / ".hermes-cortex" / "venv").mkdir(parents=True)
+        (Path(home) / ".steadfaste-fleet" / "venv").mkdir(parents=True)
         r = _run_block(home, dep)
         out = r.stdout + r.stderr
         assert "no usable bin/python3" in out, f"a pruned venv must be named, not clobbered: {out}"

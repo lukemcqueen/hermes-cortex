@@ -2,9 +2,9 @@
 # Regenerate docs/evidence/soul-refine-12624-2026-10-14.txt — the soul-refinement
 # cycle 12624 evidence capture. Read-only except for writing the target file.
 set -uo pipefail
-REPO="${1:-/home/esther/hermes-cortex}"
+REPO="${1:-/home/esther/steadfaste-fleet}"
 OUT="$REPO/docs/evidence/soul-refine-12624-2026-10-14.txt"
-PY=~/.hermes-cortex/venv/bin/python3
+PY=~/.steadfaste-fleet/venv/bin/python3
 : > "$OUT"
 {
   echo "SOUL-REFINEMENT CYCLE 12624 — EVIDENCE CAPTURE (regenerated $(date -u +%FT%TZ))"

@@ -35,7 +35,7 @@ mcp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mcp)
 
 # Tests must NOT write into the PRODUCTION governance log: the gate's logger appends
-# to ~/.hermes-cortex/logs/loop-governance.log, so running these tests injected
+# to ~/.steadfaste-fleet/logs/loop-governance.log, so running these tests injected
 # fabricated "cycle 1" / "cycle 999" lines into the audit trail (found 2026-10-02 by
 # reading the log back). The audit log must only ever contain real cycles, so the
 # gate logger is silenced here and the refused-close test asserts the file does not
@@ -51,7 +51,7 @@ _gate_log.setLevel(_logging.CRITICAL + 1)
 _gate_log.propagate = False
 
 ADVISORY = REPO / "ops" / "scripts" / "governance-refused-close-advisory.sh"
-SLUG = "hermes-cortex"
+SLUG = "steadfaste-fleet"
 _F: list[str] = []
 
 
@@ -241,7 +241,7 @@ def test_tests_do_not_pollute_the_production_log() -> None:
 
     Premise, checked rather than assumed (adversarial finding ADV-10463-1 asked this
     point directly): loop-gov-mcp.py builds its RotatingFileHandler AT IMPORT TIME
-    over (CORTEX_DEPLOY_HOME or Path.home()/".hermes-cortex")/logs/loop-governance.log.
+    over (CORTEX_DEPLOY_HOME or Path.home()/".steadfaste-fleet")/logs/loop-governance.log.
     Patching mcp.HOME afterwards redirects where the gate looks for the REPO, not where
     it logs — so the production log is the correct file to assert on.
 
@@ -251,7 +251,7 @@ def test_tests_do_not_pollute_the_production_log() -> None:
     the silencing on, the same run appends nothing. If the reviewer's concern were
     true, DIRECTION 1 would fail and this test would fail with it.
     """
-    log_path = (Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex"))
+    log_path = (Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".steadfaste-fleet"))
                 / "logs" / "loop-governance.log")
 
     def _run_gate() -> None:

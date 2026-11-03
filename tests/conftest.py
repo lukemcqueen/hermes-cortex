@@ -1,7 +1,7 @@
-"""Shared pytest fixtures for the hermes-cortex test suite.
+"""Shared pytest fixtures for the steadfaste-fleet test suite.
 
 Hermeticity contract (slice 74f2ac46 — precommit test-DB isolation):
-the global git `core.hookspath` (~/.hermes-cortex/hooks) fires the
+the global git `core.hookspath` (~/.steadfaste-fleet/hooks) fires the
 pre-commit-score hook on EVERY `git commit` — including commits made inside
 pytest temp repos (test_bus_task_context.py, test_executor_context_builder.py,
 ...). Without isolation those commits wrote `precommit-<testrepo>-HEAD/*`
@@ -22,7 +22,7 @@ def _hermetic_precommit_db(tmp_path_factory):
     """Point pre-commit-score at a scratch DB for every test in the suite.
 
     pre-commit-score reads PRE_COMMIT_SCORE_DB (default: the PROD
-    ~/.hermes-cortex/data/loop-governance.db). Subprocesses spawned by tests
+    ~/.steadfaste-fleet/data/loop-governance.db). Subprocesses spawned by tests
     (git commit) inherit os.environ, so the hook writes to the scratch DB and
     the prod review queue never sees test-fixture cycles.
     """

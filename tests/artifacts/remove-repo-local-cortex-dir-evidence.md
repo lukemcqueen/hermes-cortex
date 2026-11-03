@@ -1,4 +1,4 @@
-# Evidence — cycle 10809: runtime-only locks; repo-local `.hermes-cortex/` removed
+# Evidence — cycle 10809: runtime-only locks; repo-local `.steadfaste-fleet/` removed
 
 Commit: **0673e943** (pushed; `git status -sb` → `## main...origin/main`).
 Full diff is authoritative and readable: `git show 0673e943` — the review gate
@@ -15,27 +15,27 @@ ops/install/install.sh:1694:POST_MERGE_SRC="${CORTEX_REPO_DIR}/ops/install/hooks
 
 ## 2. Repo-local references — the audit and its exact scope
 
-Command (NOT the broad `.hermes-cortex` grep, which also matches the legitimate
-runtime `~/.hermes-cortex/...` on every host):
+Command (NOT the broad `.steadfaste-fleet` grep, which also matches the legitimate
+runtime `~/.steadfaste-fleet/...` on every host):
 
 ```
-./skills/autonomous-ai-agents/hermes-cortex-setup/SKILL.md:410:cp -r ~/hermes-cortex/.hermes-cortex/skills ~/.hermes-cortex/
-./skills/autonomous-ai-agents/hermes-cortex-setup/SKILL.md:413:cp ~/hermes-cortex/.hermes-cortex/hooks/pre-commit ~/.hermes-cortex/hooks/pre-commit
-./skills/autonomous-ai-agents/hermes-cortex-setup/SKILL.md:414:cp ~/hermes-cortex/.hermes-cortex/hooks/post-commit ~/.hermes-cortex/hooks/post-commit
-./skills/software-development/repo-organization/SKILL.md:31:| **Agent Infra** | `~/hermes-cortex/.hermes-cortex/` | Per-project agent data (sessions, memory, skills) | ✅ Git (part of repo) |
-./skills/devops/cron-timezone-env/references/timezone-audit-2026-08-20.md:70:- **agent-daily-bible-reading.py** (source at hermes-cortex/.hermes-cortex/scripts/): `KST = timezone.utc` dead constant, never referenced; dates use system-local `datetime.now()`. Marked DEPRECATED in comment. File lives outside ops/scripts (registered from `.hermes-cortex/scripts/`).
-./ops/scripts/manage/agent-collect-skills.sh:26:REPO_SKILLS_DIR="$REPO_DIR/.hermes-cortex/skills"
-./ops/scripts/manage/cortex_doctor/checks.py:2788:            f"symlinked to {target} (not ~/hermes-cortex/.hermes-cortex/... — deploy source is now ops/install/hooks/)",
-./ops/scripts/manage/update-session-state.sh:33:SESSION_FILE="$REPO_DIR/.hermes-cortex/sessions/current.md"
-./ops/scripts/cortex-update.sh:1388:#   2. $REPO_DIR/.hermes-cortex/skills/ — project-level overrides (flat)
+./skills/autonomous-ai-agents/steadfaste-fleet-setup/SKILL.md:410:cp -r ~/steadfaste-fleet/.steadfaste-fleet/skills ~/.steadfaste-fleet/
+./skills/autonomous-ai-agents/steadfaste-fleet-setup/SKILL.md:413:cp ~/steadfaste-fleet/.steadfaste-fleet/hooks/pre-commit ~/.steadfaste-fleet/hooks/pre-commit
+./skills/autonomous-ai-agents/steadfaste-fleet-setup/SKILL.md:414:cp ~/steadfaste-fleet/.steadfaste-fleet/hooks/post-commit ~/.steadfaste-fleet/hooks/post-commit
+./skills/software-development/repo-organization/SKILL.md:31:| **Agent Infra** | `~/steadfaste-fleet/.steadfaste-fleet/` | Per-project agent data (sessions, memory, skills) | ✅ Git (part of repo) |
+./skills/devops/cron-timezone-env/references/timezone-audit-2026-08-20.md:70:- **agent-daily-bible-reading.py** (source at steadfaste-fleet/.steadfaste-fleet/scripts/): `KST = timezone.utc` dead constant, never referenced; dates use system-local `datetime.now()`. Marked DEPRECATED in comment. File lives outside ops/scripts (registered from `.steadfaste-fleet/scripts/`).
+./ops/scripts/manage/agent-collect-skills.sh:26:REPO_SKILLS_DIR="$REPO_DIR/.steadfaste-fleet/skills"
+./ops/scripts/manage/cortex_doctor/checks.py:2788:            f"symlinked to {target} (not ~/steadfaste-fleet/.steadfaste-fleet/... — deploy source is now ops/install/hooks/)",
+./ops/scripts/manage/update-session-state.sh:33:SESSION_FILE="$REPO_DIR/.steadfaste-fleet/sessions/current.md"
+./ops/scripts/cortex-update.sh:1388:#   2. $REPO_DIR/.steadfaste-fleet/skills/ — project-level overrides (flat)
 ```
 
-4 hits remain, ALL consumer-convention and correct: `$REPO_DIR/.hermes-cortex/skills`
+4 hits remain, ALL consumer-convention and correct: `$REPO_DIR/.steadfaste-fleet/skills`
 and `.../sessions/current.md` operate on a CONSUMER project, and my
 cortex-update.sh guard exempts the Cortex repo. The other two are my own new text.
 
 CORRECTION: I first reported "9 stale references fixed". That sweep MISSED the
-repo-local forms (hermes-cortex-setup/SKILL.md x3, repo-organization/SKILL.md,
+repo-local forms (steadfaste-fleet-setup/SKILL.md x3, repo-organization/SKILL.md,
 cron-timezone-env reference). A full re-audit found them; they are fixed in this
 commit. The 9-count was wrong when stated.
 
@@ -71,7 +71,7 @@ property directly.
 
 ### AC-5 first attempt: INCONCLUSIVE (kept for the record)
 
-Attempted: run the DEPLOYED `~/.hermes-cortex/hooks/pre-push` inside a throwaway
+Attempted: run the DEPLOYED `~/.steadfaste-fleet/hooks/pre-push` inside a throwaway
 `git init` repo with no governance lock, expecting a BLOCK.
 Result: **the hook timed out after 180s** and neither blocked nor allowed.
 
@@ -91,18 +91,18 @@ window closes on MCP reload. Not claimed as instantaneous.
 ## 5. Commit contents
 
 ```
-0673e943 fix(governance): runtime-only locks; drop the in-repo marker and the repo-local .hermes-cortex/
+0673e943 fix(governance): runtime-only locks; drop the in-repo marker and the repo-local .steadfaste-fleet/
 
- .hermes-cortex/sessions/archive/.gitkeep           |  0
+ .steadfaste-fleet/sessions/archive/.gitkeep           |  0
  AGENTS.md                                          |  4 +-
  docs/git-enforcement.md                            |  4 +-
- {.hermes-cortex => docs/older/sessions}/.gitkeep   |  0
- .../sessions/20260609_hermes-cortex-current.md     |  0
- .../20260609_hermes-cortex-system-alignment.md     |  0
+ {.steadfaste-fleet => docs/older/sessions}/.gitkeep   |  0
+ .../sessions/20260609_steadfaste-fleet-current.md     |  0
+ .../20260609_steadfaste-fleet-system-alignment.md     |  0
  docs/troubleshooting.md                            |  2 +-
  mcp-servers/loop-gov-mcp.py                        | 43 +++++------
- {.hermes-cortex => ops/install}/hooks/README.md    |  0
- {.hermes-cortex => ops/install}/hooks/post-merge   |  0
+ {.steadfaste-fleet => ops/install}/hooks/README.md    |  0
+ {.steadfaste-fleet => ops/install}/hooks/post-merge   |  0
  ops/install/install.sh                             |  2 +-
  .../scripts/agent-daily-bible-reading.py           |  0
  ops/scripts/cortex-update.sh                       | 16 +++-
@@ -110,7 +110,7 @@ window closes on MCP reload. Not claimed as instantaneous.
  ops/scripts/manage/cortex_doctor/checks.py         |  2 +-
  plugins/governance-enforcer/README.md              | 13 +++-
  plugins/governance-enforcer/__init__.py            | 90 +++++++++++++++++-----
- skills/autonomous-ai-agents/hermes-cortex/SKILL.md |  2 +-
+ skills/autonomous-ai-agents/steadfaste-fleet/SKILL.md |  2 +-
  skills/devops/governance-closeout/SKILL.md         | 36 ++++++---
  skills/devops/shared-repo-push-gates/SKILL.md      | 10 +++
  20 files changed, 157 insertions(+), 68 deletions(-)
@@ -118,11 +118,11 @@ window closes on MCP reload. Not claimed as instantaneous.
 
 ## 6. Regression my own change introduced — found and fixed
 
-`ops/scripts/manage/update-session-state.sh` wrote to `$REPO_DIR/.hermes-cortex/
+`ops/scripts/manage/update-session-state.sh` wrote to `$REPO_DIR/.steadfaste-fleet/
 sessions/current.md` and **hard-exited 1** if absent. Deleting the repo dir
 therefore broke it for the Cortex repo itself — the 2-hourly cron would have
 failed on every run. Fixed: session state is RUNTIME state, so it now falls back
-to `~/.hermes-cortex/sessions/current.md` (creating it if needed), while still
+to `~/.steadfaste-fleet/sessions/current.md` (creating it if needed), while still
 preferring a consumer project's tracked overlay. Verified: exit 1 → exit 0.
 
 That fix then exposed a LATENT pre-existing bug the script never reached before:

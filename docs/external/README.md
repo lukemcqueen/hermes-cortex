@@ -15,7 +15,7 @@ asking; it reads the value from env when it needs it.
 - **NAMES only.** Never write a value, token, URL-with-credentials, or
   test account here.
 - If a value would be needed, cite the env var name and the file that
-  holds it (`~/hermes-cortex/.env` or `~/.hermes/.env`, both gitignored).
+  holds it (`~/steadfaste-fleet/.env` or `~/.hermes/.env`, both gitignored).
 - The PII gate enforces this — server URLs, domains, and personal
   identifiers are blocked from the public repo.
 

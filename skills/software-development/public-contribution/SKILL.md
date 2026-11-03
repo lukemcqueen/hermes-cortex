@@ -1,8 +1,8 @@
 ---
 name: public-contribution
-description: "After any improvement, bug fix, workflow discovery, or lesson — pause and evaluate whether the insight is public-worthy for the Hermes Cortex OSS community. If yes, genericize and contribute."
+description: "After any improvement, bug fix, workflow discovery, or lesson — pause and evaluate whether the insight is public-worthy for the Steadfaste Fleet OSS community. If yes, genericize and contribute."
 version: 1.0.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 metadata:
   hermes:
@@ -14,11 +14,11 @@ metadata:
 
 ## Philosophy
 
-> *"We are sharers and helpers. All improvements we discover must be instantly usable by those using Hermes Cortex."*
+> *"We are sharers and helpers. All improvements we discover must be instantly usable by those using Steadfaste Fleet."*
 
-Every bug fix, workflow refinement, config improvement, or discovered pattern is an asset — not just for you, but for everyone running Hermes Cortex. Before closing any improvement, pause and ask:
+Every bug fix, workflow refinement, config improvement, or discovered pattern is an asset — not just for you, but for everyone running Steadfaste Fleet. Before closing any improvement, pause and ask:
 
-**"How can this be used to help those using Hermes Cortex?"**
+**"How can this be used to help those using Steadfaste Fleet?"**
 
 If the answer is anything other than "it can't" (which is rare), the next question is:
 
@@ -67,7 +67,7 @@ When moving something from private → public, apply these transforms:
 
 Before contributing, ask:
 
-1. **Does this apply to at least 80% of Hermes Cortex users?**
+1. **Does this apply to at least 80% of Steadfaste Fleet users?**
    - If yes → contribute as-is or with minimal genericization
    - If no → Is it useful as an *example* or *template* for others to adapt?
      - Yes → contribute with clear "adapt this to your setup" notes
@@ -118,13 +118,13 @@ For each file being contributed, apply the **Genericization Patterns** table.
 
 ```bash
 # For a new skill:
-# Write to hermes-cortex/skills/<category>/<skill-name>/SKILL.md
+# Write to steadfaste-fleet/skills/<category>/<skill-name>/SKILL.md
 
 # For an existing file:
-# Patch or replace the file in hermes-cortex/
+# Patch or replace the file in steadfaste-fleet/
 
 # For a new template:
-# Write to hermes-cortex/docs/templates/
+# Write to steadfaste-fleet/docs/templates/
 ```
 
 ### Step 5: Update manifest
@@ -137,7 +137,7 @@ If you added or modified a skill, update `docs/SKILLS-MANIFEST.md`:
 ### Step 6: Commit and push
 
 ```bash
-cd "${CORTEX_REPO:-$HOME/hermes-cortex}" && git add -A && git commit -m "feat: contribution description"
+cd "${CORTEX_REPO:-$HOME/steadfaste-fleet}" && git add -A && git commit -m "feat: contribution description"
 git push
 ```
 
@@ -155,7 +155,7 @@ git push
 
 - [ ] Decision tree run — this *is* public-worthy
 - [ ] Genericization applied — no PII, paths, domains, secrets
-- [ ] Written to correct location in hermes-cortex/
+- [ ] Written to correct location in steadfaste-fleet/
 - [ ] SKILLS-MANIFEST.md updated if applicable
 - [ ] `git status` clean before push
 - [ ] Lesson also noted in `~/brain/moses/lessons/` (private, for your own reference)

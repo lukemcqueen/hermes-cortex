@@ -346,7 +346,7 @@ def check_mycortex_sources() -> dict:
         return total, never_synced, zero_pages
 
     try:
-        cli = Path.home() / ".hermes-cortex" / "scripts" / "mycortex"
+        cli = Path.home() / ".steadfaste-fleet" / "scripts" / "mycortex"
         if not cli.exists():
             return {"status": "UNKNOWN", "detail": "mycortex not installed — run install.sh"}
 

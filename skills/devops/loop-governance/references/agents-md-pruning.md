@@ -33,7 +33,7 @@ Each candidate has a `heading`, `lines`, `reasons[]`, `suggested_target`, and `c
 ### Step 3 — Apply
 
 ```bash
-python3 ~/.hermes-cortex/scripts/agents-doc-audit.py --repo ~/hermes-cortex --prune --apply
+python3 ~/.steadfaste-fleet/scripts/agents-doc-audit.py --repo ~/steadfaste-fleet --prune --apply
 ```
 
 This re-analyzes AGENTS.md from scratch (does not use cached scan output), moves each candidate's content to a `docs/` file, and replaces the section with a relocation link.
@@ -61,7 +61,7 @@ When `suggested_target` ends with `/` (e.g. `docs/reference/`), `apply_pruning()
 
 ### Script fixes stay local
 
-`~/.hermes-cortex/scripts/agents-doc-audit.py` is a symlink to `~/hermes-cortex/ops/scripts/agent/agents-doc-audit.py`, but `ops/scripts/` is gitignored. Bug fixes to the audit tool must be manually synced to new machines.
+`~/.steadfaste-fleet/scripts/agents-doc-audit.py` is a symlink to `~/steadfaste-fleet/ops/scripts/agent/agents-doc-audit.py`, but `ops/scripts/` is gitignored. Bug fixes to the audit tool must be manually synced to new machines.
 
 ### Cron mode blocks execute_code
 
@@ -72,5 +72,5 @@ Use `write_file` to `/tmp/` + `terminal(command="python3 /tmp/script.py")` for a
 | File | Path |
 |------|------|
 | Prune scan script | `~/.hermes/scripts/agents-md-prune-scan.py` |
-| Audit/prune apply script | `~/.hermes-cortex/scripts/agents-doc-audit.py` → symlink → `~/hermes-cortex/ops/scripts/agent/agents-doc-audit.py` |
+| Audit/prune apply script | `~/.steadfaste-fleet/scripts/agents-doc-audit.py` → symlink → `~/steadfaste-fleet/ops/scripts/agent/agents-doc-audit.py` |
 | Scan output | `~/.hermes/cron/output/<job-id>/<timestamp>.md` |

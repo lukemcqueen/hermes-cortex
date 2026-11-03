@@ -1,7 +1,7 @@
 # Knowledge Isolation Architecture
 
 > **Version 2.0.0** — Published 2026-06-11
-> Part of the [Hermes Cortex](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
+> Part of the [Steadfaste Fleet](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
 
 **Project isolation without multiple profiles — one agent, many legacy brain sources.**
 
@@ -18,7 +18,7 @@ When a single agent session serves multiple domains — personal projects, work 
 
 ## The Solution: Single Agent, Isolated Sources
 
-Hermes Cortex uses **one default agent profile** with project isolation achieved entirely through legacy brain source separation and the pointer memory pattern:
+Steadfaste Fleet uses **one default agent profile** with project isolation achieved entirely through legacy brain source separation and the pointer memory pattern:
 
 ```
 ┌─────────────────────────────────────────────────────┐

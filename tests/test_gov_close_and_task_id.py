@@ -162,7 +162,7 @@ def test_first_commit_task_id_has_no_continuation_line() -> None:
         # trusting it. Without this, a broken override would let a fixture commit
         # write into the real ledger and the test would still pass.
         prod_db = Path(os.environ.get(
-            "PROD_LOOP_GOV_DB", Path.home() / ".hermes-cortex" / "data" / "loop-governance.db"))
+            "PROD_LOOP_GOV_DB", Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"))
         def _ledger_state(path: Path):
             if not path.exists():
                 return None

@@ -45,7 +45,7 @@ NOTIFY_TEXT = (
 
 
 def fetch(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": "hermes-cortex-fix-watchdog"})
+    req = urllib.request.Request(url, headers={"User-Agent": "steadfaste-fleet-fix-watchdog"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read().decode("utf-8", errors="replace")
 

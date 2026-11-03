@@ -1,7 +1,7 @@
-# Session: Hardcoded Paths in hermes-cortex
+# Session: Hardcoded Paths in steadfaste-fleet
 
 Date: 2026-06-22
-Scope: `~/hermes-cortex` repo — 27 files patched
+Scope: `~/steadfaste-fleet` repo — 27 files patched
 
 ## Scan Patterns Used
 
@@ -9,8 +9,8 @@ Scope: `~/hermes-cortex` repo — 27 files patched
 # All patterns run in parallel in one turn:
 grep -rn '/home/moses' .
 grep -rn '/home/luke' .
-grep -rn '~/hermes-cortex' .
-grep -rn '~/hermes-cortex-private' .
+grep -rn '~/steadfaste-fleet' .
+grep -rn '~/steadfaste-fleet-private' .
 grep -rn '/home/' .
 grep -rn '/usr/local/etc/nginx' .
 grep -rn '/usr/local/bin/docker' .
@@ -26,17 +26,17 @@ grep -rn '/usr/' .
 
 | File | Old Pattern | New Pattern |
 |------|-----------|-------------|
-| `deploy/nginx/hermes-security-apply` | `CORTEX_REPO="${HOME}/hermes-cortex"` + macOS-only nginx paths | `SCRIPT_DIR` derivation + `case $(uname -s)` OS dispatch |
-| `deploy/nginx/nginx/hermes-security-apply` | `SRC="~/hermes-cortex/..."` | `SCRIPT_DIR` + `$SRC` from `$SCRIPT_DIR/..` |
+| `deploy/nginx/hermes-security-apply` | `CORTEX_REPO="${HOME}/steadfaste-fleet"` + macOS-only nginx paths | `SCRIPT_DIR` derivation + `case $(uname -s)` OS dispatch |
+| `deploy/nginx/nginx/hermes-security-apply` | `SRC="~/steadfaste-fleet/..."` | `SCRIPT_DIR` + `$SRC` from `$SCRIPT_DIR/..` |
 | `src/dashboard/server.py` | `docker_bin = "/usr/local/bin/docker"` (×2) | `_docker_bin()` via `shutil.which("docker")` |
 
 ### Documentation & Skills (16 files, ~25 patches)
 
 | Area | Pattern replaced | Pattern used |
 |------|----------------|-------------|
-| SKILL.md files | `~/hermes-cortex` | `${CORTEX_REPO:-$HOME/hermes-cortex}` |
-| SKILL.md files | `~/hermes-cortex-private` | `${CORTEX_REPO:-$HOME/hermes-cortex}-private` |
-| README/docs | Bare path examples | `${CORTEX_REPO:-$HOME/hermes-cortex}` |
+| SKILL.md files | `~/steadfaste-fleet` | `${CORTEX_REPO:-$HOME/steadfaste-fleet}` |
+| SKILL.md files | `~/steadfaste-fleet-private` | `${CORTEX_REPO:-$HOME/steadfaste-fleet}-private` |
+| README/docs | Bare path examples | `${CORTEX_REPO:-$HOME/steadfaste-fleet}` |
 | SECURITY.md | `/usr/local/etc/nginx/.htpasswd` | `${NGINX_HTPASSWD:-...}` with OS note |
 | generate-inbox-wrappers.py help | `/usr/local/etc/nginx/.htpasswd` | `${NGINX_HTPASSWD:-...}` |
 

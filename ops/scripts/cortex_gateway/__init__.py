@@ -1,4 +1,4 @@
-"""cortex_gateway — the decoupled hermes-cortex gateway package.
+"""cortex_gateway — the decoupled steadfaste-fleet gateway package.
 
 Standalone message gateway that owns the full poll → dispatch → reply loop
 WITHOUT the Hermes agent runtime. Two seams:

@@ -21,7 +21,7 @@ There are **two implementations** of the daily bible reading cron on this system
 | Aspect | Legacy (this skill) | Active (installed) |
 |--------|---------------------|--------------------|
 | Type | LLM-driven cron | `no_agent` Python script |
-| Script | N/A (LLM prompts directly) | `~/hermes-cortex/src/scripts/agent-daily-bible-reading.py` |
+| Script | N/A (LLM prompts directly) | `~/steadfaste-fleet/src/scripts/agent-daily-bible-reading.py` |
 | API | bible-api.com (WEB translation) | OpenCode Zen (deepseek-v4-flash) |
 | State tracking | `~/.hermes/bible-reading-state.txt` | Parses SOUL.md for last book read |
 

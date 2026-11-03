@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
-STATE_DIR = HOME / ".hermes-cortex" / "state"
+STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 ESCAPE_DB = STATE_DIR / "escalations.db"
 
 SCHEMA_SQL = """

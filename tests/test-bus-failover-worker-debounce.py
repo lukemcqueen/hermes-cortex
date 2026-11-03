@@ -36,7 +36,7 @@ PASS = 0
 FAIL = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "hermes-cortex" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
+WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
 
 
 def ok(msg: str) -> None:

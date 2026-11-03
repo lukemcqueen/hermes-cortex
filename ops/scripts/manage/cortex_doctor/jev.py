@@ -138,7 +138,7 @@ def check_jev_layer(res) -> None:
             "not installed on this host (optional; takes the cheap decisions off the "
             "expensive model's plate)",
             "bash ops/scripts/manage/install-jev-layer.sh   (or the deployed copy at "
-            "~/.hermes-cortex/scripts/manage/install-jev-layer.sh)",
+            "~/.steadfaste-fleet/scripts/manage/install-jev-layer.sh)",
         )
         return
 

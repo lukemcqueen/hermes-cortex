@@ -91,22 +91,22 @@ Ancestral commits stay even after reset. Only "on top" commits are removed by th
 ## Required: Agent Identity Is Auto-Sourced — Do NOT Set AGENT_ID
 
 Hook-based operations (commit, push) no longer need `AGENT_ID`. Identity comes from
-`~/.hermes-cortex/agent.env` (`AGENT_NAME=<your-agent>`), provisioned by
+`~/.steadfaste-fleet/agent.env` (`AGENT_NAME=<your-agent>`), provisioned by
 `cortex-update.sh` (or the `AGENT_NAME` env var). The hook fails closed with setup
 instructions if it is missing. Do NOT hardcode or export `AGENT_ID` — it is obsolete
 and grants no privileges.
 
 ```bash
 # Verify identity is provisioned (no action needed if this prints a name):
-cat ~/.hermes-cortex/agent.env   # → AGENT_NAME=<your-agent>
+cat ~/.steadfaste-fleet/agent.env   # → AGENT_NAME=<your-agent>
 ```
 
 If `agent.env` is missing, provision it once per host (the hostname→agent mapping is
 infrastructure and stays out of the public repo):
 
 ```bash
-echo 'AGENT_NAME=<your-agent>' > ~/.hermes-cortex/agent.env
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+echo 'AGENT_NAME=<your-agent>' > ~/.steadfaste-fleet/agent.env
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 ## Full Pre-Commit Hook Pipeline

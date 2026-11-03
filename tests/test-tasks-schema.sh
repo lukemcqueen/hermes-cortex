@@ -198,7 +198,7 @@ for cand in mycortex_reader_esther mycortex_reader_moses; do
 done
 if [[ -n "$FW_CONNECT" ]]; then
   FW_PSQL="docker exec ${CONTAINER} psql -U ${FW_CONNECT} -d ${TEST_DB} -t -A"
-  if $FW_PSQL -c "SELECT tasks.task_upsert(p_content=>'fleet ok', p_created_by=>'esther', p_scope=>'fleet', p_project=>'hermes-cortex');" >/dev/null 2>&1; then
+  if $FW_PSQL -c "SELECT tasks.task_upsert(p_content=>'fleet ok', p_created_by=>'esther', p_scope=>'fleet', p_project=>'steadfaste-fleet');" >/dev/null 2>&1; then
     pass "${FW_CONNECT} inserted scope=fleet (fleet writer)"
   else
     fail "${FW_CONNECT} could not insert fleet row — grant broken"
@@ -493,7 +493,7 @@ fi
 echo ""
 echo "═══ AC-L1-16: 17-arg task_upsert legacy compatibility ═══"
 LEGACY_ID="00000000-0000-0000-0000-0000000000aa"
-LEGACY_RET=$($PSQL -c "SELECT tasks.task_upsert('${LEGACY_ID}'::uuid, 'legacy 17-arg', 'esther', NULL, 'hermes-cortex', NULL, NULL, 'personal', 'pending', NULL, NULL, 1, NULL, NULL, 'manual', NULL, 'sess-legacy');" 2>/dev/null | head -1)
+LEGACY_RET=$($PSQL -c "SELECT tasks.task_upsert('${LEGACY_ID}'::uuid, 'legacy 17-arg', 'esther', NULL, 'steadfaste-fleet', NULL, NULL, 'personal', 'pending', NULL, NULL, 1, NULL, NULL, 'manual', NULL, 'sess-legacy');" 2>/dev/null | head -1)
 [ "$LEGACY_RET" = "$LEGACY_ID" ] && pass "17-arg positional call resolves via trailing defaults" || fail "17-arg call failed (got: $LEGACY_RET)"
 
 echo ""

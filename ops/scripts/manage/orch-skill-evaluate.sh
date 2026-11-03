@@ -51,7 +51,7 @@ CUSTOM_COUNT=0
 CUSTOM_SKILLS=()
 SKILLS_ROOT="$HOME/.hermes/skills"
 # Resolve symlinks: on a deployed host ~/.hermes/skills is a SYMLINK to
-# ~/.hermes-cortex/skills. A bare `find "$SKILLS_ROOT" -type f` does NOT
+# ~/.steadfaste-fleet/skills. A bare `find "$SKILLS_ROOT" -type f` does NOT
 # traverse a symlinked root, so the inventory silently reported 0 (the
 # SKILL_COUNT==0 warn below fired, but the LLM prompt saw a zero inventory).
 # Resolving to the real path makes the count correct whichever shape the

@@ -39,9 +39,9 @@ import uuid
 from datetime import datetime, timezone
 
 HOME = Path.home()
-HERMES_STATE = HOME / ".hermes-cortex" / "state"
+HERMES_STATE = HOME / ".steadfaste-fleet" / "state"
 REGISTRY_PATH = HERMES_STATE / "agent-registry.json"
-CORTEX_REPO = HOME / "hermes-cortex"
+CORTEX_REPO = HOME / "steadfaste-fleet"
 DISPATCH_LOG = HERMES_STATE / "fleet-update-state.json"
 
 

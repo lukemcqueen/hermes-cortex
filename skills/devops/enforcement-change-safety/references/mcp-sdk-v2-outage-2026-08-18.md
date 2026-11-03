@@ -76,16 +76,16 @@ async def main():
     print("tools:", len(lt.tools), "| dispatch:", ct.content[0].text[:80])
 asyncio.run(main())
 EOF
-python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file <script> --level A4 --gate
+python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <script> --level A4 --gate
 ```
 
 ## Config (per host, ~/.hermes/config.yaml via `hermes config set`)
 
 All three servers: command = hermes venv python; args = DEPLOYED copies:
-- agent-bus → `~/.hermes-cortex/scripts/cortex-bus-mcp.py`
-- loop-governance → `~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py`
+- agent-bus → `~/.steadfaste-fleet/scripts/cortex-bus-mcp.py`
+- loop-governance → `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py`
   (immutable, P1-A — never the repo tree)
-- tasks → `~/.hermes-cortex/scripts/task-mcp.py`
+- tasks → `~/.steadfaste-fleet/scripts/task-mcp.py`
 
 `hermes config set mcp_servers.<name>.args '["<path>"]'` for list values.
 Direct `patch`/`write_file` on config.yaml is refused by Hermes itself —
@@ -106,7 +106,7 @@ the CLI is the only path.
 
 ## Cycle scoring with the tool down
 
-`~/.hermes-cortex/data/loop-governance.db`, table `loop_cycles` (NOT
+`~/.steadfaste-fleet/data/loop-governance.db`, table `loop_cycles` (NOT
 `cycles`; column is `timestamp`, not `created_at`):
 PENDING/LOOP → `UPDATE loop_cycles SET user_overrode=0, decision='MOVE_ON',
 outcome_note='...' WHERE id=?` (exact feedback_accept semantics). Only for
@@ -119,7 +119,7 @@ Doctor `Deploy sync` = HEAD vs the last-deploy commit marker. Committing
 after a deploy without re-deploying → the push's dogfood reports
 `❌ Deploy sync — HEAD ahead of last deploy — N commit(s) not deployed`
 even when content is already deployed. Fix: run the sanctioned
-`bash ~/hermes-cortex/ops/scripts/cortex-update.sh` (prints
+`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (prints
 `State saved: <sha>`) immediately before pushing, then push.
 
 ## Fleet rollout (other hosts)

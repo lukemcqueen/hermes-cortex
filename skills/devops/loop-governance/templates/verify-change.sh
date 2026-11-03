@@ -20,7 +20,7 @@ cd "$REPO" || exit 2
 # --- interpreter: resolve by CAPABILITY (see the shell-scripting skill) ---------------
 PY="${PYTHON:-}"
 if [ -z "$PY" ]; then
-  for cand in "$HOME/.hermes-cortex/venv/bin/python3" python3 \
+  for cand in "$HOME/.steadfaste-fleet/venv/bin/python3" python3 \
               /opt/homebrew/bin/python3 /usr/local/bin/python3 \
               "$HOME/.hermes/hermes-agent/venv/bin/python3"; do
     if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import json' >/dev/null 2>&1; then
@@ -55,7 +55,7 @@ run_pytest "1 the change's tests" tests/ -q -k "<selection>"
 say
 say "== 2. the DEPLOYED copy vs the repo (name which one) =="
 SRC="<repo relative path>"
-DEP="$HOME/.hermes-cortex/<deployed path>"
+DEP="$HOME/.steadfaste-fleet/<deployed path>"
 if [ -f "$DEP" ]; then
   # Strip the deploy banner/blank lines on BOTH sides; never a fixed line count.
   if diff <(sed -E '/^#/d; /^$/d' "$SRC") <(sed -E '/^#/d; /^$/d' "$DEP") >/dev/null; then
@@ -70,7 +70,7 @@ fi
 # --- 3. the operational step, run for real (label it) ---------------------------------
 say
 say "== 3. the DEPLOY, and its own log =="
-DOG="$HOME/.hermes-cortex/scripts/cortex-dogfood.sh"
+DOG="$HOME/.steadfaste-fleet/scripts/cortex-dogfood.sh"
 if [ -x "$DOG" ]; then
   _log="$(bash "$DOG" --force 2>&1)"; _rc=$?
   say "  cortex-dogfood --force rc=$_rc"
@@ -83,7 +83,7 @@ fi
 # --- 4. the adversarial gate, RAW output ----------------------------------------------
 say
 say "== 4. adversarial A4 (raw), with a PINNED baseline =="
-AV="$HOME/.hermes-cortex/scripts/adversarial-verify.py"
+AV="$HOME/.steadfaste-fleet/scripts/adversarial-verify.py"
 if [ -f "$AV" ]; then
   _out="$(python3 "$AV" --file "$SRC" --level A4 --gate 2>&1)"
   printf '%s\n' "$_out" | grep -E "Summary:|Medium:|Low:|Info:|GATE_PASSED|GATE_FAILED" | sed 's/^/  /'

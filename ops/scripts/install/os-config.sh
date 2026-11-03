@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-#  Hermes Cortex — OS Configuration & Detection
+#  Steadfaste Fleet — OS Configuration & Detection
 #  Source this from install.sh to get OS-agnostic variables.
 #
 #  Sets: CORTEX_OS, PKG_*, SERVICE_*, paths, init system
@@ -61,7 +61,7 @@ check_agent_type() {
 export CORTEX_AGENT_TYPE
 
 # ── Agent identity (git authorship) ────────────────────────
-# ~/.hermes-cortex/agent.env is the per-host identity file
+# ~/.steadfaste-fleet/agent.env is the per-host identity file
 # (gitignored — the hostname→agent mapping is infrastructure and
 # must NEVER be committed to the public repo). Format:
 #   AGENT_NAME=gisu
@@ -69,7 +69,7 @@ export CORTEX_AGENT_TYPE
 # non-orch hosts must have it provisioned once (each machine's
 # /home/<user> is a separate physical box, so the file is per-machine
 # even though the home path string is shared).
-AGENT_ENV_FILE="${HERMES_CORTEX_HOME:-${HOME}/.hermes-cortex}/agent.env"
+AGENT_ENV_FILE="${HERMES_CORTEX_HOME:-${HOME}/.steadfaste-fleet}/agent.env"
 
 ensure_agent_identity() {
   # Priority: 1) AGENT_NAME env var, 2) agent.env file, 3) hostname (orch only).
@@ -96,7 +96,7 @@ ensure_agent_identity() {
     echo "    Set AGENT_NAME=<your-agent> in the environment, or create:" >&2
     echo "      $AGENT_ENV_FILE" >&2
     echo "    containing: AGENT_NAME=<your-agent>" >&2
-    echo "    Then re-run: bash ~/hermes-cortex/ops/scripts/cortex-update.sh" >&2
+    echo "    Then re-run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
     return 1
   fi
   export AGENT_NAME
@@ -198,7 +198,7 @@ elif [[ "$CORTEX_OS" == "linux" ]]; then
   SYSTEM_SERVICE_STOP="sudo systemctl stop"
 elif [[ "$CORTEX_OS" == "windows" ]]; then
   SERVICE_MANAGER="windows-service"
-  SERVICE_DIR="${APPDATA}/hermes-cortex/services"
+  SERVICE_DIR="${APPDATA}/steadfaste-fleet/services"
   SERVICE_EXT="ps1"  # PowerShell scripts for scheduled tasks
   SERVICE_LOAD="powershell -File"
   SERVICE_UNLOAD="powershell -File"
@@ -218,7 +218,7 @@ elif [[ "$CORTEX_OS" == "windows" ]]; then
 fi
 
 # ── nginx Path ──────────────────────────────────────────────
-# Uses : ${VAR:=default} pattern so env vars from ~/.hermes/hermes-cortex.env
+# Uses : ${VAR:=default} pattern so env vars from ~/.hermes/steadfaste-fleet.env
 # (sourced before os-config.sh) override the auto-detected defaults.
 if [[ "$CORTEX_OS" == "macos" ]]; then
   if [[ "$(uname -m)" == "arm64" ]]; then

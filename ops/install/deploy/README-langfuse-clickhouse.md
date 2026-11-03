@@ -18,7 +18,7 @@ deploy/
 │  ├── 01-log-level.xml       # Reduces log level to warning
 │  ├── 02-low-memory.xml      # Thread pool + log table tuning
 │  └── 03-profile-defaults.xml   # Per-query limits (profiles → users.d/)
-├── config/             # Optional: Hermes Cortex dashboard config
+├── config/             # Optional: Steadfaste Fleet dashboard config
 ├── nginx/              # Optional: nginx proxy snippets
 ├── patches/
 │  └── hermes-langfuse-cost-fixes.patch.md  # Historical: cost tracking fixes
@@ -392,7 +392,7 @@ docker exec langfuse-clickhouse-1 clickhouse-client --query \
 If `TotalMergeFailures` starts climbing again within hours, the config wasn't applied (check `changed=1` in `system.server_settings`). Common cause: the deployed `~/langfuse/clickhouse-config.d/` copy is stale — copy from repo:
 
 ```bash
-cp ~/hermes-cortex/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
+cp ~/steadfaste-fleet/ops/install/deploy/clickhouse-config.d/02-low-memory.xml \
   ~/langfuse/clickhouse-config.d/
 chmod 644 ~/langfuse/clickhouse-config.d/*.xml
 # Then stop + up -d as above
@@ -574,7 +574,7 @@ A scheduled script that evaluates Hermes conversation traces using a local Ollam
 | Ollama running | `curl -s http://localhost:11434/api/tags` | `systemctl start ollama` |
 | Judge model | `ollama list \| grep qwen2.5` | `ollama pull qwen2.5:3b` |
 | Embeddings model | `ollama list \| grep nomic-embed-text:v1.5` | `ollama pull nomic-embed-text:v1.5` |
-| Langfuse .env | `cat ~/hermes-cortex/.env` | See "Step 5" below |
+| Langfuse .env | `cat ~/steadfaste-fleet/.env` | See "Step 5" below |
 | Langfuse running | `curl -s -o /dev/null -w '%{http_code}' http://localhost:3000` | `docker compose up -d` |
 
 ### Setup
@@ -587,16 +587,16 @@ ollama pull qwen2.5:3b
 
 **Step 2 — Create the Langfuse `.env` for the scorer:**
 
-The scorer reads Langfuse API keys from `~/hermes-cortex/.env`. Extract them from your existing Hermes config:
+The scorer reads Langfuse API keys from `~/steadfaste-fleet/.env`. Extract them from your existing Hermes config:
 
 ```bash
-grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes/.env > ~/hermes-cortex/.env
+grep -E 'HERMES_LANGFUSE_(PUBLIC|SECRET)_KEY' ~/.hermes/.env > ~/steadfaste-fleet/.env
 ```
 
 Or extract from the running Docker container:
 
 ```bash
-python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/hermes-cortex/.env
+python3 ~/steadfaste-fleet/deploy/extract_langfuse_env.py > ~/steadfaste-fleet/.env
 ```
 
 **Step 3 — Deploy the script:**
@@ -604,12 +604,12 @@ python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/hermes-cortex/.env
 ```bash
 # Scripts auto-deploy via cortex-update.sh
 # Or copy manually:
-cp ~/hermes-cortex/ops/scripts/manage/llm-judge-scorer.py ~/.hermes-cortex/scripts/
-chmod +x ~/.hermes-cortex/scripts/llm-judge-scorer.py
+cp ~/steadfaste-fleet/ops/scripts/manage/llm-judge-scorer.py ~/.steadfaste-fleet/scripts/
+chmod +x ~/.steadfaste-fleet/scripts/llm-judge-scorer.py
 
 # Also deploy the model health watchdog (recommended):
-cp ~/hermes-cortex/ops/scripts/health/model-health-watchdog.py ~/.hermes-cortex/scripts/
-chmod +x ~/.hermes-cortex/scripts/model-health-watchdog.py
+cp ~/steadfaste-fleet/ops/scripts/health/model-health-watchdog.py ~/.steadfaste-fleet/scripts/
+chmod +x ~/.steadfaste-fleet/scripts/model-health-watchdog.py
 ```
 
 **Step 4 — Create the crons:**
@@ -635,17 +635,17 @@ hermes cron create --name model-health-watchdog \
 
 ```bash
 # Dry-run the scorer
-python3 ~/.hermes-cortex/scripts/llm-judge-scorer.py --dry-run
+python3 ~/.steadfaste-fleet/scripts/llm-judge-scorer.py --dry-run
 
 # Check model health (default: nomic-embed-text:v1.5 + qwen2.5:3b)
-python3 ~/.hermes-cortex/scripts/model-health-watchdog.py
+python3 ~/.steadfaste-fleet/scripts/model-health-watchdog.py
 
 # Check with a custom judge model (non-coder models only; coder variants are known-bad as judges)
-python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --judge-model qwen2.5:7b
+python3 ~/.steadfaste-fleet/scripts/model-health-watchdog.py --judge-model qwen2.5:7b
 
 # Via env var (comma-separated for multiple)
 JUDGE_MODEL="qwen2.5:7b,qwen2.5:3b" \
- python3 ~/.hermes-cortex/scripts/model-health-watchdog.py --quiet
+ python3 ~/.steadfaste-fleet/scripts/model-health-watchdog.py --quiet
 
 # Verify crons are scheduled
 hermes cron list | grep -E 'llm-judge|model-health'
@@ -659,7 +659,7 @@ The scorer checks prerequisites before starting:
 |-------|-------------|-----|
 | `Cannot reach Ollama` | Ollama not running | `systemctl start ollama` |
 | `Judge model 'qwen2.5:3b' not found` | Model not pulled | `ollama pull qwen2.5:3b` |
-| `Could not read Langfuse project keys` | Missing `.env` | Create `~/hermes-cortex/.env` |
+| `Could not read Langfuse project keys` | Missing `.env` | Create `~/steadfaste-fleet/.env` |
 | `HTTP 401` on Langfuse POST | Stale API keys | Regenerate in Langfuse UI |
 
 The `model-health-watchdog` cron (daily 7am) alerts you if any models are missing,
@@ -675,7 +675,7 @@ Check the `extract_langfuse_env.py` utility to regenerate the `.env` file from t
 Docker stack if keys ever need updating:
 
 ```bash
-python3 ~/hermes-cortex/deploy/extract_langfuse_env.py > ~/hermes-cortex/.env
+python3 ~/steadfaste-fleet/deploy/extract_langfuse_env.py > ~/steadfaste-fleet/.env
 ```
 
 ---

@@ -7,7 +7,7 @@ description: Evaluate an external agent framework for interop.
 # Evaluating Agent Frameworks
 
 Assess an external agent framework (Vercel eve, LangGraph, CrewAI, etc.) and decide
-what — if anything — our core (Hermes Cortex) must add to support or interoperate
+what — if anything — our core (Steadfaste Fleet) must add to support or interoperate
 with it. The deliverable is a coverage map, not an essay.
 
 ## Workflow
@@ -28,7 +28,7 @@ with it. The deliverable is a coverage map, not an essay.
 3. **Grep our core for each surface** to build the coverage map. For every surface,
    classify as *already-have-equivalent* or *net-new*. Example command:
    ```bash
-   cd ~/hermes-cortex && grep -ril "<surface|protocol>" . --include='*.md' --include='*.py' --include='*.yaml' --include='*.json' | grep -v '.git/'
+   cd ~/steadfaste-fleet && grep -ril "<surface|protocol>" . --include='*.md' --include='*.py' --include='*.yaml' --include='*.json' | grep -v '.git/'
    ```
    Grep for the *protocol name and its aliases* (e.g. "agent client protocol",
    "agentclient", "acpx") — a bare acronym greps false positives.
@@ -61,4 +61,4 @@ rest. Everything that maps to an existing equivalent is "no action".
   Clone before you conclude.
 - **Do not let a parallel framework's feature list imply we are behind.** Map first;
   most "novel" capabilities (durable state, subagents, sandbox, evals) already have a
-  Hermes Cortex equivalent under a different name.
+  Steadfaste Fleet equivalent under a different name.

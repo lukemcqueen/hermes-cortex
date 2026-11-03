@@ -4,7 +4,7 @@ version: 1.0.0
 category: devops
 description: "Use when a config change isn't live — verify what loaded."
 platforms: [linux, macos]
-author: Esther (Hermes Cortex)
+author: Esther (Steadfaste Fleet)
 license: MIT
 metadata:
   hermes:
@@ -68,7 +68,7 @@ do not chase the warning with restarts.
 
 **Compare the DEPLOYED copy's mtime, and resolve that path from the deploy map — never a
 guessed path.** The repo copy's mtime says nothing about what a process loaded: the deploy
-writes the file somewhere else, and the deploy map (`~/.hermes-cortex/deploy-manifest.tsv`)
+writes the file somewhere else, and the deploy map (`~/.steadfaste-fleet/deploy-manifest.tsv`)
 is the only per-file answer to "where does this land on this host" — read the row for the
 source path and use its destination; a missing row is a refusal, not a guess. Then assert
 the two facts TOGETHER, because either alone is weak:
@@ -233,7 +233,7 @@ have:**
     after it is gone.
   - **EXCEPTION — never restart the child that is serving your OWN active
     governance lock mid-cycle.** The lock persists in
-    `~/.hermes-cortex/state/` and is read through that same MCP server, so
+    `~/.steadfaste-fleet/state/` and is read through that same MCP server, so
     killing it mid-cycle strands the lock and cuts the governance tooling you
     still need for `end_change` — a worse outcome than a push that is simply
     blocked. Close the cycle first, then restart, then push (the receipt gate

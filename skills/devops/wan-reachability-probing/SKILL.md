@@ -2,7 +2,7 @@
 name: wan-reachability-probing
 description: Test port reachability from internet via external probes.
 version: 0.1.0
-author: Hermes Cortex
+author: Steadfaste Fleet
 license: MIT
 platforms: [linux, macos]
 ---

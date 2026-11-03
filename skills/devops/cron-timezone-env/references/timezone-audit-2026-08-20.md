@@ -8,7 +8,7 @@ live inventory (repo state moves).
 
 `HERMES_TIMEZONE` is the canonical timezone env var (upstream
 `hermes_time.py` + cortex `hermes_tz.py` both read it), but it was set
-**nowhere**: not in `~/hermes-cortex/.env`, `.env.example`, `agent.env`,
+**nowhere**: not in `~/steadfaste-fleet/.env`, `.env.example`, `agent.env`,
 `config.yaml`, systemd user env, `/etc/environment`, or the gateway process
 environ. The gateway systemd unit has no TZ env at all. All fleet hosts are
 `Asia/Seoul`, so outputs happened to be right by system-clock coincidence —
@@ -44,7 +44,7 @@ agent/agent-cron-failure-scanner.py, orch-bus/orch-bus-watch.py,
 orch-bus/orch-bus-forwarder.py, orch-bus/orch-bus-audit-watchdog.py,
 bus/workflow-inspector.py, cron_format.py, hermes_tz.py.
 
-Bash: manage/agent-hermes-cortex-sync.sh, manage/agent-nginx-threat-pipeline.sh,
+Bash: manage/agent-steadfaste-fleet-sync.sh, manage/agent-nginx-threat-pipeline.sh,
 manage/agent-hermes-update.sh, manage/deploy-blocked-ips.sh,
 health/check-memory-budget.sh, agent/agent-ip-submission.sh,
 manage/update-session-state.sh, manage/send-agent-learning.sh, cron_format.sh.
@@ -57,7 +57,7 @@ install/install-dream-crons.sh.
 
 ## Wiring added
 
-- `HERMES_TIMEZONE=Asia/Seoul` → `~/hermes-cortex/.env` + `.env.example`
+- `HERMES_TIMEZONE=Asia/Seoul` → `~/steadfaste-fleet/.env` + `.env.example`
 - `ops/scripts/install/install-gateway-timezone.sh` (new) — systemd user
   drop-in `11-timezone.conf` on Linux; `~/.hermes/.env` append on macOS.
   Mirrors install-gateway-cron-timeout.sh contract (no self-restart; prints
@@ -66,8 +66,8 @@ install/install-dream-crons.sh.
 ## Notable sub-findings
 
 - **cron_format.py `_timestamp()` bug**: `now = datetime.now(timezone.utc).astimezone()` → local; then `kst = now.astimezone(...) if not now.tzinfo else now` — since `now` always has tzinfo after astimezone(), the branch never fired; it always labeled local time "KST". Replaced with `hermes_tz.format_timestamp("%Y-%m-%d %H:%M %Z")`. Duplicate `from typing import Optional` at bottom of file cleaned.
-- **cron_format.py/.sh were repo-only, never deployed** (absent from ~/.hermes-cortex/scripts/). Nothing sourced cron_format.sh.
-- **agent-daily-bible-reading.py** (source at ops/scripts/): `KST = timezone.utc` dead constant, never referenced; dates use system-local `datetime.now()`. Marked DEPRECATED in comment. Registered from `ops/scripts/` (moved out of the deleted `.hermes-cortex/scripts/` on 2026-10-07).
+- **cron_format.py/.sh were repo-only, never deployed** (absent from ~/.steadfaste-fleet/scripts/). Nothing sourced cron_format.sh.
+- **agent-daily-bible-reading.py** (source at ops/scripts/): `KST = timezone.utc` dead constant, never referenced; dates use system-local `datetime.now()`. Marked DEPRECATED in comment. Registered from `ops/scripts/` (moved out of the deleted `.steadfaste-fleet/scripts/` on 2026-10-07).
 - **hermes_tz.py IANA branch** rendered `%Z` as "Asia/Seoul" (fixed-offset tz named after IANA). Fixed: `ZoneInfo(tz_spec)` when available → `%Z` = "KST". Return annotation widened `-> "Any"` (ZoneInfo is tzinfo, not timezone — Pyright error otherwise).
 - **execute_code hermes_tools.write_file returned `verified: None` and did NOT persist** — a bulk bash migration (8 files, ts() helper insertion) silently didn't land; caught via `grep -c "ts() {"` = 0. Redone with the `patch` tool per file. Lesson: after any execute_code write batch, verify with git diff/grep; prefer `patch` for repo edits.
 - **Deployed copies lag repo**: tested the deployed hermes_tz.py first and got stale behavior ("Asia/Seoul" output); the repo source was already fixed. Test repo source during migration.

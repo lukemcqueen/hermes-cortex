@@ -1,7 +1,7 @@
 # Seeding Brain Content
 
 > **Version 1.0.0** — Published 2026-06-11
-> Part of the [Hermes Cortex](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
+> Part of the [Steadfaste Fleet](https://github.com/lukemcqueen/steadfaste-fleet) documentation suite.
 
 A guide to filling your empty brain directories with useful content so legacy brain has something to search.
 
@@ -121,7 +121,7 @@ The default source holds everything universally relevant:
 │   ├── tool-selection.md   # Why you chose tool X over Y
 │   └── workflow.md         # Process decisions
 ├── concepts/
-│   ├── hermes-cortex.md    # How your system works
+│   ├── steadfaste-fleet.md    # How your system works
 │   └── legacy-brain.md           # How the legacy brain works
 └── ideas/
     └── inbox.md            # Capture zone for raw ideas

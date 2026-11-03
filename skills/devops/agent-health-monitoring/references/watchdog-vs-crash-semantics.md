@@ -66,7 +66,7 @@ For detection-type "errors", verify whether the thing the watchdog detected is r
 # For scoring-activity-watchdog: how many cycles today?
 python3 -c "
 import sqlite3
-db = '~/.hermes-cortex/data/loop-governance.db'
+db = '~/.steadfaste-fleet/data/loop-governance.db'
 c = sqlite3.connect(db)
 print(c.execute(\"SELECT COUNT(*) FROM loop_cycles WHERE timestamp >= date('now')\").fetchone()[0])
 "

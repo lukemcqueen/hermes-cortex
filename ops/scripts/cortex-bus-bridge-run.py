@@ -29,7 +29,7 @@ Usage (from a systemd unit or shell):
 
 Flags:
     --name  job name (for logs)
-    --script  script path; if relative, resolved under ~/.hermes-cortex/scripts/
+    --script  script path; if relative, resolved under ~/.steadfaste-fleet/scripts/
     --deliver  the job's deliver target ('local' = save-only, else Telegram)
     --enabled  "true"/"false" — the generated timer is enabled only when true
 """
@@ -42,14 +42,14 @@ import sys
 from pathlib import Path
 
 _home = Path.home()
-_CORTEX_ENV = Path(os.environ.get("CORTEX_DEPLOY_HOME", str(_home / ".hermes-cortex")))
+_CORTEX_ENV = Path(os.environ.get("CORTEX_DEPLOY_HOME", str(_home / ".steadfaste-fleet")))
 _SCRIPTS_DIR = _CORTEX_ENV / "scripts"
 
 
 def _load_env() -> None:
-    """Source ~/hermes-cortex/.env (and ~/.hermes/.env) into os.environ so the
+    """Source ~/steadfaste-fleet/.env (and ~/.hermes/.env) into os.environ so the
     job script sees the same tokens/models Hermes would. Never prints them."""
-    for env_path in (Path.home() / "hermes-cortex" / ".env",
+    for env_path in (Path.home() / "steadfaste-fleet" / ".env",
                      _home / ".hermes" / ".env"):
         if not env_path.exists():
             continue
@@ -86,7 +86,7 @@ def _deliver(text: str, job: str, deliver: str = "") -> None:
       '' / 'origin' / 'telegram' / 'telegram:<chat_id>'  -> send to Telegram
          (the home channel; 'origin' for script jobs resolves here)
       'local'                                            -> save-only to
-         ~/.hermes-cortex/cron-output/<job>.log, NEVER a send (some no_agent
+         ~/.steadfaste-fleet/cron-output/<job>.log, NEVER a send (some no_agent
          jobs are internal collectors whose stdout must not reach the channel).
 
     Best-effort: a delivery failure is logged, never propagated to the timer

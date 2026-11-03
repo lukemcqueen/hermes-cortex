@@ -37,8 +37,8 @@ import cortex_doctor.immutability as imm  # noqa: E402
 
 @pytest.fixture
 def hook_layout(tmp_path, monkeypatch):
-    """Fake HOME with .hermes-cortex/hooks/pre-commit -> target symlink."""
-    hooks = tmp_path / ".hermes-cortex" / "hooks"
+    """Fake HOME with .steadfaste-fleet/hooks/pre-commit -> target symlink."""
+    hooks = tmp_path / ".steadfaste-fleet" / "hooks"
     hooks.mkdir(parents=True)
     target = tmp_path / "pre-commit-score"
     target.write_text("#!/bin/sh\n")
@@ -68,7 +68,7 @@ def test_unprotected_target_still_flagged(monkeypatch, hook_layout):
 
 
 def test_broken_symlink_skipped_gracefully(monkeypatch, tmp_path):
-    hooks = tmp_path / ".hermes-cortex" / "hooks"
+    hooks = tmp_path / ".steadfaste-fleet" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "pre-commit").symlink_to(tmp_path / "nonexistent")
     monkeypatch.setenv("HOME", str(tmp_path))

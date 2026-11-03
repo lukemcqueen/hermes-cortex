@@ -6,10 +6,10 @@
 > Every code/config/cron change REQUIRES: `begin_change` → work → `cycle_query` → `feedback_accept/override` → `end_change`. No exceptions. If `end_change` rejects, confess and force-clear — never silently skip the loop. The MCP server blocks write tools without an active lock — this is enforced at the tool level, not optional.
 >
 > **RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO**
-> Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
+> Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo — template files, skills, scripts, docs, config patterns. Not just your local profile. The repo is how every agent benefits from each other's work. If you built something useful, upstream it.
 
 Copy this section into your project's `AGENTS.md` to adopt loop-governance
-scoring. See `~/hermes-cortex/docs/loop-governance-reference.md` for the full reference.
+scoring. See `~/steadfaste-fleet/docs/loop-governance-reference.md` for the full reference.
 
 ---
 
@@ -72,7 +72,7 @@ mcp__review__cache_search(query="<current task>")  # learn from past
 | Ollama connection refused | `ollama serve` or `brew services restart ollama` |
 | nomic-embed-text:v1.5 not found | `ollama pull nomic-embed-text:v1.5` |
 | score-cycle not found | Deprecated — use MCP tools (begin_change → cycle_query → feedback_accept → end_change) |
-| MCP tool returns error | `hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance` |
+| MCP tool returns error | `hermes mcp add --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py loop-governance` |
 
 **Fallback:** If scoring is genuinely blocked, re-score once the issue is
 resolved. Never skip permanently.
@@ -80,8 +80,8 @@ resolved. Never skip permanently.
 ## Setup (MCP-based — old CLI tools deprecated)
 
 ```bash
-# One-time (requires hermes-cortex cloned)
-hermes mcp add --command python3 --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py loop-governance
+# One-time (requires steadfaste-fleet cloned)
+hermes mcp add --command python3 --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py loop-governance
 ollama pull nomic-embed-text:v1.5
 bash ~/.hermes/scripts/install-score-hook.sh --path $(pwd)
 ```

@@ -3,7 +3,7 @@ name: two-hard-rules
 version: 1.0.0
 category: devops
 description: "Two hard rules every agent must follow: USE LOOP GOVERNANCE ALWAYS. SHARE IMPROVEMENTS TO THE PUBLIC REPO."
-author: Hermes Cortex
+author: Steadfaste Fleet
 pinned: true
 metadata:
   hermes:
@@ -30,8 +30,8 @@ Every code, config, or cron change REQUIRES this sequence — no exceptions:
   Luke directive). Score first: `cycle_query` → `feedback_accept/override` →
   `end_change`, THEN the next `begin_change`.
 - If genuinely stuck: confess clearly: "end_change rejected — no cycle auto-created. Force-clearing lock."
-- Locks are session-scoped: `rm -f ~/.hermes-cortex/state/.governance-<session-id>.json`
-  (find yours with `ls -t ~/.hermes-cortex/state/.governance-*.json | head -1`;
+- Locks are session-scoped: `rm -f ~/.steadfaste-fleet/state/.governance-<session-id>.json`
+  (find yours with `ls -t ~/.steadfaste-fleet/state/.governance-*.json | head -1`;
   the legacy name `.governance-active.json` is obsolete).
 - Never silently force-clear without calling `end_change` first.
 
@@ -39,7 +39,7 @@ The MCP server blocks write tools without an active lock — this is enforced at
 
 ## RULE 2: SHARE IMPROVEMENTS TO THE PUBLIC REPO
 
-Every improvement you make that benefits other agents MUST go into the `hermes-cortex` repo:
+Every improvement you make that benefits other agents MUST go into the `steadfaste-fleet` repo:
 
 | What you built | Where it goes |
 |---------------|---------------|
@@ -55,7 +55,7 @@ Every improvement you make that benefits other agents MUST go into the `hermes-c
 ## Enforcement
 
 - **Rule 1** is enforced by the MCP server at the tool level — you cannot write files without a lock
-- **Skills gate** — `~/.hermes-cortex/state/skills-loaded/<session-id>` is auto-created when all 7
+- **Skills gate** — `~/.steadfaste-fleet/state/skills-loaded/<session-id>` is auto-created when all 7
   always-section skills are loaded via `skill_view()` (task-start bundles the list). Do NOT `touch` it —
   the enforcer rejects empty/session-mismatched markers. Per-session files mean concurrent sessions
   never stomp each other's proof.

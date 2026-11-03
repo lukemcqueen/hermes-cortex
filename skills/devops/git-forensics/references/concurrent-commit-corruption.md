@@ -1,6 +1,6 @@
 # Concurrent Commit Corruption — `invalid object ... Error building trees`
 
-Worked diagnostic from 2026-08-07 (hermes-cortex shared repo, multi-agent host).
+Worked diagnostic from 2026-08-07 (steadfaste-fleet shared repo, multi-agent host).
 The repo's pre-commit hook chain passed every gate, then the commit died with:
 
 ```

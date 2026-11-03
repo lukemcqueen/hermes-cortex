@@ -1,8 +1,8 @@
-# 🔒 Security Guide — Hermes Cortex
+# 🔒 Security Guide — Steadfaste Fleet
 
 > **For everyone — from first-time users to system administrators.**
 >
-> This guide explains how to keep your Hermes Cortex installation secure.
+> This guide explains how to keep your Steadfaste Fleet installation secure.
 > You don't need to be a security expert to follow it.
 
 > **💡 This guide applies to the latest version of the installer.** Run `git pull` and re-run `install.sh` to apply all security fixes.
@@ -84,8 +84,8 @@ openssl rand -hex 32   # Redis, MinIO secret, encryption keys
 
 # Update ~/langfuse/.env with new values
 # Then restart Langfuse:
-docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml down
-docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml up -d
+docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml down
+docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml up -d
 ```
 
 ---
@@ -289,7 +289,7 @@ The built-in macOS firewall only controls **application-level** access. For defe
 
 Create `/etc/pf.anchors/hermes`:
 ```conf
-# ── Hermes Cortex pf rules ──────────────────────────────
+# ── Steadfaste Fleet pf rules ──────────────────────────────
 # Default: deny all incoming connections
 block in log all
 
@@ -420,7 +420,7 @@ sudo pfctl -a "f2b/nginx-http-auth" -s table
 
 ### 🔐 SSL/TLS Certificates — Let's Encrypt & Certbot
 
-> **Critical:** SSL certificates and private keys are **machine-local secrets**. They must **never** enter the hermes-cortex repo (`.gitignore` blocks `*.pem`, `*.key`, `*.crt`, `*.p12`).
+> **Critical:** SSL certificates and private keys are **machine-local secrets**. They must **never** enter the steadfaste-fleet repo (`.gitignore` blocks `*.pem`, `*.key`, `*.crt`, `*.p12`).
 
 #### How It Works
 
@@ -503,7 +503,7 @@ sudo nginx -t && sudo nginx -s reload
 
 #### Repo Boundaries
 
-| In hermes-cortex (public) | Machine-local (private) |
+| In steadfaste-fleet (public) | Machine-local (private) |
 |---------------------------|-------------------------|
 | `hermes-services.conf` with commented SSL placeholders | `/etc/letsencrypt/` — all certs & keys |
 | Docs explaining how to enable SSL | `~/langfuse/.env` — service passwords |
@@ -552,7 +552,7 @@ launchctl kickstart gui/$(id -u)/com.docker.docker
 docker ps -a
 
 # Restart Langfuse stack
-docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml restart
+docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml restart
 ```
 
 ### 💻 I can't access the Dashboard
@@ -605,7 +605,7 @@ Yes, but you MUST:
 ### "How do I update securely?"
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull
 bash install.sh  # Safe to re-run — it's idempotent
 ```
@@ -625,7 +625,7 @@ The installer covers the basics. For a **production-ready security posture**, pr
 **What your agent should do:**
 Configures nginx to listen with SSL on external ports:
 - Each server block uses `listen PORT ssl;` (external, SSL) — never `127.0.0.1:PORT`
-- SSL certs from Let's Encrypt (or set `CORTEX_SSL_CERT_PATH` in `~/.hermes/hermes-cortex.env`)
+- SSL certs from Let's Encrypt (or set `CORTEX_SSL_CERT_PATH` in `~/.hermes/steadfaste-fleet.env`)
 - Basic Auth on all non-health endpoints
 - The health endpoint (:xx007) has no auth for Moses/Esther polling
 
@@ -693,7 +693,7 @@ Check each of these and report status:
 | Check open ports | `lsof -i -P \| grep LISTEN` |
 | Check file permissions | `ls -la ~/.hermes/.env` |
 | View Langfuse credentials | `cat ~/langfuse/.env` (but don't share!) |
-| Restart Langfuse | `docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml restart` |
+| Restart Langfuse | `docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml restart` |
 | View system logs | `cat ~/.hermes/logs/gateway.log` |
 | Check Ollama status | `launchctl list \| grep ollama` |
 | Lock a file to your user | `chmod 600 filename` |

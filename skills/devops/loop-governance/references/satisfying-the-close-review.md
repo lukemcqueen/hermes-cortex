@@ -269,7 +269,7 @@ means, and the smaller one is the one `rereview_change` consults):
 ```python
 import sqlite3, os   # the sqlite3 CLI is often absent; the module is always there
 c = sqlite3.connect("file:%s?mode=ro" % os.path.expanduser(
-    "~/.hermes-cortex/data/loop-governance.db"), uri=True)
+    "~/.steadfaste-fleet/data/loop-governance.db"), uri=True)
 ```
 
 For a per-blob verdict the working exits are narrower: change the blob's CONTENT (a fix produces a
@@ -339,7 +339,7 @@ are omitted and the push gate names them.
   not read the first partial pass as a dead end, and do not re-slice your own history to make
   the range smaller.
 - **Drive the rounds with a loop whose stop condition is a receipt for the CURRENT tip**
-  (`ls ~/.hermes-cortex/state/.reviewed-*.json` naming that tip), in the background: a round
+  (`ls ~/.steadfaste-fleet/state/.reviewed-*.json` naming that tip), in the background: a round
   is minutes long and its output is only readable afterwards.
 - **SCORE THE CYCLE BEFORE STARTING THE LOOP.** Issuing `feedback_accept` in the same turn as
   the loop launch races: the attempts execute first, each instantly refusing with "this

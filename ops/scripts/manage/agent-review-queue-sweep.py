@@ -42,14 +42,14 @@ def _state_dir():
     override = os.environ.get("REVIEW_STATE_DIR")
     if override:
         return override
-    return os.path.join(os.path.expanduser("~"), ".hermes-cortex", "state")
+    return os.path.join(os.path.expanduser("~"), ".steadfaste-fleet", "state")
 
 
 def _db_file():
     override = os.environ.get("REVIEW_DB_PATH")
     if override:
         return override
-    return os.path.join(os.path.expanduser("~"), ".hermes-cortex", "data", "loop-governance.db")
+    return os.path.join(os.path.expanduser("~"), ".steadfaste-fleet", "data", "loop-governance.db")
 
 
 def _run_log():
@@ -84,7 +84,7 @@ _FIXTURE_KNOWN_PREFIXES = (
     "precommit-hc-scope-test", "precommit-hooktest", "precommit-nonhc-test",
     "precommit-omz-sim-test", "precommit-project-repo-test",
     "precommit-sleak-test", "precommit-tdd-final", "precommit-tdd-no-infra",
-    "precommit-hermes-cortex-private-",
+    "precommit-steadfaste-fleet-private-",
 )
 
 

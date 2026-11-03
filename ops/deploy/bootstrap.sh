@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════
-#  Hermes Cortex — Linux Server Bootstrap
+#  Steadfaste Fleet — Linux Server Bootstrap
 #  https://github.com/lukemcqueen/steadfaste-fleet
 #
 #  Single-command bootstrap for a bare Ubuntu 24.04 LTS server.
-#  Installs the full Hermes Cortex stack from scratch — system packages,
+#  Installs the full Steadfaste Fleet stack from scratch — system packages,
 #  Docker, Ollama, models, Hermes Agent, mycortex, Langfuse, nginx,
 #  fail2ban, UFW, cron jobs, and security hardening.
 #
@@ -21,7 +21,7 @@
 #    4. Docker engine             — CE + compose plugin
 #    5. Ollama + models           — LLM server + embedding/coder models
 #    6. Hermes CLI                — Hermes Agent binary
-#    7. hermes-cortex repo        — clone, .env, run install.sh
+#    7. steadfaste-fleet repo        — clone, .env, run install.sh
 #    8. nginx + Let's Encrypt SSL — reverse proxy with auto HTTPS
 #    9. fail2ban                  — nginx/SSH jail config
 #   10. UFW + security hardening  — firewall, sysctl, permissions
@@ -45,8 +45,8 @@ header(){ printf "\n${BOLD}━ %s ━${RESET}\n" "$*"; }
 
 # ── Globals ─────────────────────────────────────────────────────────
 HERMES_HOME="${HOME:?}/.hermes"
-CORTEX_REPO="${HOME:?}/hermes-cortex"
-CORTEX_DEPLOY="${HOME:?}/.hermes-cortex"
+CORTEX_REPO="${HOME:?}/steadfaste-fleet"
+CORTEX_DEPLOY="${HOME:?}/.steadfaste-fleet"
 LANGFUSE_DIR="${HOME:?}/langfuse"
 
 # Secrets (populated by interactive prompts)
@@ -214,7 +214,7 @@ else
     fi
 
     echo ""
-    info "API keys (can be left blank — edit ~/hermes-cortex/.env later)"
+    info "API keys (can be left blank — edit ~/steadfaste-fleet/.env later)"
     read -rp "  OpenRouter API key (sk-or-...):     " input
     OPENROUTER_KEY="${input:-}"
     read -rp "  DeepSeek API key (sk-...):          " input
@@ -356,13 +356,13 @@ fi
 # ═══════════════════════════════════════════════════════════════════════
 #  PHASE 7: CLONE REPO + RUN INSTALLER
 # ═══════════════════════════════════════════════════════════════════════
-next_step "Clone hermes-cortex + run installer"
+next_step "Clone steadfaste-fleet + run installer"
 
 if [[ -d "$CORTEX_REPO" ]]; then
-    info "hermes-cortex already cloned — pulling latest..."
+    info "steadfaste-fleet already cloned — pulling latest..."
     cd "$CORTEX_REPO" && git pull --ff-only origin main 2>/dev/null || true
 else
-    info "Cloning hermes-cortex..."
+    info "Cloning steadfaste-fleet..."
     sudo -u "$REAL_USER" git clone --depth 1 \
         https://github.com/lukemcqueen/steadfaste-fleet.git "$CORTEX_REPO"
     ok "Repo cloned"
@@ -427,13 +427,13 @@ else
 fi
 
 # Run the install.sh as the real user
-info "Running hermes-cortex installer..."
+info "Running steadfaste-fleet installer..."
 cd "$CORTEX_REPO"
 sudo -u "$REAL_USER" HOME="$REAL_HOME" \
     CORTEX_PROFILE="${CORTEX_PROFILE:-server}" \
     bash ops/install/install.sh 2>&1 | \
     while IFS= read -r line; do printf "    %s\n" "$line"; done
-ok "hermes-cortex install complete"
+ok "steadfaste-fleet install complete"
 
 # ═══════════════════════════════════════════════════════════════════════
 #  PHASE 8: NGINX + LET'S ENCRYPT SSL
@@ -446,17 +446,17 @@ if [[ -f "$CORTEX_REPO/ops/deploy/ansible/templates/hermes-nginx.conf.j2" ]]; th
     # Simple variable substitution for the Jinja2 template
     sed "s/{{ agent_domain }}/$AGENT_DOMAIN/g" \
         "$CORTEX_REPO/ops/deploy/ansible/templates/hermes-nginx.conf.j2" \
-        > /etc/nginx/sites-available/hermes-cortex.conf
+        > /etc/nginx/sites-available/steadfaste-fleet.conf
 
     # Remove default site, enable Hermes
     rm -f /etc/nginx/sites-enabled/default
-    ln -sf /etc/nginx/sites-available/hermes-cortex.conf /etc/nginx/sites-enabled/
+    ln -sf /etc/nginx/sites-available/steadfaste-fleet.conf /etc/nginx/sites-enabled/
 
     if nginx -t 2>&1; then
         systemctl reload nginx || systemctl start nginx
         ok "nginx configured and running"
     else
-        warn "nginx config has errors — review /etc/nginx/sites-available/hermes-cortex.conf"
+        warn "nginx config has errors — review /etc/nginx/sites-available/steadfaste-fleet.conf"
     fi
 else
     # Use the install.sh's nginx setup
@@ -519,8 +519,8 @@ fi
 next_step "Fail2ban (nginx + SSH)"
 
 # Basic nginx jail
-if [[ ! -f /etc/fail2ban/jail.d/hermes-cortex.local ]]; then
-    cat > /etc/fail2ban/jail.d/hermes-cortex.local << 'JAIL'
+if [[ ! -f /etc/fail2ban/jail.d/steadfaste-fleet.local ]]; then
+    cat > /etc/fail2ban/jail.d/steadfaste-fleet.local << 'JAIL'
 [nginx-http-auth]
 enabled  = true
 port     = http,https
@@ -570,8 +570,8 @@ ufw --force enable
 ok "UFW enabled (SSH, HTTP, HTTPS allowed)"
 
 # sysctl tuning
-cat > /etc/sysctl.d/99-hermes-cortex.conf << 'SYSCTL'
-# Hermes Cortex — kernel tuning
+cat > /etc/sysctl.d/99-steadfaste-fleet.conf << 'SYSCTL'
+# Steadfaste Fleet — kernel tuning
 net.ipv4.tcp_keepalive_time = 60
 net.ipv4.tcp_keepalive_intvl = 10
 net.ipv4.tcp_keepalive_probes = 6
@@ -589,7 +589,7 @@ ok "Sensitive file permissions hardened (chmod 600)"
 
 # Journald rate limiting for verbose services
 mkdir -p /etc/systemd/journald.conf.d
-cat > /etc/systemd/journald.conf.d/99-hermes-cortex.conf << 'JOURNAL'
+cat > /etc/systemd/journald.conf.d/99-steadfaste-fleet.conf << 'JOURNAL'
 [Journal]
 RateLimitIntervalSec=30s
 RateLimitBurst=20000
@@ -655,7 +655,7 @@ done
 next_step "Bootstrap complete!"
 
 echo ""
-echo "  ${BOLD}Hermes Cortex is installed and running on $AGENT_DOMAIN${RESET}"
+echo "  ${BOLD}Steadfaste Fleet is installed and running on $AGENT_DOMAIN${RESET}"
 echo ""
 echo "  ┌─────────────────────┬──────────────────────────────────────────┐"
 echo "  │ Service             │ URL                                      │"
@@ -672,25 +672,25 @@ echo "  ${BOLD}Credentials${RESET}"
 printf "  Agent inbox auth:     %s / %s\n" "$AGENT_NAME" "${INBOX_PASSWORD:-<set in .env>}"
 echo ""
 echo "  ${BOLD}Key files${RESET}"
-echo "  Config:              ~/hermes-cortex/.env"
-echo "  State:               ~/.hermes-cortex/"
+echo "  Config:              ~/steadfaste-fleet/.env"
+echo "  State:               ~/.steadfaste-fleet/"
 echo "  Hermes home:         ~/.hermes/"
 echo "  Langfuse config:     ~/langfuse/.env"
-echo "  nginx config:        /etc/nginx/sites-available/hermes-cortex.conf"
-echo "  fail2ban jails:      /etc/fail2ban/jail.d/hermes-cortex.local"
+echo "  nginx config:        /etc/nginx/sites-available/steadfaste-fleet.conf"
+echo "  fail2ban jails:      /etc/fail2ban/jail.d/steadfaste-fleet.local"
 echo ""
 echo "  ${BOLD}Next steps${RESET}"
-echo "  1. Edit ~/hermes-cortex/.env to fill in any missing API keys"
+echo "  1. Edit ~/steadfaste-fleet/.env to fill in any missing API keys"
 echo "  2. If models are still downloading: ollama ps"
-echo "  3. Verify: python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py"
-echo "  4. Create agent cron jobs: cd ~/hermes-cortex && bash ops/scripts/install/install-crons.sh"
+echo "  3. Verify: python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+echo "  4. Create agent cron jobs: cd ~/steadfaste-fleet && bash ops/scripts/install/install-crons.sh"
 echo "  5. For orchestrator: set IS_ORCHESTRATOR=true in .env"
 echo ""
 echo "  ${BOLD}Recovery (if something goes wrong)${RESET}"
 echo "  The script is idempotent — just re-run it. Or for a full reset:"
 echo "    # Reset Docker:      docker compose -f ~/langfuse/docker-compose.yml down"
-echo "    # Reset nginx:       rm /etc/nginx/sites-enabled/hermes-cortex.conf"
-echo "    # Re-run doctor:     python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --fix"
+echo "    # Reset nginx:       rm /etc/nginx/sites-enabled/steadfaste-fleet.conf"
+echo "    # Re-run doctor:     python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --fix"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════

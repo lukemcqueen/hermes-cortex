@@ -292,7 +292,7 @@ except Exception as e:
 section("Agent Card")
 status, data = request("GET", "/.well-known/agent-card.json")
 test("Agent card public (no auth needed)", status == 200)
-test("Agent card has name", data.get("name") == "hermes-cortex-bus")
+test("Agent card has name", data.get("name") == "steadfaste-fleet-bus")
 
 section("DLQ Flow")
 # Ensure test DLQ queue exists

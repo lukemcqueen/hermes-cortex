@@ -20,7 +20,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEPLOY = Path.home() / ".hermes-cortex/tools/loop-governance/loop-gov-mcp.py"
+DEPLOY = Path.home() / ".steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
 REPO = Path(__file__).resolve().parents[1]
 failures = []
 
@@ -40,7 +40,7 @@ def main():
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
 
-    live_locks = sorted((Path.home() / ".hermes-cortex/state").glob(".governance-*.json"))
+    live_locks = sorted((Path.home() / ".steadfaste-fleet/state").glob(".governance-*.json"))
     if not live_locks:
         print("SKIP: no live lock to derive a session id from")
         return 0
@@ -74,7 +74,7 @@ def main():
             check("receipt is bound to HEAD", d.get("tip_sha"), head)
             check("receipt records a base", bool(d.get("base_sha")), True)
             check("receipt verdict is CLEAN", d.get("verdict"), "CLEAN")
-            check("receipt carries the repo slug", d.get("repo_slug"), "hermes-cortex")
+            check("receipt carries the repo slug", d.get("repo_slug"), "steadfaste-fleet")
     finally:
         m.GOVERNANCE_STATE_DIR = real_state
         shutil.rmtree(tmp, ignore_errors=True)

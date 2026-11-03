@@ -3,7 +3,7 @@
 
 Reads MEMORY.md and USER.md from the active Hermes profile,
 formats them as searchable pages under ~/brain/shared/hermes-memory/,
-then git-commits. The hermes-cortex source is ingested by mycortex
+then git-commits. The steadfaste-fleet source is ingested by mycortex
 (the knowledge brain) like any local source.
 
 Designed to run as a cron job alongside conversation export.

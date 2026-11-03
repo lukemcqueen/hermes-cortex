@@ -35,10 +35,10 @@ echo "$PATH" | tr ':' '\n' | grep -q "${HOME}/.local/bin"
 
 ```bash
 # 1. Clone
-git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
+git clone https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet
 
 # 2. Run setup (detects macOS, suggests brew)
-bash ~/hermes-cortex/core/governance/setup.sh
+bash ~/steadfaste-fleet/core/governance/setup.sh
 
 # 3. If Ollama not found, install:
 brew install ollama
@@ -48,7 +48,7 @@ ollama pull nomic-embed-text
 export PATH="$HOME/.local/bin:$PATH"
 
 # 5. Verify
-bash ~/hermes-cortex/core/governance/verify.sh
+bash ~/steadfaste-fleet/core/governance/verify.sh
 ```
 
 ## Health Monitoring

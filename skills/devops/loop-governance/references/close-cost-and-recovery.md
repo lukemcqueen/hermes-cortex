@@ -156,7 +156,7 @@ Every recorded verdict should name the model that produced it. Read it rather th
 inferring it, and prefer the rows written most recently:
 
 ```bash
-python3 -c "import sqlite3,os; c=sqlite3.connect('file:'+os.path.expanduser('~/.hermes-cortex/data/loop-governance.db')+'?mode=ro',uri=True); print(c.execute('SELECT blob_sha,verdict,reviewer_model,ts FROM blob_reviews ORDER BY ts DESC LIMIT 5').fetchall())"
+python3 -c "import sqlite3,os; c=sqlite3.connect('file:'+os.path.expanduser('~/.steadfaste-fleet/data/loop-governance.db')+'?mode=ro',uri=True); print(c.execute('SELECT blob_sha,verdict,reviewer_model,ts FROM blob_reviews ORDER BY ts DESC LIMIT 5').fetchall())"
 ```
 
 An empty `reviewer_model` in RECENT rows means the writer is not receiving it, and

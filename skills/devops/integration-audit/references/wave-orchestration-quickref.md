@@ -46,5 +46,5 @@ wave-orchestrate.py status --session <id>
 
 ## DB
 
-State stored in `~/.hermes-cortex/state/wave-sessions.db` (SQLite WAL).
+State stored in `~/.steadfaste-fleet/state/wave-sessions.db` (SQLite WAL).
 Tables: `sessions`, `gate_results`, `wave_outputs`.
