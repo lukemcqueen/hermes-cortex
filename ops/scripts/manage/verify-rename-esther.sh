@@ -26,10 +26,17 @@ ck "old-home symlink -> new" "[[ -L $OLD_HOME ]] && [[ \$(readlink $OLD_HOME) = 
 ck "new-repo is a real dir" "[[ -d $NEW_REPO ]]"
 ck "new-home is a real dir" "[[ -d $NEW_HOME ]]"
 
-# --- 2. brain/mycortex preserved at the new path ---
-ck "brain/kb present" "[[ -d $NEW_HOME/brain/kb ]]"
-ck "brain/memories present" "[[ -d $NEW_HOME/brain/memories ]]"
-ck "mycortex compose present" "[[ -f $NEW_HOME/docker-compose.mycortex.yml ]]"
+# --- 2. brain/mycortex preserved (per-host location: a host may keep its brain
+#        at the renamed home ~/.steadfaste-fleet/brain, OR under the Hermes home
+#        ~/.hermes/brain — the latter is NOT renamed and is untouched by the
+#        migration, so verify whichever the host actually uses) ---
+BRAIN_A="$NEW_HOME/brain"; BRAIN_B="${HOME}/.hermes/brain"
+BRAIN_DIR=""
+if [ -d "$BRAIN_A" ]; then BRAIN_DIR="$BRAIN_A"; elif [ -d "$BRAIN_B" ]; then BRAIN_DIR="$BRAIN_B"; fi
+ck "brain dir present (resolved: ${BRAIN_DIR:-none})" "[ -n '$BRAIN_DIR' ]"
+ck "brain/kb present" "[ -d '${BRAIN_DIR}/kb' ]"
+ck "brain/memories present" "[ -d '${BRAIN_DIR}/memories' ]"
+ck "mycortex compose present (renamed home or Hermes home)" "[ -f '$NEW_HOME/docker-compose.mycortex.yml' ] || [ -f '${HOME}/.hermes/docker-compose.mycortex.yml' ]"
 
 # --- 3/4/5. platform service surface (systemd on Linux, launchctl on macOS) ---
 if [ "$IS_MAC" = 1 ]; then
