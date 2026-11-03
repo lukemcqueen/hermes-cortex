@@ -1352,3 +1352,82 @@ def test_restore_preserves_the_stored_plan_when_the_key_is_absent(tmp_path):
     assert len(params) == 18, f"UPSERT_SQL takes 18 params, got {len(params)}"
     assert params[17] is None, "an absent `plan` key must not be invented"
 
+
+# ── UUID prefix/substring resolution (_resolve_uuid) ─────────────
+# task-add echoes ids truncated to the first 8 hex chars
+# (`✅ Task added: 423598b9...`); a caller pasting that back as --parent
+# was rejected by _check_uuid demanding the full UUID. _resolve_uuid
+# accepts a full UUID (passthrough, no DB) OR a hex prefix resolved to the
+# unique RLS-visible row. (2026-11-03, Titus Pi task_add failure.)
+
+FULL_UUID = "423598b9-1a2b-3c4d-5e6f-7a8b9c0d1e2f"
+PREFIX = "423598b9"           # the [:8] form task-add prints
+
+
+def test_resolve_uuid_full_uuid_passthrough():
+    with patch.object(task_db, "psql") as mock_psql:
+        full = task_db._resolve_uuid(FULL_UUID)
+    assert full == FULL_UUID
+    mock_psql.assert_not_called()   # full UUID: no DB contact
+
+
+def test_resolve_uuid_prefix_single_match():
+    with patch.object(task_db, "psql", return_value=f"{FULL_UUID}\n") as mock_psql:
+        full = task_db._resolve_uuid(PREFIX)
+    assert full == FULL_UUID
+    q, params = mock_psql.call_args[0]
+    assert params == [PREFIX + "%"]
+    assert "replace(id::text,'-','')" in q
+
+
+def test_resolve_uuid_prefix_no_match():
+    with patch.object(task_db, "psql", return_value="") as mock_psql:
+        out, err, exc = _run_stdin_capture(task_db._resolve_uuid, PREFIX)
+    assert exc is not None and exc.code == 1
+    assert "no task UUID starts with" in err
+
+
+def test_resolve_uuid_prefix_ambiguous():
+    other = "423598c0-1111-2222-3333-444455556666"
+    with patch.object(task_db, "psql",
+                      return_value=f"{FULL_UUID}\n{other}\n") as mock_psql:
+        out, err, exc = _run_stdin_capture(task_db._resolve_uuid, PREFIX)
+    assert exc is not None and exc.code == 2
+    assert "ambiguous" in err
+    assert "423598b9" in err and "423598c0" in err
+
+
+def test_resolve_uuid_bad_rejected():
+    _out, err, exc = _run_stdin_capture(task_db._resolve_uuid, "not-a-uuid")
+    assert exc is not None and exc.code == 2
+    assert "not a valid task UUID" in err
+
+
+def test_add_parent_prefix_resolves_to_full_id():
+    """cmd_add --parent <prefix> resolves and passes the FULL id into the upsert."""
+    with patch.object(task_db, "psql",
+                      side_effect=[f"{FULL_UUID}\n", ""]) as mock_psql, \
+         patch.object(task_db, "schema_version", return_value=V5_SCHEMA):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_add, "a slice", "esther", 2, "hermes-cortex",
+            None, None, "personal", None, None, [], "manual",
+            PREFIX, "slice", True, None, None, None)
+    assert exc is None, err
+    assert "✅ Task added" in out
+    # resolution query, then the UPSERT — its parent slot (idx 14) is the FULL id
+    assert mock_psql.call_count == 2
+    params = mock_psql.call_args_list[1][0][1]
+    assert params[14] == FULL_UUID
+
+
+def test_list_parent_prefix_resolves():
+    with patch.object(task_db, "psql",
+                      side_effect=[f"{FULL_UUID}\n", _row_line(id=FULL_UUID)]), \
+         patch.object(task_db, "schema_version", return_value=8):
+        out, err, exc = _run_stdin_capture(
+            task_db.cmd_list, None, None, None, None, None, None, None, None,
+            PREFIX, repo_slug=REPO_SLUG)
+    assert exc is None, err
+    assert "invalid" not in err.lower()
+    assert "No tasks found" not in out
+

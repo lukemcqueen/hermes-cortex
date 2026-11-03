@@ -339,6 +339,9 @@ _STATUS_DESC = ("pending, in_progress, review, blocked, waiting, paused, complet
 _KIND_DESC = "story (parent must be NULL) or slice (parent required); requires tasks schema v005+"
 _SOURCE_DESC = "manual, session, dream, bridge, governance, inbox, or doctor-probe"
 _AGENT_DESC = "creator/owner name (defaults to profile)"
+# task commands echo ids truncated to the first 8 hex chars; a prefix is
+# resolved to the full UUID (must match exactly one RLS-visible row).
+_UUID_DESC_SUFFIX = " (full UUID or the 8-char prefix task_add echoes — a prefix must be unambiguous)"
 
 
 async def list_tools(ctx, params=None) -> ListToolsResult:
@@ -360,7 +363,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
                     "due": {"type": "string", "description": "ISO 8601 due date, e.g. 2026-08-10 or 2026-08-10T14:00Z."},
                     "tags": {"type": "array", "items": {"type": "string"}, "description": "Free-text tags."},
                     "source": {"type": "string", "enum": ["manual", "session", "dream", "bridge", "governance", "inbox", "doctor-probe"], "description": _SOURCE_DESC},
-                    "parent": {"type": "string", "description": "Parent story UUID (for kind=slice)."},
+                    "parent": {"type": "string", "description": "Parent story UUID for kind=slice (full UUID or the 8-char prefix task_add echoes)."},
                     "kind": {"type": "string", "enum": ["story", "slice"], "description": _KIND_DESC},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
@@ -402,7 +405,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task UUID (from task_list)."},
+                    "task_id": {"type": "string", "description": f"Task UUID (from task_list){_UUID_DESC_SUFFIX}."},
                     "by_correlation": {"type": "string", "description": "Bus correlation_id instead of task_id (inbox tasks only)."},
                     "status": {"type": "string", "enum": ["pending", "in_progress", "review", "blocked", "waiting", "paused", "completed", "cancelled"], "description": _STATUS_DESC},
                     "reason": {"type": "string", "description": "Transition reason — 'reopen' to resume a completed task."},
@@ -417,7 +420,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task UUID to resume."},
+                    "task_id": {"type": "string", "description": f"Task UUID to resume{_UUID_DESC_SUFFIX}."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
                 "required": ["task_id"],
@@ -452,7 +455,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Slice UUID (from task_list_claimable)."},
+                    "task_id": {"type": "string", "description": f"Slice UUID (from task_list_claimable){_UUID_DESC_SUFFIX}."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
                 "required": ["task_id"],
@@ -464,7 +467,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Slice UUID to unclaim."},
+                    "task_id": {"type": "string", "description": f"Slice UUID to unclaim{_UUID_DESC_SUFFIX}."},
                     "reason": {"type": "string", "description": "Why it was returned (required discipline: name the blocker/tool gap)."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
@@ -512,7 +515,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Slice UUID (in_progress, yours)."},
+                    "task_id": {"type": "string", "description": f"Slice UUID (in_progress, yours){_UUID_DESC_SUFFIX}."},
                     "evidence": {"type": "string", "description": "Verifiable completion evidence (tool output, not prose)."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},
                 },
@@ -525,7 +528,7 @@ async def list_tools(ctx, params=None) -> ListToolsResult:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Slice UUID in review."},
+                    "task_id": {"type": "string", "description": f"Slice UUID in review{_UUID_DESC_SUFFIX}."},
                     "approve": {"type": "boolean", "description": "true=completed, false=back to in_progress."},
                     "note": {"type": "string", "description": "Verification note (required on reject)."},
                     "no_notify": {"type": "boolean", "description": "Suppress the Telegram event notification."},

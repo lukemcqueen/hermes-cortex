@@ -33,10 +33,13 @@ Usage:
                        [--project <p>] [--repo <r>] [--target <host>]
                        [--scope personal|fleet] [--assignee <a>]
                        [--due <iso>] [--tag <t> ...] [--source <s>]
-                       [--parent <uuid>] [--kind story|slice]
+                       [--parent <uuid|prefix>] [--kind story|slice]
                        [--correlation-id <bus-corr>] [--no-notify]
                        [--plan <text>]              # v016, needs schema v16+
-    task-db.py update  <id> [--status <new-status>] [--reason <r>]
+                       # uuid args accept the FULL id or the 8-char prefix task_add echoes;
+                       # a prefix must match exactly one RLS-visible row.
+
+    task-db.py update  <id|prefix> [--status <new-status>] [--reason <r>]
                        [--plan <text>] [--assignee <a>]
                        [--depends-on <uuid>[,<uuid>…]]
                        [--correlation-id <c>] [--no-notify]
@@ -219,6 +222,48 @@ def _check_uuid(value: str) -> None:
     if not UUID_RE.match(value):
         print(f"ERROR: '{value}' is not a valid task UUID", file=sys.stderr)
         sys.exit(2)
+
+
+def _resolve_uuid(value: str) -> str:
+    """Accept a full task UUID OR a hex prefix/substring of one, resolving to the
+    full UUID via the store.
+
+    Task commands ECHO ids truncated to the first 8 hex chars (e.g.
+    `✅ Task added: 423598b9...`), and a caller pasting that truncated string
+    back as --parent/--task-id used to be rejected by _check_uuid demanding the
+    FULL canonical UUID (2026-11-03 Titus Pi failure).
+
+    Full canonical UUIDs pass through untouched (no DB contact), preserving
+    current behaviour. A prefix (hex chars, hyphens stripped, 4..32 chars) is
+    resolved against the store via `replace(id::text,'-','') LIKE '<norm>%'`
+    and must match EXACTLY ONE row the caller can SEE (RLS-scoped, the same
+    visibility the parent-lookup query uses) — 0 or >1 matches is an error that
+    names the ambiguity/absence and tells the caller to use a longer prefix or
+    the full UUID.
+    """
+    if UUID_RE.match(value):
+        return value
+    norm = value.replace("-", "").lower()
+    if not (4 <= len(norm) <= 32) or not re.fullmatch(r"[0-9a-f]{4,32}", norm):
+        print(f"ERROR: '{value}' is not a valid task UUID or a hex prefix of one",
+              file=sys.stderr)
+        sys.exit(2)
+    rows = psql(
+        "SELECT id FROM tasks.tasks WHERE replace(id::text,'-','') LIKE ? "
+        "ORDER BY id LIMIT 2;",
+        [norm + "%"],
+    )
+    ids = [r.strip() for r in rows.split("\n") if r.strip()]
+    if len(ids) == 1:
+        return ids[0]
+    if len(ids) > 1:
+        print(f"ERROR: '{value}' is ambiguous — matches {len(ids)} tasks "
+              f"({', '.join(i[:8] for i in ids)}). Use a longer prefix or the "
+              f"full UUID.", file=sys.stderr)
+        sys.exit(2)
+    print(f"ERROR: no task UUID starts with '{value}' (RLS-visible)",
+          file=sys.stderr)
+    sys.exit(1)
 
 
 # ── Profile resolution (env → .env agent var → hostname) ──
@@ -629,8 +674,8 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
     if scope:
         _check_enum("--scope", scope, SCOPES)
     if parent:
-        _check_uuid(parent)
         _require_v3("--parent")
+        parent = _resolve_uuid(parent)
 
     params = [agent, agent, status, status, scope, scope, project, project]
     params += _repo_params(resolved)
@@ -657,8 +702,8 @@ def cmd_list(agent: str | None, status: str | None, project: str | None,
 
 def cmd_summary(story_id: str):
     """Show a story's slice-status summary (v3: tasks.task_story_summary)."""
-    _check_uuid(story_id)
     _require_v3("summary")
+    story_id = _resolve_uuid(story_id)
     raw = psql("SELECT tasks.task_story_summary(?::uuid);", [story_id])
     if not raw:
         print(f"ERROR: no story with id {story_id[:8]}... (not visible or "
@@ -752,8 +797,8 @@ def cmd_add(content: str, agent: str | None, priority: int, project: str | None,
         _check_enum("--kind", kind, KINDS)
         _require_v2("--kind")
     if parent:
-        _check_uuid(parent)
         _require_v2("--parent")
+        parent = _resolve_uuid(parent)
     if correlation_id:
         _require_v2("--correlation-id")
     if plan:
@@ -869,8 +914,8 @@ def cmd_update(task_id: str, new_status: str | None = None,
     if correlation_id is not None:
         _check_name("--correlation-id", correlation_id)
     if depends_on:
-        for dep in depends_on:
-            _check_uuid(dep)
+        for i, dep in enumerate(depends_on):
+            depends_on[i] = _resolve_uuid(dep)
     if by_correlation:
         _require_v2("--by-correlation")
         # Partial unique index (source='inbox' AND correlation_id NOT NULL)
@@ -886,7 +931,7 @@ def cmd_update(task_id: str, new_status: str | None = None,
             sys.exit(1)
         task_id = found.split("\n")[0]
     else:
-        _check_uuid(task_id)
+        task_id = _resolve_uuid(task_id)
 
     # ── No-op honesty gate (2026-10-15) ──────────────────────────────
     # tasks.event_after_update() returns early when OLD.status IS NOT
@@ -1041,7 +1086,7 @@ def cmd_update(task_id: str, new_status: str | None = None,
 def cmd_claim(task_id: str, no_notify: bool = False):
     """v4: atomically claim a pending slice for the current agent (pull model)."""
     _require_v4("claim")
-    _check_uuid(task_id)
+    task_id = _resolve_uuid(task_id)
     agent = PROFILE  # canonical agent identity (HERMES_PROFILE → AGENT_NAME → .env)
     ok = psql("SELECT tasks.claim_slice(?::uuid, ?);", [task_id, agent])
     if ok.strip() == "t":
@@ -1055,7 +1100,7 @@ def cmd_claim(task_id: str, no_notify: bool = False):
 def cmd_unclaim(task_id: str, reason: str | None = None, no_notify: bool = False):
     """v4: return an in_progress slice to pending (blocker, tool gap)."""
     _require_v4("unclaim")
-    _check_uuid(task_id)
+    task_id = _resolve_uuid(task_id)
     ok = psql("SELECT tasks.unclaim_slice(?::uuid, ?);", [task_id, reason])
     if ok.strip() == "t":
         print(f"✅ Unclaimed {task_id[:8]}... → pending (assignee cleared)"
@@ -1069,7 +1114,7 @@ def cmd_unclaim(task_id: str, reason: str | None = None, no_notify: bool = False
 def cmd_report(task_id: str, evidence: str | None = None, no_notify: bool = False):
     """v4: worker submits completion evidence; slice → review."""
     _require_v4("report")
-    _check_uuid(task_id)
+    task_id = _resolve_uuid(task_id)
     ok = psql("SELECT tasks.report_done(?::uuid, ?);", [task_id, evidence])
     if ok.strip() == "t":
         print(f"✅ Reported {task_id[:8]}... → review (awaiting orchestrator verify)")
@@ -1083,7 +1128,7 @@ def cmd_verify(task_id: str, approve: bool, note: str | None = None,
                no_notify: bool = False):
     """v4: ORCHESTRATOR-ONLY — verify a review slice (completed or failed)."""
     _require_v4("verify")
-    _check_uuid(task_id)
+    task_id = _resolve_uuid(task_id)
     ok = psql("SELECT tasks.verify_slice(?::uuid, ?, ?);",
               [task_id, approve, note])
     if ok.strip() == "t":
@@ -1301,7 +1346,7 @@ def cmd_switch(target_id: str, no_notify: bool = False):
     resume target; target is a story → rejected.
     """
     _require_v2("switch")
-    _check_uuid(target_id)
+    target_id = _resolve_uuid(target_id)
 
     # Current in_progress = latest status_changed_at for this profile
     current_raw = psql(
