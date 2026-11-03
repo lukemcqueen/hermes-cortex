@@ -41,7 +41,7 @@ _SPEC.loader.exec_module(enf)
 # identifier literals. It is the one real deny-list value exercisable end to end
 # without restating anything.
 _OWNER_MATCH = re.search(
-    r"github\.com/([A-Za-z0-9._-]+)/hermes-cortex",
+    r"github\.com/([A-Za-z0-9._-]+)/(?:hermes-cortex|steadfaste-fleet)",
     (_REPO / "README.md").read_text(encoding="utf-8"),
 )
 assert _OWNER_MATCH is not None, "README.md no longer carries the repo's own URL"
@@ -159,6 +159,19 @@ def test_the_public_owner_handle_is_allowed_inside_the_repo_url():
 
 def test_the_public_owner_handle_is_blocked_outside_the_repo_url():
     assert gate(f"meet {_OWNER} at the cafe")
+
+
+def test_the_public_owner_handle_is_allowed_inside_the_renamed_repo_url():
+    """The renamed repo's URL is a sanctioned public address (2026-11-03 migration)."""
+    assert not gate(f"clone https://github.com/{_OWNER}/steadfaste-fleet.git")
+    assert not gate(
+        f"docs at https://raw.githubusercontent.com/{_OWNER}/steadfaste-fleet/main/README.md"
+    )
+
+
+def test_the_public_owner_handle_is_blocked_in_an_unrelated_repo_url():
+    """The allowance is scoped to the repo's own names; a fork/other repo is not a launder."""
+    assert gate(f"see https://github.com/{_OWNER}/other-repo")
 
 
 # ── the unchanged classes ──────────────────────────────────────────────────

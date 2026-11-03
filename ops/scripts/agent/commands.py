@@ -307,7 +307,14 @@ def handle_git_auth(msg_body: dict, msg_raw: dict) -> dict:
     # remote URL
     r = _run(["git", "-C", str(CORTEX_REPO), "remote", "get-url", "origin"], timeout=5)
     remote_url = r["stdout"].strip() if r["success"] else ""
-    checks.append({"name": "remote URL", "pass": expected_url in remote_url, "detail": remote_url})
+    # Owner-agnostic canonical match (2026-11-03 rename): accept the repo under its
+    # legacy name (hermes-cortex) or its renamed name (steadfaste-fleet), https/ssh.
+    _u = (remote_url or "").strip()
+    _canon = ("fleet-operator" not in _u and
+              (_u.startswith("https://github.com/") or _u.startswith("git@github.com:")) and
+              _u.endswith(("/hermes-cortex.git", ":hermes-cortex.git",
+                           "/steadfaste-fleet.git", ":steadfaste-fleet.git")))
+    checks.append({"name": "remote URL", "pass": _canon or (bool(expected_url) and expected_url in _u), "detail": remote_url})
 
     # ls-remote
     r = _run(["git", "-C", str(CORTEX_REPO), "ls-remote", "origin", "HEAD"], timeout=15)

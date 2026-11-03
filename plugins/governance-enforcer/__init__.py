@@ -2517,10 +2517,13 @@ _PII_SENSITIVE_OK_RE = re.compile(r"fleet-operator(/|$)", re.IGNORECASE)
 # The repo's OWN public GitHub URL, with the owner segment left GENERIC so the
 # handle is not restated here. Covers https (github.com / raw.githubusercontent
 # .com / shields.io badge) and the git@ ssh form.
+# Both repo names are sanctioned: the current canonical name AND the renamed
+# name (steadfaste-fleet, 2026-11-03 operator-approved migration), because the
+# legacy URL redirects forever and already-published docs/tests reference it.
 _PII_REPO_URL_RE = re.compile(
     r"(?:https?://(?:github\.com|raw\.githubusercontent\.com|"
     r"img\.shields\.io/github/license)/|git@github\.com:)"
-    r"[A-Za-z0-9._-]+/hermes-cortex(?:\.git)?(?=/|$|\s|[),.;])",
+    r"[A-Za-z0-9._-]+/(?:hermes-cortex|steadfaste-fleet)(?:\.git)?(?=/|$|\s|[),.;])",
     re.IGNORECASE,
 )
 

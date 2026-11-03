@@ -36,7 +36,17 @@ from pathlib import Path
 
 HOME = Path.home()
 TARGET_REPO = HOME / "hermes-cortex"
-EXPECTED_REMOTE = "https://github.com/lukemcqueen/hermes-cortex.git"
+
+
+def is_canonical_remote(url: str) -> bool:
+    """Accept the canonical repo under either its legacy name (hermes-cortex) or its
+    renamed name (steadfaste-fleet), on github.com, owner-agnostic — but ALWAYS reject
+    the known-dead fleet-operator org (pre-2026-08-24 rewrite; the original guard was
+    corrected away from it). 2026-11-03 repo rename."""
+    c = canonical_remote(url)
+    return (c.startswith("https://github.com/")
+            and "/fleet-operator/" not in c
+            and (c.endswith("/hermes-cortex.git") or c.endswith("/steadfaste-fleet.git")))
 
 
 def canonical_remote(url: str) -> str:
@@ -91,7 +101,7 @@ def main() -> int:
     # ── Guard 2: canonical remote (credential-insensitive) ────────────────
     r = git(["remote", "get-url", "origin"], TARGET_REPO)
     remote = r.stdout.strip() if r.returncode == 0 else ""
-    if canonical_remote(remote) != EXPECTED_REMOTE:
+    if not is_canonical_remote(remote):
         summary["guard"] = f"unexpected origin remote: {remote!r}"
         print(json.dumps(summary)); print(f"REFUSED: {summary['guard']}", file=sys.stderr)
         return 2

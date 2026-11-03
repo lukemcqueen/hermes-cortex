@@ -33,7 +33,15 @@ HERMES_STATE = HOME / ".hermes-cortex" / "state"
 REGISTRY_PATH = HERMES_STATE / "agent-registry.json"
 CORTEX_REPO = HOME / "hermes-cortex"
 
-EXPECTED_REMOTE = "https://github.com/fleet-operator/hermes-cortex.git"
+
+def is_canonical_remote(remote_url: str) -> bool:
+    """Accept the canonical repo under its legacy name (hermes-cortex) or its renamed
+    name (steadfaste-fleet), on github.com, owner- and credential-agnostic.
+    The old fleet-operator handle is dead (pre-2026-08-24) and is not accepted."""
+    u = remote_url.strip()
+    return "github.com" in u and (
+        u.endswith("/hermes-cortex.git") or u.endswith("/steadfaste-fleet.git")
+    )
 
 
 def log(msg: str):
@@ -66,7 +74,7 @@ def check_local_git_auth() -> dict:
             capture_output=True, text=True, timeout=5
         )
         remote_url = r.stdout.strip()
-        url_match = EXPECTED_REMOTE in remote_url
+        url_match = is_canonical_remote(remote_url)
         checks.append(("Remote URL", url_match, remote_url))
     except Exception as e:
         checks.append(("Remote URL", False, str(e)))
@@ -102,7 +110,7 @@ def send_git_auth_check(agent: str) -> bool:
     body_with_topic = {
         "topic": "fleet-update",
         "remote": "origin",
-        "expected_url": EXPECTED_REMOTE,
+        "expected_url": "github.com/steadfaste-fleet.git",
     }
     body = {
         "from": "moses",

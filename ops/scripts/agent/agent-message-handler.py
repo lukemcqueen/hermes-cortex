@@ -1011,7 +1011,14 @@ def process_git_auth_check(msg_body: dict) -> dict:
       capture_output=True, text=True, timeout=5
     )
     remote_url = r.stdout.strip()
-    checks.append(("remote URL", expected_url in remote_url, remote_url))
+    # Owner-agnostic canonical match (2026-11-03 rename): accept the repo under its
+    # legacy name (hermes-cortex) or its renamed name (steadfaste-fleet), https/ssh.
+    _u = (remote_url or "").strip()
+    _canon = ("fleet-operator" not in _u and
+              (_u.startswith("https://github.com/") or _u.startswith("git@github.com:")) and
+              _u.endswith(("/hermes-cortex.git", ":hermes-cortex.git",
+                           "/steadfaste-fleet.git", ":steadfaste-fleet.git")))
+    checks.append(("remote URL", _canon or (bool(expected_url) and expected_url in _u), remote_url))
   except Exception as e:
     return {"authenticated": False, "remote_url": "", "error": str(e)}
 
