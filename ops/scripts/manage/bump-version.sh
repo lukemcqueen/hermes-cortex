@@ -74,5 +74,5 @@ fi
 # ── Summary ─────────────────────────────────────────────────
 echo ""
 echo "=== Hermes Cortex v${VERSION} released ==="
-echo "  Public:  git@github.com:fleet-operator/hermes-cortex.git (v${VERSION})"
+echo "  Public:  git@github.com:lukemcqueen/steadfaste-fleet.git (v${VERSION})"
 echo "  Private: git@github.com:fleet-operator/private-data.git (v${VERSION})"

@@ -241,7 +241,7 @@
 
         - name: Clone hermes-cortex repo
           git:
-            repo: https://github.com/fleet-operator/hermes-cortex.git
+            repo: https://github.com/lukemcqueen/steadfaste-fleet.git
             dest: "{{ cortex_repo }}"
             depth: 1
             force: true

@@ -29,7 +29,7 @@ fi
 UPDATE_SCRIPT="${HOME}/hermes-cortex/ops/scripts/cortex-update.sh"
 if [[ ! -f "$UPDATE_SCRIPT" ]]; then
   echo "⚠️  post-merge: cortex-update.sh not found at $UPDATE_SCRIPT"
-  echo "   Clone the repo first: cd ~ && git clone https://github.com/fleet-operator/hermes-cortex"
+  echo "   Clone the repo first: cd ~ && git clone https://github.com/lukemcqueen/steadfaste-fleet.git"
   exit 0
 fi
 

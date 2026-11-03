@@ -10,7 +10,7 @@ use std::time::Duration;
 pub const UA: &str = concat!(
     "fleet-search/",
     env!("CARGO_PKG_VERSION"),
-    " (+https://github.com/lukemcqueen/hermes-cortex)"
+    " (+https://github.com/lukemcqueen/steadfaste-fleet)"
 );
 
 /// 2 MiB of body. Documentation pages fit easily; anything larger is not something an agent is

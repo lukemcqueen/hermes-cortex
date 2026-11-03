@@ -155,7 +155,7 @@ runcmd:
 
   # ── Phase 3: Clone hermes-cortex ──
   - |
-    git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git /home/ubuntu/hermes-cortex
+    git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git /home/ubuntu/hermes-cortex
     chown -R ubuntu:ubuntu /home/ubuntu/hermes-cortex
 
   # ── Phase 4: Install Ollama ──

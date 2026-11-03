@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
 # Hermes Cortex — Full System Installer
-# https://github.com/fleet-operator/hermes-cortex
+# https://github.com/lukemcqueen/steadfaste-fleet
 #
 # One-line install:
-#  curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/install.sh | bash
+#  curl -fsSL https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/install/install.sh | bash
 #
 # Or from a local clone:
-#  git clone --depth 1 https://github.com/fleet-operator/hermes-cortex.git
+#  git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git
 #  cd hermes-cortex && bash install.sh
 #
 # Installs: Ollama · Bun · mycortex · Langfuse† · Cortex Dashboard† ·
@@ -72,7 +72,7 @@ if [[ -z "$REPO_ROOT" || ! -f "$(_scripts)/install/os-config.sh" ]]; then
   done
 
   REMOTE_CLEANUP=$(mktemp -d)
-  REPO_URL="https://github.com/fleet-operator/hermes-cortex/archive/refs/heads/main.tar.gz"
+  REPO_URL="https://github.com/lukemcqueen/steadfaste-fleet/archive/refs/heads/main.tar.gz"
 
   printf " Downloading %s …\n" "$REPO_URL"
   curl -fsSL "$REPO_URL" | tar -xz -C "$REMOTE_CLEANUP" 2>/dev/null || {
@@ -436,7 +436,7 @@ else
   if [[ -f "${SCRIPT_DIR}/docker-compose.mycortex.yml" ]]; then
    cp "${SCRIPT_DIR}/docker-compose.mycortex.yml" "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
   else
-   curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.mycortex.yml" -o "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
+   curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/install/deploy/docker-compose.mycortex.yml" -o "${MYCORTEX_COMPOSE_DIR}/docker-compose.mycortex.yml"
   fi
  fi
  # Ensure password var exists (generate if missing)
@@ -1812,7 +1812,7 @@ else
    cp "${SCRIPT_DIR}/docker-compose.langfuse.yml" "$LANGFUSE_COMPOSE"
   else
    # Download from GitHub
-   curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/install/deploy/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
+   curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/install/deploy/docker-compose.langfuse.yml" -o "$LANGFUSE_COMPOSE"
   fi
  fi
 
@@ -1880,10 +1880,10 @@ else
   cp -r "$REPO_DASHBOARD/"* "$DASHBOARD_DEST/"
  else
   # Download minimal version from GitHub
-  curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
-  curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
+  curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
+  curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
   # Download static assets
-  curl -fsSL "https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/services/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
+  curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
  fi
 
  # Create dedicated dashboard venv + install Flask

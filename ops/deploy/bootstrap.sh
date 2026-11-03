@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════
 #  Hermes Cortex — Linux Server Bootstrap
-#  https://github.com/fleet-operator/hermes-cortex
+#  https://github.com/lukemcqueen/steadfaste-fleet
 #
 #  Single-command bootstrap for a bare Ubuntu 24.04 LTS server.
 #  Installs the full Hermes Cortex stack from scratch — system packages,
@@ -9,7 +9,7 @@
 #  fail2ban, UFW, cron jobs, and security hardening.
 #
 #  Usage:
-#    curl -fsSL https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/deploy/bootstrap.sh | bash
+#    curl -fsSL https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/deploy/bootstrap.sh | bash
 #
 #  Or from a local clone:
 #    bash ops/deploy/bootstrap.sh
@@ -364,7 +364,7 @@ if [[ -d "$CORTEX_REPO" ]]; then
 else
     info "Cloning hermes-cortex..."
     sudo -u "$REAL_USER" git clone --depth 1 \
-        https://github.com/fleet-operator/hermes-cortex.git "$CORTEX_REPO"
+        https://github.com/lukemcqueen/steadfaste-fleet.git "$CORTEX_REPO"
     ok "Repo cloned"
 fi
 

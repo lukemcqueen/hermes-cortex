@@ -66,7 +66,7 @@ info "Installing agent-worker for: ${CYAN}${AGENT_NAME}${RESET}"
 
 if [ ! -f "$WORKER_SCRIPT_SRC" ]; then
   warn "No local repo at ${CORTEX_REPO}. Will download from GitHub."
-  WORKER_SCRIPT_SRC="https://raw.githubusercontent.com/fleet-operator/hermes-cortex/main/ops/scripts/agent/agent-worker.py"
+  WORKER_SCRIPT_SRC="https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/scripts/agent/agent-worker.py"
 fi
 
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -95,7 +95,7 @@ chmod +x "$WORKER_SCRIPT_DST"
 cat > "$SERVICE_FILE" << SERVICEEOF
 [Unit]
 Description=Hermes Agent Worker — ${AGENT_NAME}
-Documentation=https://github.com/fleet-operator/hermes-cortex
+Documentation=https://github.com/lukemcqueen/steadfaste-fleet
 After=network-online.target
 Wants=network-online.target
 

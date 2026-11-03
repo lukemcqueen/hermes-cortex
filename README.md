@@ -3,7 +3,7 @@
 > *An open-source installer, skill set, and fleet management system for your personal Hermes AI agent.*
 > *Privacy-first, offline-capable, multi-agent orchestration — runs on your own hardware.*
 
-**Version: 2.0.0** · [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) · [![GitHub](https://img.shields.io/github/license/lukemcqueen/hermes-cortex)](LICENSE) · [![Docs](https://img.shields.io/badge/Docs-Hermes%20Agent-FFD700)](https://hermes-agent.nousresearch.com)
+**Version: 2.0.0** · [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) · [![GitHub](https://img.shields.io/github/license/lukemcqueen/steadfaste-fleet)](LICENSE) · [![Docs](https://img.shields.io/badge/Docs-Hermes%20Agent-FFD700)](https://hermes-agent.nousresearch.com)
 
 ![Hermes Cortex](docs/assets/avatar.png)
 
@@ -189,7 +189,7 @@ Bare Ubuntu 24.04 VM? This single command does everything: installs Docker, Olla
 
 ```bash
 # One-liner — no clone needed
-curl -fsSL https://raw.githubusercontent.com/lukemcqueen/hermes-cortex/main/ops/deploy/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/deploy/bootstrap.sh | bash
 ```
 
 Expects: **Fresh Ubuntu 24.04 LTS** with SSH access. Interactive prompts for API keys and domain.
@@ -225,10 +225,10 @@ bash ops/scripts/install-crons.sh --force
 
 ```bash
 # One-liner — no clone needed
-curl -fsSL https://raw.githubusercontent.com/lukemcqueen/hermes-cortex/main/ops/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/install/install.sh | bash
 
 # Or clone for offline install / inspection:
-git clone --depth 1 https://github.com/lukemcqueen/hermes-cortex.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
 bash ~/hermes-cortex/ops/install/install.sh
 
 # Check prerequisites only:
