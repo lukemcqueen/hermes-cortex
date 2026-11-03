@@ -545,6 +545,8 @@ register "ops/scripts/agent-security-posture-check.sh"                "${CORTEX_
 register "ops/scripts/manage/cortex-doctor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py"
 register "ops/scripts/manage/fleet-git-reset.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-git-reset.py"
 register "ops/scripts/manage/fleet-set-origin.sh"     "${CORTEX_DEPLOY_HOME}/scripts/fleet-set-origin.sh"
+register "ops/scripts/manage/migrate-home-dirs.sh"    "${CORTEX_DEPLOY_HOME}/scripts/migrate-home-dirs.sh"
+register "ops/scripts/manage/verify-rename-esther.sh" "${CORTEX_DEPLOY_HOME}/scripts/verify-rename-esther.sh"
 register "ops/scripts/manage/cron_manifest.py"        "${CORTEX_DEPLOY_HOME}/scripts/manage/cron_manifest.py"
 register "ops/scripts/manage/cortex_doctor/__init__.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/__init__.py"
 register "ops/scripts/manage/cortex_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/bus_alert.py"
