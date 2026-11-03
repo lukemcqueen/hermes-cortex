@@ -39,6 +39,12 @@ for pair in "${PAIRS[@]}"; do
     echo "migrate-home-dirs: skip $src (absent; target $tgt present)"; continue
   fi
 
+  # a symlink at src that points somewhere OTHER than tgt is a leftover from a
+  # partial/failed migration — refuse rather than let mv act on the symlink
+  if [ -L "$src" ] && [ "$(readlink "$src")" != "$tgt" ]; then
+    fail "source $src is a symlink to $(readlink "$src") (expected $tgt); resolve manually"
+  fi
+
   case "$src" in "$tgt"/*) fail "source $src is inside target $tgt" ;; esac
   case "$tgt" in "$src"/*) fail "target $tgt is inside source $src" ;; esac
   [ "$src" = "$tgt" ] && { echo "migrate-home-dirs: skip (same path)"; continue; }
@@ -52,8 +58,11 @@ for pair in "${PAIRS[@]}"; do
 
   mv -T -- "$src" "$tgt" || fail "mv failed for $src -> $tgt"
   if ! ln -s -- "$tgt" "$src"; then
-    mv -T -- "$tgt" "$src" 2>/dev/null || true   # restore on failed symlink
-    fail "ln -s failed for $src; rolled back"
+    if mv -T -- "$tgt" "$src" 2>/dev/null; then
+      fail "ln -s failed for $src; rename rolled back"
+    else
+      fail "ln -s failed for $src AND rollback mv failed (target remains at $tgt); resolve manually"
+    fi
   fi
   echo "migrate-home-dirs: $src -> $tgt  (symlink $src -> $tgt)"
 done

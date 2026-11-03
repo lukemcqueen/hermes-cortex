@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # verify-rename-esther.sh — live golden-path verification for the local-dir
-# rename (esther dogfood, cycle 14077, ADV-14077-2/3). Exits non-zero on the
-# first broken check. Run from a stable workdir AFTER
+# rename (esther dogfood, cycle 14077, ADV-14077-2/3). Exits non-zero if ANY
+# check fails (all checks run; failures are accumulated). Run from a stable
+# workdir AFTER
 # migrate-home-dirs.sh + unit regeneration.
 set -uo pipefail
 
@@ -30,7 +31,7 @@ ck "mycortex compose present" "[[ -f $NEW_HOME/docker-compose.mycortex.yml ]]"
 
 # --- 3. no residual old path in generated systemd user units (ADV-14077-2) ---
 left=$(grep -Rl '\.hermes-cortex' "$HOME/.config/systemd/user" 2>/dev/null | wc -l)
-ck "0 unit files still carry ~/.hermes-cortex (got $left)" "[ $left = 0 ]"
+ck "0 unit files carry a \`.hermes-cortex\` path token (got $left)" "[ $left = 0 ]"
 
 # --- 4. key services active ---
 for s in cortex-bus.service hermes-cortex-dashboard.service health-vector.service; do
