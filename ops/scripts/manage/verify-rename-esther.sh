@@ -26,16 +26,24 @@ ck "old-home symlink -> new" "[[ -L $OLD_HOME ]] && [[ \$(readlink $OLD_HOME) = 
 ck "new-repo is a real dir" "[[ -d $NEW_REPO ]]"
 ck "new-home is a real dir" "[[ -d $NEW_HOME ]]"
 
-# --- 2. brain/mycortex preserved (per-host location: a host may keep its brain
-#        at the renamed home ~/.steadfaste-fleet/brain, OR under the Hermes home
-#        ~/.hermes/brain — the latter is NOT renamed and is untouched by the
-#        migration, so verify whichever the host actually uses) ---
-BRAIN_A="$NEW_HOME/brain"; BRAIN_B="${HOME}/.hermes/brain"
+# --- 2. brain/mycortex preserved. The brain is PER-HOST and PER-STRUCTURE: the
+#        authentic mycortex knowledge brain lives at ~/brain (home root — the
+#        rename never touches it), some hosts keep it at ~/.hermes/brain
+#        (untouched), and the deploy-home brain ~/.steadfaste-fleet/brain is the
+#        one the rename MOVES (with the transition symlink). Resolve whichever
+#        the host actually uses and assert it is present + non-empty — the
+#        layouts differ (~/brain: lessons/learnings/shared; deploy-home:
+#        kb/memories/sessions/vectors) so we do NOT hardcode subdirs.
+BRAIN_A="${HOME}/brain"; BRAIN_B="$NEW_HOME/brain"; BRAIN_C="${HOME}/.hermes/brain"
 BRAIN_DIR=""
-if [ -d "$BRAIN_A" ]; then BRAIN_DIR="$BRAIN_A"; elif [ -d "$BRAIN_B" ]; then BRAIN_DIR="$BRAIN_B"; fi
+for _b in "$BRAIN_A" "$BRAIN_B" "$BRAIN_C"; do
+  [ -n "$BRAIN_DIR" ] && break
+  [ -d "$_b" ] && BRAIN_DIR="$_b"
+done
+BRAIN_NONEMPTY=0
+if [ -n "$BRAIN_DIR" ] && [ -n "$(ls -A "$BRAIN_DIR" 2>/dev/null | head -1)" ]; then BRAIN_NONEMPTY=1; fi
 ck "brain dir present (resolved: ${BRAIN_DIR:-none})" "[ -n '$BRAIN_DIR' ]"
-ck "brain/kb present" "[ -d '${BRAIN_DIR}/kb' ]"
-ck "brain/memories present" "[ -d '${BRAIN_DIR}/memories' ]"
+ck "brain dir non-empty" "[ '$BRAIN_NONEMPTY' = '1' ]"
 ck "mycortex compose present (renamed home or Hermes home)" "[ -f '$NEW_HOME/docker-compose.mycortex.yml' ] || [ -f '${HOME}/.hermes/docker-compose.mycortex.yml' ]"
 
 # --- 3/4/5. platform service surface (systemd on Linux, launchctl on macOS) ---
