@@ -19,9 +19,12 @@ does not "fix" it.
    here.
 
 2. **Enforcement / detection** (`plugins/governance-enforcer/`,
-   `mcp-servers/`, `tests/test_enforcer_pii_gate.py`, `.mcp.json`) — the enforcer
+   `mcp-servers/`, `tests/test_enforcer_pii_gate.py`) — the enforcer
    reports the OLD path as the SUBJECT of its messages and pins the dual-URL
    accept list `(hermes-cortex|steadfaste-fleet)`; renaming falsifies detections.
+   (.mcp.json is NOT in this list — it is the live pi-client MCP manifest and was
+   repointed from `~/.hermes-cortex/...` to `~/.steadfaste-fleet/...` when the
+   transition symlinks were removed.)
 
 3. **Migration tools** (`ops/scripts/manage/migrate-home-dirs.sh`,
    `fleet-set-origin.sh`, `verify-rename-<host>.sh`) — they must keep the OLD name
