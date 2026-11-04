@@ -59,6 +59,7 @@ grep -n 'Authorization.*Bearer' ~/.hermes/scripts/<script>.py
 #    "Authorization: Bearer <something>"        → BUG if <something> is a literal
 #    f"Authorization: Bearer {api_key}"          → FIXED (the variable is interpolated)
 python3 -c "
+import os
 code = open(os.path.expanduser('~/.hermes/scripts/<script>.py')).read()
 import re
 for i, line in enumerate(code.splitlines(), 1):

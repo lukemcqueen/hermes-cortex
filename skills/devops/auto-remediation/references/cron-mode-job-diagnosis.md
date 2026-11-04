@@ -15,7 +15,7 @@ The reliable alternative: **write a `.py` helper to `/tmp/`, then run it via `te
 Write a diagnostic script to `/tmp/check-jobs.py`:
 
 ```python
-import json
+import json, os
 with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 jobs = data.get('jobs', [])

@@ -38,7 +38,7 @@ deliver — and the agent burns tokens on tool calls every tick.
 ```python
 #!/usr/bin/env python3
 """Cron script: gather data deterministically, ONE LLM call for the summary."""
-import json, subprocess, urllib.request
+import json, subproc, osess, os, urllib.request
 
 # 1. Deterministic data gathering (no LLM)
 logs = subprocess.check_output(["grep", "-E", "ERROR", "/var/log/nginx/error.log"])

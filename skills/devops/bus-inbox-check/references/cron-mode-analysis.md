@@ -12,7 +12,7 @@ Use `python3 -c` with an inline script for all batch analysis. Example patterns:
 ### Check all cron jobs for errors
 ```bash
 python3 -c "
-import json
+import json, os, os
 with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 jobs = data['jobs']
