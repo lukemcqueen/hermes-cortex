@@ -532,6 +532,14 @@ block's required list, cross-check it against `~/.steadfaste-fleet/state/skills-
 (which records the skills you have loaded), and load exactly the name present in the list but
 absent from your credit — the marker only appears once THAT one lands.
 
+**But the block can list EVERY always-skill ✅ and still refuse the write** — after a deploy or
+an MCP/gateway reload, the per-session marker can be gone even though each skill is in the credit
+journal and shows checked. Then "load only the blanks" cannot help: there are no blanks. The fix
+is to re-load ALL of the always-skills in one batch regardless of the checkmarks — a single real
+`skill_view` call per skill re-registers it (content-unchanged, costless), and the marker appears
+once the full set has been re-loaded in that session. Do not keep guessing at a name the list never
+names; batch re-load everything and retry the write.
+
 ## Pitfall 23: `git log --oneline -N` can hide a replayed commit — verify ancestry, not the visible log
 
 After a `git pull --rebase` that replays your local commit onto a fast-moving origin,
@@ -553,6 +561,24 @@ git checkout --theirs docs/evidence/skill-drift-parity.txt
 git add docs/evidence/skill-drift-parity.txt
 GIT_EDITOR="true" git rebase --continue
 ```
+
+## Pitfall 25: A BACKGROUND `git pull` does not inherit the terminal session's workdir — cd into the repo or it dies with exit 128
+
+The background form of `terminal` starts the command in the SESSION cwd
+(`$HOME`), not the repo — a background `git pull --rebase origin main` with no
+`cd`/`workdir` prints `fatal: not a git repository` and `PULL_EXIT=128`, and the
+log carries NO post-merge deploy output (so you cannot tell whether it deployed).
+This costs a turn (re-pull) and leaves the deploy unverified. Always bind the
+cwd explicitly in the background command: `cd ~/hermes-cortex && git pull
+--rebase origin main > <stamp>.log 2>&1`. Verify the log shows the post-merge
+`deploy complete` line, not just `PULL_EXIT=0` — an exit-0 run that never entered
+the repo did nothing.
+
+**Never point two runs at the SAME log file with `>`** — a foreground pull
+AND a background pull both redirecting to `<stamp>.log` clobber each other: the
+second `>` truncates the first's deploy transcript, so you lose the one Lord of
+the deploy verdict you were trying to read. Use a distinct stamp per run
+(`<stamp>-a.log`, `<stamp>-b.log`) and read the run you actually want.
 
 ## Verifying that a deploy LANDED — compare the BODY, not the raw file
 

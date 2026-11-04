@@ -282,6 +282,64 @@ treat that as part of the deliverable, not a follow-up.
   script silently runs a different tree's module through its known-path fallback, and every test
   that runs the installed copy still passes.
 
+- **A green doctor does NOT mean a home-directory rename ran.** Renaming a live
+  deployment's dirs (`~/hermes-cortex` → `~/steadfaste-fleet`, `~/.hermes-cortex`
+  → `~/.steadfaste-fleet`) ships a guarded migration script + a golden-path
+  verifier, but deploying the code does not execute the rename. Verify on the
+  host: `CORTEX_DEPLOY_HOME` still unset ⇒ `cortex-update.sh` still defaults to
+  the OLD `~/.hermes-cortex`; no transition symlink yet; the old dirs are real
+  dirs, not symlinks. Those symptoms mean "the code landed, the rename has NOT".
+  A host that still runs everything off the old paths is not a failed rename —
+  it is a host that is correctly NOT yet migrated.
+- **The local-dir rename is gated: dogfood host FIRST, fleet in a SEPARATE rollout
+  cycle, and the code-default path change is held back until the fleet migrates.**
+  A rename plan written for one dogfood host (verifier named `verify-rename-
+  <host>.sh`) deliberately does NOT apply to the rest yet. Before "finishing" a
+  rename on any non-dogfood host, check the plan's rollout step: it may mandate
+  esther-green first and a separate fleet dispatch, with the deploy default in
+  `cortex-update.sh` (`CORTEX_DEPLOY_HOME="${HOME}/.hermes-cortex"`) deliberately
+  unchanged until every host has migrated (so the 4 agents' next deploys stay
+  consistent).
+- **Confirm the repo rename landed by `git ls-remote` on BOTH the old and new
+  URLs returning the same HEAD** — GitHub auto-redirects the old name, so equal
+  HEADs prove the native rename happened and the old URL is an alias, not a
+  second repo. But note the renamed repo's HEAD can be AHEAD of a given host's
+  last pull; pull to current before running any migration script so you deploy
+  from the latest version.
+- **Never run a home-dir migration under an in-flight deploy writing to that same
+  dir.** A `cortex-update.sh` mid-run is reading/writing `~/.hermes-cortex`;
+  moving the directory out from under it breaks both the deploy and the rename.
+  Wait for the deploy to finish (poll its log for `UPDATE_EXIT=0` and the doctor
+  verdict) before `migrate-home-dirs.sh`. `migrate-home-dirs.sh` also refuses to
+  run from inside a source dir (`cwd` guard) — run it from a stable workdir.
+- **`install-crons.sh` regenerates the bridge/bus units but NOT the Hermes-owned
+  gateway + dashboard units — hand-patch those, or the golden-path "0 old tokens"
+  unit scan stays red.** After regenerating units with `CORTEX_DEPLOY_HOME`
+  overridden to the new path, `grep -Rl '\.hermes-cortex' ~/.config/systemd/user`
+  still returns the `cortex-gateway.service` + `hermes-cortex-dashboard.service`
+  live units (plus the gateway's `default.target.wants` symlink), which the cron
+  installer never writes. Rewrite their `ExecStart`/`WorkingDirectory`/log paths
+  to the new deploy-home directly. Discrimination that matters: the verifier
+  greps the DOTTED deployed-home token (`\.hermes-cortex`), so a bare repo-path
+  token (`%h/hermes-cortex`, no leading dot) is ALLOWED through the transition
+  — it resolves via the symlink; only the dotted token must reach zero.
+- **A golden-path verifier FAIL can be a host-layout difference, not a rename
+  regression — verify the service by port/process before treating a unit-state
+  FAIL as a break.** A verifier written for the dogfood host assumes a service
+  runs as a systemd unit; the same service can run as a loose process on another
+  host with its unit never enabled (`systemctl --user is-enabled …` → disabled,
+  pre-existing). Before calling the rename failed on an `inactive` unit check,
+  confirm the service is actually alive its own way (`pgrep -f <server>.py`,
+  `curl -fsS` to its port → 200) and note the difference as an environmental
+  host difference, not a regression.
+- **`git fetch origin` is write-class and trips the lock gate — don't pre-check
+  for new commits with it.** Opening a full governance cycle just to see whether
+  the remote moved is overkill; `git rev-parse origin/main` reads the last
+  fetched ref and the pull itself fetches. If you must compare before opening a
+  cycle, read the lock-free primitives (`git rev-parse HEAD origin/main`,
+  `git status -sb`) and treat that ``behind N`` as "open the cycle and pull", not
+  a reason to fetch first.
+
 ## Verification
 
 - `git grep -i <term>` returns 0 (tracked tree).
