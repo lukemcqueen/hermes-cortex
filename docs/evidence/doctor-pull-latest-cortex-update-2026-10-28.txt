@@ -76,8 +76,8 @@
   ✅ MCP server (tasks) — configured in config.yaml
   ✅ MCP server (executor) — not configured (correct for non-orchestrator)
   ✅ Pi integration — cortex skills + extension registered (install-pi-integration: registered)
-  ✅ Fleet python — /home/luke/.hermes-cortex/venv/bin/python3 imports yaml + mcp
-  ✅ Global hooksPath — core.hooksPath → /home/luke/.hermes-cortex/hooks
+  ✅ Fleet python — ~/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  ✅ Global hooksPath — core.hooksPath → ~/.hermes-cortex/hooks
   ✅ Pre-commit hook — installed governance + enforcer checks
   ✅ Pre-push hook — installed with lock-check, syntax-check
   ✅ Post-commit hook — symlinked to post-commit-audit (executable)
@@ -93,19 +93,19 @@
   ✅ Immutable: loop-gov-mcp.py — immutable flag set
   ✅ Immutable: hermes-plugin-lock — immutable flag set
   ✅ Immutable: hooks — immutable flag set
-  ✅ Plugin lock helper — helper OK (----i---------e------- /home/luke/.hermes/plugins/governance)
+  ✅ Plugin lock helper — helper OK (----i---------e------- ~/.hermes/plugins/governance)
   ✅ Blocked-IPs root copy — root copy present and matches repo source
   ✅ Blocked-IPs root copy immutable — immutable flag set
   ✅ Governance coverage — all bypass closures validated
-  ✅ Hook: pre-commit (deployed) — present at /home/luke/.hermes-cortex/hooks/pre-commit
-  ✅ Hook: pre-commit (symlink) — → /home/luke/.hermes-cortex/scripts/pre-commit-score
-  ✅ Hook: pre-push (deployed) — present at /home/luke/.hermes-cortex/hooks/pre-push
-  ✅ Hook: pre-push (symlink) — → /home/luke/.hermes-cortex/scripts/pre-push-pull
-  ✅ Hook: post-commit (deployed) — present at /home/luke/.hermes-cortex/hooks/post-commit
-  ✅ Hook: post-commit (symlink) — → /home/luke/.hermes-cortex/scripts/post-commit-audit
-  ✅ Hook: post-merge (deployed) — present at /home/luke/.hermes-cortex/hooks/post-merge
-  ✅ Hook: post-push (deployed) — present at /home/luke/.hermes-cortex/hooks/post-push
-  ✅ Hook: post-push (symlink) — → /home/luke/.hermes-cortex/scripts/post-push-audit
+  ✅ Hook: pre-commit (deployed) — present at ~/.hermes-cortex/hooks/pre-commit
+  ✅ Hook: pre-commit (symlink) — → ~/.hermes-cortex/scripts/pre-commit-score
+  ✅ Hook: pre-push (deployed) — present at ~/.hermes-cortex/hooks/pre-push
+  ✅ Hook: pre-push (symlink) — → ~/.hermes-cortex/scripts/pre-push-pull
+  ✅ Hook: post-commit (deployed) — present at ~/.hermes-cortex/hooks/post-commit
+  ✅ Hook: post-commit (symlink) — → ~/.hermes-cortex/scripts/post-commit-audit
+  ✅ Hook: post-merge (deployed) — present at ~/.hermes-cortex/hooks/post-merge
+  ✅ Hook: post-push (deployed) — present at ~/.hermes-cortex/hooks/post-push
+  ✅ Hook: post-push (symlink) — → ~/.hermes-cortex/scripts/post-push-audit
   ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
   ✅ Governance bypass — no bypass markers found
   ℹ️  PENDING cycles  [deferred (joseph, since 2026-10-23)] — 1 active-task cycle(s) (lock held): hc-pull-update#3 — score at end_change
@@ -483,9 +483,9 @@
   ✅ Task Lifecycle v2 telegram notify — sent=772, failures=0, env_perms_ok=True
   ✅ Task Lifecycle v2 stale inbox — no stale inbox tasks (sweep healthy)
   ✅ Task Lifecycle v2 .env perms — .env mode 600 (token protected)
-  ⚠️  Skill drift: devops/cortex-deployment-sync  [deferred (joseph, since 2026-10-27)] — Deployed copy is newer than repo source (/home/luke/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/cortex-deployment-sync  [deferred (joseph, since 2026-10-27)] — Deployed copy is newer than repo source (~/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.
          🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
-  ⚠️  Skill drift: devops/hermes-model-config  [deferred (joseph, since 2026-10-23)] — Deployed copy is newer than repo source (/home/luke/.hermes/skills/devops/hermes-model-config/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/hermes-model-config  [deferred (joseph, since 2026-10-23)] — Deployed copy is newer than repo source (~/.hermes/skills/devops/hermes-model-config/SKILL.md). Commit the repo source before cortex-update overwrites it.
          🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
   ⚠️  Skill drift  [deferred (joseph, since 2026-10-23)] — 2 drifted, 384 in sync, 113 Hermes defaults skipped
          🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"

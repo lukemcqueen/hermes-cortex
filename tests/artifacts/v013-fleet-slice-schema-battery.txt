@@ -157,7 +157,7 @@ The schema battery (tests/test-tasks-schema.sh) exits rc=2 because it contains O
 % u: rc=0
 % ============================= test session starts ==============================
 platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/moses/steadfaste-fleet
+rootdir: ~/steadfaste-fleet
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 64 items
@@ -167,5 +167,5 @@ tests/test_task_db_unit.py ............................................. [ 70%]
 
 ============================== 64 passed in 4.32s ==============================
 ---
-run-tests.sh: interpreter=/home/moses/.steadfaste-fleet/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=~/.steadfaste-fleet/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 

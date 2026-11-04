@@ -22,7 +22,7 @@ The daemon-supervisor-respawn half is exercised operationally (kill the stale
 daemon, gateway respawns it); this test pins the lock-recovery contract that the
 daemon relies on. Hermetic: uses a temp GOVERNANCE_STATE_DIR + LOOP_DB, never
 the real DB.
-Run:  /home/moses/.hermes/hermes-agent/venv/bin/python3 tests/test_loop_gov_db_lock_recovery.py
+Run:  ~/.hermes/hermes-agent/venv/bin/python3 tests/test_loop_gov_db_lock_recovery.py
 """
 import importlib.util
 import json

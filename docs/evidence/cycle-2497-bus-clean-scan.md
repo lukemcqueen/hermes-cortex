@@ -16,8 +16,8 @@ root. The library reads the conf environment (CORTEX_* from ~/hermes-cortex/.env
 or conf/).
 ```python
 import json, os, sys
-os.chdir('/home/luke/hermes-cortex')
-sys.path.insert(0, '/home/luke/hermes-cortex/ops/scripts')
+os.chdir('~/hermes-cortex')
+sys.path.insert(0, '~/hermes-cortex/ops/scripts')
 from lib.cortex_bus import bus_read
 
 def drain(q, label, limit=50):
@@ -55,8 +55,8 @@ DLQ; the inline probe above is the authoritative, honest version.
 
 ### Filesystem / state checks (this session, via `fs_check.py`)
 ```
-OUTBOX /home/luke/hermes-cortex/outbox: ABSENT
-OUTBOX /home/luke/.hermes-cortex/outbox: ABSENT
+OUTBOX ~/hermes-cortex/outbox: ABSENT
+OUTBOX ~/.hermes-cortex/outbox: ABSENT
 FAILOVER: {"consecutive_failures":0,"first_failure_at":null,"consecutive_successes":0,
            "failover_active":false,"last_status":"idle",
            "last_check_at":"2026-10-06T05:20:15.369874+00:00","worker_was_down":false}

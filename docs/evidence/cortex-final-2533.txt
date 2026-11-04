@@ -5,24 +5,24 @@
 [0;32m✓[0m Updated: a5859d75 → a5859d75
 
 [0;32m✓[0m Force mode — re-checking all mapped files…
-UNLOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-UNLOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-UNLOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-UNLOCKED: /home/luke/.hermes-cortex/hooks
-UNLOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
-LOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-LOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-LOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-LOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-LOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-LOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-LOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-LOCKED: /home/luke/.hermes-cortex/hooks
-LOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+UNLOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+UNLOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+UNLOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+UNLOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+UNLOCKED: ~/.hermes-cortex/scripts/post-push-audit
+UNLOCKED: ~/.hermes-cortex/hooks/post-merge
+UNLOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+UNLOCKED: ~/.hermes-cortex/hooks
+UNLOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
+LOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+LOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+LOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+LOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+LOCKED: ~/.hermes-cortex/scripts/post-push-audit
+LOCKED: ~/.hermes-cortex/hooks/post-merge
+LOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+LOCKED: ~/.hermes-cortex/hooks
+LOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m   Symlink: web_cache
 [0;32m✓[0m   Symlink: offline_knowledge
 [0;32m✓[0m   Symlink: prep-offline
@@ -49,8 +49,8 @@ mycortex schema up to date (version 4) — no-op
 [0;32m✓[0m Skipping mycortex-mem migration — memory.provider is 'unset' (not mycortex-mem)
 [0;32m✓[0m Applying tasks schema…
 tasks schema up to date (version 12) — no-op
-[0;32m✓[0m   Updated template: /home/luke/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf
-[0;32m✓[0m   Deploy with: sudo cp /home/luke/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
+[0;32m✓[0m   Updated template: ~/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf
+[0;32m✓[0m   Deploy with: sudo cp ~/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
 [0;32m✓[0m   Preserved SSL cert: /etc/letsencrypt/live/mp.koscap.or.kr/fullchain.pem
 [0;32m✓[0m   Config generated: /tmp/hermes-services-processed.conf
 [0;32m✓[0m   Deploy with:
@@ -59,48 +59,48 @@ tasks schema up to date (version 12) — no-op
 [0;32m✓[0m     sudo nginx -t && sudo nginx -s reload
 [0;32m✓[0m   nginx configs updated — run the deploy commands above to apply
 [1;33m⚠[0m   Skipped install-nginx-full.sh — sudo not available for /usr/local/sbin/ (add NOPASSWD entry)
-UNLOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-UNLOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-UNLOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-UNLOCKED: /home/luke/.hermes-cortex/hooks
-UNLOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+UNLOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+UNLOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+UNLOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+UNLOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+UNLOCKED: ~/.hermes-cortex/scripts/post-push-audit
+UNLOCKED: ~/.hermes-cortex/hooks/post-merge
+UNLOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+UNLOCKED: ~/.hermes-cortex/hooks
+UNLOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m     Removed immutability: __init__.py
 [0;32m✓[0m     Copied: __init__.py
-UNLOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-UNLOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-UNLOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-UNLOCKED: /home/luke/.hermes-cortex/hooks
-UNLOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+UNLOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+UNLOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+UNLOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+UNLOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+UNLOCKED: ~/.hermes-cortex/scripts/post-push-audit
+UNLOCKED: ~/.hermes-cortex/hooks/post-merge
+UNLOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+UNLOCKED: ~/.hermes-cortex/hooks
+UNLOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m     Removed immutability: plugin.yaml
 [0;32m✓[0m     Copied: plugin.yaml
-UNLOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-UNLOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-UNLOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-UNLOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-UNLOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-UNLOCKED: /home/luke/.hermes-cortex/hooks
-UNLOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+UNLOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+UNLOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+UNLOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+UNLOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+UNLOCKED: ~/.hermes-cortex/scripts/post-push-audit
+UNLOCKED: ~/.hermes-cortex/hooks/post-merge
+UNLOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+UNLOCKED: ~/.hermes-cortex/hooks
+UNLOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m     Removed immutability: README.md
 [0;32m✓[0m     Copied: README.md
-LOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-LOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-LOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-LOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-LOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-LOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-LOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-LOCKED: /home/luke/.hermes-cortex/hooks
-LOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+LOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+LOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+LOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+LOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+LOCKED: ~/.hermes-cortex/scripts/post-push-audit
+LOCKED: ~/.hermes-cortex/hooks/post-merge
+LOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+LOCKED: ~/.hermes-cortex/hooks
+LOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m   chattr +i set on __init__.py
 [0;32m✓[0m   Plugin deployed: 3 file(s) updated
 ⊘ Plugin governance-enforcer disabled. Takes effect on next session.
@@ -271,7 +271,7 @@ Updated job: c17b932ad40d
 [0;32m✓[0m Created: 8 new cron job(s)
 [0;32m✓[0m Skipped: 1 existing job(s)
 
-[0;32m✓[0m Cron jobs are stored in: /home/luke/.hermes/cron/jobs.json
+[0;32m✓[0m Cron jobs are stored in: ~/.hermes/cron/jobs.json
 [0;32m✓[0m Verify with: hermes cron list
 [0;32m✓[0m Skipping 'agent-secret-leak-watchdog' — owned by the HC cron bridge (systemd timer)
 [0;32m✓[0m Skipping 'agent-security-posture-check' — owned by the HC cron bridge (systemd timer)
@@ -285,24 +285,24 @@ Updated job: c17b932ad40d
     HERMES_CRON_TIMEOUT=600 already applied (systemd)
     HERMES_TIMEZONE=Asia/Seoul already applied (systemd)
     install-provider-timeouts: WARNING — expected 300/300s, read back /s
-      config.yaml may be managed elsewhere; check /home/luke/.hermes/config.yaml providers.deepseek
+      config.yaml may be managed elsewhere; check ~/.hermes/config.yaml providers.deepseek
     install-profile-reader-role: ensuring mycortex_reader_kustos (profile=kustos)
     install-profile-reader-role: mycortex_reader_kustos ready (inherits mycortex_reader schema grants; legacy shared-reader grants migrated)
     install-soft-session-cap: SOFT_SESSION_CAP_TOKENS unset — no-op (control host or value pending)
 [0;32m✓[0m Locking enforcement files…
-    LOCKED: /home/luke/.hermes/plugins/governance-enforcer/__init__.py
-    LOCKED: /home/luke/.hermes-cortex/scripts/pre-commit-score
-    LOCKED: /home/luke/.hermes-cortex/scripts/pre-push-pull
-    LOCKED: /home/luke/.hermes-cortex/scripts/post-commit-audit
-    LOCKED: /home/luke/.hermes-cortex/scripts/post-push-audit
-    LOCKED: /home/luke/.hermes-cortex/hooks/post-merge
-    LOCKED: /home/luke/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-    LOCKED: /home/luke/.hermes-cortex/hooks
-    LOCKED: /home/luke/.hermes-cortex/scripts/hermes-plugin-lock
+    LOCKED: ~/.hermes/plugins/governance-enforcer/__init__.py
+    LOCKED: ~/.hermes-cortex/scripts/pre-commit-score
+    LOCKED: ~/.hermes-cortex/scripts/pre-push-pull
+    LOCKED: ~/.hermes-cortex/scripts/post-commit-audit
+    LOCKED: ~/.hermes-cortex/scripts/post-push-audit
+    LOCKED: ~/.hermes-cortex/hooks/post-merge
+    LOCKED: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+    LOCKED: ~/.hermes-cortex/hooks
+    LOCKED: ~/.hermes-cortex/scripts/hermes-plugin-lock
 [0;32m✓[0m Clearing stale __pycache__ directories…
 [0;32m✓[0m Running doctor to verify installation…
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/luke/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 ━━━ Hermes Cortex Doctor ━━━  (10:11:11)
 

@@ -65,7 +65,7 @@ kustos's EXEC_RESULT shows the whole chain running on the host:
  * branch              main       -> FETCH_HEAD
 ━━━ post-merge: auto-deploying to match new HEAD ━━━
    ✓ Agent identity: kustos (git author: kustos-agent <kustos@hermes.local>)
-   ✓ Fleet interpreter: /home/luke/.hermes-cortex/venv/bin/python3
+   ✓ Fleet interpreter: ~/.hermes-cortex/venv/bin/python3
    ━━━ Cortex Update ━━━
    ✓ Updated: ff4db13c → ff4db13c
    ✓ Force mode — re-checking all mapped files…

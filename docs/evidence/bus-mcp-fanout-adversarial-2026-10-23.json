@@ -29,9 +29,9 @@
     }
   ],
   "surfaces": {
-    "/home/moses/hermes-cortex/mcp-servers/cortex-bus-mcp.py": {
+    "~/hermes-cortex/mcp-servers/cortex-bus-mcp.py": {
       "file": "cortex-bus-mcp.py",
-      "path": "/home/moses/hermes-cortex/mcp-servers/cortex-bus-mcp.py",
+      "path": "~/hermes-cortex/mcp-servers/cortex-bus-mcp.py",
       "inputs": [
         {
           "line": 23,
