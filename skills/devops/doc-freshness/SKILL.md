@@ -75,12 +75,12 @@ On first install, `install.sh` Step 9 copies `docs/templates/SOUL.md` to `~/.her
 - Real execution, no simulation
 - Pre-commit / pre-push hooks
 
-**Size gate:** the doctor size-checks `~/.hermes/AGENTS.md` exactly like
-SOUL.md — WARN >15K, FAIL >20K (`check_repo` in cortex_doctor/checks.py).
-Only the steadfaste-fleet fleet constitution is gated; other repos' AGENTS.md
-have no size limit. A WARN here can't be cleared by re-syncing (repo and
-deployed are the same size) — it needs a real trim of the repo source, or a
-deliberate threshold re-baseline. Trimming is orchestrator-owned
+**Size gate:** AGENTS.md is PER-REPO (no global `~/.hermes/AGENTS.md` copy
+since 2026-11-04, and no doctor size-check on it). SOUL.md is still
+size-gated — WARN >15K, FAIL >20K (`check_repo` in cortex_doctor/checks.py).
+A size WARN on SOUL.md can't be cleared by re-syncing (it is the single
+source) — it needs a real trim of the template, or a deliberate threshold
+re-baseline. Trimming is orchestrator-owned
 (AGENTS.md is in `docs/orchestrator-only-paths.txt`).
 
 ## Triggers
@@ -261,13 +261,15 @@ so the boundary is explicit, and drop engineering-preference stubs (e.g. a
 `Testing:` line in Preferences) out of the seed when the value moves to AGENTS.
 
 **Propagation is NOT uniform — pair each non-auto-syncing surface with a doctor
-WARN so agents are told to reconcile.** `cortex-update` auto-syncs AGENTS.md
-(`~/.hermes/AGENTS.md`), SOUL.md (soul-merge/soul-sync), and skills; it does
-NOT touch CLAUDE.md copies already installed in dev repos, and it NEVER touches
-USER.md (`~/.hermes/memories/`, Hermes-owned, deliberately unregistered so a
-deploy cannot clobber a personalized copy). So "agents pull + cortex-update get
-the new value" is only true for three surfaces — the other two silently keep
-the old content unless a check flags them. For each non-auto-syncing surface add
+WARN so agents are told to reconcile.** AGENTS.md is PER-REPO — the fleet
+template seeds each repo via `seed-project.sh`, and there is NO auto-sync to a
+global `~/.hermes/AGENTS.md` (removed 2026-11-04). `cortex-update` auto-syncs
+SOUL.md (soul-merge/soul-sync) and skills; it does NOT touch CLAUDE.md copies
+already installed in dev repos, and it NEVER touches USER.md
+(`~/.hermes/memories/`, Hermes-owned, deliberately unregistered so a deploy
+cannot clobber a personalized copy). So "agents pull + cortex-update get the
+new value" is only true for two surfaces — the others silently keep the old
+content unless a check flags them. For each non-auto-syncing surface add
 a doctor check that WARNs (never auto-overwrites — both are user/project-owned),
 and size the PROBE to how the file personalizes:
 - **User-owned file (USER.md) → mtime-newer nudge, never a content compare.** A
@@ -294,12 +296,14 @@ Then:
 
 ### 4. Extending to Other Projects
 
-**Other repos are NOT the fleet constitution.** Only `steadfaste-fleet/AGENTS.md`
-is synced to every agent's `~/.hermes/AGENTS.md` (cortex-update.sh),
-orchestrator-owned (`docs/orchestrator-only-paths.txt`), and size-gated by the
-doctor (WARN >15K, FAIL >20K). Every other repo's AGENTS.md = the **mandatory
-core** (the `hook_sections` below) **plus repo-specific content** — build
-commands, conventions, architecture. Start from
+**Other repos are NOT the fleet constitution.** `steadfaste-fleet/AGENTS.md` is
+the canonical template, seeded per-repo via `seed-project.sh` from
+`docs/templates/AGENTS.seed.md` — there is NO global `~/.hermes/AGENTS.md`
+copy (the cortex-update.sh sync was removed 2026-11-04; AGENTS lives in each
+repo). The fleet constitution is orchestrator-owned
+(`docs/orchestrator-only-paths.txt`). Every other repo's AGENTS.md = the
+**mandatory core** (the `hook_sections` below) **plus repo-specific content** —
+build commands, conventions, architecture. Start from
 `docs/templates/AGENTS.seed.md`; never copy the fleet constitution into a
 project repo, and never let a project AGENTS.md grow to constitution size.
 

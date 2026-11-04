@@ -160,9 +160,6 @@ def check_repo(res: "Results") -> None:
   else:
     res.add("Repo sync", "PASS", "up to date with origin/main")
 
-  hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
-  repo_agents = CORTEX_REPO / "AGENTS.md"
-
   # ── Deploy sync: is git HEAD deployed to runtime? ──
   # CONTENT-scoped (2026-10-09): when HEAD is ahead of the deployed revision, ask
   # which DEPLOY-MAP files changed in that range and compare each against its
@@ -224,43 +221,6 @@ def check_repo(res: "Results") -> None:
   else:
     res.add("Deploy sync", "WARN", "state/update-commit not found — deploy status unknown",
         "Run: cortex-update.sh (creates state/update-commit)")
-
-  hermes_agents = Path.home() / ".hermes" / "AGENTS.md"
-  if not hermes_agents.exists():
-    res.add("AGENTS.md (~/.hermes)", "FAIL", "~/.hermes/AGENTS.md missing",
-        "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Merges local-only content — check diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md before overwriting")
-    return
-  # Size check: warn if >15K, fail if >20K (like SOUL.md does)
-  agents_size = hermes_agents.stat().st_size
-  if agents_size > 20480:
-    res.add("AGENTS.md size", "FAIL",
-        f"{agents_size/1024:.0f}K — exceeds 20K maximum",
-        "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
-    return
-  elif agents_size > 15360:
-    res.add("AGENTS.md size", "WARN",
-        f"{agents_size/1024:.0f}K — target <15K for optimal loading",
-        "Run: diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md | head -50  then cp if safe  (⚠️  preserves customizations)")
-  # Content check: extract all bold markers for comparison (like SOUL.md does)
-  # ~/.hermes/AGENTS.md guides agent behavior — when working in this repo,
-  # it should have the same content rules as the repo copy.
-  repo_agents = CORTEX_REPO / "AGENTS.md"
-  if repo_agents.exists():
-    local_markers = _extract_agents_markers(hermes_agents)
-    repo_markers = _extract_agents_markers(repo_agents)
-
-    # Filter out the ⚠️ admonition marker (not a real rule)
-    effective_repo = {m for m in repo_markers if not m.startswith("\u26a0\ufe0f")}
-
-    # Allow agents to customize up to 2 markers (e.g. remove one rule, add one local note)
-    missing = effective_repo - local_markers
-    if len(missing) > 2:
-      res.add("AGENTS.md sync", "FAIL",
-          f"Local missing {len(missing)} content markers from template — "
-          f"e.g. '{list(sorted(missing))[:3]}'",
-          "REQUIRED: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md  ⚠️  Backs up local-only content to ~/.hermes/AGENTS.md.local")
-    else:
-      res.add("AGENTS.md sync", "PASS")
 
   # Private repo migration check
   _private = HOME / "steadfaste-fleet-private"
@@ -910,46 +870,6 @@ def check_dev_repo_claude(res: "Results") -> None:
   else:
     res.add("CLAUDE.md (dev repos)", "PASS",
         f"all {checked} active dev repo(s) have CLAUDE.md")
-
-
-def _extract_agents_markers(path: Path) -> set:
-  """Extract all content-bearing bold markers from an AGENTS.md file.
-
-  Handles three formats:
-    - Blockquote rules:  > **RULE N: TITLE**
-    - Bullet principles: - **Title:** description
-    - Numbered items:    N. **Title** — description
-
-  Returns a set of bold-marker strings (e.g. 'RULE 1: LOAD TASK-START FIRST',
-  'Two-repo system', 'Real execution, no simulation')."""
-  if not path.exists():
-    return set()
-  text = path.read_text()
-  # Strip YAML frontmatter if present (AGENTS.md doesn't have it, but be safe)
-  main_start = 0
-  if text.startswith('---'):
-    end = text.find('---', 3)
-    if end != -1:
-      main_start = end + 3
-  content = text[main_start:]
-
-  markers = set()
-  for line in content.split('\n'):
-    # Format 1: > **BOLD TEXT** (blockquote rules — e.g. > **RULE 1: TITLE**)
-    bm = re.search(r'^>\s+\*\*([^*]+)\*\*', line)
-    if bm:
-      markers.add(bm.group(1).strip())
-      continue
-    # Format 2: - **BOLD TEXT** (bullet architecture principles)
-    bm = re.search(r'^\s*-\s+\*\*([^*]+)\*\*', line)
-    if bm:
-      markers.add(bm.group(1).strip())
-      continue
-    # Format 3: N. **BOLD TEXT** (numbered execution contract items)
-    bm = re.search(r'^\s*\d+\.\s+\*\*([^*]+)\*\*', line)
-    if bm:
-      markers.add(bm.group(1).strip())
-  return markers
 
 
 def _extract_soul_markers(path: Path) -> set:

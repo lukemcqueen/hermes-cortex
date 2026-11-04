@@ -3204,31 +3204,6 @@ main() {
   # Sync skills from repo (all SKILL.md + references/, only changed files)
   sync_skills
 
-  # Sync AGENTS.md to ~/.hermes/ so fleet agents read the same rules
-  # ⚠️  SAFE COPY: preserves local custom content before overwriting
-  local hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
-  local repo_agents="${REPO_DIR}/AGENTS.md"
-  local local_agents="${hermes_home}/AGENTS.md"
-  if needs_update "$repo_agents" "$local_agents"; then
-    # Check if local copy has content not in repo source
-    if [[ -f "$local_agents" ]]; then
-      local local_only_lines
-      local_only_lines=$(comm -23 <(grep -vE '^\s*$' "$local_agents" | sort) <(grep -vE '^\s*$' "$repo_agents" | sort) 2>/dev/null | sed -n '1,20p')
-      if [[ -n "$local_only_lines" ]]; then
-        # Save local-only content before overwriting
-        cp "$local_agents" "${local_agents}.local"
-        warn "AGENTS.md has local-only content not in repo source"
-        warn "  → Local copy saved to ~/.hermes/AGENTS.md.local"
-        warn "  → Check: diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md"
-        while IFS= read -r line; do
-          warn "    + ${line:0:80}"
-        done <<< "$local_only_lines"
-      fi
-    fi
-    copy_file "$repo_agents" "$local_agents"
-    info "  AGENTS.md synced to ~/.hermes/"
-  fi
-
   # Sync skills.yaml from template — actual content sync, not timestamp suppression
   local template_yaml="${REPO_DIR}/skills.yaml"
   local skills_yaml="${CORTEX_DEPLOY_HOME}/skills.yaml"

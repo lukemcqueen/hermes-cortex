@@ -88,17 +88,23 @@ def test_repo_agents_md_still_names_the_runtime_dir():
     )
 
 
-def test_deployed_agents_md_copy_when_present_is_also_clean():
-    """~/.hermes/AGENTS.md is the copy agents load; drift there is the same bug."""
+def test_fleet_template_still_clearly_addresses_the_runtime_dir():
+    """Non-vacuous for the template: the seeded project AGENTS.md must address
+    the runtime infra dir with a home anchor, and keep naming the split."""
     from pathlib import Path
 
     repo_root = Path(__file__).resolve().parents[1]
-    home_agents = Path.home() / ".hermes" / "AGENTS.md"
-    if not home_agents.is_file():
-        pytest.skip("no deployed ~/.hermes/AGENTS.md on this host — nothing to check")
-    text = home_agents.read_text()
-    bare = bare_line_numbers(text)
-    assert bare == [], (
-        f"deployed ~/.hermes/AGENTS.md line(s) {bare} name `.steadfaste-fleet` "
-        f"without a home anchor: cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md"
+    template = repo_root / "docs" / "templates" / "AGENTS.seed.md"
+    if not template.is_file():
+        pytest.skip("no AGENTS.seed.md template — nothing to check")
+    text = template.read_text()
+    # The template must mention the fleet source with a home anchor
+    assert "~/.steadfaste-fleet" in text or "~/steadfaste-fleet" in text or "$HOME/.steadfaste-fleet" in text or "${HOME}/.steadfaste-fleet" in text, (
+        "AGENTS.seed.md no longer names the fleet source — the per-repo seed has "
+        "no pointer to the shared template/skills source."
+    )
+    # The template must not carry the old global-copy instruction
+    assert "~/.hermes/AGENTS.md" not in text, (
+        "AGENTS.seed.md still instructs a ~/.hermes/AGENTS.md copy — AGENTS is "
+        "per-repo since the ~/.hermes sync was removed (Luke 2026-11-04)."
     )
