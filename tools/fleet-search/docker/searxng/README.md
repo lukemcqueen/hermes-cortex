@@ -1,6 +1,6 @@
 # SearXNG — the measured minimum
 
-Settings for a **private, single-agent** instance. Every number here was measured on esther
+Settings for a **private, single-agent** instance. Every number here was measured on a single Linux host
 (2026-10-13, `searxng/searxng:latest`) by `measure.sh` beside this file — re-run it and you get the
 same table. **The design rationale lives in `docs/design/agent-search.md`; this file is the config
 and the numbers.**

@@ -7,7 +7,7 @@ governance lock in the state directory, the tool is blocked.
 
 Session-ID handoff via PID-scoped file:
   Each Hermes session has a unique session ID known to the plugin system.
-  The enforcer writes this ID to ~/.hermes-cortex/state/.hermes-session-{PID}.id
+  The enforcer writes this ID to ~/.steadfaste-fleet/state/.hermes-session-{PID}.id
   at each pre_tool_call. The MCP loop-governance server (a child process)
   reads .hermes-session-{PPID}.id to learn the Hermes session ID. This gives
   both sides the same namespace without schema changes to begin_change.
@@ -25,7 +25,7 @@ Phase 2 scan fallback:
 This is the structural enforcement layer that I, as an agent, cannot bypass
 or talk my way out of — the block comes from outside myself.
 
-Install: ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+Install: ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
 """
 
 import base64
@@ -44,7 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+GOVERNANCE_STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 SURVEY_MARKER = GOVERNANCE_STATE_DIR / ".cron-survey-done"
 
 # Skill-file content hashes, memoized on (mtime, size) — see
@@ -193,7 +193,7 @@ def _hc_store_module():
         _HC_STORE_TRIED = True
         try:
             import importlib.util
-            path = Path.home() / ".hermes-cortex" / "services" / "mycortex-mem" / "store.py"
+            path = Path.home() / ".steadfaste-fleet" / "services" / "mycortex-mem" / "store.py"
             if not path.is_file():
                 logging.getLogger("governance-enforcer").warning(
                     "tool-event store not deployed at %s — the reflexion gate cannot see "
@@ -1146,17 +1146,17 @@ def _derive_repo_slug() -> str:
     """Derive the current repo slug for governance-lock matching.
     Returns "" when outside a git repo — enforcer blocks all writes.
 
-    Canonical governed repo ($HOME/hermes-cortex / .hermes-cortex) is resolved
+    Canonical governed repo ($HOME/steadfaste-fleet / .steadfaste-fleet) is resolved
     FIRST. The gateway process cwd is a launch artifact — typically
     ~/.hermes (not itself a git repo) or the hermes-agent checkout — so
     trusting ``git rev-parse`` from it first produced the wrong slug
     (``hermes-agent``) and the git hooks (which derive from the committed
-    repo = ``hermes-cortex``) could not match the lock, blocking commit/push
+    repo = ``steadfaste-fleet``) could not match the lock, blocking commit/push
     (2026-09-14 gotcha). This mirrors loop-gov-mcp._derive_slug so both sides
     of lock discovery agree.
     """
     # Priority 1: canonical governed repo — the repo the hooks enforce on.
-    for candidate in (Path.home() / "hermes-cortex", Path.home() / ".hermes-cortex"):
+    for candidate in (Path.home() / "steadfaste-fleet", Path.home() / ".steadfaste-fleet"):
         if (candidate / ".git").exists():
             return candidate.name
     # Priority 2: cwd git repo (project-repo-only hosts).
@@ -1232,11 +1232,11 @@ def _secondary_lock_path() -> Path | None:
     """ALWAYS None — Phase 3 (the in-repo lock marker) was removed 2026-10-07.
 
     Lock discovery is Phase 1 (exact session-id lock in
-    ~/.hermes-cortex/state/, checked FIRST) then Phase 2 (that same dir, by
+    ~/.steadfaste-fleet/state/, checked FIRST) then Phase 2 (that same dir, by
     repo_slug). No governance state may live inside a repository.
     """
     # DISABLED (2026-10-07): the in-repo fallback marker is DROPPED — locks are
-    # runtime-only. Phase 1 (exact session-id lock in ~/.hermes-cortex/state/)
+    # runtime-only. Phase 1 (exact session-id lock in ~/.steadfaste-fleet/state/)
     # runs FIRST and is the primary; Phase 2 scans that same dir by repo_slug.
     # This marker was "extra safety" only, and because `_has_governance_lock`
     # returns False BEFORE any phase when the state dir is absent, its stated
@@ -1255,7 +1255,7 @@ def _bypass_debt_count() -> int:
     Written by post-commit-audit; reset to 0 on every verified commit.
     """
     try:
-        debt_file = Path.home() / ".hermes-cortex" / "state" / "bypass-debt.json"
+        debt_file = Path.home() / ".steadfaste-fleet" / "state" / "bypass-debt.json"
         if debt_file.exists():
             data = json.loads(debt_file.read_text())
             return int(data.get("consecutive_no_verify", 0) or 0)
@@ -1403,8 +1403,8 @@ def _receipt_checker():
     import importlib.util
 
     here = Path(__file__).resolve()
-    for base in (here.parent.parent, Path.home() / "hermes-cortex",
-                 Path.home() / ".hermes-cortex"):
+    for base in (here.parent.parent, Path.home() / "steadfaste-fleet",
+                 Path.home() / ".steadfaste-fleet"):
         candidate = base / _RECEIPT_CHECK_REL
         try:
             if not candidate.is_file():
@@ -1554,7 +1554,7 @@ def _has_governance_lock(hermes_session_id: str = "", target_repo: str = "") -> 
 
     Phase 3 — REMOVED (2026-10-07). There is no in-repo fallback marker;
       lock discovery is Phase 1 then Phase 2, both inside
-      ~/.hermes-cortex/state/. See _secondary_lock_path() for why it was
+      ~/.steadfaste-fleet/state/. See _secondary_lock_path() for why it was
       dropped (it could name a repo the session never touched).
 
     Phase 2 also accepts a lock whose recorded absolute repo_path IS the repo
@@ -1975,7 +1975,7 @@ def _is_readonly_terminal_command(command: str) -> bool:
 # The pre-commit hook advertises this exact command as "allowed for every
 # agent" (AGENTS.md RULE 7b) — this makes that promise true.
 _SANCTIONED_CORTEX_UPDATE_RE = re.compile(
-    r"^\s*(?:bash\s+)?(?:~|" + re.escape(str(Path.home())) + r")/hermes-cortex/ops/scripts/cortex-update\.sh"
+    r"^\s*(?:bash\s+)?(?:~|" + re.escape(str(Path.home())) + r")/(?:hermes-cortex|steadfaste-fleet)/ops/scripts/cortex-update\.sh"
     r"(?:\s+(?:--dry-run|--status|--delta|--clean-stale))*\s*$"
 )
 
@@ -2109,9 +2109,9 @@ def _is_sanctioned_tmp_cleanup_command(command: str) -> bool:
 # The plan-review-before-slice gate (hc-plan-review-check.py) refuses a
 # non-trivial slice unless the active cycle has a row in `adversarial_reviews`.
 # The ONLY sanctioned writer is adversarial-review.py --cycle-id N --review,
-# which writes into ~/.hermes-cortex/data/loop-governance.db — governance DATA,
-# not a git repo. `_target_repo_root()` resolves that write to hermes-cortex,
-# so the lock gate demanded a hermes-cortex lock before the worker's own repo
+# which writes into ~/.steadfaste-fleet/data/loop-governance.db — governance DATA,
+# not a git repo. `_target_repo_root()` resolves that write to steadfaste-fleet,
+# so the lock gate demanded a steadfaste-fleet lock before the worker's own repo
 # lock and pending cycle made one unobtainable: a structural deadlock where a
 # worker could never satisfy the gate that gates their own commit.
 #
@@ -2119,7 +2119,7 @@ def _is_sanctioned_tmp_cleanup_command(command: str) -> bool:
 # repo; there is no repo to bind this DATA-store write to; demanding a lock is
 # an impossible demand. The review row is exactly the record the gate needs,
 # so giving any governed agent the sanctioned way to produce it — WITHOUT a
-# secondary hermes-cortex lock — is the fix, and it PRESERVES the gate (review
+# secondary steadfaste-fleet lock — is the fix, and it PRESERVES the gate (review
 # before building stays). Independence is preserved by the fixed committed
 # prompt + a distinct reviewer model (deepseek-v4-pro) + recorded reviewer_id
 # and model for audit; it never depended on which actor receives the row.
@@ -2180,7 +2180,7 @@ def _is_sanctioned_plan_review_command(command: str) -> bool:
 
 # ── Loop-governance DB is append-only: raw mutation is BLOCKED (2026-10-30) ──
 # A worker was observed doing
-#   sqlite3 ~/.hermes-cortex/data/loop-governance.db \
+#   sqlite3 ~/.steadfaste-fleet/data/loop-governance.db \
 #     "DELETE FROM adversarial_reviews WHERE cycle_id=8208;"
 # to clear a stale FINDINGS verdict, then re-recording. The DELETE is the
 # re-roll-until-CLEAN loophole and an audit-tamper: adversarial_reviews is the
@@ -2455,7 +2455,7 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
 
 # ── PII content gate ────────────────────────────────────
 # Real email addresses in the SHARED surface (~/.hermes/skills and
-# ~/hermes-cortex — the public repo) block the write. This closes the
+# ~/steadfaste-fleet — the public repo) block the write. This closes the
 # gap where skill_manage writes never pass a git commit (so the
 # pre-commit secret-leak-detector never ran) — see the 2026-08-04
 # Titus PII incident. Writes OUTSIDE the shared surface (client
@@ -2621,7 +2621,7 @@ _PUBLIC_HOST_RE = re.compile(
     r"job-boards\.greenhouse\.io|jobs\.lever\.co|jobs\.ashbyhq\.com|"
     r"wanted\.co\.kr)"
 )
-_HERMES_CORTEX_REPO = Path.home() / "hermes-cortex"
+_HERMES_CORTEX_REPO = Path.home() / "steadfaste-fleet"
 _HERMES_SKILLS_DIR = Path.home() / ".hermes" / "skills"
 
 
@@ -2725,7 +2725,7 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
         "message": (
             "🛑 PII GUARD — personal data in content being written.\n\n"
             "Tool '" + tool_name + "' is writing into the shared surface "
-            "(hermes-cortex repo or ~/.hermes/skills), and the content "
+            "(steadfaste-fleet repo or ~/.hermes/skills), and the content "
             "contains:\n" + detail + "\n\n"
             "Rule 16 (agent-contract): never commit real emails, personal "
             "identifiers (names, domains, surnames), phone numbers, or "
@@ -2848,13 +2848,13 @@ def _check_adversarial_commit_gate(
     # Check what files are about to be shipped
     try:
         if re.search(r"^\s*git\s+commit\b", command):
-            result = subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
+            result = subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "steadfaste-fleet")
         else:
             # git push — check commits to push
-            result = subprocess.run(["git", "diff", "@{upstream}..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
+            result = subprocess.run(["git", "diff", "@{upstream}..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "steadfaste-fleet")
         if result.returncode != 0:
             # May not have upstream — check last commit
-            result = subprocess.run(["git", "diff", "HEAD~1..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "hermes-cortex")
+            result = subprocess.run(["git", "diff", "HEAD~1..HEAD", "--name-only"], capture_output=True, text=True, timeout=5, cwd=Path.home() / "steadfaste-fleet")
         staged = [s.strip() for s in result.stdout.strip().split("\n") if s.strip()]
     except (OSError, subprocess.TimeoutExpired):
         return None  # Can't determine — don't block
@@ -2893,7 +2893,7 @@ def _check_adversarial_commit_gate(
             "**adversarial-verifier** systematically breaks code before it ships. "
             "Load it, then run the gate on every changed file:\n\n"
             "  skill_view(name='adversarial-verifier')\n"
-            "  python3 ~/.hermes-cortex/scripts/adversarial-verify.py \\\n"
+            "  python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py \\\n"
             "      --file <changed-file> --level A2 --gate\n"
             "  # A4 for security/guard/hook/enforcer files\n\n"
             "Then retry the commit. The pre-commit hook's adversarial gate will "
@@ -2911,7 +2911,7 @@ def _check_adversarial_commit_gate(
         "critical changes without adversarial verification.\n\n"
         "You must load and run it before shipping:\n"
         "  skill_view(name='adversarial-verifier')\n"
-        "  python3 ~/.hermes-cortex/scripts/adversarial-verify.py \\\n"
+        "  python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py \\\n"
         "      --file <changed-file> --level A2 --gate\n\n"
         "Then retry the command.\n"
     )
@@ -3061,7 +3061,7 @@ def _bootstrap_cron_skills(session_id: str) -> bool:
     (cron agent will be blocked by the enforcer — but this is expected
     for a corrupted/bootstrapping environment).
     """
-    skills_yaml = Path.home() / ".hermes-cortex" / "skills.yaml"
+    skills_yaml = Path.home() / ".steadfaste-fleet" / "skills.yaml"
     if not skills_yaml.exists():
         log.warning("Cron bootstrap: skills.yaml not found at %s", skills_yaml)
         return False
@@ -3157,7 +3157,7 @@ def register(ctx):
                 # stamp identity + repo onto governance calls, so begin_change
                 # tags the lock with the repo the session is ACTUALLY in rather
                 # than the host's canonical repo (the wrong-repo review bug:
-                # a steadfaste session reviewed against hermes-cortex).
+                # a steadfaste session reviewed against steadfaste-fleet).
                 # tool_name is passed so the hint can tell a call that WORKS in a repo
                 # (a write, or an explicit workdir) from one that merely reads it.
                 _note_session_repo(hermes_session_id, args, tool_name)
@@ -3355,7 +3355,7 @@ def register(ctx):
                 return domain_result
 
             # ── PII content gate ──
-            # Real emails in shared-surface writes (hermes-cortex repo,
+            # Real emails in shared-surface writes (steadfaste-fleet repo,
             # ~/.hermes/skills) block before the write lands. skill_manage
             # never passes a git commit, so this is the only layer that
             # catches PII in skill content (Titus 2026-08-04 incident).
@@ -3385,7 +3385,7 @@ def register(ctx):
             # Survey gate: cronjob(create) requires survey-before-action marker
             # Call cronjob(action='list') + search_files() + skills_list() BEFORE
             # creating a new cron. Touch the marker to confirm survey done:
-            #   touch ~/.hermes-cortex/state/.cron-survey-done
+            #   touch ~/.steadfaste-fleet/state/.cron-survey-done
             if tool_name == "cronjob" and args.get("action") == "create":
                 if not SURVEY_MARKER.exists():
                     return {
@@ -3398,7 +3398,7 @@ def register(ctx):
                             "  2. search_files(...)          — check for existing scripts\n"
                             "  3. skills_list()              — check for existing skills\n\n"
                             "After completing the survey:\n"
-                            "  touch ~/.hermes-cortex/state/.cron-survey-done\n\n"
+                            "  touch ~/.steadfaste-fleet/state/.cron-survey-done\n\n"
                             "Then retry cronjob(action='create').\n"
                             "The marker persists for this session.\n"
                             "This enforcement is at ~/.hermes/plugins/governance-enforcer/.\n"
@@ -3514,7 +3514,7 @@ def register(ctx):
 
             # Plan-review record: sanctioned and lock-free (2026-10-30 — see
             # `_is_sanctioned_plan_review_command`). A worker recording the
-            # review their own gate demands must never need a hermes-cortex lock
+            # review their own gate demands must never need a steadfaste-fleet lock
             # its pending cycle forbids. A command-scoped carve-out, so it is
             # checked regardless of which repo the command's path resolves to.
             if tool_name == "terminal" and _is_sanctioned_plan_review_command(
@@ -3548,14 +3548,14 @@ def register(ctx):
                     "message": (
                         "🛑 LOOP-GOVERNANCE DB IS APPEND-ONLY — raw mutation blocked.\n\n"
                         "  The command references the governance store\n"
-                        "  (~/.hermes-cortex/data/loop-governance.db) outside the\n"
+                        "  (~/.steadfaste-fleet/data/loop-governance.db) outside the\n"
                         "  sanctioned writers. adversarial_reviews is the review-of-\n"
                         "  record: never DELETE/UPDATE/DROP rows to clear a verdict you\n"
                         "  disagree with (that is the re-roll-until-CLEAN loophole and an\n"
                         "  audit-tamper). The legitimate path — a fresh verdict after\n"
                         "  improving your material — is the reviewer's --re-review,\n"
                         "  which moves the old verdict into append-only history:\n\n"
-                        "    python3 ~/.hermes-cortex/scripts/adversarial-review.py \\\n"
+                        "    python3 ~/.steadfaste-fleet/scripts/adversarial-review.py \\\n"
                         "      --cycle-id <N> --material-file <plan.md> --re-review \\\n"
                         "      --reviewer-id plan-<repo-slug>\n\n"
                         "  Read-only queries (SELECT/PRAGMA) are fine. This gate:\n"
@@ -3677,7 +3677,7 @@ def register(ctx):
                     "around. Check it lock-free: hermes mcp list\n"
                     "Then report it to your orchestrator (Moses/Esther) so they can register it\n"
                     "with: hermes mcp add review --command <python> --args <repo>/mcp-servers/loop-gov-mcp.py\n"
-                    "NEVER hand-write a lock file under ~/.hermes-cortex/state/ — a fabricated\n"
+                    "NEVER hand-write a lock file under ~/.steadfaste-fleet/state/ — a fabricated\n"
                     "lock is a governance violation and is audited.\n"
                     "Do NOT go reading ~/.hermes/plugins/governance-enforcer/ to work out what\n"
                     "to do — this message IS the procedure.\n\n"
