@@ -5,7 +5,7 @@ description: Install and configure Hermes Cortex core components — Ollama, myc
 behavioral_principles:
  - The knowledge brain is mycortex — install it via the repo's cortex-update.sh (register-based deploy), never via pip/npm/bun. The legacy brain is decommissioned 2026-08-02; do not install or restart it.
  - When installing Bun, prefer download-inspect-execute over raw curl|bash when the security scanner flags it.
- - Always create a .env file in ~/hermes-cortex/ before running install-orch-crons.sh to avoid silent failure.
+ - Always create a .env file in ~/steadfaste-fleet/ before running install-orch-crons.sh to avoid silent failure.
  - When sudo is unavailable, install Ollama from GitHub releases tarballs (not the official install.sh which requires root).
  - Before writing custom configs or inventing new approaches, check the repo's docs/ and ops/scripts/ first for existing documented solutions. Use the documented tools as primary; custom workarounds are a last resort.
  - When setting up services on a target machine, inspect running configs FIRST — check /etc/nginx/sites-enabled/, systemctl --user list-units, ss -tlnp, ps aux. The deployed nginx upstream blocks define the correct internal ports. Never invent port assignments before checking what's already deployed. Check in order: (1) running machine configs, (2) hermes-cortex repo docs/, (3) agent-registry.template.json.
@@ -23,14 +23,14 @@ behavioral_principles:
  - When setting up an agent on a target machine, always check the machine's existing deployed configs FIRST — especially /etc/nginx/sites-enabled/ and /etc/systemd/system/ and /etc/nginx/conf.d/. The actual upstream port definitions may differ from what the docs say. Check nginx configs for upstream blocks before choosing internal ports.
  - Before writing custom configs or inventing port schemes, check three sources in order: (1) the running config on the machine itself (nginx sites-enabled, systemd services), (2) the hermes-cortex repo docs/ directory, (3) the agent-registry.template.json. Only after exhausting these three should you write a custom approach.
  - mycortex has no daemon and no PGLite lock — sources are synced via the mycortex CLI/cron. Never install the legacy brain or its services; the doctor treats leftover legacy units as stale.
- - fail2ban, nginx config deployment, and apt package installation require sudo. When these steps are needed and sudo is unavailable, prepare config files at `~/.hermes-cortex/nginx/` and scripts at `~/.hermes-cortex/scripts/` with full terminal commands printed for the user to copy-paste. Never assume sudo is available.
+ - fail2ban, nginx config deployment, and apt package installation require sudo. When these steps are needed and sudo is unavailable, prepare config files at `~/.steadfaste-fleet/nginx/` and scripts at `~/.steadfaste-fleet/scripts/` with full terminal commands printed for the user to copy-paste. Never assume sudo is available.
  - The health-vector.py service must run on port 8905 (127.0.0.1). This is what the deployed nginx `upstream health_backend` block expects. Do not change the port unless the nginx config explicitly defines a different upstream.
  - After the `src/` → `ops/` repo migration (July 2026), many deployed scripts retained stale `src/` paths. When fixing a script that references `src/scripts/` or `src/loop-governance/`, check if the file moved to `ops/scripts/` or `runtime/loop-governance/`. The old `src/` tree was completely removed. Grep for `src/` references in any script you patch as a matter of course.
  - Bus on 8903, health-vector on 8905. Never conflate them. The bus ExecStart must use the Hermes venv python (has uvicorn), not /usr/bin/python3.
  - Name the bus service file cortex-bus.service, not cortex-bus.service. The doctor checks for exactly cortex-bus.service.
  - Verify bus setup at three layers: (1) systemctl is-active cortex-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream cortex_bus_backend matches :8903. A running process on a port is not enough.
  - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
- - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set in `~/hermes-cortex/.env` — the ONE canonical cortex env (there is no deploy-dir `.env`; `~/.hermes/.env` is Hermes-owned and never merged).
+ - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set in `~/steadfaste-fleet/.env` — the ONE canonical cortex env (there is no deploy-dir `.env`; `~/.hermes/.env` is Hermes-owned and never merged).
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
  - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
@@ -47,7 +47,7 @@ Walkthrough for installing the core Hermes Cortex components on a Linux (or macO
 - Linux or macOS host
 - `curl`, `git`, `python3`, `unzip` available
 - Hermes Agent installed (the cortex skill set layers on top)
-- Target repo cloned: `git clone https://github.com/nousresearch/hermes-cortex.git ~/hermes-cortex`
+- Target repo cloned: `git clone https://github.com/nousresearch/hermes-cortex.git ~/steadfaste-fleet`
 
 ## Installation Steps
 
@@ -67,7 +67,7 @@ echo "Python3.12: $(python3.12 --version 2>/dev/null || echo 'MISSING')"
 ### 0.5. Clone the Repo (if not already cloned)
 
 ```bash
-git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet
 ```
 
 **Pitfall — Installer script path bug:** The `install.sh` script references scripts at `$(_scripts)/install-ollama.sh` but the actual file is at `$(_scripts)/install/install-ollama.sh` (inside an `install/` subdirectory). Running `install.sh` directly will fail on step 1 with a "No such file or directory" error. Fix: run the individual install scripts manually rather than the monolithic installer, or symlink the paths.
@@ -169,10 +169,10 @@ sync cron. No bun binary, no daemon, no PGLite.
 
 ```bash
 # The CLI + schema + compose ship in the repo and deploy via cortex-update.sh:
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # Verify the CLI is deployed
-~/.hermes-cortex/scripts/mycortex --help
+~/.steadfaste-fleet/scripts/mycortex --help
 ```
 
 The legacy brain (bun-installed, PGLite/Postgres daemon) is **DECOMMISSIONED
@@ -191,14 +191,14 @@ The schema (v001..v004), roles (`mycortex`, `mycortex_reader_*`,
 
 ```bash
 # 1. Start the Postgres container (install.sh does this; manual path shown)
-sg docker -c "docker compose -f ~/hermes-cortex/ops/install/deploy/docker-compose.mycortex.yml up -d"
+sg docker -c "docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-compose.mycortex.yml up -d"
 
 # 2. Apply schema + roles + RLS (idempotent)
-python3 ~/hermes-cortex/ops/services/mycortex/migrate.py
+python3 ~/steadfaste-fleet/ops/services/mycortex/migrate.py
 
 # 3. Register a brain source (git repo required per source)
 MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
-"$MYCORTEX_CLI" sources add hermes-cortex --path ~/hermes-cortex
+"$MYCORTEX_CLI" sources add hermes-cortex --path ~/steadfaste-fleet
 
 # 4. Sync it (index now; the cron keeps it fresh)
 "$MYCORTEX_CLI" sync --source hermes-cortex
@@ -300,9 +300,9 @@ The biggest class of error is inventing port assignments (e.g. 12007, 14008, 140
 The agent registry tells the orchestrator (Moses) how to find each agent. Each machine needs its own registry file:
 
 ```bash
-mkdir -p ~/.hermes-cortex/state
+mkdir -p ~/.steadfaste-fleet/state
 
-cat > ~/.hermes-cortex/state/agent-registry.json << 'EOF'
+cat > ~/.steadfaste-fleet/state/agent-registry.json << 'EOF'
 {
  "version": 3,
  "health_vector_map": [
@@ -365,14 +365,14 @@ The 9-element health vector indices [6] (mycortex doctor healthy) and [8]
 (`orch-fleet-watchdog.py`, `orch-health-report.py`) must stay in sync on
 those keys — a legacy-named key silently reads as missing.
 
-### 8. Create ~/.hermes-cortex Infrastructure Directory
+### 8. Create ~/.steadfaste-fleet Infrastructure Directory
 
 ```bash
-mkdir -p ~/.hermes-cortex/state
-mkdir -p ~/.hermes-cortex/hooks
-mkdir -p ~/.hermes-cortex/sessions
-mkdir -p ~/.hermes-cortex/scripts
-mkdir -p ~/.hermes-cortex/skills
+mkdir -p ~/.steadfaste-fleet/state
+mkdir -p ~/.steadfaste-fleet/hooks
+mkdir -p ~/.steadfaste-fleet/sessions
+mkdir -p ~/.steadfaste-fleet/scripts
+mkdir -p ~/.steadfaste-fleet/skills
 ```
 
 ### 9. Create Brain Directory Structure (MECE Tree)
@@ -407,11 +407,11 @@ mkdir -p "${HOME}/brain/lessons"
 
 ```bash
 # Skills + hooks — deploy from the repo source. The Cortex repo no longer
-# carries a .hermes-cortex/ directory (removed 2026-10-07: inside ~/hermes-cortex
-# that name shadowed the runtime dir ~/.hermes-cortex and made a governance
+# carries a .hermes-cortex/ directory (removed 2026-10-07: inside ~/steadfaste-fleet
+# that name shadowed the runtime dir ~/.steadfaste-fleet and made a governance
 # marker indistinguishable from repo state). cortex-update.sh installs both
-# from ops/scripts/ and ops/install/hooks/ into ~/.hermes-cortex/hooks/.
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+# from ops/scripts/ and ops/install/hooks/ into ~/.steadfaste-fleet/hooks/.
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # Governance DB bootstrap (one-time per machine)
 python3 ~/.hermes/scripts/populate-governance-db.py
@@ -423,11 +423,11 @@ After setup, initialize the governance DB and session cache — see the loop-gov
 # Personal skills no longer in repo — use ~/.hermes/skills/ directly
 
 # AGENTS.md metadata
-cp ~/hermes-cortex/AGENTS.md ~/.hermes/AGENTS.md
+cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md
 
 # SOUL.md — the agent's identity
 # Agent profiles removed from repo — use template directly
-cp ~/hermes-cortex/docs/templates/SOUL.md ~/.hermes/SOUL.md
+cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md
 
 **Pitfall — SOUL.md path:** The canonical location is `~/.hermes/SOUL.md`, NOT `~/...` or any other user's home. Always verify the target directory exists before writing. If the user gives you a cross-user path, create it under the current user's `~/.hermes/` instead and inform them.
 
@@ -448,7 +448,7 @@ EOF
 ### 12. Configure Git Identity
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git config user.name "<Agent Name>"
 git config user.email "<agent-name>@hermes-cortex"
 ```
@@ -457,21 +457,21 @@ git config user.email "<agent-name>@hermes-cortex"
 
 The `install-crons.sh` script in the repo installs the universal crons listed in AGENTS.md (health monitors, inbox sensors, governance auditors, etc.). These are no_agent scripts that run on every agent machine.
 
-**Pitfall — script search path is `~/.hermes-cortex/scripts/`:** The `install-crons.sh` script (line 34) looks for scripts in `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`, NOT `~/.hermes/scripts/`. If scripts aren't found at that path, it silently skips those crons. Deploy scripts there first:
+**Pitfall — script search path is `~/.steadfaste-fleet/scripts/`:** The `install-crons.sh` script (line 34) looks for scripts in `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`, NOT `~/.hermes/scripts/`. If scripts aren't found at that path, it silently skips those crons. Deploy scripts there first:
 
 ```bash
 # Copy critical monitor scripts to both locations
-mkdir -p ~/.hermes-cortex/scripts
+mkdir -p ~/.steadfaste-fleet/scripts
 mkdir -p ~/.hermes/scripts
 
 for script in agent-system-alert-watchdog.py agent-service-recovery.py agent-model-health-watchdog.py \
  agent-remediation-sensor.py agent-governance-auditor.py agent-memory-to-brain-sync.py \
  agent-apply-fixes.py agent-nginx-threat-pipeline.sh \
  agent-ip-submission.sh; do
- repo_path=$(find ~/hermes-cortex/ops/scripts -name "$script" 2>/dev/null | head -1)
+ repo_path=$(find ~/steadfaste-fleet/ops/scripts -name "$script" 2>/dev/null | head -1)
  if [ -n "$repo_path" ]; then
   cp "$repo_path" ~/.hermes/scripts/"$script"
-  cp "$repo_path" ~/.hermes-cortex/scripts/"$script"
+  cp "$repo_path" ~/.steadfaste-fleet/scripts/"$script"
  fi
 done
 ```
@@ -487,15 +487,15 @@ done
   Failed to create job: Script path escapes the scripts directory via traversal: 'foo.py'
   ```
 
-Always use `cp` (real file copy) and pass just the filename (e.g. `agent-remediation-sensor.py`), never `~/hermes-cortex/...` or a symlink.
+Always use `cp` (real file copy) and pass just the filename (e.g. `agent-remediation-sensor.py`), never `~/steadfaste-fleet/...` or a symlink.
 
-**Pitfall — cron scripts import helper modules from the same directory.** Several cron scripts import utility modules as peer imports (`from hermes_tz import ...`, `from platform_utils import ...`, `from state_tracker import ...`, `from hermes_models import ...`). When you copy scripts to `~/.hermes-cortex/scripts/` or `~/.hermes/scripts/`, these helper modules must be copied alongside:
+**Pitfall — cron scripts import helper modules from the same directory.** Several cron scripts import utility modules as peer imports (`from hermes_tz import ...`, `from platform_utils import ...`, `from state_tracker import ...`, `from hermes_models import ...`). When you copy scripts to `~/.steadfaste-fleet/scripts/` or `~/.hermes/scripts/`, these helper modules must be copied alongside:
 
 ```bash
 # Helper modules needed by Hermes Cortex cron scripts
 for helper in platform_utils.py hermes_tz.py state_tracker.py hermes_models.py; do
- find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes/scripts/ \; 2>/dev/null
- find ~/hermes-cortex/ops/scripts -name "$helper" -exec cp {} ~/.hermes-cortex/scripts/ \; 2>/dev/null
+ find ~/steadfaste-fleet/ops/scripts -name "$helper" -exec cp {} ~/.hermes/scripts/ \; 2>/dev/null
+ find ~/steadfaste-fleet/ops/scripts -name "$helper" -exec cp {} ~/.steadfaste-fleet/scripts/ \; 2>/dev/null
 done
 ```
 
@@ -507,7 +507,7 @@ File "system-alert-watchdog.py", line 32, in <module>
 ModuleNotFoundError: No module named 'hermes_tz'
 ```
 
-**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `cortex-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.hermes-cortex/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.hermes-cortex/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
+**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `cortex-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.steadfaste-fleet/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.steadfaste-fleet/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
 
 After `cortex-update `, check for this pattern and sync siblings:
 
@@ -550,7 +550,7 @@ Use `cp` (real file copies), not `ln -sf`.
 Then run the installer:
 
 ```bash
-bash ~/hermes-cortex/ops/scripts/install-crons.sh
+bash ~/steadfaste-fleet/ops/scripts/install-crons.sh
 ```
 
 Expected output: "✓ Created: N new cron job(s)" where N is the number of scripts found (up to 28+).
@@ -571,14 +571,14 @@ Verify with: `hermes cron list`
 Crons are installed via the orchestrator (Moses) using the inbox request protocol per AGENTS.md. For initial setup on the orchestrator machine:
 
 ```bash
-cat > ~/hermes-cortex/.env << 'EOF'
+cat > ~/steadfaste-fleet/.env << 'EOF'
 IS_ORCHESTRATOR=true
 LLM_CRON_MODEL=<model-name>
 LLM_CRON_PROVIDER=<provider-name>
 EMBEDDING_MODEL=nomic-embed-text:v1.5
 EOF
 
-bash ~/hermes-cortex/ops/scripts/install/install-orch-crons.sh
+bash ~/steadfaste-fleet/ops/scripts/install/install-orch-crons.sh
 ```
 
 **Pitfall:** `install-orch-crons.sh` exits with error if `LLM_CRON_MODEL` and `LLM_CRON_PROVIDER` are not set in `.env`. On worker agents (non-orchestrator), it exits gracefully with a message saying orchestrator crons aren't needed.
@@ -594,11 +594,11 @@ Changing an LLM cron's model has TWO layers of truth; editing only the live pin 
 
 **Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive path: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values). This chain is operator-owned — set it directly; no installer script writes it (the env-driven `install-fallback-providers.py` writer was removed 2026-09-09).
 
-**Env file location (2026-10, single-env refactor; updated 2026-10-17):** every script sources `~/hermes-cortex/.env` — the **ONE canonical cortex env** (gitignored). Concretely:
-- The deployed dir `~/.hermes-cortex/.env` is the **sanctioned back-compat symlink → the canonical env** (kept so legacy readers keep resolving the deploy-dir path). A **real file** (not a symlink) there is unowned — a doctor FAIL. The old `cortex-bus.conf` name was **retired 2026-10-17**; `consolidate-env.sh` migrates any leftover to the `.env` symlink.
+**Env file location (2026-10, single-env refactor; updated 2026-10-17):** every script sources `~/steadfaste-fleet/.env` — the **ONE canonical cortex env** (gitignored). Concretely:
+- The deployed dir `~/.steadfaste-fleet/.env` is the **sanctioned back-compat symlink → the canonical env** (kept so legacy readers keep resolving the deploy-dir path). A **real file** (not a symlink) there is unowned — a doctor FAIL. The old `cortex-bus.conf` name was **retired 2026-10-17**; `consolidate-env.sh` migrates any leftover to the `.env` symlink.
 - `~/.hermes/.env` is **Hermes-owned** (provider keys, Telegram) and is never merged.
 - All `cortex-bus.conf` references were swept to `.env`; if you find one, it's a regression — the only legitimate references are `ops/scripts/manage/consolidate-env.sh` (which performs the migration) and the doctor's `check_cortex_env` (which enforces the retirement).
-- Migrating a legacy host: just run `cortex-update.sh` — it runs `consolidate-env.sh` first (idempotent), which seeds the canonical env from the old conf if needed and creates the `.env` symlink. Verify with `bash ~/.hermes-cortex/scripts/consolidate-env.sh --check`.
+- Migrating a legacy host: just run `cortex-update.sh` — it runs `consolidate-env.sh` first (idempotent), which seeds the canonical env from the old conf if needed and creates the `.env` symlink. Verify with `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh --check`.
 - The doctor has a `cortex env` check that FAILs on a missing canonical env, a real-file deploy-dir `.env`, a missing/misdirected sanctioned symlink, or a leftover `cortex-bus.conf` — and points at this fix.
 
 **opencode provider tiers** (verified 2026-08-31): `opencode-free` = keyless free tier (aliases `free`, no account needed); `opencode-zen` = paid, needs `OPENCODE_ZEN_API_KEY` (aliases `opencode`/`zen`); `opencode-go` = needs `OPENCODE_GO_API_KEY`. The free tier currently has NO working deepseek: `deepseek-v4-flash-free` was delisted (completion POST → `server_error: "Model is unavailable"`; keys ship as commented+EMPTY placeholders in `~/.hermes/.env`), and no `deepseek-v4-pro-free` exists. The live `GET /zen/v1/models` list can still show delisted models — verify availability with a real chat-completions POST, never trust the list. Full verification recipe: `references/llm-cron-model-fallback.md`.
@@ -634,7 +634,7 @@ ls ~/.hermes/SOUL.md
 cat ~/.hermes/SOUL.md | head -5
 
 # 8. Agent registry
-cat ~/.hermes-cortex/state/agent-registry.json | python3 -m json.tool | head -10
+cat ~/.steadfaste-fleet/state/agent-registry.json | python3 -m json.tool | head -10
 
 # 9. PATH
 echo "$PATH" | tr ':' '\n' | grep -E "local|bun"
@@ -759,7 +759,7 @@ LANGFUSE_DOMAIN=localhost
 EOF
 
 # Copy compose file and start
-cp ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml ~/langfuse/docker-compose.yml
+cp ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml ~/langfuse/docker-compose.yml
 cd ~/langfuse
 docker compose up -d
 
@@ -778,7 +778,7 @@ Nginx proxies this at `:14002` (prefix + 002).
 sudo apt-get install -y fail2ban
 
 # Copy Hermes Cortex badbots filter
-sudo cp ~/hermes-cortex/ops/install/deploy/nginx/nginx-badbots.conf \\
+sudo cp ~/steadfaste-fleet/ops/install/deploy/nginx/nginx-badbots.conf \\
  /etc/fail2ban/filter.d/nginx-badbots.conf
 
 # Create jail

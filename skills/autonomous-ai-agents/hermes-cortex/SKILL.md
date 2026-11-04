@@ -16,7 +16,7 @@ Hermes Cortex is the local AI infrastructure layer that provides:
 
 > **⚠️ The legacy `brain` CLI is DEAD — the `mycortex` CLI replaces it.** All `brain` CLI commands below are
 > legacy. The mycortex CLI lives at `ops/scripts/manage/mycortex` (deployed to
-> `~/.hermes-cortex/scripts/mycortex`): `sources add|list|remove`, `sync`,
+> `~/.steadfaste-fleet/scripts/mycortex`): `sources add|list|remove`, `sync`,
 > `search`, `list`, `stats`, `doctor`. Runs over mycortex-postgres (:15432) —
 > no daemon, no bun; sync is a cron. Legacy brain troubleshooting sections further
 > down are historical and kept only for migration reference.
@@ -41,8 +41,8 @@ uname -s # Linux or Darwin
 The installer lives at `ops/install/install.sh` (moved from repo root in v2.0.0):
 
 ```bash
-git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/hermes-cortex
-cd ~/hermes-cortex
+git clone --depth 1 https://github.com/lukemcqueen/steadfaste-fleet.git ~/steadfaste-fleet
+cd ~/steadfaste-fleet
 bash ops/install/install.sh
 
 # Check prerequisites only (no install):
@@ -98,20 +98,20 @@ Hermes Cortex uses a **two-directory deployment model**:
 
 | Directory | Purpose | Managed by |
 |-----------|---------|-----------|
-| `~/.hermes-cortex/scripts/` | **Canonical runtime location** — all cortex scripts deployed here | `cortex-update.sh` register map |
-| `~/.hermes/scripts/` | **Cron resolution** — Hermes Agent cron scheduler looks here | Symlinks → `~/.hermes-cortex/scripts/` |
+| `~/.steadfaste-fleet/scripts/` | **Canonical runtime location** — all cortex scripts deployed here | `cortex-update.sh` register map |
+| `~/.hermes/scripts/` | **Cron resolution** — Hermes Agent cron scheduler looks here | Symlinks → `~/.steadfaste-fleet/scripts/` |
 
-**How scripts flow:** Repo source → `cortex-update.sh ` → `~/.hermes-cortex/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
+**How scripts flow:** Repo source → `cortex-update.sh ` → `~/.steadfaste-fleet/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
 
 **To add a new cortex script:**
 1. Add `register "ops/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
-2. Run `bash ~/.hermes-cortex/scripts/cortex-update.sh `
-3. Create symlink: `ln -sf ~/.hermes-cortex/scripts/name ~/.hermes/scripts/name`
+2. Run `bash ~/.steadfaste-fleet/scripts/cortex-update.sh `
+3. Create symlink: `ln -sf ~/.steadfaste-fleet/scripts/name ~/.hermes/scripts/name`
 4. Register in `install-crons.sh` if it's a cron script
 
-**Cleanup of stale duplicates:** If both `~/.hermes/scripts/` and `~/.hermes-cortex/scripts/` have a copy of the same file, replace the `~/.hermes/scripts/` copy with a symlink:
+**Cleanup of stale duplicates:** If both `~/.hermes/scripts/` and `~/.steadfaste-fleet/scripts/` have a copy of the same file, replace the `~/.hermes/scripts/` copy with a symlink:
 ```bash
-rm ~/.hermes/scripts/<file> && ln -sf ~/.hermes-cortex/scripts/<file> ~/.hermes/scripts/<file>
+rm ~/.hermes/scripts/<file> && ln -sf ~/.steadfaste-fleet/scripts/<file> ~/.hermes/scripts/<file>
 ```
 This was done for 42 files in June 2026. Any future cortex-update maintenance should follow the same pattern — never leave stale regular-file copies in `~/.hermes/scripts/`.
 
@@ -128,13 +128,13 @@ This was done for 42 files in June 2026. Any future cortex-update maintenance sh
 curl -s http://127.0.0.1:11434/api/tags | jq .
 
 # mycortex CLI (deployed path)
-~/.hermes-cortex/scripts/mycortex --help
+~/.steadfaste-fleet/scripts/mycortex --help
 
 # mycortex doctor
-~/.hermes-cortex/scripts/mycortex doctor
+~/.steadfaste-fleet/scripts/mycortex doctor
 
 # mycortex sources
-~/.hermes-cortex/scripts/mycortex sources list
+~/.steadfaste-fleet/scripts/mycortex sources list
 
 # Langfuse (Docker) — v3 health endpoint
 docker ps | grep langfuse
@@ -165,20 +165,20 @@ After the basic health checks pass, run these deeper verifications to confirm my
 
 ```bash
 # Run the brain bootstrap health check (deployed path — repo: ops/scripts/install/bootstrap-brain.sh)
-bash ~/.hermes-cortex/scripts/bootstrap-brain.sh --check-only
+bash ~/.steadfaste-fleet/scripts/bootstrap-brain.sh --check-only
 # Look for: "X source(s) have indexed pages"
 # If ALL show "0 pages indexed", brain directories are empty — add .md files
 
 # Run the full heartbeat report (deployed path — repo: ops/scripts/health/heartbeat.py)
-python3 ~/.hermes-cortex/scripts/heartbeat.py --report
+python3 ~/.steadfaste-fleet/scripts/heartbeat.py --report
 # Expected: Overall OK or DEGRADED with actionable items
 
 # Check memory budget (deployed path — repo: ops/scripts/health/check-memory-budget.sh)
-bash ~/.hermes-cortex/scripts/check-memory-budget.sh --report
+bash ~/.steadfaste-fleet/scripts/check-memory-budget.sh --report
 # If >85%, run the pointer pattern to compress entries
 
 # Verify mycortex has actual indexed pages per source
-~/.hermes-cortex/scripts/mycortex sources list | grep -v "0 pages"
+~/.steadfaste-fleet/scripts/mycortex sources list | grep -v "0 pages"
 # Should show at least one source with >0 pages
 ```
 
@@ -219,13 +219,13 @@ Verify the installed copy matches the repo source (SOURCE header stripped):
 
 ```bash
 # Compare deployed heartbeat vs repo
-diff <(sed '1,2d' ~/.hermes-cortex/scripts/heartbeat.py | sed '/^# SOURCE:/d') \
+diff <(sed '1,2d' ~/.steadfaste-fleet/scripts/heartbeat.py | sed '/^# SOURCE:/d') \
      <(sed '/^# SOURCE:/d' ops/scripts/health/heartbeat.py)
 ```
 
 If they differ, the installed script is stale — run `cortex-update.sh` to redeploy:
 ```bash
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 # Verifies: deployed checksum (minus SOURCE header) == repo source
 ```
 
@@ -241,7 +241,7 @@ no sync-watch; the old mycortex launchd daemon pair (`legacy autopilot` /
 cronjob action=list | grep mycortex-sync
 
 # Run a manual sync to verify the pipeline
-~/.hermes-cortex/scripts/mycortex sync --force
+~/.steadfaste-fleet/scripts/mycortex sync --force
 
 # Check the sync cron's last run status
 cronjob action=list | grep -A2 mycortex-sync
@@ -279,8 +279,8 @@ all healthy. If none exist, Langfuse was never deployed or Docker Desktop isn't 
 ### 5. Check Every mycortex Source Has Indexed Pages
 
 ```bash
-~/.hermes-cortex/scripts/mycortex sources list | grep -v "0 pages" | grep -v "^$"
-~/.hermes-cortex/scripts/mycortex sources list | grep "0 pages"
+~/.steadfaste-fleet/scripts/mycortex sources list | grep -v "0 pages" | grep -v "^$"
+~/.steadfaste-fleet/scripts/mycortex sources list | grep "0 pages"
 ```
 
 Sources showing "0 pages, never synced" are registered but empty. They need content
@@ -289,18 +289,18 @@ before the sync cron has anything to index. See "Existing Repo Setup" below.
 ### 5. Audit the Auto-Update Path
 
 ```bash
-head -5 ~/.hermes-cortex/offline/auto-update.sh 2>/dev/null || head -5 ~/hermes-cortex/offline/auto-update.sh
-grep "^HERMES_DIR\|^OFFLINE_DIR" ~/.hermes-cortex/offline/auto-update.sh 2>/dev/null
+head -5 ~/.steadfaste-fleet/offline/auto-update.sh 2>/dev/null || head -5 ~/steadfaste-fleet/offline/auto-update.sh
+grep "^HERMES_DIR\|^OFFLINE_DIR" ~/.steadfaste-fleet/offline/auto-update.sh 2>/dev/null
 ```
 
 If the script references `$HOME/hermes-cortex/offline/` (hardcoded path), it breaks
-when the repo is cloned somewhere other than `~/hermes-cortex`. The script should
-derive its path from its own location or use `~/.hermes-cortex/offline/`.
+when the repo is cloned somewhere other than `~/steadfaste-fleet`. The script should
+derive its path from its own location or use `~/.steadfaste-fleet/offline/`.
 
 ### 6. Verify Offline Code Index
 
 ```bash
-ls -la ~/offline/code-index.json 2>/dev/null || ls -la ~/hermes-cortex/offline/code-index.json 2>/dev/null || echo "MISSING — run: offline_code index"
+ls -la ~/offline/code-index.json 2>/dev/null || ls -la ~/steadfaste-fleet/offline/code-index.json 2>/dev/null || echo "MISSING — run: offline_code index"
 ```
 
 If no index exists, the offline code assistant is non-functional. The installer
@@ -424,7 +424,7 @@ grep "skip default" ~/.legacy-brain/sync-watch.sh # confirm --skip default is pr
 ### cortex-update.sh appending to agent.env — a missing trailing newline concatenates vars
 
 **PROBLEM:** `cortex-update.sh`'s env step PROVISIONs/append `CORTEX_PYTHON=...` to
-`~/.hermes-cortex/agent.env` via `>>`. If the existing file does not end in a newline,
+`~/.steadfaste-fleet/agent.env` via `>>`. If the existing file does not end in a newline,
 the append lands on the SAME line as the prior var (e.g. `AGENT_NAME=mosesCORTEX_PYTHON=...`).
 `task-db.py`'s `_env_agent_name()` reads `line.split("=",1)[1]` and returns the whole
 concatenated garbage as the profile, so `CRUD_ROLE` resolves to
@@ -433,7 +433,7 @@ concatenated garbage as the profile, so `CRUD_ROLE` resolves to
 `❌ Task Lifecycle v2 events RLS`, which look unrelated to the real cause.
 
 **DIAGNOSE:** grep the file for a concatenated line —
-`grep -nE '=' ~/.hermes-cortex/agent.env` shows one line carrying two `=`; the
+`grep -nE '=' ~/.steadfaste-fleet/agent.env` shows one line carrying two `=`; the
 second var has no leading newline. The garbled profile also appears verbatim in the
 psql error's role name.
 
@@ -491,13 +491,13 @@ The repo files are named with underscores (`score_cycle.py`, `loop_feedback.py`,
 
 ```bash
 # CORRECT
-ln -sf ~/hermes-cortex/core/governance/score_cycle.py ~/.local/bin/score-cycle
-ln -sf ~/hermes-cortex/core/governance/loop_feedback.py ~/.local/bin/loop-feedback
-ln -sf ~/hermes-cortex/core/governance/auto_apply.py ~/.local/bin/auto-apply
-ln -sf ~/hermes-cortex/core/governance/loop_config.py ~/.local/bin/loop-config
+ln -sf ~/steadfaste-fleet/core/governance/score_cycle.py ~/.local/bin/score-cycle
+ln -sf ~/steadfaste-fleet/core/governance/loop_feedback.py ~/.local/bin/loop-feedback
+ln -sf ~/steadfaste-fleet/core/governance/auto_apply.py ~/.local/bin/auto-apply
+ln -sf ~/steadfaste-fleet/core/governance/loop_config.py ~/.local/bin/loop-config
 
 # WRONG — file doesn't exist
-ln -sf ~/hermes-cortex/core/governance/score-cycle.py ~/.local/bin/score-cycle # NO
+ln -sf ~/steadfaste-fleet/core/governance/score-cycle.py ~/.local/bin/score-cycle # NO
 ```
 
 If you symlink to a nonexistent target, bash will follow the dead symlink when using `cat >` and create a stub file at the target path. This corrupts the source file. Verify all targets exist:
@@ -515,13 +515,13 @@ After running `setup.sh`, register the loop-governance MCP server so agents can 
 ```bash
 hermes mcp add \
  --command $HOME/.hermes/mcp-venv/bin/python3 \
- --args ~/hermes-cortex/mcp-servers/loop-gov-mcp.py \
+ --args ~/steadfaste-fleet/mcp-servers/loop-gov-mcp.py \
  loop-governance
 ```
 
 The MCP server exposes 7 tools: `cache_search`, `config_show`, `config_set`, `cycle_query`, `cycle_stats`, `feedback_accept`, `feedback_override`. These are the primary interface for agents -- the CLI (`score-cycle`, `loop-feedback`) is the fallback for pre-commit hooks and scripts.
 
-**Pitfall — config path:** The MCP server's `args` path in `~/.hermes/config.yaml` must point to the actual file. If hermes-cortex was cloned to a different path than `~/hermes-cortex/`, update the args. A stale path (pointing to a non-existent file) causes MCP tool failures with no visible error -- the process starts but runs old code.
+**Pitfall — config path:** The MCP server's `args` path in `~/.hermes/config.yaml` must point to the actual file. If hermes-cortex was cloned to a different path than `~/steadfaste-fleet/`, update the args. A stale path (pointing to a non-existent file) causes MCP tool failures with no visible error -- the process starts but runs old code.
 
 **Verification:** After registering, run `hermes mcp list`. The loop-governance server should show `✓ enabled` with 7 tools. If MCP tools return "Error: no such column", kill stale `loop-gov-mcp.py` processes and let Hermes restart them.
 
@@ -555,15 +555,15 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 | Layer | What | How to install | Bypass |
 |-------|------|---------------|--------|
-|| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.hermes-cortex/scripts/install-score-hook.sh --all` | Removed — use `_create_gov_lock` in scripts |
+|| Pre-commit hook | Runs `score-cycle` on every `git commit` | `bash ~/.steadfaste-fleet/scripts/install-score-hook.sh --all` | Removed — use `_create_gov_lock` in scripts |
 | SOUL.md directive | Rule in every Hermes session's system prompt | Edit `~/.hermes/SOUL.md` (add Mandatory Directives section) | Remove the directive |
 | Cron auditor | Scans every 6h for unscored changes | Auto-created by `install-crons.sh` | N/A |
 
 **Dogfood your own rules:** When you introduce a new rule or process that mandates scoring, immediately run `score-cycle` on your own changes to validate the tooling works end-to-end. This catches missing shebangs, Python version mismatches, scoring calibration gaps, and feedback CLI tooling issues before they hit production. The user will call you out if you mandate something and don't do it yourself — it erodes trust in the rule.
 
-**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.hermes-cortex/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
+**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.steadfaste-fleet/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
 
-**Verification:** Run `bash ~/hermes-cortex/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
+**Verification:** Run `bash ~/steadfaste-fleet/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
 
 **Template for new projects:** Copy the standalone template from the hermes-cortex repo's `docs/templates/AGENTS-loop-governance.md` to add loop-governance rules to any project's AGENTS.md. See skill reference `agents-loop-governance-template.md`.
 
@@ -582,8 +582,8 @@ ls ~/.pyenv/versions/ | grep '^3\\.1[2-9]'
 
 # Update shebang:
 sed -i.bak '' '1s|#!/usr/bin/env python3|#!/Users/\$(whoami)/.local/bin/python3.12|' \\
- ~/hermes-cortex/core/governance/score_cycle.py \
- ~/hermes-cortex/core/governance/loop_feedback.py
+ ~/steadfaste-fleet/core/governance/score_cycle.py \
+ ~/steadfaste-fleet/core/governance/loop_feedback.py
 ```
 
 When deploying to a new machine, verify `python3 --version` resolves to 3.12+. The `install.sh` probes `python3 python3.12` (plus any available 3.13/3.14) in order and selects the first 3.12+ with sqlite3 extension support.
@@ -599,7 +599,7 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 
 ### cortex-update.sh offline_knowledge symlink blocks deploy
 
-**PROBLEM:** `cortex-update.sh ` maps `~/.hermes-cortex/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.hermes-cortex/bin/` directory does not exist, the symlink creation fails with:
+**PROBLEM:** `cortex-update.sh ` maps `~/.steadfaste-fleet/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.steadfaste-fleet/bin/` directory does not exist, the symlink creation fails with:
 ```
 ln: $HOME/.hermes-cortex/bin/offline_knowledge: No such file or directory
 ```
@@ -607,8 +607,8 @@ This is a **non-fatal error by itself**, but if `cortex-update.sh` runs with `se
 
 **FIX:** Ensure the target directory exists before running cortex-update:
 ```bash
-mkdir -p ~/.hermes-cortex/bin
-bash ~/.hermes-cortex/scripts/cortex-update.sh
+mkdir -p ~/.steadfaste-fleet/bin
+bash ~/.steadfaste-fleet/scripts/cortex-update.sh
 ```
 
 **PREVENT:** When registering a new file that creates a symlink in `cortex-update.sh`, add a `mkdir -p` for the target directory before the `ln -sf` command, or use `ln -sf ... 2>/dev/null || true` to prevent a failed symlink from blocking the rest of the update.
@@ -776,17 +776,17 @@ Hermes Cortex provides `seed-project.sh` to deploy the development harness (AGEN
 
 ```
 # Default: merge mode, all components, backup created automatically
-bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project --name="Project Name"
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --project=/path/to/project --name="Project Name"
 
 # Preview what would change
-bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project --mode=diff
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --project=/path/to/project --mode=diff
 
 # Deploy specific components only
-bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project \
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --project=/path/to/project \
  --components=AGENTS.md,.hermes-cortex,pre-commit
 
 # Custom skill set
-bash ~/.hermes-cortex/scripts/seed-project.sh --project=/path/to/project \
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --project=/path/to/project \
  --skill-refs=change-test-loop,engineering-approach,save-lesson
 ```
 
@@ -855,31 +855,31 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 
 | Layer | Location | Purpose | Managed by |
 |-------|----------|---------|-----------|
-| **Canonical source** | `~/hermes-cortex/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
+| **Canonical source** | `~/steadfaste-fleet/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
 | **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `cortex-update.sh sync_skills()` + manual additions |
-| **Project overrides** | `<consumer-project>/.hermes-cortex/skills/` | Project-specific skill overrides tracked in THAT project's repo. This overlay is for CONSUMER projects only — the Cortex repo itself must never carry one (inside `~/hermes-cortex` it shadowed the runtime dir name `~/.hermes-cortex` and made a stray governance marker indistinguishable from repo state). `cortex-update.sh` skips the overlay when the repo carries `mcp-servers/loop-gov-mcp.py`. | Tracked in the consumer project |
+| **Project overrides** | `<consumer-project>/.hermes-cortex/skills/` | Project-specific skill overrides tracked in THAT project's repo. This overlay is for CONSUMER projects only — the Cortex repo itself must never carry one (inside `~/steadfaste-fleet` it shadowed the runtime dir name `~/.steadfaste-fleet` and made a stray governance marker indistinguishable from repo state). `cortex-update.sh` skips the overlay when the repo carries `mcp-servers/loop-gov-mcp.py`. | Tracked in the consumer project |
 
 ### How Skills Flow
 
 ```
 skills/ (canonical, ~40 skills)
   ↓ cortex-update.sh : sync_skills() checksums each SKILL.md
-~/.hermes-cortex/skills/ → (symlink) → ~/.hermes/skills/ (global, ~150 skills)
+~/.steadfaste-fleet/skills/ → (symlink) → ~/.hermes/skills/ (global, ~150 skills)
                           ↑
                       ~110 ecosystem skills untouched by sync
 ```
 
-**Key relationship:** `~/.hermes-cortex/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.hermes-cortex/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
+**Key relationship:** `~/.steadfaste-fleet/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.steadfaste-fleet/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
 
 ### Contrast with Script Deployment
 
 Scripts and skills flow in opposite directions:
 
-**Scripts:** `ops/scripts/` → `~/.hermes-cortex/scripts/` → (symlink) → `~/.hermes/scripts/`
-**Skills:** `skills/` → `~/.hermes-cortex/skills/` → (symlink resolves to) `~/.hermes/skills/`
+**Scripts:** `ops/scripts/` → `~/.steadfaste-fleet/scripts/` → (symlink) → `~/.hermes/scripts/`
+**Skills:** `skills/` → `~/.steadfaste-fleet/skills/` → (symlink resolves to) `~/.hermes/skills/`
 
-Scripts: `~/.hermes-cortex/scripts/` is primary, `~/.hermes/scripts/` is the cron-resolution symlink target.
-Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.hermes-cortex/skills/` is the symlink pointing back.
+Scripts: `~/.steadfaste-fleet/scripts/` is primary, `~/.hermes/scripts/` is the cron-resolution symlink target.
+Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.steadfaste-fleet/skills/` is the symlink pointing back.
 
 ### cortex-update.sh sync_skills()
 
@@ -935,11 +935,11 @@ The symlink was created once:
 #  Checked: only mcp-server-building and repo-organization were unique → copied manually
 
 # 2. Remove old directory, create symlink
-rm -rf ~/.hermes-cortex/skills
-ln -s ~/.hermes/skills ~/.hermes-cortex/skills
+rm -rf ~/.steadfaste-fleet/skills
+ln -s ~/.hermes/skills ~/.steadfaste-fleet/skills
 
 # 3. Verify with cortex-update
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 # Expected output: "Skills: N updated, M unchanged"
 ```
 
@@ -1173,7 +1173,7 @@ After pulling latest cortex code and running `cortex-update.sh`, verify the upda
 New files in `scripts/` (repo root) are NOT auto-registered unless they have a `register()` line in `cortex-update.sh`. Files in `ops/scripts/` are only registered if explicitly listed. Run:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^ops/"
 ```
 
@@ -1223,8 +1223,8 @@ If missing, create them per the new skill's setup instructions. Common patterns:
 The most common drift: installed watchdog scripts lag behind the repo. The `` flag catches these, but verify:
 
 ```bash
-diff ~/hermes-cortex/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
-diff ~/hermes-cortex/ops/scripts/health/service-recovery.py ~/.hermes/scripts/service-recovery.py
+diff ~/steadfaste-fleet/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
+diff ~/steadfaste-fleet/ops/scripts/health/service-recovery.py ~/.hermes/scripts/service-recovery.py
 ```
 
 Zero output = in sync. Any diff means the installed version is stale.
@@ -1264,13 +1264,13 @@ not a package manager:
 
 ```bash
 # Pull latest hermes-cortex
-cd ~/hermes-cortex && git pull --rebase
+cd ~/steadfaste-fleet && git pull --rebase
 
 # Deploy updated CLI + schema
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 
 # Verify version
-~/.hermes-cortex/scripts/mycortex doctor
+~/.steadfaste-fleet/scripts/mycortex doctor
 ```
 
 ### Apply mycortex migrations
@@ -1279,10 +1279,10 @@ Schema migrations run **automatically** from `ops/services/mycortex/schema/`
 (apply via `manage/mycortex` sync / install.sh). To apply manually:
 
 ```bash
-~/.hermes-cortex/scripts/mycortex sync --force
+~/.steadfaste-fleet/scripts/mycortex sync --force
 ```
 
-**If migrations fail:** run `~/.hermes-cortex/scripts/mycortex doctor` and check
+**If migrations fail:** run `~/.steadfaste-fleet/scripts/mycortex doctor` and check
 `ops/services/mycortex/migrate.py` output, then see Troubleshooting below.
 
 ### Keep cortex-associated skills up to date
@@ -1297,7 +1297,7 @@ The `hermes-cortex` repo ships some local skills — these are updated via `git 
 ### Rebuild Knowledge Index
 
 ```bash
-~/.hermes-cortex/scripts/mycortex sync --source mybrain --force
+~/.steadfaste-fleet/scripts/mycortex sync --source mybrain --force
 ```
 
 ### mycortex Source Migration: Merge Sources via Clean Reimport
@@ -1313,9 +1313,9 @@ The `hermes-cortex` repo ships some local skills — these are updated via `git 
 
 **Verify:**
 ```bash
-~/.hermes-cortex/scripts/mycortex stats        # Should match original page count
-~/.hermes-cortex/scripts/mycortex sources list # mybrain has pages, default is empty
-~/.hermes-cortex/scripts/mycortex search "test" --limit 1 # Returns results
+~/.steadfaste-fleet/scripts/mycortex stats        # Should match original page count
+~/.steadfaste-fleet/scripts/mycortex sources list # mybrain has pages, default is empty
+~/.steadfaste-fleet/scripts/mycortex search "test" --limit 1 # Returns results
 ```
 
 ### mycortex PGLite Recovery
@@ -1335,17 +1335,17 @@ curl -s http://localhost:11434/api/embeddings \
 
 ```bash
 # Run the heartbeat script (deployed path)
-python3 ~/.hermes-cortex/scripts/heartbeat.py
+python3 ~/.steadfaste-fleet/scripts/heartbeat.py
 
 # Check all components
-~/.hermes-cortex/scripts/mycortex doctor
+~/.steadfaste-fleet/scripts/mycortex doctor
 curl -s http://127.0.0.1:11434/api/tags
 
 # Verify mycortex sources have indexed pages
-bash ~/.hermes-cortex/scripts/bootstrap-brain.sh --check-only
+bash ~/.steadfaste-fleet/scripts/bootstrap-brain.sh --check-only
 
 # Check memory budget
-bash ~/.hermes-cortex/scripts/check-memory-budget.sh --report
+bash ~/.steadfaste-fleet/scripts/check-memory-budget.sh --report
 ```
 
 ### mycortex Source Management Quick Reference
@@ -1354,17 +1354,17 @@ Useful commands for managing sources day-to-day:
 
 ```bash
 # List all sources with page counts
-~/.hermes-cortex/scripts/mycortex sources list
+~/.steadfaste-fleet/scripts/mycortex sources list
 
 # Sync a single source (or --force all)
-~/.hermes-cortex/scripts/mycortex sync --source mybrain
+~/.steadfaste-fleet/scripts/mycortex sync --source mybrain
 
 # Search across sources
-~/.hermes-cortex/scripts/mycortex search "query" --limit 5
+~/.steadfaste-fleet/scripts/mycortex search "query" --limit 5
 
 # Stats / doctor
-~/.hermes-cortex/scripts/mycortex stats
-~/.hermes-cortex/scripts/mycortex doctor
+~/.steadfaste-fleet/scripts/mycortex stats
+~/.steadfaste-fleet/scripts/mycortex doctor
 ```
 
 **Cron integration:** The `agent-mycortex-sync` cron job runs sync automatically;
@@ -1541,7 +1541,7 @@ docker compose -f ~/langfuse/docker-compose.yml up -d --force-recreate langfuse-
 
 **Also fix the repo source:**
 ```bash
-sed -i.bak '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/hermes-cortex/ops/install/deploy/docker-compose.langfuse.yml
+sed -i.bak '' 's/postgresql:\\/\\/postgres:\\*\\*\\*@postgres/postgresql:\\/\\/postgres:***@postgres/' ~/steadfaste-fleet/ops/install/deploy/docker-compose.langfuse.yml
 ```
 
 ### Langfuse Web Container Cycles After Init
@@ -1638,7 +1638,7 @@ hermes plugins enable mycortex-command
 
 > Legacy mycortex daemon diagnosis. With mycortex, "0 pages" means the sync cron
 > hasn't run or brain dirs are empty — see "Existing Repo Setup — Seeding Brain
-> Content" and run `~/.hermes-cortex/scripts/mycortex sources list`.
+> Content" and run `~/.steadfaste-fleet/scripts/mycortex sources list`.
 
 **Symptom:** Autopilot cycles every ~150s but every cycle shows `synced=0 extracted=0 embedded=0` and `orphans=N`. Brain directories under `~/brain/` have content but mycortex doesn't index anything.
 
@@ -1876,7 +1876,7 @@ A local RAG-powered coding assistant using Ollama embeddings + a curated snippet
 The code corpus lives in the repo at `offline/code-corpus/`. Build the index:
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 bash offline/prep-code.sh
 ```
 
@@ -1964,8 +1964,8 @@ Profile-per-project was tried (~20 profiles, each with isolated skills/memories/
 Each project gets its own mycortex source directory (e.g., `~/brain/ione/`, `~/brain/acme-royalty/`) that syncs to mycortex as a named source:
 
 ```bash
-~/.hermes-cortex/scripts/mycortex sources add ione --path ~/brain/ione --name "IONE Website"
-~/.hermes-cortex/scripts/mycortex sources add acme-royalty --path ~/brain/acme-royalty --name "ACME Royalty"
+~/.steadfaste-fleet/scripts/mycortex sources add ione --path ~/brain/ione --name "IONE Website"
+~/.steadfaste-fleet/scripts/mycortex sources add acme-royalty --path ~/brain/acme-royalty --name "ACME Royalty"
 ```
 
 When querying knowledge in-session:
@@ -2021,10 +2021,10 @@ Agent knowledge in Hermes Cortex spans six layers from fastest/least durable to 
 | Layer | Location | Durability |
 |-------|----------|-----------|
 | 1 — Agent Prompt | `MEMORY.md` / `USER.md` | Hot cache, lost on restart |
-| 2 — Session State | `~/.hermes-cortex/sessions/current.md` | This session only |
+| 2 — Session State | `~/.steadfaste-fleet/sessions/current.md` | This session only |
 | 3 — Hermes Profile | `~/.hermes/profiles/` | Legacy isolation layer |
 | 4 — Brain Source | `~/brain/<source>/` | Cross-project deep knowledge (Mycortex) |
-| 5 — Repo Memory | `~/.hermes-cortex/memory/` | Per-project durable conventions |
+| 5 — Repo Memory | `~/.steadfaste-fleet/memory/` | Per-project durable conventions |
 | 6 — Repo Docs | `docs/` | Version controlled, team-visible |
 
 **Pointer Pattern:** Keep MEMORY.md under 2,200 chars by storing compact pointers (~120 chars) that point to brain directories for detail. Instead of `"ACME Works uses Python 3.13.13, Meilisearch v1.14 on port 13213..."`, write `+ /brain default acme-works (setup, search config)`.
@@ -2060,35 +2060,35 @@ git add -A
 git commit -m "seed: my-project documentation"
 
 # 3. Register mycortex source (if not already done)
-~/.hermes-cortex/scripts/mycortex sources add my-project --path ~/brain/my-project --name "My Project"
+~/.steadfaste-fleet/scripts/mycortex sources add my-project --path ~/brain/my-project --name "My Project"
 
 # 4. Sync
-~/.hermes-cortex/scripts/mycortex sync --source my-project --force
+~/.steadfaste-fleet/scripts/mycortex sync --source my-project --force
 
 # 5. Verify
-~/.hermes-cortex/scripts/mycortex sources list | grep my-project
+~/.steadfaste-fleet/scripts/mycortex sources list | grep my-project
 # Should show >0 pages
 ```
 
 ### Seed All Projects (Automated)
 
-The canonical seeder is `ops/scripts/install/seed-project-brain.sh` (deployed to `~/.hermes-cortex/scripts/seed-project-brain.sh`):
+The canonical seeder is `ops/scripts/install/seed-project-brain.sh` (deployed to `~/.steadfaste-fleet/scripts/seed-project-brain.sh`):
 
 ```bash
 # See what's empty and what repos can be auto-detected
-bash ~/.hermes-cortex/scripts/seed-project-brain.sh --list
+bash ~/.steadfaste-fleet/scripts/seed-project-brain.sh --list
 
 # Seed all detected projects
-bash ~/.hermes-cortex/scripts/seed-project-brain.sh --all
+bash ~/.steadfaste-fleet/scripts/seed-project-brain.sh --all
 
 # Seed a single project with auto-detected repo
-bash ~/.hermes-cortex/scripts/seed-project-brain.sh --project=my-project --auto
+bash ~/.steadfaste-fleet/scripts/seed-project-brain.sh --project=my-project --auto
 ```
 
 The script copies README.md, ARCHITECTURE.md, CONTRIBUTING.md, and `docs/` files
 into the brain dir, then registers and syncs with mycortex.
 
-**After seeding:** always run `~/.hermes-cortex/scripts/mycortex sync --force` to
+**After seeding:** always run `~/.steadfaste-fleet/scripts/mycortex sync --force` to
 complete the index. Without a full sync, cross-source edges aren't built and
 multi-source search quality via `/brain` is degraded.
 
@@ -2096,7 +2096,7 @@ multi-source search quality via `/brain` is degraded.
 mean it failed — check pages actually made it in:
 
 ```bash
-~/.hermes-cortex/scripts/mycortex sources list | grep my-project
+~/.steadfaste-fleet/scripts/mycortex sources list | grep my-project
 ```
 If pages registered, the sync succeeded.
 

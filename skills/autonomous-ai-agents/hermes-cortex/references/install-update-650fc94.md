@@ -125,7 +125,7 @@ Updated installer summary to reflect new components:
 
 For existing installations:
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull
 bash install.sh  # idempotent — only runs new steps
 ```
@@ -138,7 +138,7 @@ If you installed before commit 7b7a8f2 and used your personal domain:
 
 ```bash
 # Check for personal domain in config
-grep -rn "your-domain\\.com" ~/langfuse/ ~/.hermes-cortex/dashboard/ /usr/local/etc/nginx/servers/
+grep -rn "your-domain\\.com" ~/langfuse/ ~/.steadfaste-fleet/dashboard/ /usr/local/etc/nginx/servers/
 # Linux: replace /usr/local/etc/nginx/servers/ with /etc/nginx/sites-enabled/
 
 # Replace with example.com for public repo safety

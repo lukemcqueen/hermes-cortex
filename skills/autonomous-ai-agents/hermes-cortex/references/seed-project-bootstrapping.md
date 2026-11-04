@@ -42,15 +42,15 @@ AGENTS.seed.md uses these substitution patterns:
 
 ### Restore from latest backup
 ```bash
-bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --restore=/path/to/project
 ```
 
 ### Restore from a specific backup
 ```bash
 # First list available backups
-bash ~/.hermes-cortex/scripts/seed-project.sh --list-backups=/path/to/project
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --list-backups=/path/to/project
 # Then restore one
-bash ~/.hermes-cortex/scripts/seed-project.sh --restore=/path/to/project@20260626_150000-12345
+bash ~/.steadfaste-fleet/scripts/seed-project.sh --restore=/path/to/project@20260626_150000-12345
 ```
 
 ### What gets restored

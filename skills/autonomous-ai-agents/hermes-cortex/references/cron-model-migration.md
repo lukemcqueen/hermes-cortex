@@ -36,7 +36,7 @@ Update all files referencing the old model:
 | `deploy/README-langfuse-clickhouse.md` | Setup instructions, verify commands |
 | `docs/model-tier-strategy.md` | Integration points (if wiring changed) |
 
-Search: `grep -rn "qwen2.5:3b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
+Search: `grep -rn "qwen2.5:3b\|<old-model>" ~/steadfaste-fleet/ --include="*.md"`
 
 ## Current Model Inventory
 
@@ -52,7 +52,7 @@ Search: `grep -rn "qwen2.5:3b\|<old-model>" ~/hermes-cortex/ --include="*.md"`
 # Layer 1 — check cron pin
 hermes cron list | grep <cron-name>
 # Layer 2 — check script constant
-grep "JUDGE_MODEL\|GEN_MODEL" ~/.hermes-cortex/scripts/<script>.py
+grep "JUDGE_MODEL\|GEN_MODEL" ~/.steadfaste-fleet/scripts/<script>.py
 # Layer 3 — check docs
-grep -rn "<old-model>" ~/hermes-cortex/ --include="*.md"
+grep -rn "<old-model>" ~/steadfaste-fleet/ --include="*.md"
 ```

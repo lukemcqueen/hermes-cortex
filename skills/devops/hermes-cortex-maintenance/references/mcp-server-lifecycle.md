@@ -32,7 +32,7 @@ manual cleanup needed. `hermes mcp configure` toggles tool selection;
 
 ## Survey before removing — entries are often already dead
 
-- `git ls-files | grep mcp-servers` in `~/hermes-cortex` — the repo tracks
+- `git ls-files | grep mcp-servers` in `~/steadfaste-fleet` — the repo tracks
   only the *live* servers (cortex-bus-mcp.py, loop-gov-mcp.py, task-mcp.py).
   Disabled entries frequently point at scripts that no longer exist
   (`inbox-mcp.py` was replaced by `cortex-bus-mcp.py`; an `a2a-bridge` entry
@@ -42,7 +42,7 @@ manual cleanup needed. `hermes mcp configure` toggles tool selection;
 ## After removing — orphan script cleanup
 
 - Orphan copies may linger outside the repo, e.g. `~/.hermes/mcp-servers/a2a-mcp.py`.
-  Before deleting: `grep -rn "<name>" ~/.hermes/config.yaml ~/hermes-cortex` —
+  Before deleting: `grep -rn "<name>" ~/.hermes/config.yaml ~/steadfaste-fleet` —
   if nothing references it, `rm` it.
 - Verify: `hermes mcp list` shows the expected set, then
   `python3 ops/scripts/manage/cortex-doctor.py --quiet` — all `MCP server`

@@ -5,7 +5,7 @@ destination paths. Only registered files are auto-deployed when changed.
 
 ## Full Map (as of commit f28552e)
 
-Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
+Sources under `~/steadfaste-fleet/` → dest under `~/.hermes/` or `~/`.
 
 ### Core scripts
 | Repo source | Installed dest | Notes |
@@ -39,39 +39,39 @@ Sources under `~/hermes-cortex/` → dest under `~/.hermes/` or `~/`.
 | `ops/scripts/manage/lesson-hit.sh` | `~/.hermes/scripts/lesson-hit.sh` | |
 
 ### Offline tools
-| `ops/offline/offline_knowledge.py` | `~/.hermes-cortex/offline/offline_knowledge.py` | |
+| `ops/offline/offline_knowledge.py` | `~/.steadfaste-fleet/offline/offline_knowledge.py` | |
 | `ops/offline/offline_knowledge.sh` | `~/.hermes/bin/offline_knowledge` | Symlink in bin/ for PATH access |
-| `ops/offline/offline_code.py` | `~/.hermes-cortex/offline/offline_code.py` | |
+| `ops/offline/offline_code.py` | `~/.steadfaste-fleet/offline/offline_code.py` | |
 | `ops/offline/offline_code.sh` | `~/.hermes/bin/offline_code` | Symlink to bin/ for CLI access |
-| `ops/offline/code-corpus/` | `~/.hermes-cortex/offline/code-corpus/` | 366 snippets, 25 languages |
-| `ops/offline/kiwix-docker-compose.yml` | `~/.hermes-cortex/offline/kiwix-docker-compose.yml` | |
-| `ops/offline/prep-offline.sh` | `~/.hermes-cortex/offline/prep-offline.sh` | |
-| `ops/offline/session_mine.py` | `~/.hermes-cortex/offline/session_mine.py` | |
-| `ops/offline/lessons.py` | `~/.hermes-cortex/offline/lessons.py` | |
-| `ops/offline/migrate_fts_reasoning.sql` | `~/.hermes-cortex/offline/migrate_fts_reasoning.sql` | |
-| `ops/offline/auto-update.sh` | `~/.hermes-cortex/offline/auto-update.sh` | |
+| `ops/offline/code-corpus/` | `~/.steadfaste-fleet/offline/code-corpus/` | 366 snippets, 25 languages |
+| `ops/offline/kiwix-docker-compose.yml` | `~/.steadfaste-fleet/offline/kiwix-docker-compose.yml` | |
+| `ops/offline/prep-offline.sh` | `~/.steadfaste-fleet/offline/prep-offline.sh` | |
+| `ops/offline/session_mine.py` | `~/.steadfaste-fleet/offline/session_mine.py` | |
+| `ops/offline/lessons.py` | `~/.steadfaste-fleet/offline/lessons.py` | |
+| `ops/offline/migrate_fts_reasoning.sql` | `~/.steadfaste-fleet/offline/migrate_fts_reasoning.sql` | |
+| `ops/offline/auto-update.sh` | `~/.steadfaste-fleet/offline/auto-update.sh` | |
 
 ### Dashboard
-| `ops/services/dashboard/server.py` | `~/.hermes-cortex/dashboard/server.py` | `restart_dashboard` |
-| `ops/services/dashboard/static/index.html` | `~/.hermes-cortex/dashboard/static/index.html` | |
+| `ops/services/dashboard/server.py` | `~/.steadfaste-fleet/dashboard/server.py` | `restart_dashboard` |
+| `ops/services/dashboard/static/index.html` | `~/.steadfaste-fleet/dashboard/static/index.html` | |
 | `ops/services/dashboard/com.hermes.cortex-dashboard.plist` | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` | |
 
 ### Agent inbox
 
-| `ops/services/agent-inbox/server.py` | `~/.hermes-cortex/agent-inbox/server.py` | `restart_agent_inbox` |
+| `ops/services/agent-inbox/server.py` | `~/.steadfaste-fleet/agent-inbox/server.py` | `restart_agent_inbox` |
 | `ops/services/agent-inbox/com.hermes.agent-inbox.plist` | `~/Library/LaunchAgents/com.hermes.agent-inbox.plist` | |
 | `ops/services/agent-inbox/agent-inbox-monitor.sh` | `~/.hermes/scripts/agent-inbox-monitor.sh` | |
 
 > ⚠️ **server.py is deployed to all agents by cortex-update.sh (having the file on disk is harmless).**
 > **But it should only be RUN on designated server machines** (Moses, Esther backup).
-> Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/hermes-cortex/.env`.
+> Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/steadfaste-fleet/.env`.
 
 ### Memory (Hermes-owned — NOT registered)
 
 `~/.hermes/memories/MEMORY.md` and `USER.md` are Hermes-owned. Cortex does
 NOT deploy or seed them (2026-08-05: a registered seed clobbered live
 memory on every deploy). Templates stay in `docs/templates/` as reference
-only; `memory-readme.seed.md` → `~/.hermes-cortex/memory/README.md` is the
+only; `memory-readme.seed.md` → `~/.steadfaste-fleet/memory/README.md` is the
 one exception (cortex-owned rubric doc, still registered).
 
 ### Langfuse
@@ -119,7 +119,7 @@ On macOS, `shasum -a 256` is the equivalent of `sha256sum` and is available nati
 **VERIFICATION:**
 ```bash
 bash ~/.hermes/scripts/cortex-update.sh
-diff ~/hermes-cortex/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
+diff ~/steadfaste-fleet/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 # Should be identical (no diff output)
 ```
 

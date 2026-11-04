@@ -2,7 +2,7 @@
 
 > **Read this first — two directories share the name, and they are NOT the same.**
 >
-> - `~/.hermes-cortex/` is the **runtime infra dir** (deployed by `cortex-update.sh`):
+> - `~/.steadfaste-fleet/` is the **runtime infra dir** (deployed by `cortex-update.sh`):
 >   `scripts/`, `state/`, `sessions/`, `memory/`, `hooks/`, and the `skills.yaml` the
 >   **enforcer** reads. Always write it with the `~/` anchor.
 > - `.hermes-cortex/` (as below) is a **repo-local overlay inside a CONSUMER project**,
@@ -11,7 +11,7 @@
 > A bare `.hermes-cortex/` is never the runtime dir. Agents that conflate them go
 > looking for the infra dir inside the project and report the overlay as "the Hermes
 > agent infra directory". It is also why the Cortex repo itself must carry **no**
-> repo-local `.hermes-cortex/` — inside `~/hermes-cortex` the name shadows the runtime
+> repo-local `.hermes-cortex/` — inside `~/steadfaste-fleet` the name shadows the runtime
 > dir (doctor check `Repo-local .hermes-cortex`, see `docs/review-receipt-gate.md`).
 
 ## Summary

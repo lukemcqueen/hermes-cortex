@@ -569,7 +569,7 @@ The background form of `terminal` starts the command in the SESSION cwd
 `cd`/`workdir` prints `fatal: not a git repository` and `PULL_EXIT=128`, and the
 log carries NO post-merge deploy output (so you cannot tell whether it deployed).
 This costs a turn (re-pull) and leaves the deploy unverified. Always bind the
-cwd explicitly in the background command: `cd ~/hermes-cortex && git pull
+cwd explicitly in the background command: `cd ~/steadfaste-fleet && git pull
 --rebase origin main > <stamp>.log 2>&1`. Verify the log shows the post-merge
 `deploy complete` line, not just `PULL_EXIT=0` — an exit-0 run that never entered
 the repo did nothing.

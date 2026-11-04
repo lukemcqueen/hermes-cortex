@@ -17,9 +17,9 @@ description: >-
 
 ## Prerequisites
 
-- Hermes Cortex installed at `~/hermes-cortex/`
+- Hermes Cortex installed at `~/steadfaste-fleet/`
 - Bun at `~/.bun/bin/bun`
-- mycortex at `~/.hermes-cortex/scripts/mycortex`
+- mycortex at `~/.steadfaste-fleet/scripts/mycortex`
 - Ollama running as a systemd user service (or equivalent)
 
 ## Daily Auto-Update Timer (3am)
@@ -31,7 +31,7 @@ standalone maintenance cron jobs.
 
 ```bash
 # Install via cortex update cron script
-bash ~/hermes-cortex/ops/scripts/install/install-cortex-update-cron.sh
+bash ~/steadfaste-fleet/ops/scripts/install/install-cortex-update-cron.sh
 ```
 
 Verify it's scheduled:
@@ -51,7 +51,7 @@ hermes update --yes
 ### 2. Update the cortex repo layer
 
 ```bash
-cd ~/hermes-cortex
+cd ~/steadfaste-fleet
 git pull --ff-only origin main
 bash ops/scripts/cortex-update.sh
 ```
@@ -99,7 +99,7 @@ mycortex search "test query" | head
 ## Langfuse cost tracking (3.206+) — pricing tiers, not legacy columns
 
 > **User directive (2026-08-11):** consult the repo guidance FIRST for any
-> Langfuse/ClickHouse work — `~/hermes-cortex/ops/install/deploy/README-langfuse-clickhouse.md`,
+> Langfuse/ClickHouse work — `~/steadfaste-fleet/ops/install/deploy/README-langfuse-clickhouse.md`,
 > `docs/troubleshooting.md`, `deploy/patches/` — before reverse-engineering
 > the running containers. Caveat: the `docs/troubleshooting.md` entry *"Langfuse costs show $0.00"*'s
 > `INSERT INTO models (..., input_price, output_price, ...)` is stale for
@@ -134,8 +134,8 @@ pipeline writes into the DEPLOYED copy, so the deployed side often carries knowl
 not have. Never resolve it by copying repo → deployed, and never by deleting the deployed copy.
 
 ```bash
-python3 ~/hermes-cortex/ops/scripts/manage/reconcile-stranded-skills.py          # report first
-python3 ~/hermes-cortex/ops/scripts/manage/reconcile-stranded-skills.py --apply  # pure supersets only
+python3 ~/steadfaste-fleet/ops/scripts/manage/reconcile-stranded-skills.py          # report first
+python3 ~/steadfaste-fleet/ops/scripts/manage/reconcile-stranded-skills.py --apply  # pure supersets only
 ```
 
 - The report classifies each file. A PURE SUPERSET can be applied mechanically; **REVIEW** means the

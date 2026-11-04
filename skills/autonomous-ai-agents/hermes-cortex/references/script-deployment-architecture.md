@@ -4,16 +4,16 @@
 
 | Directory | Purpose | Managed by |
 |-----------|---------|-----------|
-| `~/hermes-cortex/` | Git repo — source of truth for all scripts | `git pull` → `cortex-update.sh` |
-| `~/.hermes-cortex/scripts/` | Canonical runtime location | `cortex-update.sh` register map (`HERMES_HOME=${HOME}/.hermes-cortex`) |
-| `~/.hermes/scripts/` | Hermes Agent cron resolution | Copies from `~/.hermes-cortex/scripts/` via sync script |
+| `~/steadfaste-fleet/` | Git repo — source of truth for all scripts | `git pull` → `cortex-update.sh` |
+| `~/.steadfaste-fleet/scripts/` | Canonical runtime location | `cortex-update.sh` register map (`HERMES_HOME=${HOME}/.hermes-cortex`) |
+| `~/.hermes/scripts/` | Hermes Agent cron resolution | Copies from `~/.steadfaste-fleet/scripts/` via sync script |
 
 ## Deployment Flow
 
 ```
 Repo source (ops/scripts/ or core/governance/)
   ↓ cortex-update.sh (via register() lines)
-~/.hermes-cortex/scripts/<file>
+~/.steadfaste-fleet/scripts/<file>
   ↓ sync-scripts.sh (copy, not symlink — cron sandbox blocks external symlinks)
 ~/.hermes/scripts/<file>
   ↓ cron scheduler resolves script
@@ -29,11 +29,11 @@ Script runs
   ```
 3. Deploy via cortex-update:
   ```bash
-  bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+  bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
   ```
 4. Copy to cron directory:
   ```bash
-  cp ~/.hermes-cortex/scripts/my-script.py ~/.hermes/scripts/my-script.py
+  cp ~/.steadfaste-fleet/scripts/my-script.py ~/.hermes/scripts/my-script.py
   ```
 5. If it's a cron script, register in `install-crons.sh`:
   ```bash
@@ -48,7 +48,7 @@ Blocked: script path resolves outside the scripts directory
 ```
 
 This means:
-- **Do NOT use symlinks** to `~/.hermes-cortex/scripts/` — they will fail silently.
+- **Do NOT use symlinks** to `~/.steadfaste-fleet/scripts/` — they will fail silently.
 - Use **file copies** (`cp`) instead of symlinks.
 - Files that exist as regular files in `~/.hermes/scripts/` work fine.
 - After a cortex-update.sh deployment, re-copy changed scripts to `~/.hermes/scripts/`.
@@ -59,5 +59,5 @@ Previous approach replaced 42+ files with symlinks for consistency, but the cron
 
 ## Pitfalls
 
-- **`cortex-update.sh ` requires `~/.hermes-cortex/bin/` to exist** — if missing, the `offline_knowledge` symlink fails and `set -e` stops the entire update.
+- **`cortex-update.sh ` requires `~/.steadfaste-fleet/bin/` to exist** — if missing, the `offline_knowledge` symlink fails and `set -e` stops the entire update.
 - **New register lines require ``** — delta mode skips files with matching commit hashes. Always run `cortex-update.sh ` after adding register lines.

@@ -82,8 +82,8 @@ For each gap found:
 
 ```bash
 # 1. Fix diverged scripts
-cp ~/hermes-cortex/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
-cp ~/hermes-cortex/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
+cp ~/steadfaste-fleet/scripts/heartbeat.py ~/.hermes/scripts/heartbeat.py
+cp ~/steadfaste-fleet/scripts/memory-to-brain-sync.py ~/.hermes/scripts/memory-to-brain-sync.py
 
 # 2. Fix sync daemon (add --skip default)
 sed -i.bak '' 's/sync --all --no-pull/sync --all --no-pull --skip default/' ~/.legacy-brain/sync-watch.sh
@@ -95,7 +95,7 @@ bash ~/.hermes/scripts/seed-project-brain.sh --all 2>/dev/null || \
   echo "No seed script yet — seed manually (see Existing Repo Setup in skill)"
 
 # 4. Rebuild offline code index
-offline_code index 2>/dev/null || python3 ~/.hermes-cortex/offline/offline_code.py index
+offline_code index 2>/dev/null || python3 ~/.steadfaste-fleet/offline/offline_code.py index
 
 # 5. Verify
 mycortex sources list

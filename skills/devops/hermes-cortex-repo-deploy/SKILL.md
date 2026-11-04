@@ -8,7 +8,7 @@ platforms: [linux, macos]
 
 # Hermes Cortex Repo — Deploy & Push Gates
 
-Workflow for landing changes in `~/hermes-cortex` (shared public repo). The
+Workflow for landing changes in `~/steadfaste-fleet` (shared public repo). The
 repo's own AGENTS.md governs governance mechanics; this skill carries the
 deploy-order and manifest pitfalls that cost time when missed.
 
@@ -64,7 +64,7 @@ obvious:
 **Run the deploy as the LAST step before the push.** Any commit made after a deploy leaves
 the deployed marker stale and the gate returns `Deploy sync` ❌ however clean your doctor
 ran minutes earlier. Do both in ONE command, nothing in between:
-`bash ~/.hermes-cortex/scripts/cortex-update.sh > <log> 2>&1; git push origin main`.
+`bash ~/.steadfaste-fleet/scripts/cortex-update.sh > <log> 2>&1; git push origin main`.
 
 ## An operational cycle cannot carry evidence of its own success — commit the CHECK
 
@@ -192,8 +192,8 @@ with `lsattr <deployed path>` (expect `----i---------e-------`, see
 it is the only sanctioned way to change one. A `cp`/`python` write to a deployed path
 is the same wrong move whichever way it fails, loudly or silently.
 
-- **Patch by REPO path only.** Anything under `~/.hermes-cortex/` is an artifact;
-  the editable twin is `~/hermes-cortex/ops/scripts/…`. A `patch` call resolves the
+- **Patch by REPO path only.** Anything under `~/.steadfaste-fleet/` is an artifact;
+  the editable twin is `~/steadfaste-fleet/ops/scripts/…`. A `patch` call resolves the
   path it is given, so a deployed path applies cleanly and gives no hint it will be
   thrown away.
 - **The deploy's drift guard is the backstop, and it fails CLOSED.** When a deployed
@@ -266,7 +266,7 @@ copy — before reporting the tool as available to the fleet.
 tests import the REPO tree while the host runs the DEPLOYED tree, so a module that is
 committed, imported by a deployed script, and never registered keeps a GREEN suite while
 the host dies at startup (observed: `RuntimeError: cortex_bus queue.py not found (bus core
-missing)` out of `bot_locks`, whose loader probes `~/.hermes-cortex/queue.py` — so that
+missing)` out of `bot_locks`, whose loader probes `~/.steadfaste-fleet/queue.py` — so that
 DESTINATION, not just some deployed copy, is the contract). Assert agreement in BOTH
 directions (an unregistered module; a register entry whose source no longer exists), assert
 the guard's PREMISE (that the deployed script really does import what it protects), and add
@@ -515,9 +515,9 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
 4. **Commit → deploy → doctor → push.** Pull with `--autostash`; expect the
    fleet push race (rebase onto new origin/main, retry). After a race-rebase
    your commit gets a new sha, so Deploy sync FAILs again — run
-   `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`, push, then
+   `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`, push, then
    verify `git ls-remote origin main` == HEAD.
-5. **Verify the deployed tree** — `diff -r ~/hermes-cortex/skills/<name>
+5. **Verify the deployed tree** — `diff -r ~/steadfaste-fleet/skills/<name>
    ~/.hermes/skills/<name>` identical — then broadcast FLEET_NOTICE per the
    fleet-commands skill (self-test on yourself, one message per agent with
    `--self-tested`, verify with `hc inbox` peeks).
@@ -529,7 +529,7 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
   and its early archive fails the check once, then clears. Confirm with the
   live endpoint before fixing handler debt:
   `curl -s -u "$CORTEX_BASIC_AUTH" "$CORTEX_BUS_URL/api/pgmq/queue/inbox_<agent>"`
-  (both vars in `~/hermes-cortex/.env`) — `depth: 0,
+  (both vars in `~/steadfaste-fleet/.env`) — `depth: 0,
   processing: 0` = clean, just push again. The path is singular `queue/`;
   `/queues/<name>` 404s. Don't conclude from local psql — on the backup
   orchestrator the local mycortex-postgres is a stale REPORTS MIRROR.
@@ -540,7 +540,7 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
   reporting a dispatch as "sent, unverified", and if it still fails, name the exact
   probe that failed instead of implying the queue cannot be checked. Check the probe
   before doubting the system.
-- **`hc` is not on PATH** — call it as `~/.hermes-cortex/scripts/hc`.
+- **`hc` is not on PATH** — call it as `~/.steadfaste-fleet/scripts/hc`.
 
 ## Reversing your own wrong fix
 
