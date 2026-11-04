@@ -200,13 +200,13 @@ When testing a bus or inter-agent feature, the test is incomplete until you prov
 - task-start was called first, then each skill was loaded separately
 - No shortcut: "I already called task-start, that covers it" is always wrong
 
-7. **Template is the single source of truth:** When you modify a deployed copy (agent profile, config, or SOUL.md), the canonical template in `docs/templates/` MUST be updated too. Deployed copies sync FROM the template. Other agents copy the template — if it's stale, they get wrong instructions. The doctor's SOUL.md/AGENTS.md sync checks enforce this: if the template has content the deployed copy doesn't, the doctor FAILS.
+7. **Template is the single source of truth:** When you modify a deployed copy (agent profile, config, or SOUL.md), the canonical template in `docs/templates/` MUST be updated too. Deployed copies sync FROM the template. Other agents copy the template — if it's stale, they get wrong instructions. The doctor's SOUL.md sync check enforces this for identity docs. (AGENTS.md is NOT template-synced — it lives per-repo, seeded via seed-project.sh; there is no ~/.hermes/AGENTS.md global copy since 2026-11-04.)
 
 **Checklist before end_change:**
 - [ ] Did I change something that lives in `docs/templates/`? → Update the template
 - [ ] Did I change a template? → Sync runtime: `cp docs/templates/XXX ~/.hermes/XXX`
 - [ ] Did I change an agent profile? → Is this change structural (goes in template) or agent-specific?
-- [ ] Run doctor — SOUL.md sync and AGENTS.md sync must both PASS
+- [ ] Run doctor — SOUL.md template checks PASS (AGENTS.md has no global sync to check; it is per-repo)
 
 **Real-world warning (2026-07-21):** User asked "Why didn't you update the SOUL template?" after Moses updated the moses profile without updating `docs/templates/SOUL.md`. The template is the canonical source of truth — it must stay in sync.
 

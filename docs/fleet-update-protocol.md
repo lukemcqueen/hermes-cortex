@@ -180,7 +180,7 @@ Sent when UPDATE_RESULT contains issues Moses can identify and fix.
  "priority": "high",
  "body": {
   "issue": "AGENTS.md needs sync",
-  "fix": "cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md",
+  "fix": "bash ~/steadfaste-fleet/ops/scripts/install/seed-project.sh --project=<repo> --components=AGENTS.md",
   "verify": "python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --json",
   "deadline_minutes": 10
  }

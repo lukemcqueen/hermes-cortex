@@ -422,8 +422,8 @@ After setup, initialize the governance DB and session cache — see the loop-gov
 # Profile skills
 # Personal skills no longer in repo — use ~/.hermes/skills/ directly
 
-# AGENTS.md metadata
-cp ~/steadfaste-fleet/AGENTS.md ~/.hermes/AGENTS.md
+# AGENTS.md — per-repo, NOT a global ~/.hermes copy (removed 2026-11-04).
+# Seed each repo from the fleet template: seed-project.sh --components=AGENTS.md
 
 # SOUL.md — the agent's identity
 # Agent profiles removed from repo — use template directly

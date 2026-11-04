@@ -1,0 +1,95 @@
+# Evidence — remove ~/.hermes/AGENTS.md sync, AGENTS is per-repo (2026-11-04)
+
+Change: cycle 8154. The fleet deploy (cortex-update.sh), the doctor
+(checks.py), and the pre-commit hook (pre-commit-score) previously enforced a
+global copy of the repo AGENTS.md at ~/.hermes/AGENTS.md. This change removes
+that coupling: AGENTS.md lives ONLY in each repo, seeded from the fleet
+template (docs/templates/AGENTS.seed.md via seed-project.sh). claude agents
+already use per-repo CLAUDE.md.
+
+Re-runnable checks below were run on this host against HEAD at commit time.
+Run them again with the same commands; each uses read-only tools where possible.
+
+## 1. All three changed code files parse / pass static checks
+
+    $ bash -n ops/scripts/cortex-update.sh && echo "cortex-update.sh syntax OK"
+    cortex-update.sh syntax OK
+    $ bash -n ops/scripts/pre-commit-score && echo "pre-commit-score syntax OK"
+    pre-commit-score syntax OK
+    $ python3 -c "import ast; ast.parse(open('ops/scripts/manage/cortex_doctor/checks.py').read()); print('checks.py parses OK')"
+    checks.py parses OK
+
+## 2. pre-commit-score per-repo rule threshold holds against the fleet AGENTS.md
+
+    $ grep -cE '^[0-9]+\. \*\*' AGENTS.md
+    42
+
+    The hook now requires >=3 numbered rules when a repo's own AGENTS.md
+    exists; the fleet constitution has 42. Unseeded repos (no own AGENTS.md)
+    are NOT a commit gate (doctor check_dev_repo_agents WARNs them).
+
+## 3. Changed doctor checks import and the per-repo AGENTS/CLAUDE checks are kept
+
+    $ python3 -c "import sys; sys.path.insert(0, 'ops/scripts/manage');
+      from cortex_doctor.checks import check_dev_repo_agents, check_dev_repo_claude;
+      print('per-repo AGENTS + CLAUDE checks import OK (kept)')"
+    per-repo AGENTS + CLAUDE checks import OK (kept)
+
+## 4. Test suites that exercise the changed paths pass
+
+    $ python3 -m pytest tests/test_agents_md_home_path_convention.py -q
+    collected 3 items
+    3 passed in 0.29s
+
+    $ python3 -m pytest tests/test_shell_portability.py \
+        tests/test_doctor_harness_loop.py tests/test_skills_loadable_check.py \
+        tests/test_doctor_dev_repo_detection.py tests/test_doctor_claude_check.py -q
+    collected 41 items
+    41 passed in 93.80s
+
+    (dev-repo AGENTS.md + claude CLAUDE.md checks included and green.)
+
+## 5. Hermes reads AGENTS.md per-repo (cwd), not from ~/.hermes
+
+Hermes-agent skill, references/project-context-files.md:
+    "AGENTS.md / agents.md: Cwd only — subdirectory and parent copies are
+     ignored"
+    "Don't put project rules in ~/.hermes/AGENTS.md (or any other home-level
+     location)... For cross-project context, use SOUL.md"
+
+So ~/.hermes/AGENTS.md was fleet-tooling only (cortex-update wrote it; doctor
++ pre-commit validated it) and only ever loaded in a session whose cwd was
+~/.hermes — a degenerate, non-project cwd. Removing it aligns WITH Hermes's
+own documented contract. Removed global copy loses no project-scoped rules;
+fleet-template rules reach agents via each repo's seeded AGENTS.md.
+
+## 6. No live config reference to ~/.hermes/AGENTS.md
+
+    $ grep -c 'AGENTS\.md' ~/.hermes/config.yaml
+    0
+
+## 7. Adversarial verify (A4 gate) on the enforcement files
+
+    $ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file ops/scripts/pre-commit-score --level A4 --gate
+    Summary: 1 file(s), 0 finding(s); GATE_PASSED — no critical/high findings
+    $ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file ops/scripts/cortex-update.sh --level A4 --gate
+    Summary: 1 file(s), 0 finding(s); GATE_PASSED — no critical/high findings
+    $ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file ops/scripts/manage/cortex_doctor/checks.py --level A4 --gate
+    Summary: 1 file(s), 0 finding(s) critical/high; GATE_PASSED (18 low + 53 info
+    pre-existing in the 6500-line legacy file, not introduced by the 80-line deletion)
+
+## Blast radius of the removal
+
+Removed (the ~/.hermes/AGENTS.md coupling):
+- cortex-update.sh: the AGENTS.md -> ~/.hermes sync block.
+- checks.py: `AGENTS.md (~/.hermes)` missing-FAIL / size / `AGENTS.md sync`
+  content-marker checks, plus the dead `_extract_agents_markers` helper and
+  the `hermes_agents`/`repo_agents` ephemeral vars.
+- pre-commit-score: the hard `~/.hermes/AGENTS.md` existence + rule-count
+  gate, replaced by a per-repo own-AGENTS.md check.
+
+Kept (the per-repo design):
+- check_dev_repo_agents (dev repos have AGENTS.md), check_dev_repo_claude
+  (claude agents), seed-project.sh, AGENTS.seed.md, and the orchestor-only
+  `AGENTS.md` entry.
+- SOUL.md remains at ~/.hermes/SOUL.md (identity layer; unchanged).
