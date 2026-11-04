@@ -26,7 +26,6 @@ JSON_MODE=0
 PI_DIR="${PI_DIR:-$HOME/.pi/agent}"
 SETTINGS="$PI_DIR/settings.json"
 MCP_JSON="$PI_DIR/mcp.json"
-SKILLS_LINKS="$PI_DIR/cortex-skills"
 AGENT_ENV="$HOME/.steadfaste-fleet/agent.env"
 DEPLOY="${CORTEX_DEPLOY_HOME:-$HOME/.steadfaste-fleet}"
 MANIFEST="${CORTEX_SKILLS_MANIFEST:-}"
@@ -103,7 +102,7 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
         # identity).
         # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
         # substitution is a bash 3.2 parser trap (macOS).
-        _ENTRY_ISSUES_RAW_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
+        _ENTRY_ISSUES_RAW_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null)" || { printf '%s\n' "cannot create a temp file under ${TMPDIR:-/tmp}/ — the mcp.json entry audit could not run" >&2; exit 1; }
         MCP_JSON="$MCP_JSON" AGENT_ENV="$AGENT_ENV" REQUIRED="$REQUIRED" python3 - <<'PY' >"$_ENTRY_ISSUES_RAW_TMP"
 import json, os, shutil
 from pathlib import Path
@@ -215,15 +214,60 @@ else
     if [[ -z "$WANT" ]]; then
       _line 2 NA "no skills manifest found (skills.yaml) — cannot verify the curated set"
     else
-      link_missing=""
-      for s in $WANT; do
-        [[ -e "$SKILLS_LINKS/$s" ]] || link_missing="$link_missing $s"
-      done
-      n=$(echo "$WANT" | wc -w | tr -d ' ')
-      if [[ -n "$link_missing" ]]; then
-        _failed 2 "$SKILLS_LINKS is missing curated skill(s):$link_missing — run install-pi-integration.sh"
+      # cortex-skills (the flat curated symlink farm) is RETIRED (2026-10-21) — see the
+      # "RETIRED (2026-10-21)" note in install-pi-integration.sh, which repointed Pi at the whole
+      # published tree and never recreates the farm. So the curated always-set must live in the
+      # registered published tree below. Checking the retired dir made a healthy host report FAIL
+      # forever — its own remediation (install-pi-integration.sh) never recreates it, the exact
+      # impossible-PASS failure model this audit's own header warns about (observed on esther
+      # 2026-11-04, governance cycle 14119: 'cortex-skills is missing curated skill(s)' on a host
+      # whose curated always-set was fully present in the published tree). Resolve the registered
+      # skills root from settings.json and prove each always-skill carries a SKILL.md under it.
+      _SKILLS_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit-skills.XXXXXX" 2>/dev/null)"
+      SETTINGS="$SETTINGS" WANT="$WANT" python3 - <<'PY' >"$_SKILLS_TMP"
+import json, os
+from pathlib import Path
+s = json.loads(Path(os.environ["SETTINGS"]).read_text())
+roots = [e for e in (s.get("skills") or []) if isinstance(e, str) and os.path.isdir(e)]
+want = [w for w in os.environ.get("WANT", "").split() if w]
+if not roots:
+    print("NOROOT"); raise SystemExit
+def _has(root, name):
+    for dp, _dn, fn in os.walk(root):
+        if "SKILL.md" in fn and os.path.basename(dp) == name:
+            return dp
+    return None
+missing, shown = [], roots[0]
+for name in want:
+    loc = None
+    for r in roots:
+        loc = _has(r, name)
+        if loc:
+            break
+    if loc:
+        shown = loc
+    else:
+        missing.append(name)
+print("MISSING:" + ",".join(missing))
+print("ROOT:" + shown)
+PY
+      _sk_rc=$?
+      # An audit must not read a crashed parser as "clean": NO verdict is not a pass.
+      skills_out="$(cat "$_SKILLS_TMP" 2>/dev/null)"
+      rm -f "$_SKILLS_TMP"
+      if [[ $_sk_rc -ne 0 || -z "$skills_out" ]]; then
+        _failed 2 "the curated-set probe could not run (parser exited $_sk_rc) — NO verdict is not a pass"
+      elif [[ "$skills_out" == NOROOT* ]]; then
+        _failed 2 "no existing skills root is registered in $SETTINGS — run install-pi-integration.sh"
       else
-        _line 2 PASS "$n/$n curated skills linked in $SKILLS_LINKS, settings.json carries extensions+skills"
+        _miss="${skills_out%%$'\n'*}"; _miss="${_miss#MISSING:}"
+        _root="${skills_out##*$'\n'ROOT:}"
+        n=$(echo "$WANT" | wc -w | tr -d ' ')
+        if [[ -n "$_miss" ]]; then
+          _failed 2 "registered published tree ${_root:-?} is missing curated skill(s): $_miss — run publish-agent-skills.py to rebuild the tree, then install-pi-integration.sh"
+        else
+          _line 2 PASS "$n/$n curated skills present in the registered published tree ${_root:-?} (settings.json carries extensions+skills)"
+        fi
       fi
     fi
   fi
@@ -288,7 +332,7 @@ else
     # substring match cannot tell the two apart.
     # PLAIN REDIRECT, never `$( ... <<PY )`: a heredoc inside a command
     # substitution is a bash 3.2 parser trap (macOS).
-    _WS_VERDICT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/cortex-audit.$$")"
+    _WS_VERDICT_TMP="$(mktemp "${TMPDIR:-/tmp}/cortex-audit.XXXXXX" 2>/dev/null)" || { printf '%s\n' "cannot create a temp file under ${TMPDIR:-/tmp}/ — the web-search verdict could not be computed" >&2; exit 1; }
     WS_JSON="$WS_JSON" python3 - <<'PY' >"$_WS_VERDICT_TMP"
 import json, os
 p = os.environ["WS_JSON"]
