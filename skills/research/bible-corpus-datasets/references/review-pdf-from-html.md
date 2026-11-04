@@ -13,7 +13,7 @@ export, a verification report, a set of findings. One durable document, not chat
    Hermes venv:
 
    ```
-   /home/esther/.hermes/hermes-agent/venv/bin/weasyprint <in.html> <out.pdf>
+   ~/.hermes/hermes-agent/venv/bin/weasyprint <in.html> <out.pdf>
    ```
 
    There is no pandoc/xelatex on this host. A headless-browser `Page.printToPDF` is the fallback.

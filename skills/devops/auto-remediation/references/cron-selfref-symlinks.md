@@ -40,7 +40,7 @@ These fail when:
       sys.path.insert(0, str(_SCRIPT_DIR))
 
 **Verification:**
-  python3 -c "import sys; sys.path.insert(0, '/home/esther/.hermes/scripts'); from hermes_tz import format_timestamp; print('OK')"
+  python3 -c "import sys; sys.path.insert(0, '~/.hermes/scripts'); from hermes_tz import format_timestamp; print('OK')"
 
 ## cortex-doctor + grep = Safety Filter Block
 

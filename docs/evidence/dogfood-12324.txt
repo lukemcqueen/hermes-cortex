@@ -1,4 +1,4 @@
-Running: bash -c bash /home/esther/.hermes-cortex/scripts/cortex-dogfood.sh --force > /tmp/dg.txt 2>&1; echo "dogfood_rc=$?"; tail -1 /tmp/dg.txt; echo "deployed has DOC_ONLY_DIR_PREFIXES: $(grep -c "DOC_ONLY_DIR_PREFIXES" /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py) matches"
+Running: bash -c bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force > /tmp/dg.txt 2>&1; echo "dogfood_rc=$?"; tail -1 /tmp/dg.txt; echo "deployed has DOC_ONLY_DIR_PREFIXES: $(grep -c "DOC_ONLY_DIR_PREFIXES" ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py) matches"
 rc: 0
 when: 2026-10-12T09:43:55Z
 

@@ -78,7 +78,7 @@ One file changed (`mcp-servers/cortex-bus-mcp.py`) plus one new test file
 ### 3.1 Unit tests green, on the changed functions
 
 ```
-$ /home/esther/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q
+$ ~/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q
 collected 9 items
 tests/test_bus_mcp_verify_surface.py .........                           [100%]
 ============================== 9 passed in 1.27s ===============================
@@ -165,6 +165,6 @@ inbox_moses ARCHIVED count= 7
 ## 5. Re-run
 
 ```bash
-/home/esther/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q   # expect 9 passed
+~/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q   # expect 9 passed
 python3 ~/.hermes/cache/scratch/live-verify-surface.py                                  # live bus loop
 ```

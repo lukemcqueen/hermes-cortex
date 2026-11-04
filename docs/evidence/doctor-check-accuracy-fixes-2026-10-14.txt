@@ -300,10 +300,10 @@ Two of its rows are regressions it caught in this change, not pre-existing behav
 
 ```
 Traceback (most recent call last):
-  File "/home/esther/.hermes/cache/scratch/boundary_probe.py", line 49, in <module>
+  File "~/.hermes/cache/scratch/boundary_probe.py", line 49, in <module>
     check("None root entry", dc.find_script_consumers([None]), {v: [] for v in
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/esther/hermes-cortex/ops/scripts/manage/cortex_doctor/config.py", line 285, in find_script_consumers
+  File "~/hermes-cortex/ops/scripts/manage/cortex_doctor/config.py", line 285, in find_script_consumers
     root = Path(root)
            ^^^^^^^^^^
   File "/usr/lib/python3.12/pathlib.py", line 373, in __init__

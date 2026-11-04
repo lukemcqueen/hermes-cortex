@@ -9,7 +9,7 @@ The `remediation-sensor.py` (no_agent, every 5m) reports:
   "type": "script_missing",
   "severity": "high",
   "detail": "Missing script: cron-auto-remediate.sh",
-  "context": { "path": "/home/esther/.hermes/scripts/cron-auto-remediate.sh" }
+  "context": { "path": "~/.hermes/scripts/cron-auto-remediate.sh" }
 }
 ```
 

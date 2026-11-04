@@ -1,11 +1,11 @@
-Running: /home/esther/.hermes-cortex/venv/bin/python3 -m pytest tests/test_loop_gov_wrapper_guard.py tests/test_fleet_venv_check_block.py tests/test_fleet_venv_launchers.py tests/test_fleet_templates.py -v --tb=short
+Running: ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_loop_gov_wrapper_guard.py tests/test_fleet_venv_check_block.py tests/test_fleet_venv_launchers.py tests/test_fleet_templates.py -v --tb=short
 rc: 0
 when: 2026-10-13T00:55:15Z
 
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/esther/.hermes-cortex/venv/bin/python3
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- ~/.hermes-cortex/venv/bin/python3
 cachedir: .pytest_cache
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collecting ... collected 18 items

@@ -50,7 +50,7 @@ Spec fields (`AgentSpec`, `ops/scripts/cortex_gateway/agents.py`):
 ```json
 "backends": [
   {"name": "pi", "kind": "command",
-   "command": ["/home/esther/.pi/agent/bin/pi", "--model", "openrouter/deepseek/deepseek-flash-latest"],
+   "command": ["~/.pi/agent/bin/pi", "--model", "openrouter/deepseek/deepseek-flash-latest"],
    "output": "last_line",
    "timeout_s": 300,
    "reply_mode": "sync",

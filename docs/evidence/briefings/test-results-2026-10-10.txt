@@ -1,7 +1,7 @@
 # Briefing test results — 2026-10-10
 
 Captured: 2026-10-14T02:39:33.729599+00:00
-Interpreter: /home/esther/.hermes/cron/output/.venv-brief/bin/python
+Interpreter: ~/.hermes/cron/output/.venv-brief/bin/python
 Flag set: -W error::ResourceWarning (a leaked handle fails)
 
 Regenerate with:
@@ -9,9 +9,9 @@ Regenerate with:
 
 ========================================================================
 
-$ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_gen_briefing.py
+$ ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_gen_briefing.py
 
-.FAIL: missing /home/esther/.hermes/cache/scratch/tmpwmfq5z4g/sustainability-briefing-1999-01-01.md
+.FAIL: missing ~/.hermes/cache/scratch/tmpwmfq5z4g/sustainability-briefing-1999-01-01.md
 ...........
 ----------------------------------------------------------------------
 Ran 12 tests in 0.226s
@@ -22,9 +22,9 @@ exit_code=0
 
 ------------------------------------------------------------------------
 
-$ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_capture_evidence.py
+$ ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_capture_evidence.py
 
-wrote /home/esther/.hermes/cache/scratch/tmp_ujigqp1/verification-2030-01-03.txt
+wrote ~/.hermes/cache/scratch/tmp_ujigqp1/verification-2030-01-03.txt
 === evidence: sustainability briefing 2030-01-03 ===
 generated: 2026-10-14T02:39:34.105107+00:00
 
@@ -34,13 +34,13 @@ generated: 2026-10-14T02:39:34.105107+00:00
 [files] sustainability-briefing-2030-01-03.pdf     size=-1       FAIL
 --- stderr ---
 Traceback (most recent call last):
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
     sys.exit(main(date, out_dir))
              ^^^^^^^^^^^^^^^^^^^
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
     text = open(base + ".md", encoding="utf-8").read()
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cron/output/sustainability-briefing-2030-01-03.md'
+FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/sustainability-briefing-2030-01-03.md'
 checker_exit=1
 
 --- artifact listing + sha256
@@ -50,7 +50,7 @@ MISSING  ~/.hermes/cache/scratch/tmp_ujigqp1/sustainability-briefing-2030-01-03.
 
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmpdq61cgo1/verification-2030-01-02.txt
+wrote ~/.hermes/cache/scratch/tmpdq61cgo1/verification-2030-01-02.txt
 === evidence: sustainability briefing 2030-01-02 ===
 generated: 2026-10-14T02:39:34.168207+00:00
 
@@ -60,13 +60,13 @@ generated: 2026-10-14T02:39:34.168207+00:00
 [files] sustainability-briefing-2030-01-02.pdf     size=-1       FAIL
 --- stderr ---
 Traceback (most recent call last):
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
     sys.exit(main(date, out_dir))
              ^^^^^^^^^^^^^^^^^^^
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
     text = open(base + ".md", encoding="utf-8").read()
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cron/output/sustainability-briefing-2030-01-02.md'
+FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/sustainability-briefing-2030-01-02.md'
 checker_exit=1
 
 --- artifact listing + sha256
@@ -79,7 +79,7 @@ MISSING  ~/.hermes/cache/scratch/tmpdq61cgo1/sustainability-briefing-2030-01-02.
 --- word count: 748
 
 --- pdf text extraction spot-check (first 6 lines)
-wrote /home/esther/.hermes/cache/scratch/tmpzjwe7586/verification-2030-01-01.txt
+wrote ~/.hermes/cache/scratch/tmpzjwe7586/verification-2030-01-01.txt
 === evidence: sustainability briefing 2030-01-01 ===
 generated: 2026-10-14T02:39:34.228632+00:00
 
@@ -89,13 +89,13 @@ generated: 2026-10-14T02:39:34.228632+00:00
 [files] sustainability-briefing-2030-01-01.pdf     size=-1       FAIL
 --- stderr ---
 Traceback (most recent call last):
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 118, in <module>
     sys.exit(main(date, out_dir))
              ^^^^^^^^^^^^^^^^^^^
-  File "/home/esther/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
+  File "~/hermes-cortex/ops/scripts/sustainability/verify_briefing.py", line 94, in main
     text = open(base + ".md", encoding="utf-8").read()
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.hermes/cron/output/sustainability-briefing-2030-01-01.md'
+FileNotFoundError: [Errno 2] No such file or directory: '~/.hermes/cron/output/sustainability-briefing-2030-01-01.md'
 checker_exit=1
 
 --- artifact listing + sha256
@@ -118,10 +118,10 @@ exit_code=0
 
 ------------------------------------------------------------------------
 
-$ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_write_cycle_evidence.py
+$ ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_write_cycle_evidence.py
 
-wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-1999-12-31.md (19516 bytes)
-wrote /home/esther/hermes-cortex/docs/evidence/briefings/cycle-evidence-2026-10-10.md (20748 bytes)
+wrote ~/hermes-cortex/docs/evidence/briefings/cycle-evidence-1999-12-31.md (19516 bytes)
+wrote ~/hermes-cortex/docs/evidence/briefings/cycle-evidence-2026-10-10.md (20748 bytes)
 .....
 ----------------------------------------------------------------------
 Ran 5 tests in 1.637s
@@ -132,7 +132,7 @@ exit_code=0
 
 ------------------------------------------------------------------------
 
-$ /home/esther/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_verify_briefing.py
+$ ~/.hermes/cron/output/.venv-brief/bin/python -W error::ResourceWarning tests/test_verify_briefing.py
 
 test_files_good (__main__.TestChecks.test_files_good) ... ok
 test_files_reject_missing_binary (__main__.TestChecks.test_files_reject_missing_binary) ... ok

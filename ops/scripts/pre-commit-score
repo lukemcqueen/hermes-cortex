@@ -320,7 +320,7 @@ fi
 # ── Orchestrator detection (hostname + home-dir, never env) ──
 # Orchestrator hosts are identified by TWO independent signals:
 #   1. hostname -s is moses or esther
-#   2. the real account home is /home/moses or /home/esther
+#   2. the real account home is $HOME for the local account
 # AGENT_ID / AGENT_TYPE env vars grant NO privileges here — a
 # non-orchestrator host cannot impersonate an orchestrator by
 # setting them (that is the hole this replaces).

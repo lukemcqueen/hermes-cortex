@@ -5,16 +5,16 @@
 | Role | URL | Auth |
 |------|-----|------|
 | Local loop-governance | `http://127.0.0.1:8903` | Bearer token (`CORTEX_BUS_TOKEN`) |
-| Remote bus (primary) | `https://realgospelmessage.com:13004` | Basic auth (`CORTEX_BASIC_AUTH` from cortex-bus.conf) |
-| Remote fallback | `https://realgospelmessage.com:14004` | Basic auth (same credentials) |
+| Remote bus (primary) | `https://your-bus.example.com:13004` | Basic auth (`CORTEX_BASIC_AUTH` from cortex-bus.conf) |
+| Remote fallback | `https://your-bus.example.com:14004` | Basic auth (same credentials) |
 
 ## Auth Config
 
 Stored in `~/.steadfaste-fleet/cortex-bus.conf`:
 
 ```
-CORTEX_BUS_URL=https://realgospelmessage.com:13004
-CORTEX_BUS_FALLBACK_URL=https://realgospelmessage.com:14004
+CORTEX_BUS_URL=https://your-bus.example.com:13004
+CORTEX_BUS_FALLBACK_URL=https://your-bus.example.com:14004
 CORTEX_BASIC_AUTH=<agentname>:<secret>
 AGENT_NAME=<agentname>
 ```
@@ -37,20 +37,20 @@ All relative to the chosen `CORTEX_BUS_URL`:
 
 The local server requires a Bearer token. Check `CORTEX_BUS_TOKEN` env var or `cortex-bus.conf`. When neither is set, the local endpoint returns 403 with `"Missing or invalid Authorization header. Use: Authorization: Bearer ***"`.
 
-### Basic (remote, realgospelmessage.com)
+### Basic (remote, your-bus.example.com)
 
 ```bash
 AUTH=$(grep '^CORTEX_BASIC_AUTH=' ~/.steadfaste-fleet/cortex-bus.conf | cut -d= -f2-)
 
 # List all queues
 curl -s -H "Authorization: Basic $(echo -n "$AUTH" | base64)" \
-  'https://realgospelmessage.com:13004/api/pgmq/queues'
+  'https://your-bus.example.com:13004/api/pgmq/queues'
 
 # Read one message from your queue
 curl -s -H "Authorization: Basic $(echo -n "$AUTH" | base64)" \
   -X POST -H 'Content-Type: application/json' \
   -d '{"queue":"inbox_<agentname>","vt":60}' \
-  'https://realgospelmessage.com:13004/api/pgmq/read'
+  'https://your-bus.example.com:13004/api/pgmq/read'
 ```
 
 ## Queue Permissions

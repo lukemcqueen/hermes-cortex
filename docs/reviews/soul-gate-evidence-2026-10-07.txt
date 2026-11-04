@@ -67,7 +67,7 @@ def _check_protected_instruction_write(paths: list[str], task_id: str = "default
 $ cd ~/.hermes/hermes-agent && ./venv/bin/python3 -c \
   "from tools.file_tools_write_guards import _protected_instruction_config as c, \
    _protected_instruction_reason as r; \
-   print('config:', c()); print('reason(~/.hermes/SOUL.md):', r('/home/esther/.hermes/SOUL.md','cron'))"
+   print('config:', c()); print('reason(~/.hermes/SOUL.md):', r('~/.hermes/SOUL.md','cron'))"
 config: (True, [])
 reason(~/.hermes/SOUL.md): None
 ```

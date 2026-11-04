@@ -5,7 +5,7 @@
 #         their queues (a drained queue means the request was consumed, and
 #         no result has returned yet — that is the issue-86 signal, not a defect).
 set -u
-HC="python3 /home/esther/.hermes-cortex/scripts/hc.py"
+HC="python3 $HOME/.hermes-cortex/scripts/hc.py"
 FAIL=0
 say() { printf '\n### %s ###\n' "$1"; }
 

@@ -74,7 +74,7 @@ verbatim from the transcript at lines 13, 22, 122, 449-465:
 | # | Warning | Disposition |
 |---|---|---|
 | 1 | `Repo clean — 14 uncommitted change(s)` | 14 files are OTHER sessions' in-flight work in this shared checkout (`ops/services/mycortex-mem/store.py`, `plugins/mycortex-mem/__init__.py`, `tests/test_*`, `docs/evidence/briefings/*`, `docs/evidence/skill-drift-parity.txt`). Not touched, not stashed, not committed here. |
-| 2 | `AGENTS.md efficiency (proj)` | dev-repo AGENTS.md under `/home/esther/proj` — different tree. |
+| 2 | `AGENTS.md efficiency (proj)` | dev-repo AGENTS.md under `~/proj` — different tree. |
 | 3 | `Stale deploy: scripts/review-sweep-check.py` | deployed-only file not in the register map; pre-existing, unrelated to this landing. |
 | 4-11 | `Skill drift: devops/{cortex-deployment-sync, cron-job-management, fleet-commands, governance-closeout, governance-lock-lifecycle, mycortex, psql-automation}` + `software-development/change-checklist` | deployed skill copies are NEWER than the repo source — content authored on the deployed tree by earlier sessions; pre-existing before this cycle. |
 | 12 | `Skill drift — 8 drifted, 379 in sync, 126 Hermes defaults skipped` | summary line for the 8 rows above. |

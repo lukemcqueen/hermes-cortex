@@ -702,7 +702,7 @@ usual culprit and `is_active` stays true:
 ```bash
 # psycopg from the bus venv is the reliable route when `docker exec` is
 # blocked in cron mode and the host port refuses a raw psql connection.
-/home/esther/.hermes/hermes-agent/venv/bin/python3 - <<'PY'
+~/.hermes/hermes-agent/venv/bin/python3 - <<'PY'
 import psycopg
 c=psycopg.connect(host='127.0.0.1',port=15432,dbname='mycortex',user='mycortex',password='<CORTEX_BUS_PG_PASS>')
 with c.cursor() as cur:

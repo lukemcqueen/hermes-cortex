@@ -20,7 +20,7 @@ The sensor's state file becomes **stale** — it records a problem that no longe
 $ cat ~/.steadfaste-fleet/state/remediate/inbox-*.txt
 from=esther
 subject=🔑 Bus token request — agent-bus for esther
-file=/home/esther/steadfaste-fleet-private/messages/inbox/20260714155531668467-esther.md
+file=~/steadfaste-fleet-private/messages/inbox/20260714155531668467-esther.md
 priority=urgent
 ```
 

@@ -2,7 +2,7 @@
 # captured 2026-10-20; rc is the doctor's own
 $ python3 ops/scripts/manage/cortex-doctor.py
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
@@ -24,7 +24,7 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
   ✅ SOUL.md template sync (~/.hermes)
   ✅ SOUL.md reverse drift (~/.hermes)
-  ✅ Skills manifest (basic) — found at /home/esther/.hermes-cortex/skills.yaml
+  ✅ Skills manifest (basic) — found at ~/.hermes-cortex/skills.yaml
   ✅ Cron prompt stale refs — no stale bus-target references in live cron prompts
   ✅ Script run evidence — all 56 changed script(s) have run through the scheduler since their change
   ✅ Crons registered — all 21 expected crons present and healthy
@@ -80,12 +80,12 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ MCP server (tasks) — configured in config.yaml
   ✅ MCP server (executor) — configured in config.yaml
   ✅ Pi integration — cortex skills + extension registered (install-pi-integration: registered)
-  ✅ Fleet python — /home/esther/.hermes-cortex/venv/bin/python3 imports yaml + mcp
-  ✅ Global hooksPath — core.hooksPath → /home/esther/.hermes-cortex/hooks
+  ✅ Fleet python — ~/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  ✅ Global hooksPath — core.hooksPath → ~/.hermes-cortex/hooks
   ✅ Pre-commit hook — installed governance + enforcer checks
   ✅ Pre-push hook — installed with lock-check, syntax-check
   ✅ Post-commit hook — symlinked to post-commit-audit (executable)
-  ✅ Score-cycle — score-cycle present at /home/esther/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
+  ✅ Score-cycle — score-cycle present at ~/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
   ✅ Governance locks — 2 lock(s) active, 0 stale
   ✅ Perms: Plugin __init__.py — 0o444
   ✅ Immutable: __init__.py — immutable flag set
@@ -97,19 +97,19 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Immutable: loop-gov-mcp.py — immutable flag set
   ✅ Immutable: hermes-plugin-lock — immutable flag set
   ✅ Immutable: hooks — immutable flag set
-  ✅ Plugin lock helper — helper OK (----i---------e------- /home/esther/.hermes/plugins/governan)
+  ✅ Plugin lock helper — helper OK (----i---------e------- ~/.hermes/plugins/governan)
   ✅ Blocked-IPs root copy — root copy present and matches repo source
   ✅ Blocked-IPs root copy immutable — immutable flag set
   ✅ Governance coverage — all bypass closures validated
-  ✅ Hook: pre-commit (deployed) — present at /home/esther/.hermes-cortex/hooks/pre-commit
-  ✅ Hook: pre-commit (symlink) — → /home/esther/.hermes-cortex/scripts/pre-commit-score
-  ✅ Hook: pre-push (deployed) — present at /home/esther/.hermes-cortex/hooks/pre-push
-  ✅ Hook: pre-push (symlink) — → /home/esther/.hermes-cortex/scripts/pre-push-pull
-  ✅ Hook: post-commit (deployed) — present at /home/esther/.hermes-cortex/hooks/post-commit
-  ✅ Hook: post-commit (symlink) — → /home/esther/.hermes-cortex/scripts/post-commit-audit
-  ✅ Hook: post-merge (deployed) — present at /home/esther/.hermes-cortex/hooks/post-merge
-  ✅ Hook: post-push (deployed) — present at /home/esther/.hermes-cortex/hooks/post-push
-  ✅ Hook: post-push (symlink) — → /home/esther/.hermes-cortex/scripts/post-push-audit
+  ✅ Hook: pre-commit (deployed) — present at ~/.hermes-cortex/hooks/pre-commit
+  ✅ Hook: pre-commit (symlink) — → ~/.hermes-cortex/scripts/pre-commit-score
+  ✅ Hook: pre-push (deployed) — present at ~/.hermes-cortex/hooks/pre-push
+  ✅ Hook: pre-push (symlink) — → ~/.hermes-cortex/scripts/pre-push-pull
+  ✅ Hook: post-commit (deployed) — present at ~/.hermes-cortex/hooks/post-commit
+  ✅ Hook: post-commit (symlink) — → ~/.hermes-cortex/scripts/post-commit-audit
+  ✅ Hook: post-merge (deployed) — present at ~/.hermes-cortex/hooks/post-merge
+  ✅ Hook: post-push (deployed) — present at ~/.hermes-cortex/hooks/post-push
+  ✅ Hook: post-push (symlink) — → ~/.hermes-cortex/scripts/post-push-audit
   ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
   ✅ Governance bypass — no bypass markers found
   ℹ️  PENDING cycles — 1 active-task cycle(s) (lock held): docs-consolidation-cleanup#1 — score at end_change
@@ -466,7 +466,7 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
   ✅ prompt-guard content — copy matches repo source
   ✅ prompt-guard config — enabled in config.yaml
-  ⚠️  Multi-session repo — 2 live locks for /home/esther/hermes-cortex: 20261020_091803_e138969f, cron_2da7ae15e810_20261020_092408
+  ⚠️  Multi-session repo — 2 live locks for ~/hermes-cortex: 20261020_091803_e138969f, cron_2da7ae15e810_20261020_092408
          🔶 Suggestion: Commits in this repo can be attributed to the wrong session; give each session its own worktree, or serialise them
   ✅ Hook drift: post-commit — deployed matches repo (777fd064)
   ✅ Hook drift: post-push — deployed matches repo (67b598cb)

@@ -29,7 +29,7 @@ HOME="$TD" /tmp/piver/node_modules/.bin/pi mcp list --json
 ## Observed — step 3 (`pi mcp list --json`)
 
 Complete output, all four servers, every field. Only the temp-dir prefix
-(`/home/esther/.hermes/cache/scratch/pihome`) is written here as `<TD>` for
+(`~/.hermes/cache/scratch/pihome`) is written here as `<TD>` for
 readability; each `source` is `<TD>/.pi/agent/mcp.json` and each `transport` is
 `<TD>/.hermes/hermes-agent/venv/bin/python3 <server path>`.
 

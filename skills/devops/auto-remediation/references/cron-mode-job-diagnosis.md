@@ -16,7 +16,7 @@ Write a diagnostic script to `/tmp/check-jobs.py`:
 
 ```python
 import json
-with open('/home/esther/.hermes/cron/jobs.json') as f:
+with open('~/.hermes/cron/jobs.json') as f:
     data = json.load(f)
 jobs = data.get('jobs', [])
 for j in jobs:

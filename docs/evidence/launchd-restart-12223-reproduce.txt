@@ -1,4 +1,4 @@
-cycle 12223 — repo=/home/esther/hermes-cortex  interpreter=/home/esther/.hermes/hermes-agent/venv/bin/python3  head=60764d44
+cycle 12223 — repo=~/hermes-cortex  interpreter=~/.hermes/hermes-agent/venv/bin/python3  head=60764d44
 
 1a  rc=0  53 passed in 0.94s    (tests/test_gateway_slash_parity.py)
 1b  rc=0  287 passed, 1438 deselected in 40.25s    (tests/ -k gateway/harness/startup)

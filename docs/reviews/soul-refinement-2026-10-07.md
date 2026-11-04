@@ -115,7 +115,7 @@ Direct proof, same interpreter the tools use:
 ```
 $ cd ~/.hermes/hermes-agent && ./venv/bin/python3 -c \
   "from tools.file_tools_write_guards import _protected_instruction_reason as r; \
-   print(r('/home/esther/.hermes/SOUL.md','cron'))"
+   print(r('~/.hermes/SOUL.md','cron'))"
 None
 ```
 

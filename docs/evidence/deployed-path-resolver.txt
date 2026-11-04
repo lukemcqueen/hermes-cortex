@@ -3,12 +3,12 @@
 
 ## 1. registered source
 $ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py
-/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 rc=0
 
 ## 2. unregistered source — refuses, prints no path
 $ python3 ops/scripts/manage/deployed-path.py mcp-servers/not-registered.py
-COULD NOT RESOLVE: 'mcp-servers/not-registered.py' has no entry in /home/esther/.hermes-cortex/deploy-manifest.tsv (335 entries). Nothing was checked.
+COULD NOT RESOLVE: 'mcp-servers/not-registered.py' has no entry in ~/.hermes-cortex/deploy-manifest.tsv (335 entries). Nothing was checked.
 rc=2
 
 ## 3. missing map
@@ -22,7 +22,7 @@ tests/test_deployed_path_resolver.py .....                               [100%]
 
 ============================== 5 passed in 0.31s ===============================
 
-## 5. deploy log excerpts (/home/esther/.hermes/cache/scratch/deploy3.log, 819 lines)
+## 5. deploy log excerpts (~/.hermes/cache/scratch/deploy3.log, 819 lines)
 $ grep -nE "Overall:|Deploy sync" deploy3.log
 357:  ✅ Deploy sync
 803:  ⚠️  Overall: WARNING  (433 pass · 7 warn · 0 fail · 7 info)

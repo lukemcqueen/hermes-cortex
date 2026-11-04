@@ -5,7 +5,7 @@ host: linux
 syntax-check rc=0
 --- script output ---
 == A. dream file: exists, exact size, exact digest ==
-   path=/home/esther/brain/esther/dreams/2026-10-12.md
+   path=~/brain/esther/dreams/2026-10-12.md
    size=4061 (want 4061)
    md5=3a139c0106f752e546b8459dc7a38e0d (want 3a139c0106f752e546b8459dc7a38e0d)
 

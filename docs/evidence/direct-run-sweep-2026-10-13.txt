@@ -7,10 +7,10 @@ when: 2026-10-13T06:16:51Z
 ============================== 1 passed in 1.12s ===============================
 
 ### B. what the bare interpreter IS in this session, and what the arbiter returns
-bash resolves python3 to: /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3
+bash resolves python3 to: ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3
 python3 -c "import yaml" -> ModuleNotFoundError: No module named 'yaml'
   rc=0
-arbiter --print yaml -> /home/esther/.hermes-cortex/venv/bin/python3
+arbiter --print yaml -> ~/.hermes-cortex/venv/bin/python3
 
 ### C. the OLD evidence script (HEAD, bare python3) on this session:
 === C. SOUL.md evaluation (cortex-doctor) ===

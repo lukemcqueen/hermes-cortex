@@ -80,10 +80,10 @@ need terminal afterwards (e.g. for the push or final doctor run).
 ```bash
 python3 -c "
 import yaml, re
-src = open('/home/esther/.hermes/plugins/governance-enforcer/__init__.py').read()
+src = open('~/.hermes/plugins/governance-enforcer/__init__.py').read()
 m = re.search(r'_REQUIRED_SKILLS: set = \{(.*?)\}', src, re.S)
 enforcer = set(re.findall(r'\"([a-z-]+)\"', m.group(1)))
-manifest = {s['name'] for s in yaml.safe_load(open('/home/esther/.steadfaste-fleet/skills.yaml'))['always']}
+manifest = {s['name'] for s in yaml.safe_load(open('~/.steadfaste-fleet/skills.yaml'))['always']}
 print('MATCH' if enforcer == manifest else f'DRIFT: {enforcer-manifest}, {manifest-enforcer}')
 "
 ```

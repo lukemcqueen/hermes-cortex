@@ -100,7 +100,7 @@ $ python3 tests/run_loop_evaluator_avg_per_task_repro.py     # runnable, self-as
 
 # sqlite3(1) is not installed on this host; this Python form is the one that
 # actually runs here (sqlite3 means the stdlib module, not the CLI).
-$ python3 -c "import sqlite3; c=sqlite3.connect('/home/esther/.hermes-cortex/data/loop-governance.db'); print(*c.execute(\"SELECT COUNT(*), COUNT(DISTINCT task_id), ROUND(AVG(cycle_num),1), ROUND(1.0*COUNT(*)/MAX(COUNT(DISTINCT task_id),1),1) FROM loop_cycles WHERE timestamp >= datetime('now','-7 days')\"))"
+$ python3 -c "import sqlite3; c=sqlite3.connect('~/.hermes-cortex/data/loop-governance.db'); print(*c.execute(\"SELECT COUNT(*), COUNT(DISTINCT task_id), ROUND(AVG(cycle_num),1), ROUND(1.0*COUNT(*)/MAX(COUNT(DISTINCT task_id),1),1) FROM loop_cycles WHERE timestamp >= datetime('now','-7 days')\"))"
 (1594, 546, 24.5, 2.9)
    ^ total, unique_tasks, AVG(cycle_num) [the defective metric], true total/unique
      Note 24.5 != 2.9 in the SAME row: that contradiction is what the review caught.

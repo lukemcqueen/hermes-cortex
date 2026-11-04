@@ -2,7 +2,7 @@
 # Regenerate docs/evidence/soul-refine-12624-2026-10-14.txt — the soul-refinement
 # cycle 12624 evidence capture. Read-only except for writing the target file.
 set -uo pipefail
-REPO="${1:-/home/esther/steadfaste-fleet}"
+REPO="${1:-$HOME/steadfaste-fleet}"
 OUT="$REPO/docs/evidence/soul-refine-12624-2026-10-14.txt"
 PY=~/.steadfaste-fleet/venv/bin/python3
 : > "$OUT"

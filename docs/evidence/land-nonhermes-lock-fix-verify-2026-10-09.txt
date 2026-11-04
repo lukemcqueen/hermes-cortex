@@ -48,7 +48,7 @@ command in the same order to reproduce.
   Recorded honestly: the exit code is 1 under the warn policy; there are 0 FAIL
   checks and 10 warnings, all pre-existing and other-owned (4 deployed-only skill
   files authored on this host by other sessions, a stale
-  scripts/review-sweep-check.py, /home/esther/proj's AGENTS.md hint, and cron
+  scripts/review-sweep-check.py, ~/proj's AGENTS.md hint, and cron
   orch-daily-regression-gate last run: error). None references the changed files.
 
 4. Why the merge is still not done, and what closes the gap
@@ -83,7 +83,7 @@ Read from the job store (~/.hermes/cron/jobs.json), the decisive fields:
     name            : esther-land-nonhermes-lock-fix
     schedule        : every 15m (interval, 15 minutes), repeat: forever
     monitor_script  : local-esther-land-nonhermes-fix-probe.sh
-    workdir         : /home/esther/hermes-cortex
+    workdir         : ~/hermes-cortex
     deliver         : origin (telegram, chat "Luke")
     created_at      : 2026-10-09T22:46:58+09:00
     last_run_at     : 2026-10-09T23:10:22+09:00     last_status: ok

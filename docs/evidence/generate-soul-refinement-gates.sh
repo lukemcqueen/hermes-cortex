@@ -33,7 +33,7 @@ grep -n 'REBASE_LIB' tests/test_stalled_rebase_abort.py | head -2 | norm
 echo
 
 echo "== 3. No host paths or chat ids in the committed captures (the repo is public) =="
-leak="$(grep -c -e "$HOME" -e "1270130526" docs/evidence/soul-refinement-window-2026-10-18.txt docs/evidence/stalled-rebase-failsafe-2026-10-18.txt)"; leak_rc=$?
+leak="$(grep -c -e "$HOME" -e "TELEGRAM_CHAT_ID" docs/evidence/soul-refinement-window-2026-10-18.txt docs/evidence/stalled-rebase-failsafe-2026-10-18.txt)"; leak_rc=$?
 printf '%s\n' "$leak" | norm
 echo "   -> grep rc=${leak_rc} (1 = no match in either file, which is the PASS here)"
 echo

@@ -31,7 +31,7 @@ grep CORTEX_INBOX_URL ~/.hermes/ ~/.steadfaste-fleet/ -r 2>/dev/null
 The base URL for Moses's inbox API endpoint, e.g.:
 
 ```
-CORTEX_INBOX_URL="https://realgospelmessage.org:13004"
+CORTEX_INBOX_URL="https://your-bus.example.com:13004"
 ```
 
 This is a cross-agent coordination value — Moses controls the inbox server, and each peer agent needs to know the URL.
@@ -41,7 +41,7 @@ This is a cross-agent coordination value — Moses controls the inbox server, an
 Add to `~/.hermes/steadfaste-fleet.env` or export in the agent's shell profile:
 
 ```bash
-export CORTEX_INBOX_URL="https://realgospelmessage.org:13004"
+export CORTEX_INBOX_URL="https://your-bus.example.com:13004"
 ```
 
 Coordinate with Moses to get the correct endpoint URL and auth token.

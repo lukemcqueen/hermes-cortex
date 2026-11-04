@@ -64,7 +64,7 @@
       "name": "AGENTS.md efficiency (proj)",
       "status": "WARN",
       "detail": "dev repo AGENTS.md missing fleet session-efficiency block",
-      "fix": "Run: python3 /home/esther/.hermes-cortex/scripts/apply-repo-efficiency.py /home/esther/proj --commit"
+      "fix": "Run: python3 ~/.hermes-cortex/scripts/apply-repo-efficiency.py ~/proj --commit"
     },
     {
       "name": "CLAUDE.md (dev repos)",
@@ -411,7 +411,7 @@
     {
       "name": "MCP wiring (agent-bus)",
       "status": "WARN",
-      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "detail": "registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
       "fix": "hermes mcp remove agent-bus && hermes mcp add agent-bus --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/cortex-bus-mcp.py   (there is no 'hermes mcp update'; re-add it)"
     },
     {
@@ -423,7 +423,7 @@
     {
       "name": "MCP wiring (loop-governance)",
       "status": "WARN",
-      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "detail": "registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
       "fix": "hermes mcp remove loop-governance && hermes mcp add loop-governance --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/loop-gov-mcp.py   (there is no 'hermes mcp update'; re-add it)"
     },
     {
@@ -435,7 +435,7 @@
     {
       "name": "MCP wiring (tasks)",
       "status": "WARN",
-      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "detail": "registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
       "fix": "hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/task-mcp.py   (there is no 'hermes mcp update'; re-add it)"
     },
     {
@@ -447,7 +447,7 @@
     {
       "name": "MCP wiring (executor)",
       "status": "WARN",
-      "detail": "registered against the HERMES venv (/home/esther/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
+      "detail": "registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) \u2014 the tree the fleet is migrating off",
       "fix": "hermes mcp remove executor && hermes mcp add executor --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/executor-mcp.py   (there is no 'hermes mcp update'; re-add it)"
     },
     {
@@ -459,7 +459,7 @@
     {
       "name": "Global hooksPath",
       "status": "PASS",
-      "detail": "core.hooksPath \u2192 /home/esther/.hermes-cortex/hooks",
+      "detail": "core.hooksPath \u2192 ~/.hermes-cortex/hooks",
       "fix": ""
     },
     {
@@ -483,7 +483,7 @@
     {
       "name": "Score-cycle",
       "status": "INFO",
-      "detail": "Old score-cycle found at /home/esther/.local/bin/score-cycle \u2014 current governance uses MCP tools",
+      "detail": "Old score-cycle found at ~/.local/bin/score-cycle \u2014 current governance uses MCP tools",
       "fix": ""
     },
     {
@@ -555,7 +555,7 @@
     {
       "name": "Plugin lock helper",
       "status": "PASS",
-      "detail": "helper OK (----i---------e------- /home/esther/.hermes/plugins/governan)",
+      "detail": "helper OK (----i---------e------- ~/.hermes/plugins/governan)",
       "fix": ""
     },
     {
@@ -579,55 +579,55 @@
     {
       "name": "Hook: pre-commit (deployed)",
       "status": "PASS",
-      "detail": "present at /home/esther/.hermes-cortex/hooks/pre-commit",
+      "detail": "present at ~/.hermes-cortex/hooks/pre-commit",
       "fix": ""
     },
     {
       "name": "Hook: pre-commit (symlink)",
       "status": "PASS",
-      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/pre-commit-score",
+      "detail": "\u2192 ~/.hermes-cortex/scripts/pre-commit-score",
       "fix": ""
     },
     {
       "name": "Hook: pre-push (deployed)",
       "status": "PASS",
-      "detail": "present at /home/esther/.hermes-cortex/hooks/pre-push",
+      "detail": "present at ~/.hermes-cortex/hooks/pre-push",
       "fix": ""
     },
     {
       "name": "Hook: pre-push (symlink)",
       "status": "PASS",
-      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/pre-push-pull",
+      "detail": "\u2192 ~/.hermes-cortex/scripts/pre-push-pull",
       "fix": ""
     },
     {
       "name": "Hook: post-commit (deployed)",
       "status": "PASS",
-      "detail": "present at /home/esther/.hermes-cortex/hooks/post-commit",
+      "detail": "present at ~/.hermes-cortex/hooks/post-commit",
       "fix": ""
     },
     {
       "name": "Hook: post-commit (symlink)",
       "status": "PASS",
-      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/post-commit-audit",
+      "detail": "\u2192 ~/.hermes-cortex/scripts/post-commit-audit",
       "fix": ""
     },
     {
       "name": "Hook: post-merge (deployed)",
       "status": "PASS",
-      "detail": "present at /home/esther/.hermes-cortex/hooks/post-merge",
+      "detail": "present at ~/.hermes-cortex/hooks/post-merge",
       "fix": ""
     },
     {
       "name": "Hook: post-push (deployed)",
       "status": "PASS",
-      "detail": "present at /home/esther/.hermes-cortex/hooks/post-push",
+      "detail": "present at ~/.hermes-cortex/hooks/post-push",
       "fix": ""
     },
     {
       "name": "Hook: post-push (symlink)",
       "status": "PASS",
-      "detail": "\u2192 /home/esther/.hermes-cortex/scripts/post-push-audit",
+      "detail": "\u2192 ~/.hermes-cortex/scripts/post-push-audit",
       "fix": ""
     },
     {
@@ -688,7 +688,7 @@
       "name": "Stale deploy: scripts/review-sweep-check.py",
       "status": "WARN",
       "detail": "2,264 bytes \u2014 not in any register() mapping",
-      "fix": "Remove: rm /home/esther/.hermes-cortex/scripts/review-sweep-check.py"
+      "fix": "Remove: rm ~/.hermes-cortex/scripts/review-sweep-check.py"
     },
     {
       "name": "Repo-local .hermes-cortex",
@@ -2685,55 +2685,55 @@
     {
       "name": "Skill drift: autonomous-ai-agents/pi-coding-agent",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/autonomous-ai-agents/pi-coding-agent/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/cortex-deployment-sync",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/cross-agent-design",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/cross-agent-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/cross-agent-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/governance-lock-lifecycle",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/governance-lock-lifecycle/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/loop-governance",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/loop-governance/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/loop-governance/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/mcp-health-monitoring",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/mcp-health-monitoring/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/mcp-health-monitoring/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: devops/shell-scripting",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/devops/shell-scripting/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/devops/shell-scripting/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: software-development/change-checklist",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/software-development/change-checklist/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {
       "name": "Skill drift: software-development/fail-closed-design",
       "status": "WARN",
-      "detail": "Deployed copy is newer than repo source (/home/esther/.hermes/skills/software-development/fail-closed-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
+      "detail": "Deployed copy is newer than repo source (~/.hermes/skills/software-development/fail-closed-design/SKILL.md). Commit the repo source before cortex-update overwrites it.",
       "fix": "Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) \u2014 then commit it as its OWN governed change, so the cycle's diff matches its task id."
     },
     {

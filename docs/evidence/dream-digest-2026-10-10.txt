@@ -117,7 +117,7 @@ $ sed -n '28,40p' docs/reviews/soul-refinement-2026-10-09.md
 
 ```
 $ ls -la ~/brain/esther/dreams/2026-10-10.md
--rw-rw-r-- 1 esther esther 3118 Oct 10 05:38 /home/esther/brain/esther/dreams/2026-10-10.md
+-rw-rw-r-- 1 esther esther 3118 Oct 10 05:38 ~/brain/esther/dreams/2026-10-10.md
 
 $ grep -n "2026-10-10" ~/brain/esther/dreams/INDEX.md
 28:2026-10-10 | The Gate Learned to Read the Work, Not the Label | Review receipt + deploy check rebuilt to authorise by content (blobs/coverage, not tip+base); soul-refinement logged 107 unverified-claim findings; 4 skills still stranded on the deployed tree.

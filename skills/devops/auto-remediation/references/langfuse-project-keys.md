@@ -11,7 +11,7 @@ ERROR: Could not read Langfuse project keys
 or
 
 ```
-FileNotFoundError: [Errno 2] No such file or directory: '/home/esther/.steadfaste-fleet/.env'
+FileNotFoundError: [Errno 2] No such file or directory: '~/.steadfaste-fleet/.env'
 ```
 
 ## Root Cause

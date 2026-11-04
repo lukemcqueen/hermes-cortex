@@ -1,5 +1,5 @@
-plugin   : /home/esther/.hermes/plugins/hermes-jev/__init__.py
-scratch  : /home/esther/.hermes/cache/scratch/jev-notice-MXa4vt  (HERMES_HOME repointed; live state and log untouched)
+plugin   : ~/.hermes/plugins/hermes-jev/__init__.py
+scratch  : ~/.hermes/cache/scratch/jev-notice-MXa4vt  (HERMES_HOME repointed; live state and log untouched)
 
 --- prompt=trivial notice=on ---
   answers : null

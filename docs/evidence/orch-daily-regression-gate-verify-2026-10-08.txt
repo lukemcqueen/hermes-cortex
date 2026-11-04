@@ -11,7 +11,7 @@ PURPOSE
 
 COMMAND 1 — resolver selects a module-capable interpreter, not a path that exists
 $ bash ~/.hermes-cortex/scripts/lib/python-with-module.sh --print yaml
-/home/esther/.hermes/hermes-agent/venv/bin/python3
+~/.hermes/hermes-agent/venv/bin/python3
 
 COMMAND 2 — the exact deployed gate command, end to end
 $ bash ~/.hermes-cortex/scripts/orch-daily-regression-gate.sh ; echo RC=$?
@@ -50,9 +50,9 @@ $ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet
   Overall: FAILING  (437 pass · 15 warn · 1 fail · 7 info)
 
 COMMAND 4 — why the deploy is intentionally not run here (peer in-flight)
-$ git -C /home/esther/hermes-cortex rev-list --left-right --count origin/main...HEAD
+$ git -C ~/hermes-cortex rev-list --left-right --count origin/main...HEAD
 0	4
-$ git -C /home/esther/hermes-cortex status --porcelain=v1
+$ git -C ~/hermes-cortex status --porcelain=v1
  M docs/DOCS-INDEX.md
  M docs/evidence/skill-drift-parity.txt
  M ops/services/mycortex-mem/store.py

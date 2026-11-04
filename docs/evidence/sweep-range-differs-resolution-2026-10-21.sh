@@ -59,7 +59,7 @@ say ""
 "$PY" - <<'PY'
 import importlib.util
 spec = importlib.util.spec_from_file_location(
-    "g", "/home/esther/hermes-cortex/mcp-servers/loop-gov-mcp.py")
+    "g", "$HOME/hermes-cortex/mcp-servers/loop-gov-mcp.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 sid = m.get_session_id(None)

@@ -48,8 +48,8 @@ per bot, so there is no 409 conflict.
 PI_TELEGRAM_BOT_TOKEN=<read from ~/.titus_pi_bot_telegram.txt>
 
 # Same allowlist / home channel names Hermes uses
-TELEGRAM_ALLOWED_USERS=1270130526
-TELEGRAM_HOME_CHANNEL=1270130526
+TELEGRAM_ALLOWED_USERS=TELEGRAM_CHAT_ID
+TELEGRAM_HOME_CHANNEL=TELEGRAM_CHAT_ID
 
 # HMAC signing secret for bus envelopes
 GATEWAY_SECRET=$(openssl rand -hex 32)
@@ -74,7 +74,7 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
 
 ```json
 {
-  "bus_url": "https://realgospelmessage.com:13004",
+  "bus_url": "https://your-bus.example.com:13004",
   "backends": [
     {
       "name": "pi",

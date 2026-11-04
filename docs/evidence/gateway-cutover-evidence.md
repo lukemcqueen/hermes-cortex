@@ -39,7 +39,7 @@ after stale 50 : 4242  (expected 4242 — monotonic)
 $ pytest <7 files> -q
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 67 items

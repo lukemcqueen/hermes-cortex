@@ -96,7 +96,7 @@ rc=0
 
 $ adversarial-verify --file <HEAD:checks.py> --level A4 --gate
 
-── /home/esther/.hermes/cache/scratch/base-1657652/checks.py ──
+── ~/.hermes/cache/scratch/base-1657652/checks.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 155 item(s)
@@ -124,7 +124,7 @@ rc=0
 
 $ adversarial-verify --file <HEAD:agents-doc-audit.py> --level A4 --gate
 
-── /home/esther/.hermes/cache/scratch/base-1657652/agents-doc-audit.py ──
+── ~/.hermes/cache/scratch/base-1657652/agents-doc-audit.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 32 item(s)
@@ -156,7 +156,7 @@ tests/test_review_provenance_check.py ............                       [100%]
 
 ============================== 26 passed in 1.96s ==============================
 ---
-run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 # attribution: test_deploy_registry_doc_counts_match_the_register_map ALSO fails at the range base
 # (HEAD carries the same stale counts), so the stale doc counts PRE-DATE this cycle and are corrected here.
 

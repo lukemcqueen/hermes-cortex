@@ -22,9 +22,9 @@ echo "== live: the non-fatal branch — the note for a non-repo cwd, and the exi
 "$CV" "$HOME/.hermes-cortex/scripts/loop-gov.py" check_lock "{}" 2>&1 >/dev/null; echo "rc(stderr only above)=$?"
 echo
 echo "== the FOREIGN-lock case: the committed script, re-runnable by any reviewer =="
-cd /home/esther/hermes-cortex
+cd ~/hermes-cortex
 "$CV" docs/evidence/foreign_lock_reporting.py 2>&1; echo "rc=$?"
- /home/esther/.hermes-cortex/venv/bin/python3
+ ~/.hermes-cortex/venv/bin/python3
 rc: 0
 when: 2026-10-13T02:23:30Z
 
@@ -54,7 +54,7 @@ test_governance_lock_lifecycle_claims.py        RESULT: ALL PASS — 7 checks
 
 == live: a bare check_lock, RAW and unfiltered, while this session holds a lock ==
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-loop-gov: /home/esther is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
+loop-gov: ~ is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
 {
   "active": false,
   "lock": null,
@@ -66,7 +66,7 @@ loop-gov: /home/esther is not a git repo — nothing was stamped, so a lock open
       "agent": "unknown",
       "status": "executing",
       "repo_slug": "hermes-cortex",
-      "repo_path": "/home/esther/hermes-cortex",
+      "repo_path": "~/hermes-cortex",
       "started_at": "2026-10-13T02:10:12Z",
       "heartbeat_at": "2026-10-13T02:10:12Z",
       "file": ".governance-20261012_155635_db69f7bf.json"
@@ -82,12 +82,12 @@ rc=1
 
 == live: the non-fatal branch — the note for a non-repo cwd, and the exit code ==
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-loop-gov: /home/esther/.hermes/cache/scratch/nonrepo is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
+loop-gov: ~/.hermes/cache/scratch/nonrepo is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
 rc(stderr only above)=0
 
 == the FOREIGN-lock case: the committed script, re-runnable by any reviewer ==
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-module: /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+module: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 a bare check_lock whose own session is NOT the lock's owner:
 {
   "active": false,

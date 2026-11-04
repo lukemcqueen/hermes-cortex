@@ -75,7 +75,7 @@ PASS  SKILL.md md5 (repo==moses) = 283b2ac713ecf95d99bd188e8c9485b3
 PASS  ref md5 (repo==moses) = a8428fe63cce83a56e3b7ca8fdb35eed
 version field: version: 1.0.0
 stub markers:  0
-deployed copy: /home/esther/.hermes/skills/software-development/large-mechanical-refactor/SKILL.md
+deployed copy: ~/.hermes/skills/software-development/large-mechanical-refactor/SKILL.md
 
 ===== FINAL =====
 RESULT: all assertions PASS

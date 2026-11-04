@@ -24,7 +24,7 @@ tests/test_loop_gov_review_repo.py:283: in test_secondary_marker_follows_the_abs
 E   AssertionError: the in-repo marker did not follow the absolute repo path — it landed at HOME/<slug> instead
 E   assert False
 E    +  where False = exists()
-E    +    where exists = PosixPath('/home/esther/.hermes/cache/scratch/nested-repo-ea3aee0v/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+E    +    where exists = PosixPath('~/.hermes/cache/scratch/nested-repo-ea3aee0v/projects/deep/foo/.hermes-cortex/.governance-lock').exists
 =========================== short test summary info ============================
 FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
 =================== 1 failed, 33 passed in 61.55s (0:01:01) ====================
@@ -33,7 +33,7 @@ FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_abs
 #    reproducibility: put the parent commit's copy of the file in place, run just
 #    that test, then restore the tracked (working) copy with git checkout.
 --- with HEAD~1 (pre-change) loop-gov-mcp.py in place:
-E    +    where exists = PosixPath('/home/esther/.hermes/cache/scratch/nested-repo-vginf_uc/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+E    +    where exists = PosixPath('~/.hermes/cache/scratch/nested-repo-vginf_uc/projects/deep/foo/.hermes-cortex/.governance-lock').exists
 =========================== short test summary info ============================
 FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
 ============================== 1 failed in 0.17s ===============================
@@ -56,7 +56,7 @@ repo copy,     same pattern:                                                  7
 #    restart) — not for the session that made it.
 # The path is RESOLVED, not assumed — the exact method whose absence caused the error above:
 #   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py
-#   /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py      (rc=0)
+#   ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py      (rc=0)
 #   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/unregistered.py
 #   COULD NOT RESOLVE: ... has no entry in .../deploy-manifest.tsv (335 entries).
 #   Nothing was checked.                                                    (rc=2)

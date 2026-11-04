@@ -114,10 +114,10 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-go
   ✅ Checksum: loop-gov.py
   ⚠️  loop-gov daemon
     Restart the gateway to load the new loop-governance module: hermes gateway restart. Until then end_change m[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] WARNING: hermes_models.py not importable (ModuleNotFoundError: No module named 'hermes_models') — using default embedding model 'nomic-embed-text:v1.5'
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 ay read a cycle as PENDING right after it was scored — a retry after a cycle_query is the workaround, not the fix.
   ✅ PENDING cycles
 doctor rc=1   warnings=10   failures=0

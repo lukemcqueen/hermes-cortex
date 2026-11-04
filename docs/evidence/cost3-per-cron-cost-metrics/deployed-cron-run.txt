@@ -8,12 +8,12 @@ Triggered job: orch-weekly-cost-report (b3a26b57791a)
 rc=0
 
 $ python3 -c 'read the live job entry'
-{'id': 'b3a26b57791a', 'name': 'orch-weekly-cost-report', 'script': 'orch-weekly-cost-report.py', 'no_agent': True, 'deliver': 'telegram:1270130526', 'enabled': True, 'last_status': 'ok'}
+{'id': 'b3a26b57791a', 'name': 'orch-weekly-cost-report', 'script': 'orch-weekly-cost-report.py', 'no_agent': True, 'deliver': 'telegram:TELEGRAM_CHAT_ID', 'enabled': True, 'last_status': 'ok'}
 
 $ grep -n collect_cost_metrics ~/.hermes-cortex/scripts/agent-push-metrics.sh   # deployed copy
 287:collect_cost_metrics
 298:collect_cost_metrics() {
 
 $ ls -l ~/.hermes-cortex/scripts/{cron-cost-metrics,orch-weekly-cost-report}.py
--rwxr-xr-x 1 esther esther 6522 Oct 22 22:32 /home/esther/.hermes-cortex/scripts/cron-cost-metrics.py
--rwxr-xr-x 1 esther esther 6500 Oct 22 22:32 /home/esther/.hermes-cortex/scripts/orch-weekly-cost-report.py
+-rwxr-xr-x 1 esther esther 6522 Oct 22 22:32 ~/.hermes-cortex/scripts/cron-cost-metrics.py
+-rwxr-xr-x 1 esther esther 6500 Oct 22 22:32 ~/.hermes-cortex/scripts/orch-weekly-cost-report.py

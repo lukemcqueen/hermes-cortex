@@ -37,7 +37,7 @@ TODAY'S SESSIONS
 REAL USER TURNS (interactive session 20261005_101825_5d0bfbc6 — the only session with human input)
 ------------------------------------------------------------------
   1. please go to https://www.textusreceptusbibles.com/Stephanus and download a csv per book of the bible with the header (overall verse count, book, chapt
-  2. [The user sent a text document: 'kjv.txt'. It is saved at: /home/esther/.hermes/cache/documents/doc_3eac19f8a84a_kjv.txt. Its content is not inlined h
+  2. [The user sent a text document: 'kjv.txt'. It is saved at: ~/.hermes/cache/documents/doc_3eac19f8a84a_kjv.txt. Its content is not inlined h
   3. awesome. can we get the OT masoretic hebrew in the same format for the OT?
   4. next, please create the KJV 1769 NT csv the same way as the old testament was done. Cumulative verse starts at 1 for matthew 1:1.
   5. please note all issues/resolutions you had in the csv exports in one pdf so i can review these in the future

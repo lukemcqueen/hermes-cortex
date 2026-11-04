@@ -29,7 +29,7 @@ move, instead of trusting it.
 unknown$
 
 === 2. ledger damage from that shape (read-only) ===
-$ python3 - /home/esther/.hermes-cortex/data/loop-governance.db
+$ python3 - ~/.hermes-cortex/data/loop-governance.db
   total cycles            : 12932
   precommit-* hook cycles : 9252
   task_id with a NEWLINE  : 6395
@@ -41,7 +41,7 @@ $ python3 - /home/esther/.hermes-cortex/data/loop-governance.db
 # recorded as loop-governance issue event #188.
 
 === 3. the regression guard ===
-$ python3 /home/esther/hermes-cortex/tests/test_gov_close_and_task_id.py
+$ python3 ~/hermes-cortex/tests/test_gov_close_and_task_id.py
 [mcp-server] DEBUG: Initializing server 'loop-governance'
   task ids recorded: ['precommit-repo-HEAD/update']
 PASS: no-op closes are informational; task ids carry no continuation line
@@ -53,7 +53,7 @@ PASS: no-op closes are informational; task ids carry no continuation line
 === 5. suites around the change ===
 ============================= 255 passed in 6.07s ==============================
 ---
-run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 
 === 6. end-to-end: a FIRST commit through the DEPLOYED hook ===
   \033[0;32m✅ change-validate: all checks passed\033[0m

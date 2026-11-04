@@ -68,7 +68,7 @@ independent external confirmation of the healthy state.
 --- ADV-10314-3: SOUL.md evaluation (explicit) ----------------------
 
 $ ls -la ~/.hermes/SOUL.md
--rw-r--r-- 1 esther esther 13895 Oct  2 01:01 /home/esther/.hermes/SOUL.md
+-rw-r--r-- 1 esther esther 13895 Oct  2 01:01 ~/.hermes/SOUL.md
 
 $ git diff --stat b58eaa1d..HEAD -- '**/SOUL.md'
 (empty output — no SOUL.md file changed in this run)

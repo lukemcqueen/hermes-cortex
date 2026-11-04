@@ -2,7 +2,7 @@
 OK  ops/scripts/evidence/dream-digest-2026-10-09.expected present
 
 ## 1. digest file exists, non-empty
-OK  /home/esther/brain/esther/dreams/2026-10-09.md present and non-empty
+OK  ~/brain/esther/dreams/2026-10-09.md present and non-empty
 
 ## 2. INDEX carries today's entry (at least one)
 OK  INDEX matches: 1
@@ -15,8 +15,8 @@ OK  prior-dream refs found:
   prior-ref: 10-08
 
 ## 4. artifacts match the PINNED sha256 + size (byte for byte)
-/home/esther/brain/esther/dreams/2026-10-09.md: OK
-/home/esther/brain/esther/dreams/INDEX.md: OK
+~/brain/esther/dreams/2026-10-09.md: OK
+~/brain/esther/dreams/INDEX.md: OK
 OK  digest size 2156 matches pinned 2156
 
 RESULT: PASS (all enforced checks passed; artifacts pinned by sha256+size)

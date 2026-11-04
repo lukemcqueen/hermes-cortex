@@ -4,17 +4,17 @@
 
 ## A. the counts, with the exact commands (ADV-10907-1, ADV-10907-6)
 $ grep -c dirty_at_start <deployed> <repo>
-/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:5
+~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:5
 mcp-servers/loop-gov-mcp.py:5
 $ grep -cE "dirty_at_start|_own_working_tree_paths" <deployed> <repo>
-/home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:7
+~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py:7
 mcp-servers/loop-gov-mcp.py:7
 # The counts differ because the PATTERNS differ: 5 counts "dirty_at_start" alone,
 # 7 counts both new symbols. The old line "repo copy: 5" was true for its own
 # pattern; what was wrong was the DEPLOYED line, which probed a path that does not
 # exist and let a 2>/dev/null fallback narrate the probe failure as a finding.
 
-## B. deploy run 2 — successful (full log: /home/esther/.hermes/cache/scratch/deploy2.log)
+## B. deploy run 2 — successful (full log: ~/.hermes/cache/scratch/deploy2.log)
 $ bash ~/.hermes-cortex/scripts/cortex-update.sh > deploy2.log 2>&1 ; echo rc=$?
 rc=0
 $ wc -l deploy2.log
@@ -29,14 +29,14 @@ $ grep -c "unexpected EOF" deploy2.log
 rc=2
   ⚠️  Overall: WARNING  (431 pass · 12 warn · 0 fail · 7 info)
     REQUIRED: git pull --rebase
-/home/esther/.hermes-cortex/scripts/cortex-update.sh: line 3504: unexpected EOF while looking for matching `"'
+~/.hermes-cortex/scripts/cortex-update.sh: line 3504: unexpected EOF while looking for matching `"'
 ⚠   relock ran on a FAILED exit (rc=2) — enforcement files re-secured
 # "line 3504" is BEYOND the script, and the static parse of both copies passes:
 $ bash -n <deployed> ; bash -n <repo>
 deployed cortex-update.sh: syntax OK
 repo cortex-update.sh: syntax OK
 $ wc -l <deployed> <repo>
-  3497 /home/esther/.hermes-cortex/scripts/cortex-update.sh
+  3497 ~/.hermes-cortex/scripts/cortex-update.sh
   3494 ops/scripts/cortex-update.sh
   6991 total
 

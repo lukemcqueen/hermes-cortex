@@ -1,12 +1,12 @@
 # Weekly mycortex dream evidence — 2026-10-10
 
 ## Output files (NOT in a git repo; ~/brain is a markdown store)
-/home/esther/brain/esther/dreams/2026-10-10-weekly.md 4114 bytes
-/home/esther/brain/esther/dreams/INDEX.md 5703 bytes
+~/brain/esther/dreams/2026-10-10-weekly.md 4114 bytes
+~/brain/esther/dreams/INDEX.md 5703 bytes
 
 ## wc -l
-  32 /home/esther/brain/esther/dreams/2026-10-10-weekly.md
-  29 /home/esther/brain/esther/dreams/INDEX.md
+  32 ~/brain/esther/dreams/2026-10-10-weekly.md
+  29 ~/brain/esther/dreams/INDEX.md
   61 total
 
 ## INDEX tail (last 3 lines)

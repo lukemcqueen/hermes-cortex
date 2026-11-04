@@ -20,7 +20,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
-STATE_DB = "file:/home/esther/.hermes/state.db?mode=ro"
+STATE_DB = "file:~/.hermes/state.db?mode=ro"
 KST = timezone(timedelta(hours=9))
 
 # Scaffolding that arrives as role='user' but carries no human instruction.

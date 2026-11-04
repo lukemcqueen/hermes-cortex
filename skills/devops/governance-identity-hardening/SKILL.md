@@ -48,7 +48,7 @@ _detect_orch() {
 }
 ```
 
-Orch hosts have hostname == agent name == home dir (`esther`→`/home/esther`).
+Orch hosts have hostname == agent name == home dir (`esther`→`$HOME`).
 Non-orch hosts have hardware hostnames and shared `/home/luke` — neither
 signal alone is sufficient.
 

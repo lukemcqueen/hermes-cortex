@@ -18,7 +18,7 @@ $ git push origin main        # no clean receipt for THIS range
       - ops/scripts/pre-push-pull
     The self-adversarial review must run and return CLEAN for THIS range
     before it can be pushed — close the cycle, then push.
-    Expected receipt: /home/esther/.steadfaste-fleet/state/.reviewed-steadfaste-fleet-0d0978b085dbd7fc2e056d270fc0f47ca4e591c3.json
+    Expected receipt: ~/.steadfaste-fleet/state/.reviewed-steadfaste-fleet-0d0978b085dbd7fc2e056d270fc0f47ca4e591c3.json
 
 error: failed to push some refs to 'https://github.com/lukemcqueen/steadfaste-fleet.git'
 

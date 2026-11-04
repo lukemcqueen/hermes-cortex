@@ -36,7 +36,7 @@ ln -sf ~/.hermes/scripts/platform_utils.py .
 
 ```bash
 # 1. Verify symlinks exist
-ls -la ~/.steadfaste-fleet/scripts/hermes_paths.py  # should show -> /home/esther/.hermes/scripts/hermes_paths.py
+ls -la ~/.steadfaste-fleet/scripts/hermes_paths.py  # should show -> ~/.hermes/scripts/hermes_paths.py
 
 # 2. Run the failing command (the cron script or its wrapper)
 ~/.hermes/bin/offline_code index  # should start embedding instead of crashing with ImportError

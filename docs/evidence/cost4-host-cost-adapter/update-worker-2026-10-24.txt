@@ -14,13 +14,13 @@ re-run: bash ops/evidence/cost4-update-worker-2026-10-24.sh
 tests/test_runtime/test_message_handler_worker.py:127: in test_an_unloadable_handler_still_yields_a_result
     assert written.exists(), (
 E   AssertionError: an unloadable handler must still produce a result on the fallback path, never silence (rc=1, stderr= 488, in _call_with_frames_removed
-E       File "/home/esther/.hermes/cache/scratch/pytest-of-esther/pytest-807/test_an_unloadable_handler_sti0/scripts/agent/broken_handler.py", line 1, in <module>
+E       File "~/.hermes/cache/scratch/pytest-of-esther/pytest-807/test_an_unloadable_handler_sti0/scripts/agent/broken_handler.py", line 1, in <module>
 E         import a_module_that_does_not_exist
 E     ModuleNotFoundError: No module named 'a_module_that_does_not_exist'
 E     )
 E   assert False
 E    +  where False = exists()
-E    +    where exists = PosixPath('/home/esther/.hermes/cache/scratch/pytest-of-esther/pytest-807/test_an_unloadable_handler_sti0/deploy/state/pending-update-results/test-worker-broken.json').exists
+E    +    where exists = PosixPath('~/.hermes/cache/scratch/pytest-of-esther/pytest-807/test_an_unloadable_handler_sti0/deploy/state/pending-update-results/test-worker-broken.json').exists
 =========================== short test summary info ============================
 FAILED tests/test_runtime/test_message_handler_worker.py::test_worker_loads_a_handler_that_imports_from_its_parent_dir
 FAILED tests/test_runtime/test_message_handler_worker.py::test_an_unloadable_handler_still_yields_a_result
@@ -36,12 +36,12 @@ tests/test_runtime/test_message_handler_worker.py ..                     [100%]
 ============================== 2 passed in 0.21s ===============================
 
 ── 4. the spawner: the unit, and the workers it killed ──
-  # /home/esther/.config/systemd/user/cortex-bridge-agent-message-handler.service
+  # ~/.config/systemd/user/cortex-bridge-agent-message-handler.service
   [Unit]
   Description=Cortex bridge — agent-message-handler (no_agent cron, standalone runner)
   [Service]
   Type=oneshot
-  ExecStart=/usr/bin/env python3 /home/esther/hermes-cortex/ops/scripts/cortex-bus-bridge-run.py --name agent-message-handler --script agent-message-handler.py --deliver local
+  ExecStart=/usr/bin/env python3 ~/hermes-cortex/ops/scripts/cortex-bus-bridge-run.py --name agent-message-handler --script agent-message-handler.py --deliver local
 
   KillMode=control-group
   Type=oneshot

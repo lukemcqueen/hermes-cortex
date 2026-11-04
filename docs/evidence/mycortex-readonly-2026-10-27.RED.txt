@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 21 items
@@ -94,4 +94,4 @@ FAILED tests/test_enforcer_mycortex_readonly.py::test_brain_query_subcommands_ar
 FAILED tests/test_enforcer_mycortex_readonly.py::test_the_allowlist_is_scoped_to_subcommands_not_the_whole_cli
 ========================= 12 failed, 9 passed in 0.24s =========================
 ---
-run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)

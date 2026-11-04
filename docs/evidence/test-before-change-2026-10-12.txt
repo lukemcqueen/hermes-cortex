@@ -4,30 +4,30 @@ when: 2026-10-12T10:19:40Z
 
 [mcp-server] DEBUG: Initializing server 'loop-governance'
 Traceback (most recent call last):
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
     fn()
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 267, in test_every_file_under_the_floor_is_shown_whole
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 267, in test_every_file_under_the_floor_is_shown_whole
     assert len(tiny) < mcp.REVIEW_MATERIAL_PER_FILE_FLOOR, "fixture: the artifact is UNDER the floor"
                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'loop_gov_mcp_bound' has no attribute 'REVIEW_MATERIAL_PER_FILE_FLOOR'
 Traceback (most recent call last):
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
     fn()
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 244, in test_evidence_paths_count_as_documentation
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 244, in test_evidence_paths_count_as_documentation
     assert mcp._range_is_docs_only(d) is True, \
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: docs/evidence/** is documentation whatever its suffix — a .sh transcript is a run artifact
 Traceback (most recent call last):
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
     fn()
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 289, in test_the_floor_never_exceeds_the_budget
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 289, in test_the_floor_never_exceeds_the_budget
     assert len(got) < budget + 150 * 60, \
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: the material must stay proportionate to its budget; got 13872 for budget 3000
 Traceback (most recent call last):
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 376, in <module>
     fn()
-  File "/home/esther/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 312, in test_the_largest_file_is_never_left_with_nothing
+  File "~/.hermes/cache/scratch/tmp.MVKf3oY6Z1/sub/test.py", line 312, in test_the_largest_file_is_never_left_with_nothing
     assert len(big) > mcp.REVIEW_MATERIAL_PER_FILE_FLOOR, \
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: module 'loop_gov_mcp_bound' has no attribute 'REVIEW_MATERIAL_PER_FILE_FLOOR'

@@ -99,7 +99,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
    learnings schema up to date (version 2) — no-op
    [0;32m✓[0m   Updated template: $HOME/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf
    [0;32m✓[0m   Deploy with: sudo cp $HOME/hermes-cortex/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
-   [0;32m✓[0m   Preserved SSL cert: /etc/letsencrypt/live/realgospelmessage.com/fullchain.pem
+   [0;32m✓[0m   Preserved SSL cert: /etc/letsencrypt/live/your-bus.example.com/fullchain.pem
    [0;32m✓[0m   Config generated: /tmp/hermes-services-processed.conf
    [0;32m✓[0m   Deploy with:
    [0;32m✓[0m     sudo cp /tmp/hermes-services-processed.conf /etc/nginx/sites-available/hermes-services.conf

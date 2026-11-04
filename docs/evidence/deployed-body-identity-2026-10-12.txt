@@ -1,5 +1,5 @@
 Running (banner-stripped body comparison):
-  diff <(sed -E '/^#/d; /^$/d' mcp-servers/loop-gov-mcp.py) <(sed -E '/^#/d; /^$/d' /home/esther/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py)
+  diff <(sed -E '/^#/d; /^$/d' mcp-servers/loop-gov-mcp.py) <(sed -E '/^#/d; /^$/d' ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py)
 rc: 0
 
 repo == deployed (body, banner+blank stripped)

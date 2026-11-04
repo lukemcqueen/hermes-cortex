@@ -1,5 +1,5 @@
 # Survey/Plan-Review gate verify — captured 2026-10-29T09:30:12Z
-root=/home/esther/hermes-cortex py=/home/esther/.hermes-cortex/venv/bin/python3
+root=~/hermes-cortex py=~/.hermes-cortex/venv/bin/python3
 tip=8d6046c1
 
 ===== bash -n changelist =====
@@ -78,7 +78,7 @@ rc=0
 ===== plan-review gate pytest =====
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 11 items
@@ -91,7 +91,7 @@ rc=0
 ===== enforcer yaml compat + pi evidence pytest =====
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 19 items
@@ -104,7 +104,7 @@ rc=0
 
 ===== adversarial A2 ops/scripts/pre-commit-score =====
 
-── /home/esther/hermes-cortex/ops/scripts/pre-commit-score ──
+── ~/hermes-cortex/ops/scripts/pre-commit-score ──
    Level: A2
    Attack Surface:
      ⚠️ Inputs: 7 item(s)
@@ -121,7 +121,7 @@ rc=0
 
 ===== adversarial A2 ops/scripts/hc-reflexion-check.py =====
 
-── /home/esther/hermes-cortex/ops/scripts/hc-reflexion-check.py ──
+── ~/hermes-cortex/ops/scripts/hc-reflexion-check.py ──
    Level: A2
    Attack Surface:
      ⚠️ Inputs: 12 item(s)
@@ -144,7 +144,7 @@ rc=0
 
 ===== adversarial A2 ops/scripts/hc-plan-review-check.py =====
 
-── /home/esther/hermes-cortex/ops/scripts/hc-plan-review-check.py ──
+── ~/hermes-cortex/ops/scripts/hc-plan-review-check.py ──
    Level: A2
    Attack Surface:
      ⚠️ Inputs: 8 item(s)
@@ -165,7 +165,7 @@ rc=0
 
 ===== adversarial A2 ops/scripts/cortex-update.sh =====
 
-── /home/esther/hermes-cortex/ops/scripts/cortex-update.sh ──
+── ~/hermes-cortex/ops/scripts/cortex-update.sh ──
    Level: A2
    Attack Surface:
      ⚠️ Inputs: 25 item(s)
@@ -182,7 +182,7 @@ rc=0
 
 ===== adversarial A4 ops/scripts/manage/cortex_doctor/checks.py =====
 
-── /home/esther/hermes-cortex/ops/scripts/manage/cortex_doctor/checks.py ──
+── ~/hermes-cortex/ops/scripts/manage/cortex_doctor/checks.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 180 item(s)
@@ -210,7 +210,7 @@ rc=0
 
 ===== adversarial A4 plugins/governance-enforcer/__init__.py =====
 
-── /home/esther/hermes-cortex/plugins/governance-enforcer/__init__.py ──
+── ~/hermes-cortex/plugins/governance-enforcer/__init__.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 78 item(s)

@@ -179,7 +179,7 @@ run above, measured with the same runner. Verdicts: REPRODUCED (failed there too
 it predates this range), DIFFERS (passed at the base - a candidate regression),
 COULD NOT VERIFY (could not execute there; NOT a pass and NOT a failure).
 
-worktree at the range base: 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (git -C /home/esther/.hermes/cache/scratch/sweep-evidence.3446039/base-wt rev-parse --short=8 HEAD -> 6221fc9c)
+worktree at the range base: 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (git -C ~/.hermes/cache/scratch/sweep-evidence.3446039/base-wt rev-parse --short=8 HEAD -> 6221fc9c)
 caveat: a worktree materialises TRACKED files only, so an untracked tree present in
 the main checkout (a venv, build output) is absent on the base side.
 

@@ -46,7 +46,7 @@ Invocation: python3 <<PY ... zipfile+csv read of the corrected zip ... PY
 
 LIVE RE-AUDIT — corrected Masoretic Hebrew OT export (run 2026-10-05 by soul-refinement cron)
 ========================================================================
-artifact: /home/esther/Documents/Masoretic_Hebrew_OT_csv_corrected_2026-10-05.zip
+artifact: ~/Documents/Masoretic_Hebrew_OT_csv_corrected_2026-10-05.zip
 bytes: 871055   testzip: None
 
 files: 39   rows: 23145   last cumulative: 23145   problems: 0

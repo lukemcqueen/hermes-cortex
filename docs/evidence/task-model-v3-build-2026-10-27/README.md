@@ -145,6 +145,6 @@ warns against. Recorded as a governance issue.
 ```bash
 cd ~/hermes-cortex
 bash tests/test-tasks-schema.sh                        # expect 134 passed, 0 failed
-/home/esther/.hermes-cortex/venv/bin/python -m pytest tests/test_task_db_unit.py tests/test_task_db_v4.py -q
+~/.hermes-cortex/venv/bin/python -m pytest tests/test_task_db_unit.py tests/test_task_db_v4.py -q
 bash docs/evidence/task-model-v3-build-2026-10-27/live-roundtrip.sh
 ```

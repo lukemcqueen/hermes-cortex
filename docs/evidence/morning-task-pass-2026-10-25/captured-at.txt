@@ -3,7 +3,7 @@ cron job: f6694d02d29c orch-task-morning-pass (scheduled 07:37, dispatched 07:37
 governance cycle: #13782
 session id: cron_f6694d02d29c_20261025_073742
 agent: esther (orchestrator, host-derived)
-repo: /home/esther/hermes-cortex @ HEAD 00b9b46a (deployed via cortex-update 2026-10-24 23:38)
+repo: ~/hermes-cortex @ HEAD 00b9b46a (deployed via cortex-update 2026-10-24 23:38)
 
 NOTE: the documented read command was refused by the enforcer (gate 1, no skills
 toolset on this job) — the survey was taken from the equivalent MCP task surface.

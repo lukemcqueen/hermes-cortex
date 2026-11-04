@@ -11,7 +11,7 @@ It is NOT a claim that the warning set is empty, and this note records each one:
    not touch. The doctor names its own remedy (reconcile-stranded-skills.py, report first).
 2. Repo clean — the tree still holds uncommitted work outside this cycle's paths (the last
    stranded unstaged edits). Not this cycle's subject; recorded as still-outstanding.
-3. AGENTS.md efficiency (proj) — concerns /home/esther/proj, a different repo entirely.
+3. AGENTS.md efficiency (proj) — concerns ~/proj, a different repo entirely.
 4. Stale deploy: scripts/review-sweep-check.py — a DEPLOYED script with no repo source;
    unrelated to any file this cycle changes, and the doctor names the fix (rm it).
 

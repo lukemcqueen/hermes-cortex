@@ -11,7 +11,7 @@ target sha: a1328aea   sender: esther
   worker                 kustos   -> True  msg_id=db637214-82a5-4b6a-a5b5-d01b52811139  corr=cost4-worker-kustos-81520dae2e
   worker                 titus    -> True  msg_id=86f30a89-f75d-436d-859b-b2da663a8008  corr=cost4-worker-titus-3a1de006e0
 
-correlation ids persisted for the verify step: /home/esther/.hermes/cache/scratch/cost4-update-corrs.json
+correlation ids persisted for the verify step: ~/.hermes/cache/scratch/cost4-update-corrs.json
 
 ── the four worker queues, right after the dispatch ──
   inbox_esther               depth=1 processing=0

@@ -9,7 +9,7 @@ $ python3 ops/scripts/manage/cortex-doctor.py | grep -E "Repo-local |Deploy sync
 
 === 2. the guard test, all three states, run now ===
 $ python3 tests/test_repo_local_cortex_dir_check.py
-PASS  lock marker named -> FAIL: exists at /home/esther/.hermes/cache/scratch/repo-local-check-ctdjxt86/.steadfaste-fleet — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
+PASS  lock marker named -> FAIL: exists at ~/.hermes/cache/scratch/repo-local-check-ctdjxt86/.steadfaste-fleet — contains: .governance-lock — CONTAINS .governance-lock, so governance state is being written inside the repo
 
 RESULT: ALL PASS - the check fails on presence and names the marker
 (exit 0)

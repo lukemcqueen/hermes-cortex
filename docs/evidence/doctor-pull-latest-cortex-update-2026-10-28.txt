@@ -42,7 +42,7 @@
   ✅ Bus handler — agent-message-handler.py exists (76985 bytes)
   ✅ Ollama — 3 model(s) loaded
   ✅ worker-service — hermes-agent-worker active (no handler cron — no conflict)
-  ℹ️  Metrics arrival age  [deferred (joseph, since 2026-10-23)] — no push sink reachable — arrival not verifiable (tried: https://realgospelmessage.org:13005 (URLError); https://realgospelmessage.org:14003 (URLError); http://127.0.0.1:8428 (URLError))
+  ℹ️  Metrics arrival age  [deferred (joseph, since 2026-10-23)] — no push sink reachable — arrival not verifiable (tried: https://your-bus.example.com:13005 (URLError); https://your-bus.example.com:14003 (URLError); http://127.0.0.1:8428 (URLError))
          🔶 Suggestion: Expected on a host that neither pushes nor hosts a sink. Otherwise check the sink service and this agent's VICTORIA_METRICS_URL.
   ✅ Systemd scope — no system-level Hermes services (all user-level)
   ✅ Disk usage — 221G used / 1.2T free (17%)
@@ -57,9 +57,9 @@
   ✅ Config (CREATIVE_MODEL) — defined, 1 consumer(s) found
   ✅ Nginx config — found at /etc/nginx/sites-available/hermes-services.conf
   ✅ Nginx htpasswd — /etc/nginx/.hermes-htpasswd exists
-  ❌ Nginx SSL cert — not found at '/etc/letsencrypt/live/realgospelmessage.com/fullchain.pem'
+  ❌ Nginx SSL cert — not found at '/etc/letsencrypt/live/your-bus.example.com/fullchain.pem'
          🔶 Suggestion: Renew cert: sudo certbot renew OR set CORTEX_SSL_CERT_PATH env var
-  ❌ Nginx SSL key — not found at '/etc/letsencrypt/live/realgospelmessage.com/privkey.pem'
+  ❌ Nginx SSL key — not found at '/etc/letsencrypt/live/your-bus.example.com/privkey.pem'
          🔶 Suggestion: Renew cert: sudo certbot renew OR set CORTEX_SSL_CERT_PATH env var
   ✅ Nginx syntax — config valid (nginx -t)
   ✅ Nginx dir purity — all confs in ops/install/deploy/nginx/ are nginx configs

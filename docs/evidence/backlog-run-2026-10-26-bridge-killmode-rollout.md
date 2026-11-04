@@ -31,7 +31,7 @@ once → EXEC_RESULT read back:
 ✅ EXEC_RESULT from esther:
    Command: git-main-sync.sh
    Exit:    0
-   stdout:  [2026-10-26 14:24 KST git-main-sync] repo: /home/esther/hermes-cortex
+   stdout:  [2026-10-26 14:24 KST git-main-sync] repo: ~/hermes-cortex
             [2026-10-26 14:24 KST git-main-sync] current branch: main
             [2026-10-26 14:24 KST git-main-sync] HEAD is 0 behind, 0 ahead of origin/main
             [2026-10-26 14:24 KST git-main-sync] OK: on main, up to date

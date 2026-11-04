@@ -4,7 +4,7 @@ fixture lock: repo_slug=hermes-cortex task_id=fix-refused-close-exit-advice clos
 invocation:  GOVERNANCE_STATE_DIR=<fixture> bash <copy> hermes-cortex
 
 === REPO copy ===
-path:   /home/esther/hermes-cortex/ops/scripts/governance-refused-close-advisory.sh
+path:   ~/hermes-cortex/ops/scripts/governance-refused-close-advisory.sh
 sha256: a1362d15d32dd622fc8b87fec7be55617a49e5e2992752b603fd7450d5f1d038
 --- message ---
 
@@ -26,7 +26,7 @@ in the message: names advance_task_state        = 1
 in the message: names the terminal state        = 1
 
 === DEPLOYED copy ===
-path:   /home/esther/.hermes-cortex/scripts/governance-refused-close-advisory.sh
+path:   ~/.hermes-cortex/scripts/governance-refused-close-advisory.sh
 sha256: 2a84e533e54f6ef02653124f58d0f86497c1a76ffb024aa46945dfbf13af3664
 --- message ---
 

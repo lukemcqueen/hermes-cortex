@@ -1361,7 +1361,7 @@ marker with every YAML library blocked, and one that a missing `SKILL.md` on dis
 **Diagnose it in one command** (use the agent runtime, not a fleet venv):
 
 ```bash
-/home/esther/.hermes/tools/python-*/bin/python3 -c "import yaml" 2>&1 | tail -1
+~/.hermes/tools/python-*/bin/python3 -c "import yaml" 2>&1 | tail -1
 grep -c "Cron bootstrap: cannot parse" ~/.hermes/logs/*.log
 ```
 

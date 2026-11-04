@@ -79,7 +79,7 @@ trimmed a 68-word paragraph
 trimmed a 62-word paragraph
 trimmed a 55-word paragraph
 after repair:   words=1162 source_lines=15
-renderer rc=0: ['wrote /home/esther/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.docx (41240 bytes)', 'wrote /home/esther/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.pdf (9974 bytes)']
+renderer rc=0: ['wrote ~/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.docx (41240 bytes)', 'wrote ~/.hermes/cache/scratch/tmpouckasg0/.hermes/cron/output/sustainability-briefing-2026-10-22.pdf (9974 bytes)']
 [files] sustainability-briefing-2026-10-22.md      size=8937     PASS
 [files] sustainability-briefing-2026-10-22.docx    size=41240    PASS
 [files] sustainability-briefing-2026-10-22.pdf     size=9974     PASS

@@ -6,12 +6,12 @@ captured-at: 69ea0cca  (2026-11-03T10:57:37+09:00)
 69ea0cca evidence(task-db): harden capture.sh against swallowed errors (close findings)
 
 ### Interpreter: pytest resolver
-PY=/home/esther/.hermes-cortex/venv/bin/python3
+PY=~/.hermes-cortex/venv/bin/python3
 
 ### Unit tests: new UUID-resolution tests (7)
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 100 items / 93 deselected / 7 selected
@@ -24,7 +24,7 @@ rc=0
 ### Unit tests: whole test_task_db_unit.py
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 100 items

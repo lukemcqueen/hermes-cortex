@@ -1,6 +1,6 @@
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /home/esther/hermes-cortex
+rootdir: ~/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 4 items
@@ -23,4 +23,4 @@ FAILED tests/test_skill_root_assets_deploy.py::test_skill_root_assets_are_deploy
 FAILED tests/test_skill_root_assets_deploy.py::test_the_block_walks_each_skill_dir_for_root_files
 ========================= 2 failed, 2 passed in 0.33s ==========================
 ---
-run-tests.sh: interpreter=/home/esther/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=1  (PYTHONPATH/PYTHONHOME unset for the run)

@@ -1,4 +1,4 @@
-session-cache / loop_evaluator landing verify — repo=/home/esther/hermes-cortex  head=97ae8245
+session-cache / loop_evaluator landing verify — repo=~/hermes-cortex  head=97ae8245
 
 1  metric repro rc=0  RESULT: PASS — metric is consistent with its label
    

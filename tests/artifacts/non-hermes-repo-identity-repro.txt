@@ -19,13 +19,13 @@ re-run with           : python3 tests/run_non_hermes_lock_release_repro.py --wri
 
 ── CURRENT (working tree) ──
    lock.repo_slug           : proj
-   lock.repo_path           : /home/esther/.hermes/cache/scratch/rg-home-42dd54ds/projects/proj
+   lock.repo_path           : ~/.hermes/cache/scratch/rg-home-42dd54ds/projects/proj
    end_change verdict       : 🔓 Governance session 'rg-1' closed.
    lock file left behind    : none — released
 
 ── DEPLOYED (harness path) ──
    lock.repo_slug           : proj
-   lock.repo_path           : /home/esther/.hermes/cache/scratch/rg-home-7zmmd0x9/projects/proj
+   lock.repo_path           : ~/.hermes/cache/scratch/rg-home-7zmmd0x9/projects/proj
    end_change verdict       : 🔓 Governance session 'rg-1' closed.
    lock file left behind    : none — released
 
@@ -44,7 +44,7 @@ Post-deploy doctor (this host, after `cortex-dogfood.sh --force`)
 --------------------------------------------------------------------
   ═══════════════════════════════════════════════════
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   /home/esther/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback

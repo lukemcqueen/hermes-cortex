@@ -169,9 +169,9 @@ and the commit stats, not on the worker's self-score.
 
 ```
 $ wc -c ~/.hermes/SOUL.md
-13482 /home/esther/.hermes/SOUL.md
+13482 ~/.hermes/SOUL.md
 $ wc -c ~/steadfaste-fleet/docs/templates/SOUL.md
-9720 /home/esther/steadfaste-fleet/docs/templates/SOUL.md
+9720 ~/steadfaste-fleet/docs/templates/SOUL.md
 $ python3 -c "..._extract_soul_markers..."   # template 9 / deployed 10
 ```
 
