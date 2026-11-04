@@ -1,8 +1,11 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # cortex-doctor AFTER 'bash ops/scripts/cortex-update.sh' (deploy of fff8dec3)
 # captured 2026-10-20; rc is the doctor's own
 $ python3 ops/scripts/manage/cortex-doctor.py
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
 [mcp-server] DEBUG: HTTPError 401 for Bearer auth — trying Basic fallback
@@ -20,11 +23,11 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Self-adversarial review gate — end_change hard gate helpers present in loop-gov-mcp.py
   ✅ Self-adversarial review key — OPENROUTER_API_KEY resolvable
   ✅ CLAUDE.md (dev repos) — all 1 active dev repo(s) have CLAUDE.md
-  ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
-  ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
-  ✅ SOUL.md template sync (~/.hermes)
-  ✅ SOUL.md reverse drift (~/.hermes)
-  ✅ Skills manifest (basic) — found at ~/.hermes-cortex/skills.yaml
+  ✅ SOUL.md canonical 12 (<HOME>/.hermes) — all 12 canonical principles present
+  ✅ SOUL.md local principles (<HOME>/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+  ✅ SOUL.md template sync (<HOME>/.hermes)
+  ✅ SOUL.md reverse drift (<HOME>/.hermes)
+  ✅ Skills manifest (basic) — found at <HOME>/.hermes-cortex/skills.yaml
   ✅ Cron prompt stale refs — no stale bus-target references in live cron prompts
   ✅ Script run evidence — all 56 changed script(s) have run through the scheduler since their change
   ✅ Crons registered — all 21 expected crons present and healthy
@@ -70,7 +73,7 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Nginx syntax — config valid (nginx -t)
   ✅ Nginx dir purity — all confs in ops/install/deploy/nginx/ are nginx configs
   ✅ Legacy enforcer plugin — no stale legacy enforcer plugins
-  ✅ Governance plugin — installed at ~/.hermes/plugins/governance-enforcer
+  ✅ Governance plugin — installed at <HOME>/.hermes/plugins/governance-enforcer
   ✅ Plugin content — copy matches repo source
   ✅ Enforcer survey gate — cronjob(create) requires .cron-survey-done marker
   ✅ Plugin config — enabled in config.yaml
@@ -80,12 +83,12 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ MCP server (tasks) — configured in config.yaml
   ✅ MCP server (executor) — configured in config.yaml
   ✅ Pi integration — cortex skills + extension registered (install-pi-integration: registered)
-  ✅ Fleet python — ~/.hermes-cortex/venv/bin/python3 imports yaml + mcp
-  ✅ Global hooksPath — core.hooksPath → ~/.hermes-cortex/hooks
+  ✅ Fleet python — <HOME>/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  ✅ Global hooksPath — core.hooksPath → <HOME>/.hermes-cortex/hooks
   ✅ Pre-commit hook — installed governance + enforcer checks
   ✅ Pre-push hook — installed with lock-check, syntax-check
   ✅ Post-commit hook — symlinked to post-commit-audit (executable)
-  ✅ Score-cycle — score-cycle present at ~/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
+  ✅ Score-cycle — score-cycle present at <HOME>/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
   ✅ Governance locks — 2 lock(s) active, 0 stale
   ✅ Perms: Plugin __init__.py — 0o444
   ✅ Immutable: __init__.py — immutable flag set
@@ -97,19 +100,19 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Immutable: loop-gov-mcp.py — immutable flag set
   ✅ Immutable: hermes-plugin-lock — immutable flag set
   ✅ Immutable: hooks — immutable flag set
-  ✅ Plugin lock helper — helper OK (----i---------e------- ~/.hermes/plugins/governan)
+  ✅ Plugin lock helper — helper OK (----i---------e------- <HOME>/.hermes/plugins/governan)
   ✅ Blocked-IPs root copy — root copy present and matches repo source
   ✅ Blocked-IPs root copy immutable — immutable flag set
   ✅ Governance coverage — all bypass closures validated
-  ✅ Hook: pre-commit (deployed) — present at ~/.hermes-cortex/hooks/pre-commit
-  ✅ Hook: pre-commit (symlink) — → ~/.hermes-cortex/scripts/pre-commit-score
-  ✅ Hook: pre-push (deployed) — present at ~/.hermes-cortex/hooks/pre-push
-  ✅ Hook: pre-push (symlink) — → ~/.hermes-cortex/scripts/pre-push-pull
-  ✅ Hook: post-commit (deployed) — present at ~/.hermes-cortex/hooks/post-commit
-  ✅ Hook: post-commit (symlink) — → ~/.hermes-cortex/scripts/post-commit-audit
-  ✅ Hook: post-merge (deployed) — present at ~/.hermes-cortex/hooks/post-merge
-  ✅ Hook: post-push (deployed) — present at ~/.hermes-cortex/hooks/post-push
-  ✅ Hook: post-push (symlink) — → ~/.hermes-cortex/scripts/post-push-audit
+  ✅ Hook: pre-commit (deployed) — present at <HOME>/.hermes-cortex/hooks/pre-commit
+  ✅ Hook: pre-commit (symlink) — → <HOME>/.hermes-cortex/scripts/pre-commit-score
+  ✅ Hook: pre-push (deployed) — present at <HOME>/.hermes-cortex/hooks/pre-push
+  ✅ Hook: pre-push (symlink) — → <HOME>/.hermes-cortex/scripts/pre-push-pull
+  ✅ Hook: post-commit (deployed) — present at <HOME>/.hermes-cortex/hooks/post-commit
+  ✅ Hook: post-commit (symlink) — → <HOME>/.hermes-cortex/scripts/post-commit-audit
+  ✅ Hook: post-merge (deployed) — present at <HOME>/.hermes-cortex/hooks/post-merge
+  ✅ Hook: post-push (deployed) — present at <HOME>/.hermes-cortex/hooks/post-push
+  ✅ Hook: post-push (symlink) — → <HOME>/.hermes-cortex/scripts/post-push-audit
   ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
   ✅ Governance bypass — no bypass markers found
   ℹ️  PENDING cycles — 1 active-task cycle(s) (lock held): docs-consolidation-cleanup#1 — score at end_change
@@ -460,27 +463,27 @@ $ python3 ops/scripts/manage/cortex-doctor.py
   ✅ Task Lifecycle v2 stale inbox — no stale inbox tasks (sweep healthy)
   ✅ Task Lifecycle v2 .env perms — .env mode 600 (token protected)
   ✅ Skill drift — 386 skills in sync, 134 Hermes defaults skipped
-  ✅ mycortex-mem plugin — installed at ~/.hermes/plugins/mycortex-mem
+  ✅ mycortex-mem plugin — installed at <HOME>/.hermes/plugins/mycortex-mem
   ✅ mycortex-mem content — copy matches repo source
   ✅ mycortex-mem config — enabled in config.yaml
-  ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
+  ✅ prompt-guard plugin — installed at <HOME>/.hermes/plugins/prompt-guard
   ✅ prompt-guard content — copy matches repo source
   ✅ prompt-guard config — enabled in config.yaml
-  ⚠️  Multi-session repo — 2 live locks for ~/hermes-cortex: 20261020_091803_e138969f, cron_2da7ae15e810_20261020_092408
+  ⚠️  Multi-session repo — 2 live locks for <HOME>/hermes-cortex: 20261020_091803_e138969f, cron_2da7ae15e810_20261020_092408
          🔶 Suggestion: Commits in this repo can be attributed to the wrong session; give each session its own worktree, or serialise them
   ✅ Hook drift: post-commit — deployed matches repo (777fd064)
   ✅ Hook drift: post-push — deployed matches repo (67b598cb)
   ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
   ✅ Hook drift: pre-push — deployed matches repo (480e2097)
   ✅ Hook drift: prepare-commit-msg — deployed matches repo (b64c51e2)
-  ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
+  ✅ Cron runtime scripts — scripts → <HOME>/.hermes-cortex/scripts (symlink)
   ✅ Langfuse version — running langfuse/langfuse:3.225.1 matches compose pin
   ✅ Langfuse scoring — 2172 scores, newest 1d old, traces newest 0d old
   ✅ ClickHouse system db — system database is 515 MB
   ✅ Restraint registry — all 15 classes name a present restraint
   ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
   ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
-  ✅ cortex env — canonical ~/hermes-cortex/.env present (600); ~/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired
+  ✅ cortex env — canonical <HOME>/hermes-cortex/.env present (600); <HOME>/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired
   ✅ Cron bridge migration — every eligible no_agent job is either bridged or deliberately left on Hermes
   ✅ Orphan-cycle resolution — 18 reaper-closed (unscored, tagged) · 129 agent-declared unscored close(s) — no bare MOVE_ON left behind by the reaper
   ✅ Paused crons: reason — all 4 paused cron(s) carry a recorded reason

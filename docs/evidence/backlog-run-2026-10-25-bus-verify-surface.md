@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Backlog run — `orch-bus-worker` gives itself a verification surface (2026-10-25)
 
 Governance cycle **#13788**, session `cron_1954deb5ad76_20261025_222143`, task id
@@ -41,7 +44,7 @@ Both were confirmed at code level before being accepted:
 
 ### 1a. A correction: my first probe was wrong, and it was mine
 
-My first probe (`~/.hermes/cache/scratch/probe-verify-surface.py`) reported the
+My first probe (`<HOME>/.hermes/cache/scratch/probe-verify-surface.py`) reported the
 primary bus as **HTTP 401 for every queue**, and I drafted an evidence note
 claiming fleet results were simply "unauthorized". That was a **probe defect**: it
 returned Bearer *or* Basic — never both — so with a bearer token configured it
@@ -78,7 +81,7 @@ One file changed (`mcp-servers/cortex-bus-mcp.py`) plus one new test file
 ### 3.1 Unit tests green, on the changed functions
 
 ```
-$ ~/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q
+$ <HOME>/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q
 collected 9 items
 tests/test_bus_mcp_verify_surface.py .........                           [100%]
 ============================== 9 passed in 1.27s ===============================
@@ -165,6 +168,6 @@ inbox_moses ARCHIVED count= 7
 ## 5. Re-run
 
 ```bash
-~/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q   # expect 9 passed
-python3 ~/.hermes/cache/scratch/live-verify-surface.py                                  # live bus loop
+<HOME>/.hermes-cortex/venv/bin/pytest tests/test_bus_mcp_verify_surface.py -q   # expect 9 passed
+python3 <HOME>/.hermes/cache/scratch/live-verify-surface.py                                  # live bus loop
 ```

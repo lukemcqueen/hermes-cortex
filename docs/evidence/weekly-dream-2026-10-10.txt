@@ -1,12 +1,15 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Weekly mycortex dream evidence — 2026-10-10
 
-## Output files (NOT in a git repo; ~/brain is a markdown store)
-~/brain/esther/dreams/2026-10-10-weekly.md 4114 bytes
-~/brain/esther/dreams/INDEX.md 5703 bytes
+## Output files (NOT in a git repo; <HOME>/brain is a markdown store)
+<HOME>/brain/esther/dreams/2026-10-10-weekly.md 4114 bytes
+<HOME>/brain/esther/dreams/INDEX.md 5703 bytes
 
 ## wc -l
-  32 ~/brain/esther/dreams/2026-10-10-weekly.md
-  29 ~/brain/esther/dreams/INDEX.md
+  32 <HOME>/brain/esther/dreams/2026-10-10-weekly.md
+  29 <HOME>/brain/esther/dreams/INDEX.md
   61 total
 
 ## INDEX tail (last 3 lines)

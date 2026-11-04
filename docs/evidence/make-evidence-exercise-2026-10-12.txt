@@ -1,4 +1,7 @@
-Running: sh -c cd /tmp && rm -f me.txt && B=~/hermes-cortex/ops/scripts/make-evidence.sh; bash $B /tmp/me.txt -- sh -c "echo genesis" >/dev/null && bash $B --verify /tmp/me.txt >/dev/null; echo write_verify=$?; sed -i s/genesis/EDITED/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo tamper_rc=$?; sed -i s/EDITED/genesis/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo restore_rc=$?; rm -f /tmp/me.txt
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+Running: sh -c cd /tmp && rm -f me.txt && B=<HOME>/hermes-cortex/ops/scripts/make-evidence.sh; bash $B /tmp/me.txt -- sh -c "echo genesis" >/dev/null && bash $B --verify /tmp/me.txt >/dev/null; echo write_verify=$?; sed -i s/genesis/EDITED/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo tamper_rc=$?; sed -i s/EDITED/genesis/ /tmp/me.txt; bash $B --verify /tmp/me.txt >/dev/null; echo restore_rc=$?; rm -f /tmp/me.txt
 rc: 0
 when: 2026-10-12T10:05:13Z
 

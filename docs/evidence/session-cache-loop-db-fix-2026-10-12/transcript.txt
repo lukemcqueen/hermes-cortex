@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Evidence — session_cache embed_loop_db repair (2026-10-12)
 
 Host: esther (orchestrator). Public repo rules (no home paths/hostnames) apply.
@@ -61,14 +64,14 @@ rc=0
    Before: loop_db source held 20 stale rows (zero added per run for months).
    After the real deployed invocation, +50 rows appear with a fresh timestamp.
 
-$ python3 ~/.hermes-cortex/scripts/agent-session_cache.py   # deployed copy
+$ python3 <HOME>/.hermes-cortex/scripts/agent-session_cache.py   # deployed copy
 $ python3 -c "SELECT source, COUNT(*) FROM embeddings GROUP BY source"
 loop_db: 20 -> 70  (created_at 2026-10-12 00:31)
 session: 4   skill: 113
 
 ## 5. Deploy sync — deployed tree equals committed HEAD
 
-$ diff <(tail -n +4 ~/.hermes-cortex/scripts/agent-session_cache.py) <(git show HEAD:ops/scripts/manage/agent-session_cache.py)
+$ diff <(tail -n +4 <HOME>/.hermes-cortex/scripts/agent-session_cache.py) <(git show HEAD:ops/scripts/manage/agent-session_cache.py)
 (only the "# SOURCE:" header differs — by design)
 
 ## 6. Doctor
@@ -100,7 +103,7 @@ $ python3 tests/run_loop_evaluator_avg_per_task_repro.py     # runnable, self-as
 
 # sqlite3(1) is not installed on this host; this Python form is the one that
 # actually runs here (sqlite3 means the stdlib module, not the CLI).
-$ python3 -c "import sqlite3; c=sqlite3.connect('~/.hermes-cortex/data/loop-governance.db'); print(*c.execute(\"SELECT COUNT(*), COUNT(DISTINCT task_id), ROUND(AVG(cycle_num),1), ROUND(1.0*COUNT(*)/MAX(COUNT(DISTINCT task_id),1),1) FROM loop_cycles WHERE timestamp >= datetime('now','-7 days')\"))"
+$ python3 -c "import sqlite3; c=sqlite3.connect('<HOME>/.hermes-cortex/data/loop-governance.db'); print(*c.execute(\"SELECT COUNT(*), COUNT(DISTINCT task_id), ROUND(AVG(cycle_num),1), ROUND(1.0*COUNT(*)/MAX(COUNT(DISTINCT task_id),1),1) FROM loop_cycles WHERE timestamp >= datetime('now','-7 days')\"))"
 (1594, 546, 24.5, 2.9)
    ^ total, unique_tasks, AVG(cycle_num) [the defective metric], true total/unique
      Note 24.5 != 2.9 in the SAME row: that contradiction is what the review caught.
@@ -115,7 +118,7 @@ $ python3 -c "import sqlite3; c=sqlite3.connect('~/.hermes-cortex/data/loop-gove
    the caller cannot distinguish 'nothing new' from 'the query broke'.
 
 ```
-$ python3 ~/.hermes-cortex/scripts/agent-session_cache.py   # happy path
+$ python3 <HOME>/.hermes-cortex/scripts/agent-session_cache.py   # happy path
 rc=0
 
 $ # inject the failure: LOOP_DB pointed at a schema with no content_assets

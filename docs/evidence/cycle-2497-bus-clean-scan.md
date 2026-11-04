@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Bus scan evidence — kustos, cycle 2497 (cortex-bus-workday cron)
 
 Date: 2026-10-06. Run by kustos agent (host cisnet02). Active bus: :13004.
@@ -12,12 +15,12 @@ could close.
 ## Probe (embedded, re-executable)
 The probe is embedded here because `ops/scripts/` is orchestrator-only for
 non-orch agents. Save the block below to a scratch file and run it from the repo
-root. The library reads the conf environment (CORTEX_* from ~/hermes-cortex/.env
+root. The library reads the conf environment (CORTEX_* from <HOME>/hermes-cortex/.env
 or conf/).
 ```python
 import json, os, sys
-os.chdir('~/hermes-cortex')
-sys.path.insert(0, '~/hermes-cortex/ops/scripts')
+os.chdir('<HOME>/hermes-cortex')
+sys.path.insert(0, '<HOME>/hermes-cortex/ops/scripts')
 from lib.cortex_bus import bus_read
 
 def drain(q, label, limit=50):
@@ -55,8 +58,8 @@ DLQ; the inline probe above is the authoritative, honest version.
 
 ### Filesystem / state checks (this session, via `fs_check.py`)
 ```
-OUTBOX ~/hermes-cortex/outbox: ABSENT
-OUTBOX ~/.hermes-cortex/outbox: ABSENT
+OUTBOX <HOME>/hermes-cortex/outbox: ABSENT
+OUTBOX <HOME>/.hermes-cortex/outbox: ABSENT
 FAILOVER: {"consecutive_failures":0,"first_failure_at":null,"consecutive_successes":0,
            "failover_active":false,"last_status":"idle",
            "last_check_at":"2026-10-06T05:20:15.369874+00:00","worker_was_down":false}
@@ -80,7 +83,7 @@ re-producible from the committed inline probe.
   therefore "inbox clean; DLQ unverifiable from this ACL", NOT "bus fully clean".
   Escalated to orchestrator via this evidence file (they hold read access).
 - **Outbox: self-reported.** No outbox directory exists under either
-  `~/hermes-cortex/outbox` or `~/.hermes-cortex/outbox` → no quarantined/stuck
+  `<HOME>/hermes-cortex/outbox` or `<HOME>/.hermes-cortex/outbox` → no quarantined/stuck
   outbound messages. (Probe not committed.)
 - **Failover: self-reported idle.** `failover_active=false`, `last_status=idle`,
   `consecutive_failures=0`. (Probe not committed.)
@@ -88,7 +91,7 @@ re-producible from the committed inline probe.
   `cortex-bus-workday` (id `1c07031c186a`) tracks at `consecutive:0, alerted:false`.
   Watchdog file holds 58 host entries. Two low-consecutive hashes
   (`a8b69c2ffd15`=2, `eebc5f11d860`=1, both `alerted:false`) are NOT present in
-  the current `~/.hermes/cron/jobs.json` → stale / other-host hostnames, not
+  the current `<HOME>/.hermes/cron/jobs.json` → stale / other-host hostnames, not
   actionable from this host. Verified by `map_crons.py` against the live jobs file.
 
 ## Conclusion

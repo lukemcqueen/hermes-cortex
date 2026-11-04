@@ -1,4 +1,7 @@
-Running: bash -c echo "repo file:"; grep -c DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py; echo "deployed file:"; grep -c DOC_ONLY_DIR_PREFIXES ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py; echo "occurrences (one line each):"; grep -n DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py | cut -c1-90
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+Running: bash -c echo "repo file:"; grep -c DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py; echo "deployed file:"; grep -c DOC_ONLY_DIR_PREFIXES <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py; echo "occurrences (one line each):"; grep -n DOC_ONLY_DIR_PREFIXES mcp-servers/loop-gov-mcp.py | cut -c1-90
 rc: 0
 when: 2026-10-12T09:46:47Z
 

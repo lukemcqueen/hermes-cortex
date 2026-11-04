@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Backlog run 2026-10-26 — fleet bridge KillMode rollout (task `3c94beac`)
 
 Evidence for the `orch-bus-worker` cron run (job `1954deb5ad76`, session
@@ -31,7 +34,7 @@ once → EXEC_RESULT read back:
 ✅ EXEC_RESULT from esther:
    Command: git-main-sync.sh
    Exit:    0
-   stdout:  [2026-10-26 14:24 KST git-main-sync] repo: ~/hermes-cortex
+   stdout:  [2026-10-26 14:24 KST git-main-sync] repo: <HOME>/hermes-cortex
             [2026-10-26 14:24 KST git-main-sync] current branch: main
             [2026-10-26 14:24 KST git-main-sync] HEAD is 0 behind, 0 ahead of origin/main
             [2026-10-26 14:24 KST git-main-sync] OK: on main, up to date
@@ -53,7 +56,7 @@ words (repo paths are theirs):
 ## Step 3 — repair via the documented fast-forward path
 
 `hc exec <host> git-main-sync.sh` → `git pull --rebase origin main`; the repo's
-global `post-merge` hook (`~/.hermes-cortex/hooks/post-merge`, verified to fire
+global `post-merge` hook (`<HOME>/.hermes-cortex/hooks/post-merge`, verified to fire
 only when `REPO_ROOT == $HOME/hermes-cortex`) runs `cortex-update.sh`, which
 deploys the new tree AND invokes `install-bridge-killmode.sh` — i.e. both halves
 of the repair (unit rewrite + `systemctl --user daemon-reload`).
@@ -65,7 +68,7 @@ kustos's EXEC_RESULT shows the whole chain running on the host:
  * branch              main       -> FETCH_HEAD
 ━━━ post-merge: auto-deploying to match new HEAD ━━━
    ✓ Agent identity: kustos (git author: kustos-agent <kustos@hermes.local>)
-   ✓ Fleet interpreter: ~/.hermes-cortex/venv/bin/python3
+   ✓ Fleet interpreter: <HOME>/.hermes-cortex/venv/bin/python3
    ━━━ Cortex Update ━━━
    ✓ Updated: ff4db13c → ff4db13c
    ✓ Force mode — re-checking all mapped files…

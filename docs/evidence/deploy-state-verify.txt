@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 === deploy-state verification (verbatim command outputs) ===
 host: cisnet02
 
@@ -7,7 +10,7 @@ $ git rev-parse HEAD
 $ git status --porcelain
 (empty — zero bytes of output)
 
-$ cat ~/.hermes-cortex/state/last-update.json
+$ cat <HOME>/.hermes-cortex/state/last-update.json
 {
   "timestamp": "2026-10-06T11:20:24Z",
   "hostname": "cisnet02",
@@ -17,14 +20,14 @@ $ cat ~/.hermes-cortex/state/last-update.json
   "files_removed": 0,
   "services_restarted": ["health_server"],
   "dry_run": false,
-  "summary_file": "~/.hermes-cortex/state/last-update.txt"
+  "summary_file": "<HOME>/.hermes-cortex/state/last-update.txt"
 }
 
-$ sha256sum ~/.hermes/plugins/governance-enforcer/__init__.py ~/hermes-cortex/plugins/governance-enforcer/__init__.py
-7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  ~/.hermes/plugins/governance-enforcer/__init__.py
-7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  ~/hermes-cortex/plugins/governance-enforcer/__init__.py
+$ sha256sum <HOME>/.hermes/plugins/governance-enforcer/__init__.py <HOME>/hermes-cortex/plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  <HOME>/.hermes/plugins/governance-enforcer/__init__.py
+7ff21e2ccff01f54dd75e493f018f214dfe8fd958851a288bd6f481d7487fd23  <HOME>/hermes-cortex/plugins/governance-enforcer/__init__.py
 
-$ diff -q ~/.hermes/plugins/governance-enforcer/__init__.py ~/hermes-cortex/plugins/governance-enforcer/__init__.py
+$ diff -q <HOME>/.hermes/plugins/governance-enforcer/__init__.py <HOME>/hermes-cortex/plugins/governance-enforcer/__init__.py
 (exit 0 — no output, files identical)
 
 $ python3 ops/scripts/manage/cortex-doctor.py --quiet (last line)

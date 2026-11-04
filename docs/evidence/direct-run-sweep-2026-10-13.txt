@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: cat docs/evidence/direct-run-sweep-2026-10-13.raw.txt
 rc: 0
 when: 2026-10-13T06:16:51Z
@@ -7,19 +10,19 @@ when: 2026-10-13T06:16:51Z
 ============================== 1 passed in 1.12s ===============================
 
 ### B. what the bare interpreter IS in this session, and what the arbiter returns
-bash resolves python3 to: ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3
+bash resolves python3 to: <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3
 python3 -c "import yaml" -> ModuleNotFoundError: No module named 'yaml'
   rc=0
-arbiter --print yaml -> ~/.hermes-cortex/venv/bin/python3
+arbiter --print yaml -> <HOME>/.hermes-cortex/venv/bin/python3
 
 ### C. the OLD evidence script (HEAD, bare python3) on this session:
 === C. SOUL.md evaluation (cortex-doctor) ===
   skill drift (doctor):
 ### D. the FIXED evidence script, same session:
 === C. SOUL.md evaluation (cortex-doctor) ===
-    ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
-    ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
-    ✅ SOUL.md template sync (~/.hermes)
+    ✅ SOUL.md canonical 12 (<HOME>/.hermes) — all 12 canonical principles present
+    ✅ SOUL.md local principles (<HOME>/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+    ✅ SOUL.md template sync (<HOME>/.hermes)
 
 ### E. syntax
 bootstrap.sh OK

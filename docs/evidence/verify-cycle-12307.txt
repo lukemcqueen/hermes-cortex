@@ -1,4 +1,7 @@
-cycle 12307 verifier — repo=~/hermes-cortex  head=8c26adc7
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+cycle 12307 verifier — repo=<HOME>/hermes-cortex  head=8c26adc7
 
 1  every published checksum, recomputed from HEAD
    OK    08d213ed9557  bus-inbox-tick-2026-10-12-cycle-12188.sh

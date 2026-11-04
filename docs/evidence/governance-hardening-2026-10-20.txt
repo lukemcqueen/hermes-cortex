@@ -1,11 +1,14 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # governance-hardening — evidence (2026-10-20, cycle 13406)
 # every command below is bare; each rc is that command's own
 
 === 1. the host self-check, run against the DEPLOYED enforcer BEFORE this change ===
 $ python3 ops/scripts/quality/probe-gate-logic.py
-Enforcer under test: ~/.hermes/plugins/governance-enforcer/__init__.py
+Enforcer under test: <HOME>/.hermes/plugins/governance-enforcer/__init__.py
 Copy: DEPLOYED (active)
-State dir (throwaway): ~/.hermes/cache/scratch/gate-probe-u5cryd1m
+State dir (throwaway): <HOME>/.hermes/cache/scratch/gate-probe-u5cryd1m
 
 Gate 1 — 7 always-skills marker
   PASS  marker absent before any skill_view
@@ -83,9 +86,9 @@ rc=1
 
 === 2. the same probe against the REPO copy AFTER this change ===
 $ HERMES_ENFORCER=$PWD/plugins/governance-enforcer/__init__.py python3 ops/scripts/quality/probe-gate-logic.py
-Enforcer under test: ~/hermes-cortex/plugins/governance-enforcer/__init__.py
-Copy: repo/other: ~/hermes-cortex/plugins/governance-enforcer/__init__.py
-State dir (throwaway): ~/.hermes/cache/scratch/gate-probe-d7p4fzm5
+Enforcer under test: <HOME>/hermes-cortex/plugins/governance-enforcer/__init__.py
+Copy: repo/other: <HOME>/hermes-cortex/plugins/governance-enforcer/__init__.py
+State dir (throwaway): <HOME>/.hermes/cache/scratch/gate-probe-d7p4fzm5
 
 Gate 1 — 7 always-skills marker
   PASS  marker absent before any skill_view
@@ -164,7 +167,7 @@ rc=0
 $ bash tests/run-tests.sh -q tests/test_runtime/test_governance_bypass.py tests/test_enforcer_pii_gate.py
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 265 items
@@ -177,14 +180,14 @@ tests/test_enforcer_pii_gate.py ................................         [100%]
 
 ============================= 265 passed in 1.55s ==============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=0
 
 === 4. AFTER the deploy: the self-check against the now-DEPLOYED enforcer ===
 $ python3 ops/scripts/quality/probe-gate-logic.py   # loads the active/deployed copy
-Enforcer under test: ~/.hermes/plugins/governance-enforcer/__init__.py
+Enforcer under test: <HOME>/.hermes/plugins/governance-enforcer/__init__.py
 Copy: DEPLOYED (active)
-State dir (throwaway): ~/.hermes/cache/scratch/gate-probe-p77zhk_n
+State dir (throwaway): <HOME>/.hermes/cache/scratch/gate-probe-p77zhk_n
 
 Gate 1 — 7 always-skills marker
   PASS  marker absent before any skill_view
@@ -263,7 +266,7 @@ rc=0
 $ bash tests/run-tests.sh -q tests/test_runtime/test_score_gate.py
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 19 items
@@ -272,7 +275,7 @@ tests/test_runtime/test_score_gate.py ...................                [100%]
 
 ============================== 19 passed in 2.34s ==============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=0
 
 === 6. doctor overall (fail COUNT is the verdict; its rc is 1 for warnings alone) ===

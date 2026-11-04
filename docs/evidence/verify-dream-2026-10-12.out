@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 === verify-dream-2026-10-12.sh — full captured transcript ===
 run: bash /usr/bin/bash 2>&1 | tee docs/evidence/verify-dream-2026-10-12.out
 host: linux
@@ -5,7 +8,7 @@ host: linux
 syntax-check rc=0
 --- script output ---
 == A. dream file: exists, exact size, exact digest ==
-   path=~/brain/esther/dreams/2026-10-12.md
+   path=<HOME>/brain/esther/dreams/2026-10-12.md
    size=4061 (want 4061)
    md5=3a139c0106f752e546b8459dc7a38e0d (want 3a139c0106f752e546b8459dc7a38e0d)
 

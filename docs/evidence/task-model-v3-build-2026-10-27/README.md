@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Backlog run 2026-10-27 (22:2x KST) — row `9fb2ddb6`: the write surface, BUILT
 
 Evidence for the `orch-bus-worker` cron run (job `1954deb5ad76`, session
@@ -143,8 +146,8 @@ warns against. Recorded as a governance issue.
 ## Re-run
 
 ```bash
-cd ~/hermes-cortex
+cd <HOME>/hermes-cortex
 bash tests/test-tasks-schema.sh                        # expect 134 passed, 0 failed
-~/.hermes-cortex/venv/bin/python -m pytest tests/test_task_db_unit.py tests/test_task_db_v4.py -q
+<HOME>/.hermes-cortex/venv/bin/python -m pytest tests/test_task_db_unit.py tests/test_task_db_v4.py -q
 bash docs/evidence/task-model-v3-build-2026-10-27/live-roundtrip.sh
 ```

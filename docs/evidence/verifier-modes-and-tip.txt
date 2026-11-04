@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Verifier modes + captured-run provenance (cycle 12307). Commands and their real output:
 
 $ git ls-files -s docs/evidence/*verify*.sh docs/evidence/launchd-restart-12223-reproduce.sh
@@ -15,7 +18,7 @@ $ git show --stat --oneline dc426b94 | grep '\.sh'
   -> the commit that chmod'd them changed THREE, not two.
 
 $ head -1 docs/evidence/verify-cycle-12307.txt
-cycle 12307 verifier — repo=~/hermes-cortex  head=0cc455b8
+cycle 12307 verifier — repo=<HOME>/hermes-cortex  head=0cc455b8
   -> the captured run records the tip it ran at; the script re-runs at any tip.
 
 Why this file exists (so the two records do not read as a contradiction): an earlier

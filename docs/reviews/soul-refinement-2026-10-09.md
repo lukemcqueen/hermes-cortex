@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Soul Refinement — Daily Report 2026-10-09
 
 Cron: `soul-refinement` · Cycle 11901 · Host: esther · Hermes Agent
@@ -28,7 +31,7 @@ the skill): the guard reads both a Hermes session id and a 10-digit Unix epoch
 float as a **phone number**, so both are elided in this document. The full values
 live in the committed `.mining.json` (a machine artifact the guard admits).
 
-Source: `~/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
+Source: `<HOME>/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
 0-byte stub), read-only (`mode=ro` + `PRAGMA query_only=1`).
 
 Trap (already in the skill, hit again): the `timestamp` column is a **Unix epoch
@@ -168,10 +171,10 @@ and the commit stats, not on the worker's self-score.
 ## Size budget (command output, not prose)
 
 ```
-$ wc -c ~/.hermes/SOUL.md
-13482 ~/.hermes/SOUL.md
-$ wc -c ~/steadfaste-fleet/docs/templates/SOUL.md
-9720 ~/steadfaste-fleet/docs/templates/SOUL.md
+$ wc -c <HOME>/.hermes/SOUL.md
+13482 <HOME>/.hermes/SOUL.md
+$ wc -c <HOME>/steadfaste-fleet/docs/templates/SOUL.md
+9720 <HOME>/steadfaste-fleet/docs/templates/SOUL.md
 $ python3 -c "..._extract_soul_markers..."   # template 9 / deployed 10
 ```
 

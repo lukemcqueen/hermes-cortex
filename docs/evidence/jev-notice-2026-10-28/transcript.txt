@@ -1,5 +1,8 @@
-plugin   : ~/.hermes/plugins/hermes-jev/__init__.py
-scratch  : ~/.hermes/cache/scratch/jev-notice-MXa4vt  (HERMES_HOME repointed; live state and log untouched)
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+plugin   : <HOME>/.hermes/plugins/hermes-jev/__init__.py
+scratch  : <HOME>/.hermes/cache/scratch/jev-notice-MXa4vt  (HERMES_HOME repointed; live state and log untouched)
 
 --- prompt=trivial notice=on ---
   answers : null

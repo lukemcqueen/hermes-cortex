@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash -c 
 CV="$0"; R="$1"
 echo "== the tests for this change (names for the new file, counts for the rest) =="
@@ -24,7 +27,7 @@ env -u PYTHONPATH "$CV" -c "import mcp, fastapi, yaml; print(\"clean-env imports
 echo
 echo "== extract from the raw deploy log: the venv check and the verdict =="
 grep -iE "fleet venv|declared set|migrations FAILED|doctor: |DOGFOOD" "$R"
- ~/.hermes-cortex/venv/bin/python3 docs/evidence/fleet-venv-env-2026-10-13.raw.txt
+ <HOME>/.hermes-cortex/venv/bin/python3 docs/evidence/fleet-venv-env-2026-10-13.raw.txt
 rc: 0
 when: 2026-10-13T05:13:24Z
 
@@ -53,25 +56,25 @@ tests/test_venv_env_contamination.py::test_a_failed_import_is_diagnosed_instead_
 
 == DISCRIMINATION: same poisoned PYTHONPATH, git e01d3c74 (pre-fix) vs the working tree ==
 -- fixer PRE-FIX:
-1 of 6 declared requirements are missing from ~/.hermes-cortex/venv:
+1 of 6 declared requirements are missing from <HOME>/.hermes-cortex/venv:
   missing: mcp>=1.0
-  fix it:  ~/.hermes-cortex/venv/bin/python3 /tmp/pre-fix-fixer.py --venv ~/.hermes-cortex/venv --requirements ops/install/requirements.txt
+  fix it:  <HOME>/.hermes-cortex/venv/bin/python3 /tmp/pre-fix-fixer.py --venv <HOME>/.hermes-cortex/venv --requirements ops/install/requirements.txt
 rc=3
 -- fixer FIXED:
-note: ignored inherited PYTHONPATH while probing ~/.hermes-cortex/venv — an inherited python path can shadow the venv's own packages and make a healthy venv look broken
-ok: ~/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+note: ignored inherited PYTHONPATH while probing <HOME>/.hermes-cortex/venv — an inherited python path can shadow the venv's own packages and make a healthy venv look broken
+ok: <HOME>/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
 rc=0
 -- resolver PRE-FIX:
 python-with-module: COULD NOT VERIFY — no interpreter can import 'mcp'.
 rc=3
 -- resolver FIXED:
 python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
-~/.hermes-cortex/venv/bin/python3
+<HOME>/.hermes-cortex/venv/bin/python3
 rc=0
 
 == the venv itself: the injected path, and the same import without it ==
-sys.path[1] = ~/.hermes/installs/483c6efb1d92c950/environments/01b97939828e46b5933cfab0fd124a6b/venv/lib/python3.14/site-packages
-clean-env imports OK from ~/.hermes-cortex/venv/lib/python3.12/site-packages/mcp/__init__.py
+sys.path[1] = <HOME>/.hermes/installs/483c6efb1d92c950/environments/01b97939828e46b5933cfab0fd124a6b/venv/lib/python3.14/site-packages
+clean-env imports OK from <HOME>/.hermes-cortex/venv/lib/python3.12/site-packages/mcp/__init__.py
 
 == extract from the raw deploy log: the venv check and the verdict ==
 ━━━ cortex-dogfood ━━━

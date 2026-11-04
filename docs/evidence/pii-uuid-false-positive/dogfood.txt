@@ -1,6 +1,9 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # DOGFOOD capture — cortex-dogfood.sh --force (cycle 12762)
 
-Command: `bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force`
+Command: `bash <HOME>/.hermes-cortex/scripts/cortex-dogfood.sh --force`
 Exit status: rc=0 (captured unpiped)
 Doctor summary line: ⚠️  Overall: WARNING  (466 pass · 9 warn · 0 fail · 2 info)
 
@@ -394,10 +397,10 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
        ✅ Self-adversarial review gate
        ✅ Self-adversarial review key
        ✅ CLAUDE.md (dev repos)
-       ✅ SOUL.md canonical 12 (~/.hermes)
-       ✅ SOUL.md local principles (~/.hermes)
-       ✅ SOUL.md template sync (~/.hermes)
-       ✅ SOUL.md reverse drift (~/.hermes)
+       ✅ SOUL.md canonical 12 (<HOME>/.hermes)
+       ✅ SOUL.md local principles (<HOME>/.hermes)
+       ✅ SOUL.md template sync (<HOME>/.hermes)
+       ✅ SOUL.md reverse drift (<HOME>/.hermes)
        ✅ Skills manifest (basic)
        ✅ Cron prompt stale refs
        ✅ Script run evidence
@@ -903,10 +906,10 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Self-adversarial review gate — end_change hard gate helpers present in loop-gov-mcp.py
      ✅ Self-adversarial review key — OPENROUTER_API_KEY resolvable
      ✅ CLAUDE.md (dev repos) — all 1 active dev repo(s) have CLAUDE.md
-     ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
-     ✅ SOUL.md local principles (~/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
-     ✅ SOUL.md template sync (~/.hermes)
-     ✅ SOUL.md reverse drift (~/.hermes)
+     ✅ SOUL.md canonical 12 (<HOME>/.hermes) — all 12 canonical principles present
+     ✅ SOUL.md local principles (<HOME>/.hermes) — 4 local principle(s) — allowed (≤12, generic, non-duplicating)
+     ✅ SOUL.md template sync (<HOME>/.hermes)
+     ✅ SOUL.md reverse drift (<HOME>/.hermes)
      ✅ Skills manifest (basic) — found at $HOME/.hermes-cortex/skills.yaml
      ✅ Cron prompt stale refs — no stale bus-target references in live cron prompts
      ✅ Script run evidence — all 55 changed script(s) have run through the scheduler since their change
@@ -953,7 +956,7 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
      ✅ Nginx syntax — config valid (nginx -t)
      ✅ Nginx dir purity — all confs in ops/install/deploy/nginx/ are nginx configs
      ✅ Legacy enforcer plugin — no stale legacy enforcer plugins
-     ✅ Governance plugin — installed at ~/.hermes/plugins/governance-enforcer
+     ✅ Governance plugin — installed at <HOME>/.hermes/plugins/governance-enforcer
      ✅ Plugin content — copy matches repo source
      ✅ Enforcer survey gate — cronjob(create) requires .cron-survey-done marker
      ✅ Plugin config — enabled in config.yaml
@@ -1352,24 +1355,24 @@ it is what ADV-12758-3 asked for rather than a self-reported claim.
             🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
      ⚠️  Skill drift — 6 drifted, 380 in sync, 131 Hermes defaults skipped
             🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle
-     ✅ mycortex-mem plugin — installed at ~/.hermes/plugins/mycortex-mem
+     ✅ mycortex-mem plugin — installed at <HOME>/.hermes/plugins/mycortex-mem
      ✅ mycortex-mem content — copy matches repo source
      ✅ mycortex-mem config — enabled in config.yaml
-     ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
+     ✅ prompt-guard plugin — installed at <HOME>/.hermes/plugins/prompt-guard
      ✅ prompt-guard content — copy matches repo source
      ✅ prompt-guard config — enabled in config.yaml
      ✅ Hook drift: post-commit — deployed matches repo (777fd064)
      ✅ Hook drift: post-push — deployed matches repo (67b598cb)
      ✅ Hook drift: pre-commit — deployed matches repo (62ed45c7)
      ✅ Hook drift: pre-push — deployed matches repo (480e2097)
-     ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
+     ✅ Cron runtime scripts — scripts → <HOME>/.hermes-cortex/scripts (symlink)
      ✅ Langfuse version — running langfuse/langfuse:3.225.1 matches compose pin
      ✅ Langfuse scoring — 2112 scores, newest 1d old, traces newest 1d old
      ✅ ClickHouse system db — system database is 469 MB
      ✅ Restraint registry — all 15 classes name a present restraint
      ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
      ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
-     ✅ cortex env — canonical ~/hermes-cortex/.env present (600); cortex-bus.conf is the sanctioned symlink; no deploy-dir .env
+     ✅ cortex env — canonical <HOME>/hermes-cortex/.env present (600); cortex-bus.conf is the sanctioned symlink; no deploy-dir .env
      ✅ Cron bridge migration — every eligible no_agent job is either bridged or deliberately left on Hermes
      ✅ Orphan-cycle resolution — 18 reaper-closed (unscored, tagged) · 126 agent-declared unscored close(s) — no bare MOVE_ON left behind by the reaper
      ✅ Paused crons: reason — all 4 paused cron(s) carry a recorded reason

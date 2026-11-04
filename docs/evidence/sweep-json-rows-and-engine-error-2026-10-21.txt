@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 generated-by: docs/evidence/sweep-json-rows-and-engine-error-2026-10-21.sh
 host-date:    2026-10-21T17:41:46+09:00
 tip:          f3a335a634c4002e0fae9c4328aa842010644503
@@ -19,7 +22,7 @@ tests/test_blob_rules_rev.py ........                                    [100%]
 
 ============================== 64 passed in 1.58s ==============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=0
 
 ===== 3. the row FORMAT proved against the LIVE database (fixtures alone prove nothing) =====
@@ -111,24 +114,24 @@ mainloop: caught unexpected SystemExit!
 
 ============================ no tests ran in 3.08s =============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=3  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=3  (PYTHONPATH/PYTHONHOME unset for the run)
 rc=3   (command: bash tests/run-tests.sh tests/ -q)
 
 ===== 8. full suite at this tip, excluding ONLY that pre-existing offender =====
 Note: this takes ~20 minutes; the suite is large and includes a test that runs the
 classifier over two revisions.
-E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw8/stub-gov.py session_identity {})
-E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
-E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
-E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['~/.local/bin/node', '~/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
-E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItfA/stub-gov.py session_identity {})
-E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
-E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
-E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 ~/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['~/.local/bin/node', '~/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
+E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-Nqtaw8/stub-gov.py session_identity {})
+E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
+E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-Nqta...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
+E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-Nqtaw...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['<HOME>/.local/bin/node', '<HOME>/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
+E     CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-bQItfA/stub-gov.py session_identity {})
+E   assert not ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.']
+E    +  where ['CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-bQIt...vernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.'] = _routine_stderr_lines('CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n')
+E    +    where 'CORTEX_GOV_SESSION unavailable (Error: Command failed: python3 <HOME>/.hermes/cache/scratch/cortex-verify-bQItf...ernance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n' = CompletedProcess(args=['<HOME>/.local/bin/node', '<HOME>/hermes-cortex/ops/install/harnesses/pi/verify-ext...rnance session id (see the CORTEX_GOV_SESSION line above); the reflexion gate will report this skill as NOT-LOADED.\n').stderr
 E       committed: | tests/test_enforcer_pii_gate.py passes on the redacted revision | PASS | ============================== 31 passed ============================== |
 E       derived:   | tests/test_enforcer_pii_gate.py passes on the redacted revision | PASS | ============================== 32 passed ============================== |
-E    +  where 1 = CompletedProcess(args=['~/.hermes-cortex/venv/bin/python3', '~/hermes-cortex/ops/scripts/manage/...the redacted revision | PASS | ============================== 32 passed ============================== |\n', stderr='').returncode
-E   AssertionError: cron_manifest.py --check failed with HOME=~ HERMES_HOME=~/.hermes:
+E    +  where 1 = CompletedProcess(args=['<HOME>/.hermes-cortex/venv/bin/python3', '<HOME>/hermes-cortex/ops/scripts/manage/...the redacted revision | PASS | ============================== 32 passed ============================== |\n', stderr='').returncode
+E   AssertionError: cron_manifest.py --check failed with HOME=~ HERMES_HOME=<HOME>/.hermes:
 E   AssertionError: a blob whose content already has a CLEAN verdict must not be re-reviewed — the cache is what makes a re-close affordable: {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'CLEAN'}, 'remaining': [], 'calls': 2, 'blocking': [], 'failed': [], 'already_judged': [], 'invalidated_verdicts': 2}
 E   AssertionError: a re-close must re-ask ONLY the blob that failed, not re-review the range: ['sha-a', 'sha-b', 'sha-c'] / {'verdicts': {'sha-a': 'CLEAN', 'sha-b': 'FINDINGS', 'sha-c': 'CLEAN'}, 'remaining': [], 'calls': 3, 'blocking': [{'finding_id': 'ADV-T-1', 'severity': 'medium', 'technique': 'unverified-claim', 'target': 'the edited blob', 'evidence': 'this blob claims a behaviour with no test beside it', 'recommendation': 'add the test'}], 'failed': [], 'already_judged': [], 'invalidated_verdicts': 3}
 E     - ========= 13 passed in <t> ============================== · pinned baseline fbfc22b34db2 (fbfc22b3): ============================== 9 passed in <t> =============================== [outcome pass] — reproduced as recorded under the generating interpreter, not gated (interpreter drift makes the old tree pass under today's python); the verdict is the measured pass, never the absence of the word "failed" | **Verdict: PASS** ## Raw test output — `tests/test_hc_harness.py` `hc harness` and its registry were fa...
@@ -179,7 +182,7 @@ run above, measured with the same runner. Verdicts: REPRODUCED (failed there too
 it predates this range), DIFFERS (passed at the base - a candidate regression),
 COULD NOT VERIFY (could not execute there; NOT a pass and NOT a failure).
 
-worktree at the range base: 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (git -C ~/.hermes/cache/scratch/sweep-evidence.3446039/base-wt rev-parse --short=8 HEAD -> 6221fc9c)
+worktree at the range base: 6221fc9cb9b0ed4de9b1adae9322f6d8a64a8096  (git -C <HOME>/.hermes/cache/scratch/sweep-evidence.3446039/base-wt rev-parse --short=8 HEAD -> 6221fc9c)
 caveat: a worktree materialises TRACKED files only, so an untracked tree present in
 the main checkout (a venv, build output) is absent on the base side.
 

@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Risk acceptance — the warnings still standing in the strands-landing cycle (2026-10-12)
 Source: docs/evidence/dogfood-strands-landing-2026-10-12.txt
 Status there: 'Overall: WARNING (448 pass · 12 warn · 0 fail · 8 info)'. Its LAST line,
@@ -11,7 +14,7 @@ It is NOT a claim that the warning set is empty, and this note records each one:
    not touch. The doctor names its own remedy (reconcile-stranded-skills.py, report first).
 2. Repo clean — the tree still holds uncommitted work outside this cycle's paths (the last
    stranded unstaged edits). Not this cycle's subject; recorded as still-outstanding.
-3. AGENTS.md efficiency (proj) — concerns ~/proj, a different repo entirely.
+3. AGENTS.md efficiency (proj) — concerns <HOME>/proj, a different repo entirely.
 4. Stale deploy: scripts/review-sweep-check.py — a DEPLOYED script with no repo source;
    unrelated to any file this cycle changes, and the doctor names the fix (rm it).
 

@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash -c 
 CV="$0"
 echo "== tests, every case by name =="
@@ -22,9 +25,9 @@ echo "== live: the non-fatal branch — the note for a non-repo cwd, and the exi
 "$CV" "$HOME/.hermes-cortex/scripts/loop-gov.py" check_lock "{}" 2>&1 >/dev/null; echo "rc(stderr only above)=$?"
 echo
 echo "== the FOREIGN-lock case: the committed script, re-runnable by any reviewer =="
-cd ~/hermes-cortex
+cd <HOME>/hermes-cortex
 "$CV" docs/evidence/foreign_lock_reporting.py 2>&1; echo "rc=$?"
- ~/.hermes-cortex/venv/bin/python3
+ <HOME>/.hermes-cortex/venv/bin/python3
 rc: 0
 when: 2026-10-13T02:23:30Z
 
@@ -66,7 +69,7 @@ loop-gov: ~ is not a git repo — nothing was stamped, so a lock opened here is 
       "agent": "unknown",
       "status": "executing",
       "repo_slug": "hermes-cortex",
-      "repo_path": "~/hermes-cortex",
+      "repo_path": "<HOME>/hermes-cortex",
       "started_at": "2026-10-13T02:10:12Z",
       "heartbeat_at": "2026-10-13T02:10:12Z",
       "file": ".governance-20261012_155635_db69f7bf.json"
@@ -82,12 +85,12 @@ rc=1
 
 == live: the non-fatal branch — the note for a non-repo cwd, and the exit code ==
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-loop-gov: ~/.hermes/cache/scratch/nonrepo is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
+loop-gov: <HOME>/.hermes/cache/scratch/nonrepo is not a git repo — nothing was stamped, so a lock opened here is tagged with 'hermes-cortex' and its repo_path stays empty. If you are changing files in this tree, run from inside a repo or pass --repo <path>.
 rc(stderr only above)=0
 
 == the FOREIGN-lock case: the committed script, re-runnable by any reviewer ==
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-module: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+module: <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 a bare check_lock whose own session is NOT the lock's owner:
 {
   "active": false,

@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Landing automation — measured verification transcripts (esther, 2026-10-09)
 ========================================================================
 Every block below is a command plus its ACTUAL output from this session, so the
@@ -21,21 +24,21 @@ command in the same order to reproduce.
 
 2. Deploy, and the deployed copy is the one that runs
 ----------------------------------------------------
-    $ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force
+    $ bash <HOME>/.hermes-cortex/scripts/cortex-dogfood.sh --force
       ✅  DOGFOOD PASSED — deployed state verified clean.
 
-    $ grep -c "fixed-marker" ~/.hermes-cortex/scripts/land-when-clean-probe.sh
+    $ grep -c "fixed-marker" <HOME>/.hermes-cortex/scripts/land-when-clean-probe.sh
       7
 
-    $ bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
+    $ bash <HOME>/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
     blockers=2 head=22c69ef4 origin_tip=283be526 origin_integrated=no fix_in_origin=0 landed=no
-    $ bash ~/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
+    $ bash <HOME>/.hermes-cortex/scripts/local-esther-land-nonhermes-fix-probe.sh
     blockers=2 head=22c69ef4 origin_tip=283be526 origin_integrated=no fix_in_origin=0 landed=no
       -> identical across runs (what the cron monitor's suppression depends on),
          produced by the DEPLOYED probe, not the repo copy.
 
-    $ diff <(tail -n +5 ~/.hermes-cortex/scripts/land-when-clean-probe.sh) \
-           <(tail -n +2 ~/hermes-cortex/ops/scripts/manage/land-when-clean-probe.sh)
+    $ diff <(tail -n +5 <HOME>/.hermes-cortex/scripts/land-when-clean-probe.sh) \
+           <(tail -n +2 <HOME>/hermes-cortex/ops/scripts/manage/land-when-clean-probe.sh)
       (no output — the deployed copy equals the repo source; the deployer inserts
        a banner after the shebang: 3 header lines + a blank line)
 
@@ -48,7 +51,7 @@ command in the same order to reproduce.
   Recorded honestly: the exit code is 1 under the warn policy; there are 0 FAIL
   checks and 10 warnings, all pre-existing and other-owned (4 deployed-only skill
   files authored on this host by other sessions, a stale
-  scripts/review-sweep-check.py, ~/proj's AGENTS.md hint, and cron
+  scripts/review-sweep-check.py, <HOME>/proj's AGENTS.md hint, and cron
   orch-daily-regression-gate last run: error). None references the changed files.
 
 4. Why the merge is still not done, and what closes the gap
@@ -77,13 +80,13 @@ command in the same order to reproduce.
 
 5. The cron job record itself (not a promise in prose)
 -----------------------------------------------------
-Read from the job store (~/.hermes/cron/jobs.json), the decisive fields:
+Read from the job store (<HOME>/.hermes/cron/jobs.json), the decisive fields:
 
     id              : c975d8f8aa25
     name            : esther-land-nonhermes-lock-fix
     schedule        : every 15m (interval, 15 minutes), repeat: forever
     monitor_script  : local-esther-land-nonhermes-fix-probe.sh
-    workdir         : ~/hermes-cortex
+    workdir         : <HOME>/hermes-cortex
     deliver         : origin (telegram, chat "Luke")
     created_at      : 2026-10-09T22:46:58+09:00
     last_run_at     : 2026-10-09T23:10:22+09:00     last_status: ok

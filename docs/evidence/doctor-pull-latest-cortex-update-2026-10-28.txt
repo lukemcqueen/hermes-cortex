@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 [mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
 [mcp-server] DEBUG: Initializing server 'loop-governance'
 
@@ -12,12 +15,12 @@
   ✅ Deployed gate smoke — deployed verifier TOON check active (malformed fixture flagged)
   ✅ Self-adversarial review template — present with REVIEWED MATERIAL marker
   ✅ Self-adversarial review gate — end_change hard gate helpers present in loop-gov-mcp.py
-  ✅ SOUL.md canonical 12 (~/.hermes) — all 12 canonical principles present
-  ✅ SOUL.md local principles (~/.hermes) — 3 local principle(s) — allowed (≤12, generic, non-duplicating)
-  ✅ SOUL.md template sync (~/.hermes)
-  ✅ SOUL.md reverse drift (~/.hermes)
-  ⚠️  USER.md template (~/.hermes)  [deferred (joseph, since 2026-10-23)] — USER.md template changed — review your live copy
-         🔶 Suggestion: REQUIRED: diff ~/hermes-cortex/docs/templates/USER.seed.md ~/.hermes/memories/USER.md and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; engineering standards (excellence, testing) now live in AGENTS.md.
+  ✅ SOUL.md canonical 12 (<HOME>/.hermes) — all 12 canonical principles present
+  ✅ SOUL.md local principles (<HOME>/.hermes) — 3 local principle(s) — allowed (≤12, generic, non-duplicating)
+  ✅ SOUL.md template sync (<HOME>/.hermes)
+  ✅ SOUL.md reverse drift (<HOME>/.hermes)
+  ⚠️  USER.md template (<HOME>/.hermes)  [deferred (joseph, since 2026-10-23)] — USER.md template changed — review your live copy
+         🔶 Suggestion: REQUIRED: diff <HOME>/hermes-cortex/docs/templates/USER.seed.md <HOME>/.hermes/memories/USER.md and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; engineering standards (excellence, testing) now live in AGENTS.md.
   ✅ Skills manifest: always — all 7 required skills present
   ✅ Skills manifest: on_task — covers debug, review, planning, enterprise
   ✅ Skills manifest: disk check — all 15 skills found on disk
@@ -64,7 +67,7 @@
   ✅ Nginx syntax — config valid (nginx -t)
   ✅ Nginx dir purity — all confs in ops/install/deploy/nginx/ are nginx configs
   ✅ Legacy enforcer plugin — no stale legacy enforcer plugins
-  ✅ Governance plugin — installed at ~/.hermes/plugins/governance-enforcer
+  ✅ Governance plugin — installed at <HOME>/.hermes/plugins/governance-enforcer
   ✅ Plugin content — copy matches repo source
   ✅ Enforcer survey gate — cronjob(create) requires .cron-survey-done marker
   ✅ Plugin config — enabled in config.yaml
@@ -76,8 +79,8 @@
   ✅ MCP server (tasks) — configured in config.yaml
   ✅ MCP server (executor) — not configured (correct for non-orchestrator)
   ✅ Pi integration — cortex skills + extension registered (install-pi-integration: registered)
-  ✅ Fleet python — ~/.hermes-cortex/venv/bin/python3 imports yaml + mcp
-  ✅ Global hooksPath — core.hooksPath → ~/.hermes-cortex/hooks
+  ✅ Fleet python — <HOME>/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  ✅ Global hooksPath — core.hooksPath → <HOME>/.hermes-cortex/hooks
   ✅ Pre-commit hook — installed governance + enforcer checks
   ✅ Pre-push hook — installed with lock-check, syntax-check
   ✅ Post-commit hook — symlinked to post-commit-audit (executable)
@@ -93,27 +96,27 @@
   ✅ Immutable: loop-gov-mcp.py — immutable flag set
   ✅ Immutable: hermes-plugin-lock — immutable flag set
   ✅ Immutable: hooks — immutable flag set
-  ✅ Plugin lock helper — helper OK (----i---------e------- ~/.hermes/plugins/governance)
+  ✅ Plugin lock helper — helper OK (----i---------e------- <HOME>/.hermes/plugins/governance)
   ✅ Blocked-IPs root copy — root copy present and matches repo source
   ✅ Blocked-IPs root copy immutable — immutable flag set
   ✅ Governance coverage — all bypass closures validated
-  ✅ Hook: pre-commit (deployed) — present at ~/.hermes-cortex/hooks/pre-commit
-  ✅ Hook: pre-commit (symlink) — → ~/.hermes-cortex/scripts/pre-commit-score
-  ✅ Hook: pre-push (deployed) — present at ~/.hermes-cortex/hooks/pre-push
-  ✅ Hook: pre-push (symlink) — → ~/.hermes-cortex/scripts/pre-push-pull
-  ✅ Hook: post-commit (deployed) — present at ~/.hermes-cortex/hooks/post-commit
-  ✅ Hook: post-commit (symlink) — → ~/.hermes-cortex/scripts/post-commit-audit
-  ✅ Hook: post-merge (deployed) — present at ~/.hermes-cortex/hooks/post-merge
-  ✅ Hook: post-push (deployed) — present at ~/.hermes-cortex/hooks/post-push
-  ✅ Hook: post-push (symlink) — → ~/.hermes-cortex/scripts/post-push-audit
+  ✅ Hook: pre-commit (deployed) — present at <HOME>/.hermes-cortex/hooks/pre-commit
+  ✅ Hook: pre-commit (symlink) — → <HOME>/.hermes-cortex/scripts/pre-commit-score
+  ✅ Hook: pre-push (deployed) — present at <HOME>/.hermes-cortex/hooks/pre-push
+  ✅ Hook: pre-push (symlink) — → <HOME>/.hermes-cortex/scripts/pre-push-pull
+  ✅ Hook: post-commit (deployed) — present at <HOME>/.hermes-cortex/hooks/post-commit
+  ✅ Hook: post-commit (symlink) — → <HOME>/.hermes-cortex/scripts/post-commit-audit
+  ✅ Hook: post-merge (deployed) — present at <HOME>/.hermes-cortex/hooks/post-merge
+  ✅ Hook: post-push (deployed) — present at <HOME>/.hermes-cortex/hooks/post-push
+  ✅ Hook: post-push (symlink) — → <HOME>/.hermes-cortex/scripts/post-push-audit
   ✅ Redundant local hooks — no redundant hooks found in local .git/hooks directories
   ✅ Governance bypass — no bypass markers found
   ℹ️  PENDING cycles  [deferred (joseph, since 2026-10-23)] — 1 active-task cycle(s) (lock held): hc-pull-update#3 — score at end_change
   ✅ Orphaned locks — 1 lock(s), MCP server active
   ✅ Skills gate — enforcer blocks writes without per-session skills markers
-  ✅ Harness (hermes) — ~/.hermes/config.yaml exists; artifact: hermes declares none — nothing to check; result: PASS
-  ✅ Harness (pi) — ~/.pi/agent exists; artifact: pi/extensions/cortex-governance.ts present; result: PASS
-  ✅ Harness (claude-code) — ~/.claude.json exists; artifact: claude-code declares none — nothing to check; result: PASS
+  ✅ Harness (hermes) — <HOME>/.hermes/config.yaml exists; artifact: hermes declares none — nothing to check; result: PASS
+  ✅ Harness (pi) — <HOME>/.pi/agent exists; artifact: pi/extensions/cortex-governance.ts present; result: PASS
+  ✅ Harness (claude-code) — <HOME>/.claude.json exists; artifact: claude-code declares none — nothing to check; result: PASS
   ➖ Harness (codex) — not installed on this host (a host without a harness is not a fault)
   ➖ Harness (steadfaste-tui) — declared unsupported — Steadfaste's own gateway is not complete, so its harness surface cannot be designed against it yet. Declared here with the reason rather than guessed at: a wrong layer means a wiring that "exists" and
   ✅ Local hooksPath override check — no per-repo overrides — all repos inherit global hooksPath
@@ -474,7 +477,7 @@
   ✅ Checksum: Governance plugin README.md — content matches repo source
   ✅ Checksum: SOUL.md (profile: joseph) — content matches repo source
   ✅ Skills loadable — all 384 repo skills pass the Agent-Skills loader rules
-  ⚠️  Skills loadable (published)  [deferred (joseph, since 2026-10-23)] — 1 skill(s) in ~/.agents/skills that this repo does not own would be dropped by a loader: devops/local-pipeline-debugging
+  ⚠️  Skills loadable (published)  [deferred (joseph, since 2026-10-23)] — 1 skill(s) in <HOME>/.agents/skills that this repo does not own would be dropped by a loader: devops/local-pipeline-debugging
          🔶 Suggestion: Not repo-owned (a Hermes default, or a plugin install such as openclaw). Fix it at its owner — patching the published copy here is overwritten by the next deploy or plugin install.
   ✅ Task DB connectivity — Postgres reachable, 0 pending item(s)
   ✅ Task DB write-probe — add → start → complete → archive roundtrip OK
@@ -483,31 +486,31 @@
   ✅ Task Lifecycle v2 telegram notify — sent=772, failures=0, env_perms_ok=True
   ✅ Task Lifecycle v2 stale inbox — no stale inbox tasks (sweep healthy)
   ✅ Task Lifecycle v2 .env perms — .env mode 600 (token protected)
-  ⚠️  Skill drift: devops/cortex-deployment-sync  [deferred (joseph, since 2026-10-27)] — Deployed copy is newer than repo source (~/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/cortex-deployment-sync  [deferred (joseph, since 2026-10-27)] — Deployed copy is newer than repo source (<HOME>/.hermes/skills/devops/cortex-deployment-sync/SKILL.md). Commit the repo source before cortex-update overwrites it.
          🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
-  ⚠️  Skill drift: devops/hermes-model-config  [deferred (joseph, since 2026-10-23)] — Deployed copy is newer than repo source (~/.hermes/skills/devops/hermes-model-config/SKILL.md). Commit the repo source before cortex-update overwrites it.
+  ⚠️  Skill drift: devops/hermes-model-config  [deferred (joseph, since 2026-10-23)] — Deployed copy is newer than repo source (<HOME>/.hermes/skills/devops/hermes-model-config/SKILL.md). Commit the repo source before cortex-update overwrites it.
          🔶 Suggestion: Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
   ⚠️  Skill drift  [deferred (joseph, since 2026-10-23)] — 2 drifted, 384 in sync, 113 Hermes defaults skipped
          🔶 Suggestion: Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
-  ✅ mycortex-mem plugin — installed at ~/.hermes/plugins/mycortex-mem
+  ✅ mycortex-mem plugin — installed at <HOME>/.hermes/plugins/mycortex-mem
   ✅ mycortex-mem content — copy matches repo source
   ✅ mycortex-mem config — enabled in config.yaml
-  ✅ prompt-guard plugin — installed at ~/.hermes/plugins/prompt-guard
+  ✅ prompt-guard plugin — installed at <HOME>/.hermes/plugins/prompt-guard
   ✅ prompt-guard content — copy matches repo source
   ✅ prompt-guard config — enabled in config.yaml
   ⚠️  Jev decision layer  [deferred (joseph, since 2026-10-28)] — not installed on this host (optional; takes the cheap decisions off the expensive model's plate)
-         🔶 Suggestion: bash ops/scripts/manage/install-jev-layer.sh   (or the deployed copy at ~/.hermes-cortex/scripts/manage/install-jev-layer.sh)
+         🔶 Suggestion: bash ops/scripts/manage/install-jev-layer.sh   (or the deployed copy at <HOME>/.hermes-cortex/scripts/manage/install-jev-layer.sh)
   ✅ Multi-session repo — no repo has more than one live lock (0 repo(s) locked)
   ✅ Hook drift: post-commit — deployed matches repo (da2b2cf1)
   ✅ Hook drift: post-push — deployed matches repo (67b598cb)
   ✅ Hook drift: pre-commit — deployed matches repo (06cedcc8)
   ✅ Hook drift: pre-push — deployed matches repo (480e2097)
   ✅ Hook drift: prepare-commit-msg — deployed matches repo (fe0a0b5d)
-  ✅ Cron runtime scripts — scripts → ~/.hermes-cortex/scripts (symlink)
+  ✅ Cron runtime scripts — scripts → <HOME>/.hermes-cortex/scripts (symlink)
   ✅ Restraint registry — all 15 classes name a present restraint
   ➖ Bus grant expiry — bus.permissions not queryable (orchestrator host only?)
   ✅ cortex-gateway — daemon imports hermetically; config + unit independent of hermes-gateway
-  ✅ cortex env — canonical ~/hermes-cortex/.env present (600); ~/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired
+  ✅ cortex env — canonical <HOME>/hermes-cortex/.env present (600); <HOME>/.hermes-cortex/.env is the sanctioned symlink; cortex-bus.conf retired
   ✅ Cron bridge migration — every eligible no_agent job is either bridged or deliberately left on Hermes
   ✅ Bridge unit kill mode — every enabled bridge unit sets an explicit KillMode
   ℹ️  Orphan-cycle resolution  [deferred (joseph, since 2026-10-23)] — 0 reaper-closed (unscored, tagged) · 153 agent-declared unscored close(s); 5 legacy row(s) closed by the OLD reaper carry a bare MOVE_ON and are NOT judged: #2798, #2799, #2823, #2825, #2889
@@ -535,7 +538,7 @@
   🔧 REQUIRED ACTIONS — resolve each ⚠️  or ❌ above
 
     Run: git status to review
-    REQUIRED: diff ~/hermes-cortex/docs/templates/USER.seed.md ~/.hermes/memories/USER.md and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; engineering standards (excellence, testing) now live in AGENTS.md.
+    REQUIRED: diff <HOME>/hermes-cortex/docs/templates/USER.seed.md <HOME>/.hermes/memories/USER.md and merge relevant guidance. USER.md is Hermes-owned and never auto-overwritten; engineering standards (excellence, testing) now live in AGENTS.md.
     Expected on a host that neither pushes nor hosts a sink. Otherwise check the sink service and this agent's VICTORIA_METRICS_URL.
     Renew cert: sudo certbot renew OR set CORTEX_SSL_CERT_PATH env var
     Renew cert: sudo certbot renew OR set CORTEX_SSL_CERT_PATH env var
@@ -543,7 +546,7 @@
     Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
     Recover it with: python3 ops/scripts/manage/reconcile-stranded-skills.py (report first; --apply copies pure supersets only) — then commit it as its OWN governed change, so the cycle's diff matches its task id.
     Resolve each drift entry above — recovery is its OWN governed change (see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT fixing it now, record the decision, or the check is reported as UNDISPOSED: cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
-    bash ops/scripts/manage/install-jev-layer.sh   (or the deployed copy at ~/.hermes-cortex/scripts/manage/install-jev-layer.sh)
+    bash ops/scripts/manage/install-jev-layer.sh   (or the deployed copy at <HOME>/.hermes-cortex/scripts/manage/install-jev-layer.sh)
     This daemon predates the startup stamp, so its loaded code can only be judged by timestamp. After the next gateway restart the check compares CONTENT, and a deploy that changed nothing will no longer read as stale.
     Repair the history with: python3 ops/scripts/manage/normalize-precommit-task-ids.py (dry run first, then --apply). It is idempotent, backs the ledger up first, keeps each original in the row's own outcome_note, and skips any id it cannot reduce without guessing. The hook that minted them is fixed, so this is history only.
 

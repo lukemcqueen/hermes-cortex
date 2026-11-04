@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Review-material starvation: the always-review file was the least visible one
 ==========================================================================
 Date: 2026-10-13   Host: esther   Repo: hermes-cortex
@@ -23,7 +26,7 @@ Reproduce the per-day counts (read-only):
 
   python3 - <<'PY'
   import sqlite3, json
-  con = sqlite3.connect('file:~/.hermes-cortex/data/loop-governance.db?mode=ro', uri=True)
+  con = sqlite3.connect('file:<HOME>/.hermes-cortex/data/loop-governance.db?mode=ro', uri=True)
   con.execute('PRAGMA query_only=1')
   cur = con.cursor()
   cur.execute("SELECT ts, findings_json FROM adversarial_reviews "
@@ -76,7 +79,7 @@ Script that measures it (against the CURRENT code):
   python3 - <<'PY'
   import importlib.util, re
   spec = importlib.util.spec_from_file_location(
-      "lg", "~/hermes-cortex/mcp-servers/loop-gov-mcp.py")
+      "lg", "<HOME>/hermes-cortex/mcp-servers/loop-gov-mcp.py")
   m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
   def sect(path, n):

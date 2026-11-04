@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 REVIEWER BOUNDS — LIVE proof (generated, not hand-written)
 Produced by: bash hermes-cortex/docs/evidence/review-bounded/capture.sh   (every path below is normalised to ~)
 Generated at: 2026-10-16T10:41:37Z
@@ -82,7 +85,7 @@ holds the revision it STARTED with — so a child started BEFORE the deployed co
 written can only hold an OLDER module, and the branch below says so.
 
 $ pgrep -af 'tools/loop-governance/loop-gov-mcp.py'
-953098 ~/.hermes-cortex/venv/bin/python3 ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+953098 <HOME>/.hermes-cortex/venv/bin/python3 <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 rc=0
 
 $ ps -o pid=,lstart=,etimes= -p $CHILD   # start time + seconds alive
@@ -104,7 +107,7 @@ $ grep -c <symbol> $DEPLOYED   # symbols the fix INTRODUCED (0 => pre-change cop
 rc=0   # WORST status in the loop, not printf's: 1 = a symbol was
                #   absent, 2 = the deployed file could not be read at all
 
-$ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-gov lines + counts)
+$ python3 <HOME>/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-gov lines + counts)
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
   ✅ MCP server (loop-governance)
   ✅ Immutable: loop-gov-mcp.py
@@ -114,10 +117,10 @@ $ python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --quiet   (loop-go
   ✅ Checksum: loop-gov.py
   ⚠️  loop-gov daemon
     Restart the gateway to load the new loop-governance module: hermes gateway restart. Until then end_change m[mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] WARNING: hermes_models.py not importable (ModuleNotFoundError: No module named 'hermes_models') — using default embedding model 'nomic-embed-text:v1.5'
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 ay read a cycle as PENDING right after it was scored — a retry after a cycle_query is the workaround, not the fix.
   ✅ PENDING cycles
 doctor rc=1   warnings=10   failures=0
@@ -152,7 +155,7 @@ receipts on disk: 100
 rc=0
 
 $ HOME=<fresh temp dir> MODPATH=$DEPLOYED python3 -c '<import; assert nothing but its log>'
-paths the IMPORT created under its redirected HOME: ['~/.hermes-cortex', '~/.hermes-cortex/logs', '~/.hermes-cortex/logs/loop-governance.log']
+paths the IMPORT created under its redirected HOME: ['<HOME>/.hermes-cortex', '<HOME>/.hermes-cortex/logs', '<HOME>/.hermes-cortex/logs/loop-governance.log']
 outside the log file and the two directories leading to it: none
 OK: importing writes ONLY its own log file (plus the dirs leading to it) — no
     store row, no lock file, no state file, so §6 reading the store through it

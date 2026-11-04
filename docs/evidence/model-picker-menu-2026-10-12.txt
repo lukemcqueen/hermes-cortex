@@ -1,8 +1,11 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash docs/evidence/verify-model-picker.sh
 rc: 0
 when: 2026-10-12T16:55:09Z
 
-interpreter: ~/.hermes-cortex/venv/bin/python3
+interpreter: <HOME>/.hermes-cortex/venv/bin/python3
 == 0. the DEPLOY, and its own log (what is actually deployed NOW) ==
   cortex-dogfood --force rc=0
        ⚠️  Overall: WARNING  (449 pass · 13 warn · 0 fail · 7 info)
@@ -38,7 +41,7 @@ interpreter: ~/.hermes-cortex/venv/bin/python3
   [1b the whole parity file] pytest rc=0
 
 == 2. the DEPLOYED copy this host runs ==
-  deployed == repo modulo the deploy banner / blank lines: ~/.hermes-cortex/scripts/cortex_gateway/daemon.py
+  deployed == repo modulo the deploy banner / blank lines: <HOME>/.hermes-cortex/scripts/cortex_gateway/daemon.py
   picker symbols in the DEPLOYED file: 11
   menu config reachable in the DEPLOYED file: 5
 
@@ -60,7 +63,7 @@ interpreter: ~/.hermes-cortex/venv/bin/python3
 == 6. the enabler every OTHER agent host runs (portable, stdlib only) ==
   ============================== 20 passed in 0.39s ==============================
   [6 the enabler's tests] pytest rc=0
-  deployed copy present on this host: ~/.hermes-cortex/scripts/gateway-model-list.py
+  deployed copy present on this host: <HOME>/.hermes-cortex/scripts/gateway-model-list.py
   the write/check round trip below runs against THAT copy, not the repo copy
   write rc=0 on a config with other keys
   ok: models: block healthy (2 entries)

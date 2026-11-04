@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash docs/evidence/verify-interpreter-choice.sh
 rc: 0
 when: 2026-10-13T00:36:45Z
@@ -14,13 +17,13 @@ when: 2026-10-13T00:36:45Z
   PyYAML=6.0.3
 
 == 1. what each candidate can actually import (the measurement, not a memory) ==
-  ~/.hermes-cortex/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
-  ~/.hermes/hermes-agent/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
-  ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3  pytest:no  yaml:no  mcp:no  fastapi:no
+  <HOME>/.hermes-cortex/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
+  <HOME>/.hermes/hermes-agent/venv/bin/python3  pytest:YES  yaml:YES  mcp:YES  fastapi:YES
+  <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3  pytest:no  yaml:no  mcp:no  fastapi:no
 
 == 2. the resolver's DEFAULT choice (no PYTHON/HERMES_VENV override) ==
-  ops/scripts/lib/python-with-module.sh -> ~/.hermes-cortex/venv/bin/python3
-  ~/.hermes-cortex/scripts/lib/python-with-module.sh -> ~/.hermes-cortex/venv/bin/python3
+  ops/scripts/lib/python-with-module.sh -> <HOME>/.hermes-cortex/venv/bin/python3
+  <HOME>/.hermes-cortex/scripts/lib/python-with-module.sh -> <HOME>/.hermes-cortex/venv/bin/python3
 
 == 3. the tie-break, pinned by a test that runs UNDER the cortex venv ==
     yaml: the cortex venv beats the Hermes venv ✓
@@ -33,19 +36,19 @@ when: 2026-10-13T00:36:45Z
 == 5. any agent can REPAIR the venv (the remedy, on the deployed copy) ==
   ============================== 10 passed in 0.55s ==============================
   [fixer tests] pytest rc=0
-  ops/scripts/manage/fix-cortex-venv.py --check -> rc=0: ok: ~/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
-  ~/.hermes-cortex/scripts/fix-cortex-venv.py --check -> rc=0: ok: ~/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+  ops/scripts/manage/fix-cortex-venv.py --check -> rc=0: ok: <HOME>/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
+  <HOME>/.hermes-cortex/scripts/fix-cortex-venv.py --check -> rc=0: ok: <HOME>/.hermes-cortex/venv/bin/python3 imports all 6 declared requirements
   empty venv -> rc=3
     missing: mcp>=1.0
     missing: PyYAML>=6.0
-    fix it:  ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv ~/.hermes/cache/scratch/tmp.cRhUQucmrA/empty-venv --requirements ~/hermes-cortex/ops/install/requirements.txt
+    fix it:  <HOME>/.hermes-cortex/venv/bin/python3 <HOME>/hermes-cortex/ops/scripts/manage/fix-cortex-venv.py --venv <HOME>/.hermes/cache/scratch/tmp.cRhUQucmrA/empty-venv --requirements <HOME>/hermes-cortex/ops/install/requirements.txt
 
 == 6. the loop-gov wrapper names WHAT is missing (the kustos failure) ==
   RESULT: ALL PASS (4 tests)
   [wrapper guard tests] rc=0
   deployed wrapper on an empty HOME -> rc=78
-  loop-gov-mcp: NO INTERPRETER at ~/.hermes/cache/scratch/tmp.PifE2oW8Cj/.hermes-cortex/venv/bin/python3
-    HOME=~/.hermes/cache/scratch/tmp.PifE2oW8Cj  (these paths are relative to HOME; a different HOME in the caller is a cause)
+  loop-gov-mcp: NO INTERPRETER at <HOME>/.hermes/cache/scratch/tmp.PifE2oW8Cj/.hermes-cortex/venv/bin/python3
+    HOME=<HOME>/.hermes/cache/scratch/tmp.PifE2oW8Cj  (these paths are relative to HOME; a different HOME in the caller is a cause)
 
 FAILS: 0 — the verifier's own exit code follows (0 here means every claim held)
 ALL CLAIMS VERIFIED (0 failures)

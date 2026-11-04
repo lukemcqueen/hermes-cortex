@@ -1,6 +1,9 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 4 items
@@ -9,4 +12,4 @@ tests/test_skill_root_assets_deploy.py ....                              [100%]
 
 ============================== 4 passed in 0.35s ===============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)

@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # orch-skill-evaluate 2026-10-06 -- verification evidence
 
 HEAD: 0ed5d30079aa5d6a991f4042a1dd043f12a82adf
@@ -6,7 +9,7 @@ Date: 2026-10-06 19:46 KST
 ## 1. corpus audit helper test (8 cases)
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 8 items
@@ -43,7 +46,7 @@ tests/test_audit_unit_completeness.py ........                           [100%]
 ## 3. related unit tests (33 cases)
 ============================= test session starts ==============================
 platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collected 33 items

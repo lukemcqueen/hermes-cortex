@@ -1,11 +1,14 @@
-Running: ~/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_review_material_bound.py -v -k evidence_paths or under_the_floor or never_exceeds --tb=no -q
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+Running: <HOME>/.hermes/hermes-agent/venv/bin/python3 -m pytest tests/test_review_material_bound.py -v -k evidence_paths or under_the_floor or never_exceeds --tb=no -q
 rc: 0
 when: 2026-10-12T09:55:03Z
 
 ============================= test session starts ==============================
-platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- ~/.hermes/hermes-agent/venv/bin/python3
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- <HOME>/.hermes/hermes-agent/venv/bin/python3
 cachedir: .pytest_cache
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.12.1
 collecting ... collected 15 items / 12 deselected / 3 selected

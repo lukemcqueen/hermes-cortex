@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Doctor check accuracy fixes — 2026-10-14 (esther)
 
 Baseline revision, the state BEFORE this change: `8946fdce`.
@@ -16,24 +19,24 @@ cannot run:
 | 1 | `MCP wiring (agent-bus/loop-governance/tasks/executor)` | WARN x4 — registered against the HERMES venv | PASS x4 (block below) |
 | 2 | `Config (JUDGE_MODEL / EMBEDDING_MODEL / CODING_MODEL)` | INFO x3 — "defined but zero consumer scripts reference it" | PASS x3 — "defined, 4 / 10 / 1 consumer(s) found" |
 | 3 | `Config (CREATIVE_MODEL)` | INFO (accurate) — a docstring mention turned it into a false PASS mid-fix | INFO, unchanged and accurate: reserved, read by nothing |
-| 4 | `Score-cycle` | INFO — "Old score-cycle found at ~/.local/bin/score-cycle" | PASS — "still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh" |
+| 4 | `Score-cycle` | INFO — "Old score-cycle found at <HOME>/.local/bin/score-cycle" | PASS — "still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh" |
 | 5 | `AGENTS.md efficiency (proj / hc-session2)` | WARN — an empty `.git/` directory and a WORKTREE of the cortex repo were judged dev repos | gone (neither is a dev repo; unrelated dev repos still warn, pinned by test) |
 
 ## Host-side items this cycle cleared
 
 ```
-$ python3 ~/hermes-cortex/ops/scripts/manage/mcp_wiring.py --config ~/.hermes/config.yaml --orch
-config: ~/.hermes/config.yaml
+$ python3 <HOME>/hermes-cortex/ops/scripts/manage/mcp_wiring.py --config <HOME>/.hermes/config.yaml --orch
+config: <HOME>/.hermes/config.yaml
   PASS agent-bus: configured and its paths exist
   PASS loop-governance: configured and its paths exist
   PASS tasks: configured and its paths exist
   PASS executor: configured and its paths exist
 
-$ rm ~/.hermes-cortex/scripts/review-sweep-check.py
-removed '~/.hermes-cortex/scripts/review-sweep-check.py'
+$ rm <HOME>/.hermes-cortex/scripts/review-sweep-check.py
+removed '<HOME>/.hermes-cortex/scripts/review-sweep-check.py'
 
-$ rm ~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json
-removed '~/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json'
+$ rm <HOME>/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json
+removed '<HOME>/.hermes-cortex/state/.governance-20261012_155635_db69f7bf.json'
 ```
 
 (The removed script was backed up first, had zero consumers and no register() entry; the lock's
@@ -44,7 +47,7 @@ heartbeat had expired 4029s earlier against a 3600s TTL.)
 ```
 $ git worktree add /tmp/hc-base 8946fdce
 $ cp tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py /tmp/hc-base/tests/
-$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+$ cd /tmp/hc-base && <HOME>/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
 ```
 ```
 ============================= test session starts ==============================
@@ -63,10 +66,10 @@ tests/test_doctor_score_cycle_check.py FFFFFFF                           [100%]
 _______________ test_the_printed_fix_names_a_path_that_resolves ________________
 tests/test_mcp_wiring.py:139: in test_the_printed_fix_names_a_path_that_resolves
     assert arg.endswith("/mcp-servers/task-mcp.py"), fix
-E   AssertionError: hermes mcp remove tasks && hermes mcp add tasks --command ~/.hermes-cortex/venv/bin/python3 --args ~/hermes-cortex/task-mcp.py   (there is no 'hermes mcp update'; re-add it)
+E   AssertionError: hermes mcp remove tasks && hermes mcp add tasks --command <HOME>/.hermes-cortex/venv/bin/python3 --args <HOME>/hermes-cortex/task-mcp.py   (there is no 'hermes mcp update'; re-add it)
 E   assert False
 E    +  where False = <built-in method endswith of str object at 0x7a72c20329c0>('/mcp-servers/task-mcp.py')
-E    +    where <built-in method endswith of str object at 0x7a72c20329c0> = '~/hermes-cortex/task-mcp.py'.endswith
+E    +    where <built-in method endswith of str object at 0x7a72c20329c0> = '<HOME>/hermes-cortex/task-mcp.py'.endswith
 ________________ test_the_expected_map_agrees_with_the_doctors _________________
 tests/test_mcp_wiring.py:158: in test_the_expected_map_agrees_with_the_doctors
     assert m.DEFAULT_EXPECTED == doctor_map, (m.DEFAULT_EXPECTED, doctor_map)
@@ -127,8 +130,8 @@ E   AttributeError: module 'cortex_doctor.checks' has no attribute '_is_git_repo
 ____________ test_the_dev_repo_scan_does_not_warn_about_a_non_repo _____________
 tests/test_doctor_dev_repo_detection.py:60: in test_the_dev_repo_scan_does_not_warn_about_a_non_repo
     assert not offenders, f"warned about a non-repo: {offenders}"
-E   AssertionError: warned about a non-repo: [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficiency block', 'fix': 'Run: python3 ~/.hermes-cortex/scripts/apply-repo-efficiency.py ~/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
-E   assert not [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficie...ency.py ~/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
+E   AssertionError: warned about a non-repo: [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficiency block', 'fix': 'Run: python3 <HOME>/.hermes-cortex/scripts/apply-repo-efficiency.py <HOME>/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
+E   assert not [{'name': 'AGENTS.md efficiency (proj)', 'status': 'WARN', 'detail': 'dev repo AGENTS.md missing fleet session-efficie...ency.py <HOME>/.hermes/cache/scratch/pytest-of-esther/pytest-304/test_the_dev_repo_scan_does_no0/proj --commit'}]
 _____________ test_a_worktree_of_another_repo_is_still_a_dev_repo ______________
 tests/test_doctor_dev_repo_detection.py:106: in test_a_worktree_of_another_repo_is_still_a_dev_repo
     assert offenders, "a non-cortex worktree must still be checked as a dev repo"
@@ -209,12 +212,12 @@ FAILED tests/test_doctor_score_cycle_check.py::test_the_check_branches_on_consum
 ## GREEN — the same four files at the tip `12a0ee41`
 
 ```
-$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
+$ cd <HOME>/hermes-cortex && <HOME>/.hermes-cortex/venv/bin/python3 -m pytest tests/test_mcp_wiring.py tests/test_doctor_env_consumers.py tests/test_doctor_dev_repo_detection.py tests/test_doctor_score_cycle_check.py -q
 ```
 ```
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 33 items
@@ -230,7 +233,7 @@ tests/test_doctor_score_cycle_check.py .......                           [100%]
 ## Crash probe — the same script in the pre-fix worktree and at the tip
 
 ```
-$ cd /tmp/hc-base && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
+$ cd /tmp/hc-base && <HOME>/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
 ```
 ```
 Traceback (most recent call last):
@@ -243,10 +246,10 @@ find_script_consumers([None]) RAISED:
 ```
 
 ```
-$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
+$ cd <HOME>/hermes-cortex && <HOME>/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_crash_probe.py
 ```
 ```
-revision under test: ~/hermes-cortex
+revision under test: <HOME>/hermes-cortex
 find_script_consumers([None]) returned: {'JUDGE_MODEL': [], 'EMBEDDING_MODEL': [], 'CODING_MODEL': [], 'CREATIVE_MODEL': []}
 RESULT: handled (no exception)
 ```
@@ -254,7 +257,7 @@ RESULT: handled (no exception)
 ## Boundary-input probe (change-checklist Phase 1.5) — full output
 
 ```
-$ cd ~/hermes-cortex && ~/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_boundary_probe.py
+$ cd <HOME>/hermes-cortex && <HOME>/.hermes-cortex/venv/bin/python3 tests/run_doctor_fix_boundary_probe.py
 ```
 ```
 -- mcp_wiring.repo_rel_script --
@@ -300,10 +303,10 @@ Two of its rows are regressions it caught in this change, not pre-existing behav
 
 ```
 Traceback (most recent call last):
-  File "~/.hermes/cache/scratch/boundary_probe.py", line 49, in <module>
+  File "<HOME>/.hermes/cache/scratch/boundary_probe.py", line 49, in <module>
     check("None root entry", dc.find_script_consumers([None]), {v: [] for v in
                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "~/hermes-cortex/ops/scripts/manage/cortex_doctor/config.py", line 285, in find_script_consumers
+  File "<HOME>/hermes-cortex/ops/scripts/manage/cortex_doctor/config.py", line 285, in find_script_consumers
     root = Path(root)
            ^^^^^^^^^^
   File "/usr/lib/python3.12/pathlib.py", line 373, in __init__
@@ -368,7 +371,7 @@ rc=0
 ## Live doctor — BEFORE and AFTER
 
 ```
-$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # 2026-10-14 00:19, at 8946fdce
+$ <HOME>/.hermes-cortex/venv/bin/python3 <HOME>/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # 2026-10-14 00:19, at 8946fdce
 ```
 ```
 (SELECTED LINES from a 567-line run)
@@ -377,18 +380,18 @@ $ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-do
   ℹ️  Config (EMBEDDING_MODEL) — defined but zero consumer scripts reference it
   ℹ️  Config (CODING_MODEL) — defined but zero consumer scripts reference it
   ℹ️  Config (CREATIVE_MODEL) — defined but zero consumer scripts reference it
-  ⚠️  MCP wiring (agent-bus) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
-  ⚠️  MCP wiring (loop-governance) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
-  ⚠️  MCP wiring (tasks) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
-  ⚠️  MCP wiring (executor) — registered against the HERMES venv (~/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
-  ℹ️  Score-cycle — Old score-cycle found at ~/.local/bin/score-cycle — current governance uses MCP tools
+  ⚠️  MCP wiring (agent-bus) — registered against the HERMES venv (<HOME>/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (loop-governance) — registered against the HERMES venv (<HOME>/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (tasks) — registered against the HERMES venv (<HOME>/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ⚠️  MCP wiring (executor) — registered against the HERMES venv (<HOME>/.hermes/hermes-agent/venv/bin/python3) — the tree the fleet is migrating off
+  ℹ️  Score-cycle — Old score-cycle found at <HOME>/.local/bin/score-cycle — current governance uses MCP tools
   ⚠️  Stale deploy: scripts/review-sweep-check.py — 2,264 bytes — not in any register() mapping
   ⚠️  Overall: WARNING  (454 pass · 29 warn · 0 fail · 7 info)
 ```
 
 ```
-$ bash ~/.hermes-cortex/scripts/cortex-dogfood.sh --force        # rc=0, DOGFOOD PASSED
-$ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # at 12a0ee41
+$ bash <HOME>/.hermes-cortex/scripts/cortex-dogfood.sh --force        # rc=0, DOGFOOD PASSED
+$ <HOME>/.hermes-cortex/venv/bin/python3 <HOME>/hermes-cortex/ops/scripts/manage/cortex-doctor.py      # at 12a0ee41
 ```
 ```
 (SELECTED LINES from a 556-line run)
@@ -398,7 +401,7 @@ $ ~/.hermes-cortex/venv/bin/python3 ~/hermes-cortex/ops/scripts/manage/cortex-do
   ✅ Config (EMBEDDING_MODEL) — defined, 10 consumer(s) found
   ✅ Config (CODING_MODEL) — defined, 1 consumer(s) found
   ℹ️  Config (CREATIVE_MODEL) — defined but zero consumer scripts reference it
-  ✅ Score-cycle — score-cycle present at ~/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
+  ✅ Score-cycle — score-cycle present at <HOME>/.local/bin/score-cycle — still invoked by agent-governance-auditor.py, pre-commit-score, setup.sh, symlink-audit.sh, update.sh, verify.sh
   ℹ️  PENDING cycles — 1 active-task cycle(s) (lock held): pull-latest-cortex-update-fix-doctor-warnings#1 — score at end_change
   ✅ Checksum: mcp_wiring.py — content matches (after stripping SOURCE header)
   ✅ Checksum: checks.py — content matches (after stripping SOURCE header)
@@ -422,7 +425,7 @@ are 23 `Skill drift` lines plus `Repo clean` plus the `Overall` summary line; th
   worktree at `8946fdce`), and `docs/evidence/skill-drift-parity.txt` is written by the drift
   detector. None is in this cycle's range.
 - **`Config (CREATIVE_MODEL)`** — accurate and intentional: documented as reserved, read by
-  nothing. Removing it from `~/hermes-cortex/.env` would flip the check to WARN, so it stays.
+  nothing. Removing it from `<HOME>/hermes-cortex/.env` would flip the check to WARN, so it stays.
 - **`Orphan-cycle resolution`** — historical: 11 rows closed by the old reaper carry a bare
   MOVE_ON and are reported as not judged.
 

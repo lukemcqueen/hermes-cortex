@@ -1,4 +1,7 @@
-pi-mcp landing verify — repo=~/hermes-cortex  head=e7a69a63
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+pi-mcp landing verify — repo=<HOME>/hermes-cortex  head=e7a69a63
 
 1  installer suite rc=0  25 checks   ALL PASS
    D variants exercised: 4 shapes

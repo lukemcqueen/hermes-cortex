@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # adversarial-verify A4 gate — docs-consolidation-cleanup (2026-10-20)
 # each gate runs with its real rc captured bare (no pipe)
 
@@ -96,7 +99,7 @@ rc=0
 
 $ adversarial-verify --file <HEAD:checks.py> --level A4 --gate
 
-── ~/.hermes/cache/scratch/base-1657652/checks.py ──
+── <HOME>/.hermes/cache/scratch/base-1657652/checks.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 155 item(s)
@@ -124,7 +127,7 @@ rc=0
 
 $ adversarial-verify --file <HEAD:agents-doc-audit.py> --level A4 --gate
 
-── ~/.hermes/cache/scratch/base-1657652/agents-doc-audit.py ──
+── <HOME>/.hermes/cache/scratch/base-1657652/agents-doc-audit.py ──
    Level: A4
    Attack Surface:
      ⚠️ Inputs: 32 item(s)
@@ -156,13 +159,13 @@ tests/test_review_provenance_check.py ............                       [100%]
 
 ============================== 26 passed in 1.96s ==============================
 ---
-run-tests.sh: interpreter=~/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
+run-tests.sh: interpreter=<HOME>/.hermes-cortex/venv/bin/python3 rc=0  (PYTHONPATH/PYTHONHOME unset for the run)
 # attribution: test_deploy_registry_doc_counts_match_the_register_map ALSO fails at the range base
 # (HEAD carries the same stale counts), so the stale doc counts PRE-DATE this cycle and are corrected here.
 
 # ── A2 gate on every changed skill file + the test fixture (skills/ and tests/ are gate paths) ──
 
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/cron-output-contracts/references/fixer-reconciliation-2026-08-08.md --level A2 --gate
+$ python3 <HOME>/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/cron-output-contracts/references/fixer-reconciliation-2026-08-08.md --level A2 --gate
 
 ── skills/devops/cron-output-contracts/references/fixer-reconciliation-2026-08-08.md ──
    Level: A2
@@ -179,7 +182,7 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/cr
 ✅ GATE_PASSED — no critical/high findings
 rc=0
 
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/SKILL.md --level A2 --gate
+$ python3 <HOME>/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/SKILL.md --level A2 --gate
 
 ── skills/devops/hermes-cortex-maintenance/SKILL.md ──
    Level: A2
@@ -196,7 +199,7 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/he
 ✅ GATE_PASSED — no critical/high findings
 rc=0
 
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/references/langfuse-cost-tracking-pricing-tiers.md --level A2 --gate
+$ python3 <HOME>/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/hermes-cortex-maintenance/references/langfuse-cost-tracking-pricing-tiers.md --level A2 --gate
 
 ── skills/devops/hermes-cortex-maintenance/references/langfuse-cost-tracking-pricing-tiers.md ──
    Level: A2
@@ -213,7 +216,7 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/devops/he
 ✅ GATE_PASSED — no critical/high findings
 rc=0
 
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/hermes-agent/soul-refinement/SKILL.md --level A2 --gate
+$ python3 <HOME>/.hermes-cortex/scripts/adversarial-verify.py --file skills/hermes-agent/soul-refinement/SKILL.md --level A2 --gate
 
 ── skills/hermes-agent/soul-refinement/SKILL.md ──
    Level: A2
@@ -230,7 +233,7 @@ $ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file skills/hermes-ag
 ✅ GATE_PASSED — no critical/high findings
 rc=0
 
-$ python3 ~/.hermes-cortex/scripts/adversarial-verify.py --file tests/fixtures/golden-queries.json --level A2 --gate
+$ python3 <HOME>/.hermes-cortex/scripts/adversarial-verify.py --file tests/fixtures/golden-queries.json --level A2 --gate
 
 ── tests/fixtures/golden-queries.json ──
    Level: A2

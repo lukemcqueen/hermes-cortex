@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash docs/evidence/verify-loop-gov-diagnosable.sh
 rc: 0
 when: 2026-10-13T00:56:43Z
@@ -33,8 +36,8 @@ when: 2026-10-13T00:56:43Z
   RESULT: ALL PASS (4 tests)
 
 == the DEPLOYED wrapper, on a HOME with no venv (what kustos saw) ==
-  loop-gov-mcp.sh: NO INTERPRETER at ~/.hermes/cache/scratch/tmp.CidNLWPCUM/.hermes-cortex/venv/bin/python3
-    HOME=~/.hermes/cache/scratch/tmp.CidNLWPCUM  (paths are relative to HOME; a different HOME in the caller is a cause)
+  loop-gov-mcp.sh: NO INTERPRETER at <HOME>/.hermes/cache/scratch/tmp.CidNLWPCUM/.hermes-cortex/venv/bin/python3
+    HOME=<HOME>/.hermes/cache/scratch/tmp.CidNLWPCUM  (paths are relative to HOME; a different HOME in the caller is a cause)
     the fleet venv does not exist — nothing in this repo creates it
   rc=78 (78 = EX_CONFIG)
 
@@ -45,14 +48,14 @@ when: 2026-10-13T00:56:43Z
   1111:3. **Both present** → it is `$HOME`. Launchers resolve both paths relative to it, so a client
   1126:`scripts/lib/require-fleet-venv.sh`, which names the missing piece and exits **78 (EX_CONFIG)**
   changelog: 1143:| 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
-  ✓ present: python3 -m venv ~/.hermes-cortex/venv
+  ✓ present: python3 -m venv <HOME>/.hermes-cortex/venv
   ✓ present: 78 (EX_CONFIG)
   -- the DEPLOY really carries the self-heal (not the doc's word for it) --
   ✓ cortex-update.sh: Created the fleet venv
   ✓ cortex-update.sh: no usable bin/python3
   -- the service-layer maps the audit requires (both platforms) --
   docs/macos-service-layer.md: 79 lines
-    first row: 14:| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `~/hermes-cortex/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
+    first row: 14:| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `<HOME>/hermes-cortex/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
     references the guard: 1
   docs/linux-service-layer.md: 67 lines
     first row: 14:| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.hermes-cortex/gateway.yaml`; env from `%h/hermes-cortex/.env`. |
@@ -63,8 +66,8 @@ when: 2026-10-13T00:56:43Z
   68:def test_the_sweep_would_catch_a_bare_exec():
   77:def test_no_absolute_home_in_launcher_code():
   -- the guard-missing branch, its actual message --
-  loop-gov-mcp: the venv guard is NOT DEPLOYED at ~/.hermes/cache/scratch/tmp.PTpoqIcrO4/.hermes-cortex/scripts/lib/require-fleet-venv.sh
-    HOME=~/.hermes/cache/scratch/tmp.PTpoqIcrO4  (a different HOME in the caller is a cause)
+  loop-gov-mcp: the venv guard is NOT DEPLOYED at <HOME>/.hermes/cache/scratch/tmp.PTpoqIcrO4/.hermes-cortex/scripts/lib/require-fleet-venv.sh
+    HOME=<HOME>/.hermes/cache/scratch/tmp.PTpoqIcrO4  (a different HOME in the caller is a cause)
   rc=78
 
 == 8. per-test outcomes (pytest -v), so the artifact is not self-referential ==

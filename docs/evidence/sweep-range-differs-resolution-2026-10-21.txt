@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 generated-by: docs/evidence/sweep-range-differs-resolution-2026-10-21.sh
 host-date:    2026-10-21T18:08:04+09:00
 tip:          f3a335a634c4002e0fae9c4328aa842010644503
@@ -29,13 +32,13 @@ this run. So its verdict is a function of which lock FILES happen to sit in that
 [mcp-server] DEBUG: Initializing server 'loop-governance/sdk-capability-probe'
 [mcp-server] DEBUG: Initializing server 'loop-governance'
   session id resolved with NO args : sess_51739fa82ecb
-  lock file it therefore reads     : ~/.hermes-cortex/state/.governance-sess_51739fa82ecb.json
+  lock file it therefore reads     : <HOME>/.hermes-cortex/state/.governance-sess_51739fa82ecb.json
   does that file exist right now?  : False
 
 It also passes when that directory holds no lock at all — an independent confirmation
 that the deciding input is ambient state:
   rc=0 -> PASS   ============================== 6 passed in 1.17s ===============================
-  (command: env -u PYTHONPATH -u PYTHONHOME HOME=<empty dir> ~/.hermes-cortex/venv/bin/python3 -m pytest \
+  (command: env -u PYTHONPATH -u PYTHONHOME HOME=<empty dir> <HOME>/.hermes-cortex/venv/bin/python3 -m pytest \
             tests/test_repo_less_lock_handling.py -q -p no:cacheprovider)
 
 ===== 3. lock files present in the shared state dir (this script removes NONE of them) =====

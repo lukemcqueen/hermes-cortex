@@ -1,10 +1,13 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 refused-close advisory — exit advice, rendered
 generated: 2026-10-20T07:16:36Z
 fixture lock: repo_slug=hermes-cortex task_id=fix-refused-close-exit-advice close_refused{cycle_id=10445,verdict=FINDINGS,blocking=4}
 invocation:  GOVERNANCE_STATE_DIR=<fixture> bash <copy> hermes-cortex
 
 === REPO copy ===
-path:   ~/hermes-cortex/ops/scripts/governance-refused-close-advisory.sh
+path:   <HOME>/hermes-cortex/ops/scripts/governance-refused-close-advisory.sh
 sha256: a1362d15d32dd622fc8b87fec7be55617a49e5e2992752b603fd7450d5f1d038
 --- message ---
 
@@ -26,7 +29,7 @@ in the message: names advance_task_state        = 1
 in the message: names the terminal state        = 1
 
 === DEPLOYED copy ===
-path:   ~/.hermes-cortex/scripts/governance-refused-close-advisory.sh
+path:   <HOME>/.hermes-cortex/scripts/governance-refused-close-advisory.sh
 sha256: 2a84e533e54f6ef02653124f58d0f86497c1a76ffb024aa46945dfbf13af3664
 --- message ---
 

@@ -1,5 +1,8 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 
 ━━━ Hermes Cortex Doctor ━━━  (08:55:52)
 
@@ -12,10 +15,10 @@
   ✅ Deployed gate smoke
   ✅ Self-adversarial review template
   ✅ Self-adversarial review gate
-  ✅ SOUL.md canonical 12 (~/.hermes)
-  ✅ SOUL.md local principles (~/.hermes)
-  ✅ SOUL.md template sync (~/.hermes)
-  ✅ SOUL.md reverse drift (~/.hermes)
+  ✅ SOUL.md canonical 12 (<HOME>/.hermes)
+  ✅ SOUL.md local principles (<HOME>/.hermes)
+  ✅ SOUL.md template sync (<HOME>/.hermes)
+  ✅ SOUL.md reverse drift (<HOME>/.hermes)
   ✅ Skills manifest (basic)
   ✅ Cron prompt stale refs
   ✅ Script run evidence

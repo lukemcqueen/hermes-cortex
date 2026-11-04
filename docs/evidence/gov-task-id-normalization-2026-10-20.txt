@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # task-id normalization — recorded verification (issue #188, cycle 13418)
 
 Regenerate with:
@@ -28,13 +31,13 @@ OUT of those fields rather than recomputed.
 
 # task-id normalization — verification (issue #188, cycle 13418)
 # host: esther  date: 2026-10-20 14:05:49 KST
-# ledger: ~/.hermes-cortex/data/loop-governance.db
+# ledger: <HOME>/.hermes-cortex/data/loop-governance.db
 
 === 1. the tool, re-run against the live ledger ===
 # a second --apply is a no-op and the dry run reports nothing repairable;
 # the two ids it refuses are named rather than silently passed over
-$ python3 ~/hermes-cortex/ops/scripts/manage/normalize-precommit-task-ids.py --db ~/.hermes-cortex/data/loop-governance.db
-ledger                : ~/.hermes-cortex/data/loop-governance.db
+$ python3 <HOME>/hermes-cortex/ops/scripts/manage/normalize-precommit-task-ids.py --db <HOME>/.hermes-cortex/data/loop-governance.db
+ledger                : <HOME>/.hermes-cortex/data/loop-governance.db
 malformed rows        : 2
   repairable          : 0 (across 0 distinct ids)
   skipped (no guess)  : 2
@@ -45,7 +48,7 @@ RESULT: nothing to do
   → 2 ids reported as skipped (not guessed at)
 
 === 2. ledger invariants after the repair ===
-$ python3 - ~/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
+$ python3 - <HOME>/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
   total rows                        : 12936
   ids carrying a newline            : 0   <- invariant: must be 0
   rows carrying the repair note     : 6396
@@ -57,7 +60,7 @@ $ python3 - ~/.hermes-cortex/data/loop-governance.db task_id normalized (issue #
 === 3. provenance: the mapping read OUT of the rows' audit field ===
 # nothing here is recomputed — the originals come from each row's own
 # outcome_note, so the table below is what the rows actually say
-$ python3 - ~/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
+$ python3 - <HOME>/.hermes-cortex/data/loop-governance.db task_id normalized (issue #188)
   distinct (old -> new) pairs       : 62
   rows covered by those pairs       : 6395
   pairs where new != old, new clean : yes
@@ -191,14 +194,14 @@ $ python3 - ~/.hermes-cortex/data/loop-governance.db task_id normalized (issue #
 === 4. the backup exists and predates the repair ===
 # the strongest proof it predates the repair: the BACKUP still holds the
 # malformed ids while the live ledger holds none
-  backup: ~/.hermes-cortex/data/loop-governance.db.backup-20261020T045638Z
+  backup: <HOME>/.hermes-cortex/data/loop-governance.db.backup-20261020T045638Z
   size=156131328 bytes  mtime=2026-10-20 13:34:51.629808970 +0900
   sha256: fdb6331a50af8fda2b114908b49df933c572c539b1fac9d02bef4c48c36b0fc8
   ids with a newline — backup: 6395   live: 0
   → the backup predates the repair
 
 === 5. the two skipped ids really are in the ledger ===
-$ python3 - ~/.hermes-cortex/data/loop-governance.db
+$ python3 - <HOME>/.hermes-cortex/data/loop-governance.db
   ids containing a space: 2
     row 4838: 'orch-backlog-driver run'
     row 1911: 'task-workflow rollout: L1 hermetic test + fleet coordination'

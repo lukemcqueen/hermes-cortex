@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Evidence: governance-lock-lifecycle Pitfall 7 claims (2026-10-10)
 
 ## Command
@@ -5,7 +8,7 @@
 
 ## Output (live, deployed module)
 [mcp-server] DEBUG: Initializing server 'loop-governance'
-module: ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+module: <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
 
 PASS  A. bare _read_lock(None) returns no session (file present on disk)
 PASS  A. lock file genuinely present (the false-inactive premise)

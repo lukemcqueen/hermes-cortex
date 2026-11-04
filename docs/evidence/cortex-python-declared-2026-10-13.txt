@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: bash -c 
 CV="$0"; R="$1"
 echo "== the declaration, as a host fact the doctor reports =="
@@ -16,27 +19,27 @@ echo "== the tests =="
 echo
 echo "== extract from the raw capture beside this file =="
 cat "$R"
- ~/.hermes-cortex/venv/bin/python3 docs/evidence/cortex-python-declared-2026-10-13.raw.txt
+ <HOME>/.hermes-cortex/venv/bin/python3 docs/evidence/cortex-python-declared-2026-10-13.raw.txt
 rc: 0
 when: 2026-10-13T05:57:16Z
 
 == the declaration, as a host fact the doctor reports ==
-  ✅ Fleet python — ~/.hermes-cortex/venv/bin/python3 imports yaml + mcp
+  ✅ Fleet python — <HOME>/.hermes-cortex/venv/bin/python3 imports yaml + mcp
   before this change the same check did not exist; the value was re-derived by each caller.
 
 == the contract, exercised three ways (rc + stdout) ==
 -- 1. declared in the ENVIRONMENT:
 python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
-~/.hermes-cortex/venv/bin/python3
+<HOME>/.hermes-cortex/venv/bin/python3
   rc=0
 -- 2. declared in agent.env (nothing exported):
 python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
-~/.hermes-cortex/venv/bin/python3
+<HOME>/.hermes-cortex/venv/bin/python3
   rc=0
 -- 3. a declaration that cannot import is NAMED, not skipped:
 python-with-module: ignoring inherited PYTHONPATH/PYTHONHOME while choosing an interpreter — an inherited path can shadow the target's own packages
 python-with-module: COULD NOT VERIFY — no interpreter can import 'no_such_module_zzz'.
-  Checked: ~/.hermes-cortex/venv/bin/python3 ~/.hermes/hermes-agent/venv/bin/python3 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3.14 /usr/bin/python3.12 ~/.local/bin/python3.11
+  Checked: <HOME>/.hermes-cortex/venv/bin/python3 <HOME>/.hermes/hermes-agent/venv/bin/python3 <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3.14 /usr/bin/python3.12 <HOME>/.local/bin/python3.11
   Declared CORTEX_PYTHON: /nonexistent/python3
   rc=3 (the resolver talks to stderr and fails closed)
 
@@ -50,7 +53,7 @@ python-with-module: COULD NOT VERIFY — no interpreter can import 'no_such_modu
 == extract from the raw capture beside this file ==
 ### second deploy: an already-declared host takes the 'declared in agent.env' branch and is NOT clobbered
 ━━━ cortex-dogfood ━━━
-   [0;32m✓[0m Fleet interpreter: ~/.hermes-cortex/venv/bin/python3 (declared in agent.env)
+   [0;32m✓[0m Fleet interpreter: <HOME>/.hermes-cortex/venv/bin/python3 (declared in agent.env)
        ✅ Checksum: cortex-dogfood.sh
      ✅ Checksum: cortex-dogfood.sh — content matches (after stripping SOURCE header)
 ✅  DOGFOOD PASSED — deployed state verified clean.
@@ -58,5 +61,5 @@ python-with-module: COULD NOT VERIFY — no interpreter can import 'no_such_modu
 ### agent.env: how many declarations exist now
 1
 AGENT_NAME=esther
-CORTEX_PYTHON=~/.hermes-cortex/venv/bin/python3
-sha256: 20243b440f9714f8809816588bbc07f44a248662d9e0aaaa4b05920bcc3ba55a
+CORTEX_PYTHON=<HOME>/.hermes-cortex/venv/bin/python3
+sha256: 20243b440f9714f8809816588bbc07f44a248662d9e0aaaa4b05920bcc3ba55a  (sha of the pre-redaction capture; body redacted above)

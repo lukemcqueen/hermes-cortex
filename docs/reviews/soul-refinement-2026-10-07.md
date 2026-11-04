@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Soul Refinement — Daily Report 2026-10-07
 
 Cron: `soul-refinement` · Cycle 10879 · Host: esther · Hermes Agent v0.21.5
@@ -50,7 +53,7 @@ reference), `enforcement-change-safety`, `governance-closeout`,
 esther-agent (earlier sessions), but the *current uncommitted modifications* to
 them were made by a peer process in this checkout, not by this cron. This
 session did not stage, edit, or commit them. The one skill this session patched
-was `soul-refinement` (deployed copy under `~/.hermes/skills/`, and the repo
+was `soul-refinement` (deployed copy under `<HOME>/.hermes/skills/`, and the repo
 copy `skills/hermes-agent/soul-refinement/SKILL.md`), which is a separate file
 not in the list above.
 
@@ -88,7 +91,7 @@ The extraction script excludes cron scaffolding (`[IMPORTANT:`,
 said "2 sessions" — the third is the one-message `Pull latest HC and update!`
 session; corrected here.
 
-Source: `~/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
+Source: `<HOME>/.hermes/state.db` (the real sessions store; `state/sessions.db` is a
 0-byte stub). Read-only (`mode=ro` + `PRAGMA query_only=1`). Trap worth noting:
 message `timestamp` is a **Unix epoch float**, not ISO — an ISO `>=` bound
 silently returns 0 rows (cost one retry this run).
@@ -97,9 +100,9 @@ silently returns 0 rows (cost one retry this run).
 
 The skill states (Pitfalls): *"Cron sessions cannot write SOUL.md
 (protected-instruction gate) … `patch` to `docs/templates/SOUL.md` is BLOCKED
-by design."* **Verified FALSE for the deployed `~/.hermes/SOUL.md` on this host.**
+by design."* **Verified FALSE for the deployed `<HOME>/.hermes/SOUL.md` on this host.**
 
-Empirical probe: a `patch` to `~/.hermes/SOUL.md` from this cron session
+Empirical probe: a `patch` to `<HOME>/.hermes/SOUL.md` from this cron session
 **SUCCEEDED** (marker inserted, then immediately reverted; file restored).
 
 Root cause in the running install (`tools/file_tools_write_guards.py`):
@@ -107,25 +110,25 @@ Root cause in the running install (`tools/file_tools_write_guards.py`):
 - line 188: `_PROTECTED_INSTRUCTION_BASENAMES` includes `soul.md`;
 - lines 236-238 return early for any path under `_hermes_exempt_homes()`.
 
-`~/.hermes/SOUL.md` resolves under the exempted home, so the function returns
+`<HOME>/.hermes/SOUL.md` resolves under the exempted home, so the function returns
 "not protected" **before** the basename test at line 243 ever runs.
 
 Direct proof, same interpreter the tools use:
 
 ```
-$ cd ~/.hermes/hermes-agent && ./venv/bin/python3 -c \
+$ cd <HOME>/.hermes/hermes-agent && ./venv/bin/python3 -c \
   "from tools.file_tools_write_guards import _protected_instruction_reason as r; \
-   print(r('~/.hermes/SOUL.md','cron'))"
+   print(r('<HOME>/.hermes/SOUL.md','cron'))"
 None
 ```
 
 `_protected_instruction_config()` returns `(True, [])` — the gate is *enabled*;
-it simply exempts the whole home (the exemption exists for `~/.hermes/config.yaml`,
+it simply exempts the whole home (the exemption exists for `<HOME>/.hermes/config.yaml`,
 which has its own hard-block).
 
 **Consequence:** the pitfall holds only for the repo template
 `docs/templates/SOUL.md` (not under the home), which WOULD be gated. The
-deployed `~/.hermes/SOUL.md` is writable by a cron. No identity write was made
+deployed `<HOME>/.hermes/SOUL.md` is writable by a cron. No identity write was made
 regardless — an identity change needs operator approval by policy, and this
 cron's job is detection.
 
@@ -145,7 +148,7 @@ report a gate that isn't there nor assume one that is.
 |---|---|
 | Note-without-root-cause on the reappearing repo-local dir | commit `aba6850` `fix(doctor): fail on a repo-local .steadfaste-fleet, and record why it returns` — adds a doctor check (`ops/scripts/manage/cortex_doctor/checks.py`) + a test |
 | 300 s `execute_code` ceiling | commit `63e4cf1` `docs(skills): where long work belongs, and why the 300s cell ceiling is hit` |
-| `git add -A` ≠ committed · question the probe first | deployed skill `~/.hermes/skills/software-development/adversarial-review-passoff/SKILL.md` lines 250, 258 |
+| `git add -A` ≠ committed · question the probe first | deployed skill `<HOME>/.hermes/skills/software-development/adversarial-review-passoff/SKILL.md` lines 250, 258 |
 
 Caveat stated honestly: `aba6850` and `63e4cf1` predate this cycle's audited
 range, so they are cited as context, not as changes inside the range.

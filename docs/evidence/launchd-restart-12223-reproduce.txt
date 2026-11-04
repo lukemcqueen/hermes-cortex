@@ -1,4 +1,7 @@
-cycle 12223 — repo=~/hermes-cortex  interpreter=~/.hermes/hermes-agent/venv/bin/python3  head=60764d44
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
+cycle 12223 — repo=<HOME>/hermes-cortex  interpreter=<HOME>/.hermes/hermes-agent/venv/bin/python3  head=60764d44
 
 1a  rc=0  53 passed in 0.94s    (tests/test_gateway_slash_parity.py)
 1b  rc=0  287 passed, 1438 deselected in 40.25s    (tests/ -k gateway/harness/startup)

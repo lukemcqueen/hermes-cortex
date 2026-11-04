@@ -1,11 +1,14 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 Running: python3 tests/test_review_material_bound.py
 rc: 0
 when: 2026-10-12T10:15:52Z
 
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
 [mcp-server] WARNING: the 'mcp' package is not installed — the stdio server cannot start; the CLI adapter (ops/scripts/loop-gov.py) still works.
-[mcp-server]   ~/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
+[mcp-server]   <HOME>/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3 -m pip install mcp
   always-review path disqualifies a .md-only range ✓
   explicit budget override still honoured ✓
   deployed gate behaves as this file says (docs budget 60000 > 12000, floor 2500) ✓

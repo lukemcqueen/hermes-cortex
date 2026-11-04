@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 # Review-material scope — suite evidence
 # captured: 2026-10-08T08:56:32+09:00  host: esther  HEAD: 529cf308
 
@@ -24,7 +27,7 @@ tests/test_loop_gov_review_repo.py:283: in test_secondary_marker_follows_the_abs
 E   AssertionError: the in-repo marker did not follow the absolute repo path — it landed at HOME/<slug> instead
 E   assert False
 E    +  where False = exists()
-E    +    where exists = PosixPath('~/.hermes/cache/scratch/nested-repo-ea3aee0v/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+E    +    where exists = PosixPath('<HOME>/.hermes/cache/scratch/nested-repo-ea3aee0v/projects/deep/foo/.hermes-cortex/.governance-lock').exists
 =========================== short test summary info ============================
 FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
 =================== 1 failed, 33 passed in 61.55s (0:01:01) ====================
@@ -33,7 +36,7 @@ FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_abs
 #    reproducibility: put the parent commit's copy of the file in place, run just
 #    that test, then restore the tracked (working) copy with git checkout.
 --- with HEAD~1 (pre-change) loop-gov-mcp.py in place:
-E    +    where exists = PosixPath('~/.hermes/cache/scratch/nested-repo-vginf_uc/projects/deep/foo/.hermes-cortex/.governance-lock').exists
+E    +    where exists = PosixPath('<HOME>/.hermes/cache/scratch/nested-repo-vginf_uc/projects/deep/foo/.hermes-cortex/.governance-lock').exists
 =========================== short test summary info ============================
 FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_absolute_path
 ============================== 1 failed in 0.17s ===============================
@@ -42,12 +45,12 @@ FAILED tests/test_loop_gov_review_repo.py::test_secondary_marker_follows_the_abs
 
 ## 4. deployed state — CORRECTED (the first version of this section was wrong)
 
-# The first version probed ~/.hermes-cortex/mcp-servers/loop-gov-mcp.py, a path that does
+# The first version probed <HOME>/.hermes-cortex/mcp-servers/loop-gov-mcp.py, a path that does
 # not exist, and its "2>/dev/null || echo <fallback>" rendered that PROBE FAILURE as the
 # finding "0 (deployed copy predates this commit)". Both halves were wrong: the deployed
 # path is elsewhere, and the deploy had already copied the fix.
-#   deployed copy:  ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
-#   registered at:  ~/.hermes/config.yaml:252
+#   deployed copy:  <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py
+#   registered at:  <HOME>/.hermes/config.yaml:252
 #   running proc:   pid 632349, argv = python3 <that path>, started before this commit
 deployed copy, fix present (hits for dirty_at_start|_own_working_tree_paths): 7
 repo copy,     same pattern:                                                  7
@@ -56,7 +59,7 @@ repo copy,     same pattern:                                                  7
 #    restart) — not for the session that made it.
 # The path is RESOLVED, not assumed — the exact method whose absence caused the error above:
 #   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/loop-gov-mcp.py
-#   ~/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py      (rc=0)
+#   <HOME>/.hermes-cortex/tools/loop-governance/loop-gov-mcp.py      (rc=0)
 #   $ python3 ops/scripts/manage/deployed-path.py mcp-servers/unregistered.py
 #   COULD NOT RESOLVE: ... has no entry in .../deploy-manifest.tsv (335 entries).
 #   Nothing was checked.                                                    (rc=2)

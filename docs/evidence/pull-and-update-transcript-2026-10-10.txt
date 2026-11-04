@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 The assigned task: fetch, ff-only pull, cortex-update.sh
 Built: 2026-10-10T10:10:53+09:00
 
@@ -11,11 +14,11 @@ $ git pull --ff-only
 Already up to date.
 rc=0
 
-$ bash ~/.hermes-cortex/scripts/cortex-update.sh
+$ bash <HOME>/.hermes-cortex/scripts/cortex-update.sh
 rc=0
 --- its drift instruction (what this cycle then acted on) ---
-804:    Run: python3 ~/.hermes-cortex/scripts/apply-repo-efficiency.py ~/proj --commit
-805:    Remove: rm ~/.hermes-cortex/scripts/review-sweep-check.py
+804:    Run: python3 <HOME>/.hermes-cortex/scripts/apply-repo-efficiency.py <HOME>/proj --commit
+805:    Remove: rm <HOME>/.hermes-cortex/scripts/review-sweep-check.py
 occurrences of the drift instruction: 0
 
 FRAMING NOTE: the pull was a no-op (already level: the watcher cron had landed the

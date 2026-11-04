@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 orch-daily-regression-gate — PyYAML capability-resolver verification
 Run: 2026-10-08 23:45 KST (esther host), auto-remediation cron e798f3363b33
 Cycle: loop-governance #11704 (task verify-regression-gate)
@@ -10,11 +13,11 @@ PURPOSE
      only `-x` on a path that exists but lacks the module).
 
 COMMAND 1 — resolver selects a module-capable interpreter, not a path that exists
-$ bash ~/.hermes-cortex/scripts/lib/python-with-module.sh --print yaml
-~/.hermes/hermes-agent/venv/bin/python3
+$ bash <HOME>/.hermes-cortex/scripts/lib/python-with-module.sh --print yaml
+<HOME>/.hermes/hermes-agent/venv/bin/python3
 
 COMMAND 2 — the exact deployed gate command, end to end
-$ bash ~/.hermes-cortex/scripts/orch-daily-regression-gate.sh ; echo RC=$?
+$ bash <HOME>/.hermes-cortex/scripts/orch-daily-regression-gate.sh ; echo RC=$?
 Daily regression gate FAILED (rc=1) — 2026-10-08 23:45 KST
 
 ============================================================
@@ -45,14 +48,14 @@ NOTE ON THE REMAINING rc=1
   an in-flight-tree state, not a resolver defect.
 
 COMMAND 3 — doctor's single failure (deploy SHA abbreviated)
-$ python3 ~/.hermes-cortex/scripts/cortex-doctor.py --quiet
+$ python3 <HOME>/.hermes-cortex/scripts/cortex-doctor.py --quiet
   Deploy sync — HEAD (ca805fa4) ahead of last deploy — 4 commit(s) not deployed
   Overall: FAILING  (437 pass · 15 warn · 1 fail · 7 info)
 
 COMMAND 4 — why the deploy is intentionally not run here (peer in-flight)
-$ git -C ~/hermes-cortex rev-list --left-right --count origin/main...HEAD
+$ git -C <HOME>/hermes-cortex rev-list --left-right --count origin/main...HEAD
 0	4
-$ git -C ~/hermes-cortex status --porcelain=v1
+$ git -C <HOME>/hermes-cortex status --porcelain=v1
  M docs/DOCS-INDEX.md
  M docs/evidence/skill-drift-parity.txt
  M ops/services/mycortex-mem/store.py

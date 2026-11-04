@@ -1,3 +1,6 @@
+# NOTE: captured output post-processed 2026-11-04 (PII remediation) — operator
+# home-directory paths are redacted to <HOME>; this is a redacted copy, not the
+# verbatim raw capture.
 === task-db UUID prefix/substring support — evidence (cycle 14058) ===
 captured-at: 69ea0cca  (2026-11-03T10:57:37+09:00)
 
@@ -6,12 +9,12 @@ captured-at: 69ea0cca  (2026-11-03T10:57:37+09:00)
 69ea0cca evidence(task-db): harden capture.sh against swallowed errors (close findings)
 
 ### Interpreter: pytest resolver
-PY=~/.hermes-cortex/venv/bin/python3
+PY=<HOME>/.hermes-cortex/venv/bin/python3
 
 ### Unit tests: new UUID-resolution tests (7)
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 100 items / 93 deselected / 7 selected
@@ -24,7 +27,7 @@ rc=0
 ### Unit tests: whole test_task_db_unit.py
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: ~/hermes-cortex
+rootdir: <HOME>/hermes-cortex
 configfile: pytest.ini
 plugins: anyio-4.15.1
 collected 100 items
