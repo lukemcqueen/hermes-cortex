@@ -20,7 +20,7 @@ Config (options in order of precedence):
   CORTEX_BUS_FALLBACK_URL=...
   AGENT_NAME=moses
 
-  Or via ~/hermes-cortex/.env (key=value format)
+  Or via ~/steadfaste-fleet/.env (key=value format)
     CORTEX_BUS_URL=https://domain:13004
     CORTEX_BUS_TOKEN=hbus_...
 
@@ -75,7 +75,7 @@ from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 # ═══════════════════════════════════════════════════════════════
 
 # File config paths
-CONFIG_FILE = HOME / "hermes-cortex" / ".env"
+CONFIG_FILE = HOME / "steadfaste-fleet" / ".env"
 PROXY_PATH = "/usr/local/bin/mcp-inbox-proxy"
 
 # ── Config keys ───────────────────────────────────────────────
@@ -610,7 +610,7 @@ def _inbox_read(args: dict) -> CallToolResult:
 
     msg = f"No messages found."
     if status2 == 401:
-        msg = "Read failed (HTTP 401). Configure CORTEX_BUS_TOKEN in ~/hermes-cortex/.env"
+        msg = "Read failed (HTTP 401). Configure CORTEX_BUS_TOKEN in ~/steadfaste-fleet/.env"
     return CallToolResult(content=[TextContent(type="text", text=msg)])
 
 
@@ -678,9 +678,9 @@ def _inbox_delete(args: dict) -> CallToolResult:
 # ═══════════════════════════════════════════════════════════════
 
 # Registry path (file-based, used for remote agent discovery)
-# Canonical: ~/.hermes-cortex/state/agent-registry.json (setup-agent-registry.sh)
+# Canonical: ~/.steadfaste-fleet/state/agent-registry.json (setup-agent-registry.sh)
 # Legacy fallback: ~/.hermes/state/agent-registry.json (pre-2026-07 installs)
-STATE_REGISTRY = HOME / ".hermes-cortex" / "state" / "agent-registry.json"
+STATE_REGISTRY = HOME / ".steadfaste-fleet" / "state" / "agent-registry.json"
 LEGACY_STATE_REGISTRY = HOME / ".hermes" / "state" / "agent-registry.json"
 
 

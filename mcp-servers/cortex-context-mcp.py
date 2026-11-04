@@ -19,8 +19,8 @@ Design: docs/design/cortex-memory-session-mcp.md
 
 Usage:
     hermes mcp add cortex-context \
-        --command ~/.hermes-cortex/venv/bin/python3 \
-        --args ~/hermes-cortex/mcp-servers/cortex-context-mcp.py
+        --command ~/.steadfaste-fleet/venv/bin/python3 \
+        --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
 
 Env (optional; set once per session):
     CORTEX_SESSION_HARNESS / _REPO / _BRANCH / _KEY

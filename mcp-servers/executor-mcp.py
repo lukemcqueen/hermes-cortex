@@ -94,7 +94,7 @@ def _find_executor(eid: str) -> dict | None:
 # ── Governance / policy helpers ───────────────────────────────
 def _governance_lock_open() -> bool:
     """True when a governance cycle is active (begin_change not released)."""
-    lock_dir = Path.home() / ".hermes-cortex" / "state"
+    lock_dir = Path.home() / ".steadfaste-fleet" / "state"
     locks = list(lock_dir.glob(".governance-*.json")) if lock_dir.is_dir() else []
     return len(locks) > 0
 

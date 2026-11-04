@@ -45,7 +45,7 @@ from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 _SERVER_DIR = Path(__file__).resolve().parent
 _SANDBOX_MODULE = _SERVER_DIR.parent / "ops" / "scripts" / "sandbox" / "cortex-sandbox.py"
 if not _SANDBOX_MODULE.exists():
-    _SANDBOX_MODULE = Path.home() / ".hermes-cortex" / "scripts" / "sandbox" / "cortex-sandbox.py"
+    _SANDBOX_MODULE = Path.home() / ".steadfaste-fleet" / "scripts" / "sandbox" / "cortex-sandbox.py"
 
 if not _SANDBOX_MODULE.exists():
     log.error(f"cortex-sandbox.py not found at {_SANDBOX_MODULE}")

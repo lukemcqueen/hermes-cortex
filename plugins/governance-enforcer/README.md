@@ -222,7 +222,7 @@ read primitive — `find -exec/-delete/-fprint`, `sort -o`, `date -s`,
 ### Self-check (any host)
 
 ```bash
-python3 ~/.hermes-cortex/scripts/probe-gate-logic.py [--json]
+python3 ~/.steadfaste-fleet/scripts/probe-gate-logic.py [--json]
 ```
 
 Loads the ACTIVE enforcer module in a throwaway state dir and asserts: marker
@@ -254,7 +254,7 @@ with the session ID as proof:
 
 ```python
 # Written by _auto_create_skills_marker() when _skills_loaded_in_session >= _REQUIRED_SKILLS
-# Path:    ~/.hermes-cortex/state/skills-loaded/{session_id}
+# Path:    ~/.steadfaste-fleet/state/skills-loaded/{session_id}
 # Content: "session:{hermes_session_id}"
 ```
 
@@ -289,7 +289,7 @@ survey-before-action, agent-contract, test-driven-development
 
 Previously, agents could bypass the skills gate by running:
 ```bash
-touch ~/.hermes-cortex/state/.skills-loaded
+touch ~/.steadfaste-fleet/state/.skills-loaded
 ```
 
 This created an empty file that the enforcer accepted because it only checked
@@ -336,7 +336,7 @@ Before `cronjob(action="create")` is allowed, the agent must demonstrate it has
 surveyed existing resources by creating a marker file:
 
 ```bash
-touch ~/.hermes-cortex/state/.cron-survey-done
+touch ~/.steadfaste-fleet/state/.cron-survey-done
 ```
 
 This marker is created **after** running:
@@ -379,7 +379,7 @@ Lock files are **session-scoped** — each governance session gets its own
 file named by session ID:
 
 ```
-~/.hermes-cortex/state/.governance-{session_id}.json
+~/.steadfaste-fleet/state/.governance-{session_id}.json
 ```
 
 Example: `.governance-sess_abc123def456.json`
@@ -429,8 +429,8 @@ The marker bridge still exists for backward compatibility — the MCP server's
 ```python
 def get_session_id(args=None):
     # Priority 0: args["session_id"] — injected by the enforcer per call
-    # Priority 1: ~/.hermes-cortex/state/.hermes-session-current.id (fixed path)
-    # Priority 2: ~/.hermes-cortex/state/.hermes-session-{PID}.id (PID scan)
+    # Priority 1: ~/.steadfaste-fleet/state/.hermes-session-current.id (fixed path)
+    # Priority 2: ~/.steadfaste-fleet/state/.hermes-session-{PID}.id (PID scan)
     # Priority 3: ~/.hermes/session.id (cached fallback)
     # Priority 4: generate new UUID (no enforcer present)
 ```
@@ -484,13 +484,13 @@ The governance enforcer plugin's `_has_governance_lock()` function uses a
   exact match is required — Session B cannot write using Session A's lock.
 
 3. **Phase 3 — REMOVED (2026-10-07).** There is no longer an in-repo fallback marker.
-  Locks are **runtime-only**, in `~/.hermes-cortex/state/`. The marker at
-  `<repo>/.hermes-cortex/.governance-lock` was "extra safety" only: its stated
+  Locks are **runtime-only**, in `~/.steadfaste-fleet/state/`. The marker at
+  `<repo>/.steadfaste-fleet/.governance-lock` was "extra safety" only: its stated
   purpose was already unreachable (this function returns `False` before any phase
   when the state dir is absent), the enforcer derived the repo from the
   host-canonical slug — which wrote a marker into an unrelated checkout — and
   neither git hook reads it (`pre-commit-score` and `pre-push-pull` both scan
-  `~/.hermes-cortex/state/.governance-*.json` directly). Nothing may write
+  `~/.steadfaste-fleet/state/.governance-*.json` directly). Nothing may write
   governance state inside a repository.
 
 On every call, the enforcer also **proactively purges stale locks** — any
@@ -499,7 +499,7 @@ before the phase checks begin. This prevents lock accumulation and ensures
 stale sessions don't accidentally block new ones.
 
 ```python
-GOVERNANCE_STATE_DIR = Path.home() / ".hermes-cortex" / "state"
+GOVERNANCE_STATE_DIR = Path.home() / ".steadfaste-fleet" / "state"
 
 def _has_governance_lock(hermes_session_id: str = "") -> bool:
   current_slug = _derive_repo_slug()
@@ -541,7 +541,7 @@ def _has_governance_lock(hermes_session_id: str = "") -> bool:
 {
  "task_id": "fix-auth-403",
  "description": "Add rate limiting to auth endpoint",
- "repo_slug": "hermes-cortex",
+ "repo_slug": "steadfaste-fleet",
  "started_at": "2026-07-04T00:00:00",
  "agent": "joseph",
  "session_id": "sess_abc123def456",
@@ -558,7 +558,7 @@ lock file.
 
 ### Critical: File Must Be Accessible
 
-The plugin reads this file from the filesystem. On remote Hermes backends (Modal, Daytona, Docker) where `~/.hermes-cortex/` isn't mounted to the Hermes process's filesystem, the lock check always returns `False` and all write tools are blocked. This is **by design** — governance enforcement is stricter on remote backends where the lock file pattern can't work.
+The plugin reads this file from the filesystem. On remote Hermes backends (Modal, Daytona, Docker) where `~/.steadfaste-fleet/` isn't mounted to the Hermes process's filesystem, the lock check always returns `False` and all write tools are blocked. This is **by design** — governance enforcement is stricter on remote backends where the lock file pattern can't work.
 
 ---
 
@@ -579,7 +579,7 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 mkdir -p ~/.hermes/plugins
 
 # Symlink the plugin from the Hermes Cortex repo
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Verify
 ls -la ~/.hermes/plugins/governance-enforcer/
@@ -604,13 +604,13 @@ The plugin source lives in the Hermes Cortex repo. To deploy to all agents:
 
 ```bash
 # Source of truth (commit and push first if modified)
-ls ~/hermes-cortex/plugins/governance-enforcer/
+ls ~/steadfaste-fleet/plugins/governance-enforcer/
 
 # On each agent machine, symlink:
-ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Run cortex-update to ensure repo is current:
-cd ~/hermes-cortex && git pull origin main
+cd ~/steadfaste-fleet && git pull origin main
 bash ops/scripts/cortex-update.sh
 
 # Then /reset the agent session
@@ -623,7 +623,7 @@ is symlinked into `~/.hermes/plugins/`:
 
 | Location | Path |
 |----------|------|
-| Source (repo) | `~/hermes-cortex/plugins/governance-enforcer/` |
+| Source (repo) | `~/steadfaste-fleet/plugins/governance-enforcer/` |
 | Deployed (symlink) | `~/.hermes/plugins/governance-enforcer/` → source |
 
 The pattern is the same for all agents: repo source → symlink into `~/.hermes/plugins/`.
@@ -637,7 +637,7 @@ mkdir -p ~/.hermes/plugins
 if [ -L ~/.hermes/plugins/governance-enforcer ] || [ -d ~/.hermes/plugins/governance-enforcer ]; then
  echo "Plugin exists, skipping symlink"
 else
- ln -sf ~/hermes-cortex/plugins/governance-enforcer ~/.hermes/plugins/
+ ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
  echo "Governance enforcer plugin installed. Restart Hermes to activate."
 fi
 ```
@@ -690,7 +690,7 @@ creating a bootstrapping deadlock.
 **Solution:** The `_on_session_start` hook auto-creates a per-session marker
 (`state/skills-loaded/<session-id>`) for non-interactive sessions by:
 
-1. Reading `~/.hermes-cortex/skills.yaml` for the `always` section
+1. Reading `~/.steadfaste-fleet/skills.yaml` for the `always` section
 2. Verifying each required skill has a `SKILL.md` on disk under
    `~/.hermes/skills/`
 3. If all skills are present, calling `_auto_create_skills_marker()` with the
@@ -808,7 +808,7 @@ happens and how to verify a clean upgrade.
 
 | Aspect | v1 (old) | v2 (new) |
 |--------|----------|----------|
-| **Lock file name** | `.governance-{repo-slug}.json` (e.g. `.governance-hermes-cortex.json`) | `.governance-{session_id}.json` (e.g. `.governance-sess_abc123.json`) |
+| **Lock file name** | `.governance-{repo-slug}.json` (e.g. `.governance-steadfaste-fleet.json`) | `.governance-{session_id}.json` (e.g. `.governance-sess_abc123.json`) |
 | **Repo identification** | CWD-dependent `git rev-parse` | Stored in lock content as `repo_slug` field |
 | **Enforcer check** | Single file by path | Scan all `.governance-*.json`, match by content |
 | **Multiple sessions** | Not supported (one lock per repo) | Each session gets its own file |
@@ -816,13 +816,13 @@ happens and how to verify a clean upgrade.
 
 ### Upgrade steps
 
-1. `git pull && bash ~/hermes-cortex/ops/scripts/cortex-update.sh `
+1. `git pull && bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh `
   - Cleans all stale slug-based lock files automatically
   - Ensures the new enforcer source is deployed
 2. `/reset` (new Hermes session)
   - The new enforcer loads with scan-based lock checking
 3. Verify:
-  - `bash ~/hermes-cortex/ops/scripts/manage/cortex-doctor.py --once`
+  - `bash ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --once`
   - Should show: `Governance coverage — PASS — all bypass closures validated`
   - Should show: `Governance locks — PASS — no lock files`
 
@@ -843,7 +843,7 @@ is accepted by the new enforcer as valid — you can finish your work and call
 7. **Every agent needs it** — if only one agent has the plugin, the others can freely skip governance. The source of truth is the repo; deploy the symlink to every agent.
 8. **Bypass coverage is structural, not complete** — the enforcer covers all built-in Hermes tools and common shell bypass patterns. It cannot intercept MCP tools (separate process), but no MCP tool currently allows arbitrary file writes.
 9. **Known coverage gaps (by design)** — `delegate_task` spawns subagents that have their own enforcer. `todo` is in-memory only. MCP tools run in a separate process and aren't intercepted by the plugin.
-10. **Survey gate prevents redundant cron creation** — cron creation is blocked until the agent demonstrates it has surveyed existing resources by creating `~/.hermes-cortex/state/.cron-survey-done`. This prevents duplicate cron jobs and scripts.
+10. **Survey gate prevents redundant cron creation** — cron creation is blocked until the agent demonstrates it has surveyed existing resources by creating `~/.steadfaste-fleet/state/.cron-survey-done`. This prevents duplicate cron jobs and scripts.
 11. **Fail-closed design** — if the enforcer encounters an internal error, it blocks ALL writes. Uncertainty defaults to blocking, not allowing. Recovery requires checking logs and restarting the session.
 12. **Per-call session-ID injection is the primary bridge** — the enforcer injects
   `args["session_id"]` into every `mcp__loop_governance__*` call (Priority 0 for the
@@ -866,8 +866,8 @@ Hermes session starts
  → Enforcer pre_tool_call fires on every tool call
   → INJECTS args['session_id'] = 'sess_...' into every mcp__loop_governance__* call
   → _write_session_marker(hermes_session_id) writes (fallback only):
-    1. ~/.hermes-cortex/state/.hermes-session-current.id (fixed-path bridge)
-    2. ~/.hermes-cortex/state/.hermes-session-{pid}.id   (PID fallback)
+    1. ~/.steadfaste-fleet/state/.hermes-session-current.id (fixed-path bridge)
+    2. ~/.steadfaste-fleet/state/.hermes-session-{pid}.id   (PID fallback)
     3. ~/.hermes/session.id                (MCP cache fallback)
  → MCP get_session_id(args) reads:
     0. args['session_id']         ← PRIMARY (injected per call, never racy)
@@ -899,14 +899,14 @@ If you see "No active governance session" when a lock file clearly exists:
 
 ```bash
 # Check what session ID the enforcer is using
-cat ~/.hermes-cortex/state/.hermes-session-current.id
+cat ~/.steadfaste-fleet/state/.hermes-session-current.id
 
 # List all lock files
-ls ~/.hermes-cortex/state/.governance-*.json
+ls ~/.steadfaste-fleet/state/.governance-*.json
 
 # If the filename (sess_<id>) doesn't match the bridge file content,
 # the handoff is broken. Run cortex-update to clear pycache and fix.
-bash ~/hermes-cortex/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 ```
 
 ### Root causes of drift

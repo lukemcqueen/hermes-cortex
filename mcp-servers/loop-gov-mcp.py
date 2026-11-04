@@ -72,14 +72,14 @@ def is_valid_transition(from_state: str, to_state: str) -> bool:
 
 # Ensure hermes_models.py is importable. Candidates in order:
 #   1. ~/.hermes/scripts            — Hermes agent scripts dir (often a symlink
-#      to ~/.hermes-cortex/scripts, but NOT guaranteed — macOS hosts can lack it)
-#   2. ~/.hermes-cortex/scripts     — canonical deploy location; cortex-update.sh
+#      to ~/.steadfaste-fleet/scripts, but NOT guaranteed — macOS hosts can lack it)
+#   2. ~/.steadfaste-fleet/scripts     — canonical deploy location; cortex-update.sh
 #      registers hermes_models.py here on EVERY host (add 2026-08-25: the old
-#      _REPO_SCRIPTS computed ~/.hermes-cortex/tools/scripts which never exists)
+#      _REPO_SCRIPTS computed ~/.steadfaste-fleet/tools/scripts which never exists)
 #   3. <script_dir>/scripts         — repo-layout fallback (mcp-servers/../scripts)
 _HERMES_HOME = Path.home() / ".hermes"
 _HERMES_SCRIPTS = _HERMES_HOME / "scripts"
-_CORTEX_DEPLOY_SCRIPTS = Path.home() / ".hermes-cortex" / "scripts"
+_CORTEX_DEPLOY_SCRIPTS = Path.home() / ".steadfaste-fleet" / "scripts"
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_SCRIPTS = _SCRIPT_DIR.parent / "scripts"
 for _candidate in (_HERMES_SCRIPTS, _CORTEX_DEPLOY_SCRIPTS, _REPO_SCRIPTS):
@@ -151,7 +151,7 @@ logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT, stream=sys.stderr, 
 # record a Hermes-owned artifact: outside our tree, and subject to Hermes's
 # rotation policy. The gate is a cortex component, so it also keeps its own
 # bounded log under the cortex tree, where the rest of our logs already live
-# (~/.hermes-cortex/logs/, cf. health-vector-push.sh, service-writer.sh).
+# (~/.steadfaste-fleet/logs/, cf. health-vector-push.sh, service-writer.sh).
 #
 # stderr is KEPT, unchanged: live debugging and the harness capture keep working.
 # Non-fatal by design — if the directory or file cannot be opened, the gate runs
@@ -160,7 +160,7 @@ logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT, stream=sys.stderr, 
 try:
     from logging.handlers import RotatingFileHandler
 
-    _log_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".hermes-cortex")) / "logs"
+    _log_dir = Path(os.environ.get("CORTEX_DEPLOY_HOME") or (Path.home() / ".steadfaste-fleet")) / "logs"
     _log_dir.mkdir(parents=True, exist_ok=True)
     _file_handler = RotatingFileHandler(
         str(_log_dir / "loop-governance.log"),
@@ -218,7 +218,7 @@ except (ImportError, TypeError) as _sdk_err:  # pragma: no cover — no SDK, or 
             f"(Server(name, on_list_tools=..., on_call_tool=...)).\n"
             f"[mcp-server] Interpreter: {sys.executable}\n"
             f"[mcp-server] Fix: run this with an interpreter that has mcp>=2.0 "
-            f"(ops/install/requirements.txt), e.g. ~/.hermes-cortex/venv/bin/python3 — or "
+            f"(ops/install/requirements.txt), e.g. ~/.steadfaste-fleet/venv/bin/python3 — or "
             f"repair that venv with ops/scripts/manage/fix-cortex-venv.py",
             file=sys.stderr,
         )
@@ -281,15 +281,15 @@ SESSION_FILE = HOME / ".hermes" / "session.id"
 # id is a correct session discriminator: stable across begin→end within one
 # Claude session, disjoint across concurrent sessions, and never the Hermes id.
 #
-# We also STOP reading the Hermes marker files (~/.hermes-cortex/state/
+# We also STOP reading the Hermes marker files (~/.steadfaste-fleet/state/
 # .hermes-session-*) on this path — those belong to whatever Hermes session
 # last wrote them and are the collision source. If no per-call id was injected
 # we are a non-Hermes caller; use our own process id.
 _PROCESS_SESSION_ID: str = ""
-LOOP_DB = HOME / ".hermes-cortex" / "data" / "loop-governance.db"
-CONFIG_PATH = HOME / ".hermes-cortex" / "data" / "loop-governance-config.json"
-CACHE_DB = HOME / ".hermes-cortex" / "data" / "session-embeddings.db"
-GOVERNANCE_STATE_DIR = HOME / ".hermes-cortex" / "state"
+LOOP_DB = HOME / ".steadfaste-fleet" / "data" / "loop-governance.db"
+CONFIG_PATH = HOME / ".steadfaste-fleet" / "data" / "loop-governance-config.json"
+CACHE_DB = HOME / ".steadfaste-fleet" / "data" / "session-embeddings.db"
+GOVERNANCE_STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 DEFAULT_TTL = 3600  # 1 hour
 # Provenance tag written by the orphan-cycle reaper's unscored_reason. The
 # doctor's "Orphan-cycle resolution" check matches this exact string and a test
@@ -305,7 +305,7 @@ ORPHAN_REAPER_TAG = "[orphan-reaper]"
 
 import hashlib as _dogfood_hashlib
 
-GOVERNANCE_REPO_PATH = HOME / "hermes-cortex" / "plugins" / "governance-enforcer" / "__init__.py"
+GOVERNANCE_REPO_PATH = HOME / "steadfaste-fleet" / "plugins" / "governance-enforcer" / "__init__.py"
 GOVERNANCE_DEPLOY_PATH = HOME / ".hermes" / "plugins" / "governance-enforcer" / "__init__.py"
 
 
@@ -332,7 +332,7 @@ def _require_dogfood() -> Optional[str]:
                 "    The governance plugin at ~/.hermes/plugins/governance-enforcer/ differs from\n"
                 "    the repo source (the commit you just pushed).\n\n"
                 "    Dogfooding means: deploy AND test.\n"
-                "      1. bash ~/hermes-cortex/ops/scripts/cortex-update.sh\n"
+                "      1. bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh\n"
                 "         (this exact command is sanctioned to run WITHOUT a governance lock;\n"
                 "          the enforcer allows it lock-free so you can self-recover)\n"
                 "      2. Run the changed code path — verify it works with actual output\n"
@@ -452,7 +452,7 @@ def _derive_slug(args: dict | None = None, session_repo: Optional[Path] = None) 
     ``git rev-parse`` from cwd first made locks carry ``hermes-agent`` while
     the git hooks (which derive the slug from the repo they run in) expected
     ``hermes-cortex`` — the lock never matched and every commit/push on
-    hermes-cortex was blocked. So the canonical governed repo is resolved
+    steadfaste-fleet was blocked. So the canonical governed repo is resolved
     FIRST; the cwd git repo is only a fallback for project-repo-only hosts.
 
     Priority 0 (2026-10-06): a repo the ENFORCER observed for THIS session and
@@ -501,7 +501,7 @@ def _derive_slug(args: dict | None = None, session_repo: Optional[Path] = None) 
     if own is not None:
         return own.name
     # Priority 1: canonical governed repo — the repo the git hooks enforce on.
-    for candidate in [HOME / "hermes-cortex", HOME / ".hermes-cortex"]:
+    for candidate in [HOME / "steadfaste-fleet", HOME / ".steadfaste-fleet"]:
         if (candidate / ".git").exists():
             return candidate.name
     # Priority 2: cwd git repo (hosts with no canonical governed repo, e.g.
@@ -702,16 +702,16 @@ def _session_lock_path(session_id: str) -> Path:
 def _secondary_lock_path(state: dict) -> Path | None:
     """ALWAYS None — the in-repo lock marker was removed on 2026-10-07.
 
-    Locks are runtime-only (~/.hermes-cortex/state/). Kept as a stub so both
+    Locks are runtime-only (~/.steadfaste-fleet/state/). Kept as a stub so both
     writers (`_write_lock`, `_release_lock`) stay readable, but no path is
     ever returned, so no governance state can be written inside a repository.
     """
     # DISABLED (2026-10-07): the in-repo fallback marker is DROPPED — locks are
-    # runtime-only (~/.hermes-cortex/state/). It was the least reliable of the
+    # runtime-only (~/.steadfaste-fleet/state/). It was the least reliable of the
     # three lock-discovery phases (the enforcer's copy derived the repo from the
     # host-canonical slug, so it wrote a marker into an unrelated checkout), and
     # neither git hook consults it: pre-commit-score:585 and pre-push-pull:84
-    # both scan GOVERNANCE_STATE_DIR="${HOME}/.hermes-cortex/state" directly.
+    # both scan GOVERNANCE_STATE_DIR="${HOME}/.steadfaste-fleet/state" directly.
     # Nothing may write governance state inside a repository.
     return None
 
@@ -2639,8 +2639,8 @@ def _range_blobs(repo: Path, base: str, head: str):
         import importlib.util
         candidates = [
             Path(__file__).resolve().parent.parent / _REVIEW_RECEIPT_CHECK_REL,   # repo layout
-            Path(os.environ.get("CORTEX_REPO") or (HOME / "hermes-cortex")) / _REVIEW_RECEIPT_CHECK_REL,
-            Path(os.environ.get("CORTEX_DEPLOY_HOME") or (HOME / ".hermes-cortex")) / _REVIEW_RECEIPT_CHECK_REL,
+            Path(os.environ.get("CORTEX_REPO") or (HOME / "steadfaste-fleet")) / _REVIEW_RECEIPT_CHECK_REL,
+            Path(os.environ.get("CORTEX_DEPLOY_HOME") or (HOME / ".steadfaste-fleet")) / _REVIEW_RECEIPT_CHECK_REL,
         ]
         path = next((c for c in candidates if c.is_file()), None)
         if path is None:
@@ -2707,7 +2707,7 @@ def _write_review_receipt(cycle_id=None, args: dict | None = None,
     receipt earned for range A cannot authorise range B. That replay is the one
     failure that would make this gate worse than no gate at all.
 
-    Runtime-only (~/.hermes-cortex/state/): no governance state inside a repo.
+    Runtime-only (~/.steadfaste-fleet/state/): no governance state inside a repo.
     Mirrors the lock writer's temp-file + rename so a concurrent reader never
     sees a partial receipt.
 
@@ -2930,7 +2930,7 @@ def _write_lock(state: dict, args: dict | None = None) -> None:
 
     Locks are RUNTIME-ONLY (as of 2026-10-07): the primary file here is the
     only lock. The old in-repo fallback marker
-    (<repo>/.hermes-cortex/.governance-lock) is gone — no governance state
+    (<repo>/.steadfaste-fleet/.governance-lock) is gone — no governance state
     may live inside a repository, and the enforcer's copy of that marker
     derived the repo from the host-canonical slug, so it could land in a
     checkout the session never touched.
@@ -3626,7 +3626,7 @@ def _db() -> sqlite3.Connection:
 
     Multi-session concurrency (2026-09-29): every interactive Hermes session
     spawns its OWN loop-gov-mcp.py daemon with its own connection to the
-    shared ~/.hermes-cortex/data/loop-governance.db. Two sessions calling
+    shared ~/.steadfaste-fleet/data/loop-governance.db. Two sessions calling
     begin_change()/feedback/end_change concurrently must SERIALIZE on the
     SQLite write lock, not fail. WAL mode lets readers run while a writer
     commits, and a generous busy-timeout makes a second writer WAIT for the
@@ -4967,7 +4967,7 @@ def _candidate_repos(max_depth: int = 3) -> list:
     Bounded walk of HOME down to `max_depth` — a dev host keeps project
     checkouts in nested folders (``~/projects/<org>/<repo>``), which a
     one-level scan cannot see — plus the cwd repo. Heavy/generated directories
-    and hidden directories (except ``.hermes-cortex``) are skipped so the walk
+    and hidden directories (except ``.steadfaste-fleet``) are skipped so the walk
     stays cheap, and a directory that IS a repo is a leaf. This runs only from
     the wrong-repo guard, which needs a cheap second opinion about WHERE the
     work actually landed.
@@ -4983,7 +4983,7 @@ def _candidate_repos(max_depth: int = 3) -> list:
         for child in entries:
             if not child.is_dir() or child.name in _CANDIDATE_SKIP_DIRS:
                 continue
-            if child.name.startswith(".") and child.name != ".hermes-cortex":
+            if child.name.startswith(".") and child.name != ".steadfaste-fleet":
                 continue
             if (child / ".git").exists():
                 out.append(child)
@@ -5370,7 +5370,7 @@ def _review_template_text(repo: Path) -> str:
     """The fixed reviewer prompt, from the repo (or the deployed copy)."""
     for cand in (
         repo / REVIEW_TEMPLATE_REL,
-        HOME / ".hermes-cortex" / "templates" / "adversarial-reviewer-prompt.md",
+        HOME / ".steadfaste-fleet" / "templates" / "adversarial-reviewer-prompt.md",
     ):
         if cand.is_file():
             return cand.read_text()
@@ -5390,8 +5390,8 @@ def _env_file_paths() -> list:
     if explicit:
         paths.append(Path(explicit))
     repo = (os.environ.get("CORTEX_REPO", "") or "").strip()
-    paths.append((Path(repo) if repo else HOME / "hermes-cortex") / ".env")
-    paths.append(Path(os.environ.get("CORTEX_DEPLOY_HOME", str(HOME / ".hermes-cortex"))) / ".env")
+    paths.append((Path(repo) if repo else HOME / "steadfaste-fleet") / ".env")
+    paths.append(Path(os.environ.get("CORTEX_DEPLOY_HOME", str(HOME / ".steadfaste-fleet"))) / ".env")
     paths.append(HOME / ".hermes" / ".env")          # legacy last resort
     return paths
 
@@ -5400,7 +5400,7 @@ def _env_value(name: str, default: str = "") -> str:
     """Resolve ONE config value, decoupled from Hermes.
 
     Order: the PROCESS environment, then the canonical cortex env
-    (CORTEX_ENV_FILE, else ~/hermes-cortex/.env, else the deploy root), and only
+    (CORTEX_ENV_FILE, else ~/steadfaste-fleet/.env, else the deploy root), and only
     then the Hermes-owned ~/.hermes/.env.
 
     Two deliberate choices:
@@ -9061,7 +9061,7 @@ server = Server("loop-governance", on_list_tools=list_tools, on_call_tool=call_t
 
 # ── Main ─────────────────────────────────────────────────────
 
-DAEMON_STAMP = Path.home() / ".hermes-cortex" / "state" / "loop-gov-daemon.json"
+DAEMON_STAMP = Path.home() / ".steadfaste-fleet" / "state" / "loop-gov-daemon.json"
 
 
 def _write_daemon_stamp() -> None:
