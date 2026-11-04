@@ -210,7 +210,7 @@ def detect_agent_name() -> str:
                 return name
 
     # 4. Fallback — NEVER silently impersonate another agent (2026-08-06
-    #    directive: tooling identity is host-derived; `hc` fell back to moses
+    #    directive: tooling identity is host-derived; `fleet` fell back to moses
     #    on every host until fixed). Derive from hostname and warn loudly.
     host_default = os.uname().nodename.split(".")[0] or "agent"
     print(

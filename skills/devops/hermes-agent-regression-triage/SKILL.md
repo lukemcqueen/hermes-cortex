@@ -179,13 +179,13 @@ Identify the clean tag by auditing tags: `git show <tag>:tools/mcp_tool.py
 Self-test on your own inbox first, then send one message per agent:
 
 ```bash
-hc send <you> "COMMAND:hold-hermes-update" "<advisory>" --self-tested
+fleet send <you> "COMMAND:hold-hermes-update" "<advisory>" --self-tested
 python3 ~/.steadfaste-fleet/scripts/agent-message-handler.py --once
 # verify consumed, then:
 for agent in moses joseph gisu kustos titus; do
-  hc send "$agent" "COMMAND:hold-hermes-update" "$ADVISORY" --self-tested
+  fleet send "$agent" "COMMAND:hold-hermes-update" "$ADVISORY" --self-tested
 done
-hc inbox <agent>   # verify pending in every inbox
+fleet inbox <agent>   # verify pending in every inbox
 ```
 
 Note: a `COMMAND:` advisory to a fleet agent produces an

@@ -76,10 +76,10 @@ For each agent you plan to test:
 | Agent | Handler? | Poll interval | Best test method |
 |-------|----------|--------------|------------------|
 | Moses | In-session tools + LLM crons | Immediate/delayed | MCP tools directly |
-| Esther | agent-message-handler.py | 5 min | `hc exec esther ...` |
-| Joseph | agent-message-handler.py | 5 min | `hc exec joseph ...` |
-| Kustos | agent-message-handler.py | 5 min | `hc exec kustos ...` |
-| Gisu | agent-message-handler.py | 5 min | `hc exec gisu ...` |
+| Esther | agent-message-handler.py | 5 min | `fleet exec esther ...` |
+| Joseph | agent-message-handler.py | 5 min | `fleet exec joseph ...` |
+| Kustos | agent-message-handler.py | 5 min | `fleet exec kustos ...` |
+| Gisu | agent-message-handler.py | 5 min | `fleet exec gisu ...` |
 | Titus | ❌ NO handler | N/A | Telegram fallback only |
 
 ### Step 6: Build the Test Plan
@@ -88,22 +88,22 @@ From the survey output, construct concrete test commands:
 
 **Level 1 — Prove on yourself (Moses → inbox_moses):**
 ```bash
-hc exec moses cortex-doctor.py --json
+fleet exec moses cortex-doctor.py --json
 # Then manually run handler:
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
 
 **Level 2 — Test to host agent (Esther):**
 ```bash
-hc exec esther cortex-doctor.py --json
+fleet exec esther cortex-doctor.py --json
 # Wait ~5min for handler cycle, then check inbox_moses for EXEC_RESULT
 ```
 
 **Level 3 — Test to client agents (Joseph, Kustos, Gisu):**
 ```bash
-hc exec joseph -- df -h /
-hc exec kustos -- uptime
-hc exec gisu -- uname -a
+fleet exec joseph -- df -h /
+fleet exec kustos -- uptime
+fleet exec gisu -- uname -a
 ```
 
 **Level 4 — External path verification (simulate remote agent):**
@@ -161,7 +161,7 @@ Missing any one checkpoint means the test is incomplete.
 
 ## Pitfalls
 
-- ❌ **Testing with `hc send` (docker exec SQL)** — bypasses ALL auth and permission checks. Not representative of agent-facing behavior.
+- ❌ **Testing with `fleet send` (docker exec SQL)** — bypasses ALL auth and permission checks. Not representative of agent-facing behavior.
 - ❌ **Proving on a fleet agent before proving on yourself** — the most expensive mistake. Always prove on inbox_moses first.
 - ❌ **Skipping the cleanup step** — test messages that stay in the queue get picked up by the next handler cycle and can confuse diagnostics.
 - ❌ **Assuming Titus processes bus messages** — Titus is push-only (health_method=inbox), no handler cron. Use Telegram for Titus commands.

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# fleet — Steadfaste Fleet CLI entrypoint
+# Source of truth: ops/scripts/fleet/bin/fleet — the repo keeps the module one level up, so this
+# launcher lives in bin/ where nothing is named like the command (a DIRECTORY at
+# ops/scripts/fleet meant `bash ops/scripts/fleet` answered "Is a directory").
+# Deployed FLAT to ~/.steadfaste-fleet/scripts/fleet with the module beside it. Invoke it by that
+# path: nothing in this repo creates a PATH link, so `command -v fleet` finds nothing until a
+# host adds the deploy's scripts dir to PATH itself.
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+FLEET_PY=""
+# Beside this script is the DEPLOYED layout (scripts/fleet + scripts/fleet.py); one level up is
+# the repo layout (ops/scripts/fleet/bin/fleet + ops/scripts/fleet/fleet.py). Both are resolved
+# before any known-path fallback, so the move cannot silently pick up some other host's module.
+for cand in "${SCRIPT_DIR}/fleet.py" "${SCRIPT_DIR}/../fleet.py"; do
+    if [ -f "$cand" ]; then FLEET_PY="$(cd "$(dirname "$cand")" && pwd)/$(basename "$cand")"; break; fi
+done
+
+# Fall back to known installation paths
+if [ -z "$FLEET_PY" ]; then
+    for try in \
+        "${HOME}/steadfaste-fleet/ops/scripts/fleet/fleet.py" \
+        "${HOME}/.steadfaste-fleet/scripts/fleet.py" \
+        "${HOME}/.local/bin/fleet.py"; do
+        if [ -f "$try" ]; then
+            FLEET_PY="$try"
+            # Announce it: a resolver that silently picks an unrelated tree makes the run
+            # look identical while a different program decides.
+            echo "fleet: note: no module beside $(dirname "$0") or one level up; using $try" >&2
+            break
+        fi
+    done
+fi
+
+if [ ! -f "$FLEET_PY" ]; then
+    echo "fleet: cannot find fleet.py — looked beside $(dirname "$0") and one level up" >&2
+    echo "fleet: run the deployed ~/.steadfaste-fleet/scripts/fleet, or reinstall with cortex-update.sh" >&2
+    exit 3
+fi
+
+exec python3 "$FLEET_PY" "$@"

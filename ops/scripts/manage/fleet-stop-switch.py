@@ -49,10 +49,10 @@ def get_fleet_agents() -> dict:
 
 
 def send_bus_message(agent: str, subject: str, body: dict) -> int:
-    """Send a bus message to an agent via hc send."""
+    """Send a bus message to an agent via fleet send."""
     body_json = json.dumps(body)
     cmd = [
-        sys.executable, str(CORTEX_REPO / "ops/scripts/hc/hc.py"),
+        sys.executable, str(CORTEX_REPO / "ops/scripts/fleet/fleet.py"),
         "send", agent, subject,
         "--json", body_json,
     ]

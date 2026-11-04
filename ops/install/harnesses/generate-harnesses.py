@@ -120,17 +120,17 @@ def derived_run_line(h: dict) -> str | None:
     registry: a literal silently rots when `context_tools.TOOLS` grows, and the
     harness then cannot reach a tool that plainly exists (the exact drift
     `tests/test_context_harnesses.py` exists to catch). So the one generator both
-    the docs and `hc harness install` agree on is `ops/scripts/hc/harness.py`.
+    the docs and `fleet harness install` agree on is `ops/scripts/fleet/harness.py`.
     """
     if h.get("run"):
         return h["run"].strip()
     if h.get("layer") != "cli-extension" or not h.get("tools_base"):
         return None
     harness_py = next((p for p in [
-        HERE.parent.parent / "scripts" / "hc" / "harness.py",          # repo: ops/scripts/hc
-        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "hc" / "harness.py",
+        HERE.parent.parent / "scripts" / "fleet" / "harness.py",          # repo: ops/scripts/fleet
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "fleet" / "harness.py",
         Path.home() / ".steadfaste-fleet" / "scripts" / "hc-harness.py",  # deployed (flat)
-        Path.home() / ".steadfaste-fleet" / "scripts" / "hc" / "harness.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "fleet" / "harness.py",
     ] if p.is_file()), None)
     if harness_py is None:
         return None
@@ -184,7 +184,7 @@ def render_readme(reg: dict, h: dict) -> str:
         out += ["## Run", "", "```bash", run, "```", ""]
         if not h.get("run"):
             out += ["The `mem_*`/`session_*` half of `--tools` is **derived from "
-                    "the contract** by `hc harness install` — a hand-typed list "
+                    "the contract** by `fleet harness install` — a hand-typed list "
                     "rots silently when the tool surface grows.", ""]
 
     if h.get("verify"):

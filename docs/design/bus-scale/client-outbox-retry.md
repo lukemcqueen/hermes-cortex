@@ -74,7 +74,7 @@ immune to wall-clock races.
   old). Jitter prevents a thundering herd when the bus recovers.
 - **Resend dedup** — before re-sending, `bus_peek` the target queue; if an
   identical message (same correlation_id, OR same subject+body — the
-  canonical `bus_find_duplicate` rule shared with `hc.py`) is already
+  canonical `bus_find_duplicate` rule shared with `fleet.py`) is already
   pending, delete the file. Closes the at-least-once hazard where a send
   landed but its response was lost.
 - **Poison-pill quarantine** — corrupt JSON or `attempts >= 12` moves the
@@ -120,7 +120,7 @@ immune to wall-clock races.
 - **Live** — dead primary + dead fallback → message queued (caller dict
   unmutated) → bus recovered → sweep delivers → file removed → message
   confirmed in `inbox_esther` via `bus_peek`.
-- **Regression** — `hc.py` dedup delegates to the canonical
+- **Regression** — `fleet.py` dedup delegates to the canonical
   `bus_find_duplicate` (verified); 33 tests pass across the suite.
 
 ## Related

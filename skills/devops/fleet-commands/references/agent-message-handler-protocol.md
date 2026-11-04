@@ -7,7 +7,7 @@
 ```
 Orchestrator (Moses)              Fleet Agent (Esther, Joseph, Gisu...)
          │                                    │
-  hc exec esther                               │
+  fleet exec esther                               │
   → bus.send(inbox_esther, EXEC)               │
          │                                    │
          └──────────── bus ────────────────────┤
@@ -27,7 +27,7 @@ Orchestrator (Moses)              Fleet Agent (Esther, Joseph, Gisu...)
 - EXEC commands waiting 40+ min behind backlog
 - Infinite loop on idempotency skip (FIXED: now archives on skip)
 
-Moses handles its inbox **in-session** (MCP tools + hc CLI) and **out-of-session** (`cortex-bus-workday/evening/overnight` LLM crons).
+Moses handles its inbox **in-session** (MCP tools + fleet CLI) and **out-of-session** (`cortex-bus-workday/evening/overnight` LLM crons).
 
 ## Telegram notifications
 

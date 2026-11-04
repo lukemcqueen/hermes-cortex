@@ -520,7 +520,7 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
 5. **Verify the deployed tree** — `diff -r ~/steadfaste-fleet/skills/<name>
    ~/.hermes/skills/<name>` identical — then broadcast FLEET_NOTICE per the
    fleet-commands skill (self-test on yourself, one message per agent with
-   `--self-tested`, verify with `hc inbox` peeks).
+   `--self-tested`, verify with `fleet inbox` peeks).
 
 ## Transient doctor FAILs — verify live before treating as host debt
 
@@ -540,7 +540,7 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
   reporting a dispatch as "sent, unverified", and if it still fails, name the exact
   probe that failed instead of implying the queue cannot be checked. Check the probe
   before doubting the system.
-- **`hc` is not on PATH** — call it as `~/.steadfaste-fleet/scripts/hc`.
+- **`fleet` is not on PATH** — call it as `~/.steadfaste-fleet/scripts/fleet`.
 
 ## Reversing your own wrong fix
 

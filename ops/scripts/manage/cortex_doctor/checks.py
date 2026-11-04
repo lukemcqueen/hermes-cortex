@@ -6305,26 +6305,26 @@ def check_review_provenance(res) -> None:
 
 
 def _harness_cli():
-  """The `hc` CLI: the DEPLOYED copy first (judge what RUNS), then the repo checkout.
+  """The `fleet` CLI: the DEPLOYED copy first (judge what RUNS), then the repo checkout.
 
   Every harness read goes through this command rather than through a local parse, so the
   doctor needs no PyYAML of its own — cortex-update.sh runs the doctor as a bare `python3`,
   and the CLI already resolves an interpreter that can read the registry.
   """
-  # deployed: <deploy>/scripts/hc is the launcher FILE; repo: the launcher is
-  # ops/scripts/hc/bin/hc (ops/scripts/hc itself is the package directory).
-  return next((c for c in (CORTEX_HOME / "scripts" / "hc",
-                           CORTEX_REPO / "ops" / "scripts" / "hc" / "bin" / "hc")
+  # deployed: <deploy>/scripts/fleet is the launcher FILE; repo: the launcher is
+  # ops/scripts/fleet/bin/fleet (ops/scripts/fleet itself is the package directory).
+  return next((c for c in (CORTEX_HOME / "scripts" / "fleet",
+                           CORTEX_REPO / "ops" / "scripts" / "fleet" / "bin" / "fleet")
                if c.is_file()), None)
 
 
 def _run_hc(*args):
-  """Run `hc <args...>`, returning (rc, combined output). No interpreter is chosen here:
+  """Run `fleet <args...>`, returning (rc, combined output). No interpreter is chosen here:
   the CLI resolves its own, and its exit 3 = could not verify is passed through untouched.
   """
   cli = _harness_cli()
   if cli is None:
-    return 1, "hc CLI not found (checked the deployed and repo copies)"
+    return 1, "fleet CLI not found (checked the deployed and repo copies)"
   try:
     p = subprocess.run(["bash", str(cli), *args], capture_output=True, text=True,
                        timeout=120)
@@ -6334,12 +6334,12 @@ def _run_hc(*args):
 
 
 def _run_harness_list():
-  """The registry in machine-readable form, from `hc harness list --json`."""
+  """The registry in machine-readable form, from `fleet harness list --json`."""
   return _run_hc("harness", "list", "--json")
 
 
 def _run_harness_verify(name):
-  """`hc harness verify <name>` — the command an operator runs, nothing bespoke."""
+  """`fleet harness verify <name>` — the command an operator runs, nothing bespoke."""
   return _run_hc("harness", "verify", name)
 
 
@@ -6376,7 +6376,7 @@ def _harness_presence(h: dict):
 
 
 def check_harness_registry(res) -> None:
-  """One line per DECLARED harness, judged by driving `hc harness verify <name>`.
+  """One line per DECLARED harness, judged by driving `fleet harness verify <name>`.
 
   The registry (ops/install/harnesses/registry.yaml) is the single source of harness
   knowledge and declares every coding agent the fleet supports. Judging them here, one
@@ -6400,14 +6400,14 @@ def check_harness_registry(res) -> None:
     tail = out.splitlines()[-1] if out else f"exit {rc}"
     why = "no interpreter on this host could read the registry" if rc == 3 else tail
     res.add(name, "WARN", f"COULD NOT VERIFY — {why}",
-            "Run: bash $HOME/.steadfaste-fleet/scripts/hc harness list --json   "
+            "Run: bash $HOME/.steadfaste-fleet/scripts/fleet harness list --json   "
             "(then fix what it reports)")
     return
   try:
     data = json.loads(out[out.index("{"):])
   except Exception as exc:                        # never let an unreadable view crash the run
     res.add(name, "WARN", f"COULD NOT VERIFY — the registry view was not parseable ({exc})",
-            "Run: bash $HOME/.steadfaste-fleet/scripts/hc harness list --json")
+            "Run: bash $HOME/.steadfaste-fleet/scripts/fleet harness list --json")
     return
   harnesses = data.get("harnesses") if isinstance(data, dict) else None
   if not isinstance(harnesses, list) or not harnesses:
@@ -6438,7 +6438,7 @@ def check_harness_registry(res) -> None:
     artifacts = [l for l in lines if l.startswith("artifact:")]
     verdict = lines[-1] if lines else f"exit {rc}"
     tail = f"{artifacts[-1]}; {verdict}" if artifacts else verdict
-    fix = (f"Run: bash $HOME/.steadfaste-fleet/scripts/hc harness verify {hname}   "
+    fix = (f"Run: bash $HOME/.steadfaste-fleet/scripts/fleet harness verify {hname}   "
            "(then apply the install step the registry declares for it)")
     if rc == 0:
       res.add(label, "PASS", f"{detail}; {tail}")

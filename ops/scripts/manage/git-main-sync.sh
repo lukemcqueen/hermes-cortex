@@ -5,7 +5,7 @@
 # left on a feature/detached branch (e.g. a titus/* PR branch) silently
 # ignores `git pull origin main` in the UPDATE_REQUEST handler, so fleet
 # updates never land on that host. This opt-in tool fixes the branch state
-# on demand — run it via the bus EXEC protocol (hc exec <agent> git-main-sync.sh)
+# on demand — run it via the bus EXEC protocol (fleet exec <agent> git-main-sync.sh)
 # rather than changing daily sync behaviour (a fleet-wide auto-checkout
 # would yank dev agents off their work branches).
 #

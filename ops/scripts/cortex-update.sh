@@ -569,9 +569,10 @@ register "ops/scripts/manage/cortex_doctor/task_integrity.py" "${CORTEX_DEPLOY_H
 
 register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
 
-register "ops/scripts/hc/hc.py"                      "${CORTEX_DEPLOY_HOME}/scripts/hc.py"
-register "ops/scripts/hc/harness.py"                 "${CORTEX_DEPLOY_HOME}/scripts/hc-harness.py"
-register "ops/scripts/hc/bin/hc"                     "${CORTEX_DEPLOY_HOME}/scripts/hc"
+register "ops/scripts/fleet/fleet.py"                "${CORTEX_DEPLOY_HOME}/scripts/fleet.py"
+register "ops/scripts/fleet/harness.py"              "${CORTEX_DEPLOY_HOME}/scripts/fleet-harness.py"
+register "ops/scripts/fleet/bin/fleet"               "${CORTEX_DEPLOY_HOME}/scripts/fleet"
+register "ops/scripts/fleet/bin/hc"                  "${CORTEX_DEPLOY_HOME}/scripts/hc"  # transition-compat alias
 register "ops/scripts/health/agent-stale-ref-watchdog.sh"            "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-stale-ref-watchdog.sh"
 register "ops/scripts/manage/autonomy-classifier.py"                  "${CORTEX_DEPLOY_HOME}/scripts/manage/autonomy-classifier.py"
 register "ops/scripts/manage/orch-autonomy-digest.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/manage/orch-autonomy-digest.sh"

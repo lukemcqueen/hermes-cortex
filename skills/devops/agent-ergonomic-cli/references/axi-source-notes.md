@@ -54,7 +54,7 @@ All in github.com/kunchenguid/axi (catalog generated from catalog.yaml).
 
 - Machine protocol stays JSON; TOON is output-boundary only.
 - Agent-facing CLI stdout: TOON preferred for new scripts; retrofit
-  high-frequency tools incrementally (hc, doctor).
+  high-frequency tools incrementally (fleet, doctor).
 - Cron deliveries keep cron-format-standard (already AXI-aligned); add
   totals/truncation hints when evidence runs long.
 - Human chat output unchanged.

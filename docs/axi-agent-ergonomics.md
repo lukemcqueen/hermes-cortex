@@ -126,7 +126,7 @@ loads for a version probe).
 |---|---|---|
 | Cron deliveries (`cron-format-standard`) | Definitive `Result:` verdict; `[SILENT]` empty state (P5); concrete-example prompts; cost footer aggregate (P4) | No size hints/truncation for long evidence; `Result:` is a verdict but lists rarely carry totals |
 | `cortex-doctor` | Statuses per check (✅/❌/⚠️); remediation hints per check (P9); runs content-first with no args (P8) | Human-styled prose; no `--toon`/compact mode; per-check detail not truncated with `--full` |
-| `hc` CLI (bus ops) | Definitive "No pending messages" (P5); REFUSED errors include next steps (P9); refuses rather than prompts (P6) | Emoji/human prose on stderr (P6 channels); usage text instead of content-first home (P8); no TOON lists (P1/P2); multi-line help not per-subcommand `--help` blocks (P10) |
+| `fleet` CLI (bus ops) | Definitive "No pending messages" (P5); REFUSED errors include next steps (P9); refuses rather than prompts (P6) | Emoji/human prose on stderr (P6 channels); usage text instead of content-first home (P8); no TOON lists (P1/P2); multi-line help not per-subcommand `--help` blocks (P10) |
 | MCP tool outputs (agent-bus, tasks, loop-governance) | JSON is protocol-correct | Verbose field sets (P2); totals not always present (P4); empty results sometimes bare `[]` (P5) |
 | Bus message bodies (PGMQ JSON) | Double-encoded JSON handled via `(body#>>'{}')::jsonb` — machine protocol, fine as-is | Agents read previews — previews are where P1–P5 apply, not the wire format |
 | `task-db.py`, `adversarial-verify.py`, health scripts | Varying | Inconsistent: some prose, some JSON, no shared convention |
@@ -141,19 +141,19 @@ consistency across *other* agent-facing surfaces.
 - **New convention:** agent-facing CLI scripts emit TOON (or "TOON-lite":
   `name[N]{fields}:` header + CSV rows) for list/detail output; JSON stays
   inside scripts and in machine protocols (bus, MCP).
-- `hc peek/list_queues`: replace emoji prose lists with `queue[3]{name,depth}`.
+- `fleet peek/list_queues`: replace emoji prose lists with `queue[3]{name,depth}`.
 - MCP servers (tasks, agent-bus): trim default schemas to id/title/status +
   totals; add `--fields`-style verbosity only when requested.
 
 ### P3 — Truncation with escape hatch
 - Long bodies (bus message previews, doctor detail, task descriptions):
   truncate at 500–1500 chars, show `... (truncated, N chars total)` and the
-  `--full` command. `hc peek` already previews — add the size hint.
+  `--full` command. `fleet peek` already previews — add the size hint.
 
 ### P4 — Pre-computed aggregates
 - List outputs carry `count: N of TOTAL` so agents never paginate to count.
 - Doctor summary line already aggregates — extend the same pattern to
-  `hc list_queues` (total pending across queues) and task lists (open vs
+  `fleet list_queues` (total pending across queues) and task lists (open vs
   blocked counts).
 - Derived statuses where cheap: `checks: 3/3 passed` style summaries instead
   of raw fields the agent would have to interpret.
@@ -170,7 +170,7 @@ consistency across *other* agent-facing surfaces.
 - Mutations idempotent: repeated sends/updates acknowledge no-op with exit 0.
 - Fail loud on unknown flags (argparse defaults already do this — audit for
   any `parse_known_args` that silently drops flags).
-- Never prompt interactively; `hc` already REFUSES instead of prompting —
+- Never prompt interactively; `fleet` already REFUSES instead of prompting —
   the pattern to keep.
 
 ### P7 — Ambient context (MEDIUM, orchestrator leverage)
@@ -183,7 +183,7 @@ consistency across *other* agent-facing surfaces.
   IS ambient context; keep it ruthlessly minimal per P7's token-budget rule.
 
 ### P8 — Content first
-- `hc` with no args should show live fleet state (queue depths, pending
+- `fleet` with no args should show live fleet state (queue depths, pending
   messages) not usage. `--help` stays explicit. Doctor already runs
   content-first — the model to copy.
 
@@ -201,7 +201,7 @@ consistency across *other* agent-facing surfaces.
 
 ## Ranked quick wins
 
-1. **`hc list_queues` + `peek` → TOON with totals** (P1/P2/P4) — highest
+1. **`fleet list_queues` + `peek` → TOON with totals** (P1/P2/P4) — highest
    frequency agent-facing CLI; direct token + turn savings.
 2. **MCP default-schema trim** on tasks/agent-bus list tools (P2/P4) — every
    fleet agent reads these; fewer fields × many reads.
@@ -218,7 +218,7 @@ consistency across *other* agent-facing surfaces.
 - **Machine protocol** (bus wire format, MCP transport): stays JSON — TOON is
   an output-boundary format, never a transport.
 - **Agent-facing CLI stdout**: TOON preferred for new scripts; retrofit
-  high-frequency ones (hc, doctor) incrementally.
+  high-frequency ones (fleet, doctor) incrementally.
 - **Cron deliveries**: keep `cron-format-standard` (already AXI-aligned);
   add totals and truncation hints where evidence runs long.
 - **Human-facing output** (user chat replies): unchanged — AXI governs

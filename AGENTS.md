@@ -61,7 +61,7 @@ Every session: read the skills manifest at `~/.steadfaste-fleet/skills.yaml` —
 22. **Cross-session tasks** — `task-db.py` (see `task-persistence` skill). v2 lifecycle: `update <id> --status in_progress` before `begin_change`; `switch <target>` to change active task; `--status completed` after `end_change`. Bus-created tasks (S4): transition by correlation on ISSUES/PROPOSAL/IMPROVEMENTS processing — `task-db.py update --by-correlation <corr> --status completed` (see `cortex-bus-automation` skill). Entry/completion events notify Telegram.
 23. **Only our repo** — `~/steadfaste-fleet/` ours; `~/.hermes/` not-in-repo → don't touch; `~/.steadfaste-fleet/state/*` + `~/.hermes/config.yaml` → live config.
 24. **Sharing filter** — new/substantive only; already-in-Hermes/cortex ❌; PII-only ❌.
-25. **Self-test gate** — `hc send` refuses without `--self-tested`; no bare `pass`.
+25. **Self-test gate** — `fleet send` refuses without `--self-tested`; no bare `pass`.
 26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator → cortex-update. Never hand-fix from memory.
 27. **Gateway restart for enforcer changes** — running gateway may hold the old in-memory enforcer; verify `Plugin content`; restart from a separate shell (NOT inside the gateway — blocked).
 28. **State it once, then move** — once a finding/plan is established, never re-derive it: reference it in one short clause and take the next action.

@@ -1166,12 +1166,12 @@ Examples:
     print()
 
     bc = len(bible.get("translations", []))
-    hc = hymns.get("hymn_count", 0)
+    hymn_count = hymns.get("hymn_count", 0)
     bsize = sum(t.get("size_mb", 0) for t in bible.get("translations", []))
     has_pdf = hymns.get("has_pdf", False)
 
     print(f"  📖  Bible:    {bc} translation(s) ({bsize:.0f} MB)")
-    print(f"  🎵  Hymns:    {hc} hymn(s)" + (" + PDF scores" if has_pdf else ""))
+    print(f"  🎵  Hymns:    {hymn_count} hymn(s)" + (" + PDF scores" if has_pdf else ""))
     print()
     print(f"  🌐  Open:     http://localhost:{port}")
     print()

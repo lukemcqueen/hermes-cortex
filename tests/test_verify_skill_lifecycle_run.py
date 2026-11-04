@@ -134,14 +134,20 @@ def test_preexisting_checks_git_not_disk(verifier, monkeypatch):
     assert any(verifier.BASE_COMMIT in c for c in seen)
 
 
-def test_titus_never_hard_fails_on_an_unreadable_queue(verifier, monkeypatch):
+def test_titus_never_hard_fails_on_an_unreadable_queue(verifier, tmp_path, monkeypatch):
     """check_titus is corroborating only — a bad peek must NOT fail the run.
 
     Delivered != still-pending: titus's handler consumes messages, so an
     empty/unreadable inbox cannot disprove delivery and must never be
     reported as a failure (ADV-10314-2).
     """
-    # A failing peek must yield no failure (the hc CLI exists on this host).
+    # Hermetic: plant the deployed fleet CLI under a scratch HOME so the check
+    # does not depend on this host's live deployment. A failing peek must then
+    # yield NO failure (a non-zero rc is not a failure).
+    cli = tmp_path / ".steadfaste-fleet" / "scripts" / "fleet"
+    cli.parent.mkdir(parents=True)
+    cli.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(verifier, "HOME", tmp_path)
     monkeypatch.setattr(verifier, "_run", lambda cmd: (1, "boom"))
     failures: list[str] = []
     verifier.check_titus(failures)

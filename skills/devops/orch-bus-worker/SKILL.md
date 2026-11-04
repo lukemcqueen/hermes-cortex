@@ -64,7 +64,7 @@ metadata:
    ```
    - Clean the bus of stale messages first (fleet-commands skill).
    - Only use scripts deployed on ALL agents (`agent-diagnostic.py`,
-     `cortex-doctor.py` via `hc exec`, etc.) unless the target is known to
+     `cortex-doctor.py` via `fleet exec`, etc.) unless the target is known to
      have it.
 
 4. **Verify — never trust a send** (6-checkpoint rule, fleet-commands):
@@ -171,7 +171,7 @@ metadata:
   still be intentional.
 - **A pending task you can't action today is a blocker, not a failure** —
   say so with the reason. Never archive/complete without real verification.
-- **Bus sends REFUSE without `--self-tested` when using `hc`** — the flag is
+- **Bus sends REFUSE without `--self-tested` when using `fleet`** — the flag is
   a gate, not a formality. Prove the flow on yourself first.
 - **A sibling cron's evidence may be sitting UNTRACKED on disk.** When a pass
   reports a commit but its job lacks the `skills` toolset, the reflexion gate
@@ -204,11 +204,11 @@ metadata:
   re-GRANT with the guarded `IF EXISTS (SELECT 1 FROM pg_roles …)` loop — this
   repo's own precedent is `schema/v005__lifecycle.sql:332` ("CREATE OR REPLACE
   cannot change arity — the 17-arg function must be dropped first").
-- **`hc exec <self>` can report a FALSE failure — read the archive, not the
+- **`fleet exec <self>` can report a FALSE failure — read the archive, not the
   wrapper's verdict.** On a host that owns the queue it sends to, a self-send
   delivers TWICE: the real run answers from=`<self>` with `exit_code=0`, and a
   bus-forwarder re-delivery answers `exit -1 "No command specified"` (its body
-  no longer carries `command`). `hc.py` stops at the FIRST matching
+  no longer carries `command`). `fleet.py` stops at the FIRST matching
   `correlation_id`, so it can print the bogus copy as the outcome while the real
   result sits archived seconds later. Measured 2026-10-27 (esther, corr
   `exec-9a8ef04d1e83`: msg `d5046d32` from=moses exit=-1, msg `e166f253`

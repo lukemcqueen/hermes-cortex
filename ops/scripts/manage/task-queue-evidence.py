@@ -326,7 +326,7 @@ def main() -> int:
     # now and were RED before the fix). A one-line paste is not evidence a reviewer
     # can check.
     print("\n## Raw test output — `tests/test_hc_harness.py`\n")
-    print("`hc harness` and its registry were failing their own tests before this fix;")
+    print("`fleet harness` and its registry were failing their own tests before this fix;")
     print("the same file is re-run at the parent of the commit that last touched it, so")
     print("the claim is a measured before/after rather than an assertion.\n")
     print("### With this change applied\n")

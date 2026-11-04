@@ -212,7 +212,7 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
         wire_body = dict(message_body)
         # Strict envelope validator (2026-09-02) requires `priority` to be
         # an int 0-100 or absent — string priorities ("normal"/"high") get
-        # 400. Normalize legacy string values here so every caller (hc,
+        # 400. Normalize legacy string values here so every caller (fleet,
         # learning-collector, failover-watchdog, …) is compliant without
         # per-caller edits. Int values pass through untouched.
         pri = wire_body.get("priority")
@@ -285,7 +285,7 @@ def bus_find_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -
     and body (not subject alone) lets parallel EXECs with different payloads
     coexist while identical UPDATE_REQUESTs still get caught.
 
-    Canonical home of this rule — hc.py (CLI dedup gate) and bus_outbox.py
+    Canonical home of this rule — fleet.py (CLI dedup gate) and bus_outbox.py
     (retry resend dedup) both call this so the semantics never drift.
     """
     norm_body = bus_norm_body(body_text)

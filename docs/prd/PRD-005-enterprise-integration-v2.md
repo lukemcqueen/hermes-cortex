@@ -413,7 +413,7 @@ handoff_schema:
 | AC-001 | Every fleet agent has a registry entry with all 5 concerns | `fleet-audit --level F1` |
 | AC-002 | Post-hoc action reconstruction resolves all 4 Accountability clauses | Walk one action through the four clauses |
 | AC-003 | A task passes through all 5 waves with quality gates between each | Run a task; verify wave transitions |
-| AC-004 | Bus EXEC with typed payload reaches target agent and returns verified result | `hc exec` with schema validation |
+| AC-004 | Bus EXEC with typed payload reaches target agent and returns verified result | `fleet exec` with schema validation |
 | AC-005 | Cheat detection blocks a deliberate error-swallow in harness preflight | Inject cheat → release blocked |
 | AC-006 | outerloop evidence→verdict→ledger→answerability chain is reconstructable | `outerloop ledger why <id>` |
 | AC-007 | A goal runs until verifiable done condition is met | `/goal` with completion condition |

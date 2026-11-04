@@ -305,7 +305,7 @@ last UPDATE_REQUEST dispatched to it — so after a run of pushes the whole flee
 
 **Remediation depends on the ahead count** — classify first:
 
-- `behind > 0, ahead == 0` → fast-forward. `hc exec <agent> git-main-sync.sh`; its
+- `behind > 0, ahead == 0` → fast-forward. `fleet exec <agent> git-main-sync.sh`; its
   post-merge hook re-runs `cortex-update.sh`, so the stale DEPLOYED tree is repaired in
   the same pass (verified: 53 behind → `0 behind, 0 ahead`, drift audit 31 items → exit 0).
 - `ahead > 0` → DIVERGENT: a pull is a merge, and the local commits may be someone's

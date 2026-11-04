@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-hc — Steadfaste Fleet CLI for humans. Talks to the Agent Bus over HTTP.
+fleet — Steadfaste Fleet CLI for humans. Talks to the Agent Bus over HTTP.
 Host-independent: reads CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL from
 .env (same as every fleet script), so it works identically on
 moses and esther hosts. No docker exec, no local-Postgres assumption.
 
-  hc inbox             list your messages (non-destructive read)
-  hc inbox joseph      list joseph's messages
-  hc send <a> <subj>   send a message (liveness + dedup gates; --self-tested/--force)
-  hc exec <a> <cmd>    execute a script on a remote agent, wait for result
-  hc status            bus health + queue depths + fleet
-  hc depth             all queue depths
-  hc fleet             agent health statuses
-  hc bus               full bus dashboard (queue states, processing, stuck, DLQ)
-  hc bus --all         include archived activity
-  hc watch             watch ALL inbox queues (default)
-  hc watch moses       watch only moses' inbox (non-destructive)
-  hc kill <agent>    send KILL signal to a fleet agent (emergency stop)
-  hc doctor            run cortex-doctor
-  hc harness <cmd>     wire a coding agent (Pi, Claude Code, Codex) to the cortex
+  fleet inbox             list your messages (non-destructive read)
+  fleet inbox joseph      list joseph's messages
+  fleet send <a> <subj>   send a message (liveness + dedup gates; --self-tested/--force)
+  fleet exec <a> <cmd>    execute a script on a remote agent, wait for result
+  fleet status            bus health + queue depths + fleet
+  fleet depth             all queue depths
+  fleet fleet             agent health statuses
+  fleet bus               full bus dashboard (queue states, processing, stuck, DLQ)
+  fleet bus --all         include archived activity
+  fleet watch             watch ALL inbox queues (default)
+  fleet watch moses       watch only moses' inbox (non-destructive)
+  fleet kill <agent>    send KILL signal to a fleet agent (emergency stop)
+  fleet doctor            run cortex-doctor
+  fleet harness <cmd>     wire a coding agent (Pi, Claude Code, Codex) to the cortex
                        context store — list | show | install | verify | add
-  hc dashboard         open bus dashboard in browser
-  hc env               show current config
-  hc help              this message
+  fleet dashboard         open bus dashboard in browser
+  fleet env               show current config
+  fleet help              this message
 
 Config: ~/steadfaste-fleet/.env (optional HC_AGENT; every field falls back)
   HC_AGENT=esther                          # your agent name (default)
@@ -79,7 +79,7 @@ try:
 except Exception:
     # ImportError (module missing) OR RuntimeError (BUS_URL unset on this
     # host — e.g. a bare machine without .env). Both degrade to
-    # a clear message; hc must never crash at import.
+    # a clear message; fleet must never crash at import.
     _HAS_LIB = False
     BUS_URL = ""
     BUS_FALLBACK_URL = ""
@@ -136,8 +136,13 @@ def load_config() -> dict:
                 k, v = (x.strip().strip("'\"") for x in line.split("=", 1))
                 if k == "HC_AGENT" and not config["agent"]:
                     config["agent"] = v
-        except Exception:
-            print("expected — silently handled", file=sys.stderr)
+        except Exception as exc:
+            # An unreadable .env makes HC_AGENT ABSENT here — the same answer the
+            # search gives for a key it cannot find. Say WHY it is absent rather than
+            # swallowing (matches _read_bus_conf's fail-closed stance); identity still
+            # fails loudly once every source is exhausted.
+            print(f"⚠️  Could not read {CONFIG_FILE} ({exc}) — treating HC_AGENT as absent",
+                  file=sys.stderr)
 
     if not config["agent"]:
         config["agent"] = os.environ.get("AGENT_NAME", "") or _read_bus_conf("AGENT_NAME")
@@ -245,7 +250,7 @@ def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[
     """Get recently archived messages from a queue (non-destructive read).
 
     The live peek only returns 'pending' messages — a result the handler
-    already archived is invisible to it. hc exec polls archives too so a
+    already archived is invisible to it. fleet exec polls archives too so a
     fast-archived EXEC_RESULT is found instead of hanging (2026-08-06).
     """
     if not _HAS_LIB:
@@ -425,7 +430,7 @@ def _pending_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -
     """Return the first pending message duplicating the proposed send.
 
     Canonical rule lives in cortex_bus.bus_find_duplicate — this shim
-    keeps hc.py's call site unchanged while the semantics stay shared.
+    keeps fleet.py's call site unchanged while the semantics stay shared.
     """
     try:
         from cortex_bus import bus_find_duplicate
@@ -466,7 +471,7 @@ def cmd_send(cfg: dict, args: list):
     args = [a for a in args if a != "--self-tested"]
 
     if len(args) < 2:
-        print("Usage: hc send <agent> <subject> [body] [--self-tested] [--force]")
+        print("Usage: fleet send <agent> <subject> [body] [--self-tested] [--force]")
         return
 
     agent = args[0]
@@ -482,10 +487,10 @@ def cmd_send(cfg: dict, args: list):
         print("   until you've proven the identical flow works on yourself.")
         print()
         print(f"   To self-test first:")
-        print(f"     1. hc send {my_name} \"{subject}\" '<identical-body>'")
+        print(f"     1. fleet send {my_name} \"{subject}\" '<identical-body>'")
         print(f"     2. Verify the handler processes it (run handler --once)")
         print(f"     3. Check inbox for UPDATE_RESULT / EXEC_RESULT")
-        print(f"     4. Then re-run: hc send {agent} \"{subject}\" '<body>' --self-tested")
+        print(f"     4. Then re-run: fleet send {agent} \"{subject}\" '<body>' --self-tested")
         print()
         print("   Use --self-tested only AFTER the self-test is verified.")
         return
@@ -606,8 +611,8 @@ def cmd_status(cfg: dict, args: list):
                 icon = "✅" if status == "✅" else ("⚠️" if status == "⚠️" else "❌")
                 print(f"   {icon} {name:12s}  {status}")
             print(f"\n   Workflows: {data.get('wf', '?')}")
-        except Exception:
-            print("expected — silently handled", file=sys.stderr)
+        except Exception as exc:
+            print(f"⚠️  Could not read fleet state {fleet} ({exc})", file=sys.stderr)
 
 
 def cmd_depth(cfg: dict, args: list):
@@ -717,7 +722,7 @@ def cmd_bus(cfg: dict, args: list):
 
     NOTE: this deep-dive reads the LOCAL Postgres (docker exec mycortex-postgres).
     On moses' host that is the ACTIVE bus; on esther's host it shows her own
-    (fallback) bus. For the fleet-wide view use: hc status / hc depth / hc inbox.
+    (fallback) bus. For the fleet-wide view use: fleet status / fleet depth / fleet inbox.
     """
     show_all = "--all" in args or "-a" in args
     show_archived = "--archived" in args
@@ -944,13 +949,13 @@ def cmd_bus(cfg: dict, args: list):
                 print()
     elif not local_db_ok:
         print("⚠️  Local bus DB unavailable (bus.messages/bus.queues missing or container down).")
-        print("   Remote bus is healthy — use 'hc status' / 'hc depth' for the fleet view.")
+        print("   Remote bus is healthy — use 'fleet status' / 'fleet depth' for the fleet view.")
         print()
     elif total_pending == 0 and total_proc == 0:
         print("📭 No activity. All queues idle.")
         print()
     else:
-        print("💡 Tip: use 'hc bus --all' or 'hc bus --archived' to see archived messages.")
+        print("💡 Tip: use 'fleet bus --all' or 'fleet bus --archived' to see archived messages.")
         print()
 
 
@@ -978,7 +983,7 @@ def cmd_dashboard(cfg: dict, args: list):
 
 def cmd_env(cfg: dict, args: list):
     """Show current config."""
-    print("📋 hc Configuration:")
+    print("📋 fleet Configuration:")
     print(f"   HC_AGENT     = {cfg['agent']}")
     print(f"   Config file  = {CONFIG_FILE}")
     print(f"   File exists  = {CONFIG_FILE.exists()}")
@@ -990,22 +995,22 @@ def cmd_env(cfg: dict, args: list):
     else:
         print(f"   Backend      = ❌ lib.cortex_bus not importable (run cortex-update.sh)")
     print(f"\nTip: Any agent's inbox is readable:")
-    print(f"  hc inbox moses    hc inbox joseph    hc inbox esther")
+    print(f"  fleet inbox moses    fleet inbox joseph    fleet inbox esther")
 
 
 def cmd_kill(cfg: dict, args: list):
     """Kill a fleet agent — emergency stop.
 
-    Usage: hc kill <agent> [--reason <why>] [--no-rollback] [--dry-run]
+    Usage: fleet kill <agent> [--reason <why>] [--no-rollback] [--dry-run]
 
     If no reason given, prompts for one. Sends KILL via bus + records
     outerloop evidence + creates HITL escalation.
     """
     if not args:
-        print("Usage: hc kill <agent> [--reason <why>] [--no-rollback] [--dry-run]")
-        print("       hc kill all         # Kill every agent in the fleet")
-        print("       hc kill esther --reason 'Security breach'")
-        print("       hc kill esther --no-rollback --dry-run")
+        print("Usage: fleet kill <agent> [--reason <why>] [--no-rollback] [--dry-run]")
+        print("       fleet kill all         # Kill every agent in the fleet")
+        print("       fleet kill esther --reason 'Security breach'")
+        print("       fleet kill esther --no-rollback --dry-run")
         return
 
     # Parse args
@@ -1034,7 +1039,7 @@ def cmd_kill(cfg: dict, args: list):
 
     if not reason:
         print("⚠️  Kill requires a reason. Provide one with --reason")
-        print("   Example: hc kill esther --reason 'Emergency maintenance'")
+        print("   Example: fleet kill esther --reason 'Emergency maintenance'")
         return
 
     # Build fleet-stop-switch args
@@ -1054,9 +1059,9 @@ def cmd_kill(cfg: dict, args: list):
 def cmd_exec(cfg: dict, args: list):
     """Execute a command on a remote agent via the bus.
 
-    Usage: hc exec <agent> <command> [args...] [--output-schema <name>]
-           hc exec <agent> -- <command with args>
-           hc exec <agent> <command> --timeout <seconds>
+    Usage: fleet exec <agent> <command> [args...] [--output-schema <name>]
+           fleet exec <agent> -- <command with args>
+           fleet exec <agent> <command> --timeout <seconds>
 
     Validates the EXEC payload against handoff_schema before sending
     and validates the EXEC_RESULT against the specified output schema.
@@ -1085,15 +1090,15 @@ def cmd_exec(cfg: dict, args: list):
             break
 
     if len(clean_args) < 2:
-        print("Usage: hc exec <agent> <command> [args...] [--output-schema <name>]")
-        print("       hc exec <agent> <command> [--timeout <seconds>]")
+        print("Usage: fleet exec <agent> <command> [args...] [--output-schema <name>]")
+        print("       fleet exec <agent> <command> [--timeout <seconds>]")
         print()
         print("Examples:")
-        print("  hc exec esther cortex-doctor.py --json")
-        print("  hc exec gisu cortex-doctor.py --quiet")
-        print("  hc exec joseph -- df -h /")
-        print("  hc exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT")
-        print("  hc exec kustos install-provider-timeouts.sh --timeout 300")
+        print("  fleet exec esther cortex-doctor.py --json")
+        print("  fleet exec gisu cortex-doctor.py --quiet")
+        print("  fleet exec joseph -- df -h /")
+        print("  fleet exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT")
+        print("  fleet exec kustos install-provider-timeouts.sh --timeout 300")
         print()
         print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
         print()
@@ -1183,7 +1188,7 @@ def cmd_exec(cfg: dict, args: list):
     print(f"   The agent's handler ticks every 5 min — {timeout_seconds}s is the max")
     print(f"   round-trip window. If the handler is down or the command exceeded")
     print(f"   {timeout_seconds}s, no result will come. Check:")
-    print(f"     hc bus --all   (recent archived activity)")
+    print(f"     fleet bus --all   (recent archived activity)")
 
 
 def _match_result_msg(queue: str, corr_id: str, agent: str, command: str,
@@ -1265,7 +1270,7 @@ def _harness_resolver():
     "cannot check" rather than as a broken harness. Re-deriving that selection here
     would be a second copy of the rule.
     """
-    here = Path(__file__).resolve().parent          # repo: ops/scripts/hc
+    here = Path(__file__).resolve().parent          # repo: ops/scripts/fleet
     candidates = [
         here.parent / "lib" / "python-with-module.sh",                    # repo: ops/scripts/lib
         Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "lib" / "python-with-module.sh",
@@ -1275,7 +1280,7 @@ def _harness_resolver():
 
 
 def cmd_harness(cfg: dict, args: list):
-    """`hc harness` — wire any coding agent to the cortex context store.
+    """`fleet harness` — wire any coding agent to the cortex context store.
 
     A THIN DRIVER over ops/install/harnesses/registry.yaml (the single source of
     harness knowledge) — it never re-encodes a harness's layer or tool list, so
@@ -1284,20 +1289,19 @@ def cmd_harness(cfg: dict, args: list):
     from pathlib import Path
     here = Path(__file__).resolve().parent
     candidates = [
-        here / "hc" / "harness.py",                        # repo: ops/scripts/hc/harness.py
-        here / "harness.py",
-        here / "hc-harness.py",                            # deployed: scripts/hc-harness.py
-        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "hc" / "harness.py",
-        Path.home() / ".steadfaste-fleet" / "scripts" / "hc-harness.py",   # deployed
+        here / "harness.py",                               # repo: ops/scripts/fleet/harness.py
+        here / "fleet-harness.py",                         # deployed flat: scripts/fleet-harness.py
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "fleet" / "harness.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "fleet-harness.py",   # deployed
     ]
     mod_path = next((p for p in candidates if p.is_file()), None)
     if mod_path is None:
-        print("hc harness: harness.py not found — run cortex-update.sh", file=sys.stderr)
+        print("fleet harness: harness.py not found — run cortex-update.sh", file=sys.stderr)
         sys.exit(1)
     # Run the module as a CHILD, under an interpreter that can import PyYAML. The
-    # module needs yaml and the interpreter running THIS CLI is the one `hc`'s
+    # module needs yaml and the interpreter running THIS CLI is the one `fleet`'s
     # launcher picked (a bare `python3`), which on a real host need not have it —
-    # loading it in-process made one missing library kill `hc harness` outright with
+    # loading it in-process made one missing library kill `fleet harness` outright with
     # "PyYAML required" instead of selecting the capable interpreter the fleet already
     # ships a resolver for. Measured on this host: the bare python3 cannot import yaml
     # while the cortex venv (which the resolver selects) can.
@@ -1306,7 +1310,7 @@ def cmd_harness(cfg: dict, args: list):
     if resolver is not None:
         r = subprocess.run(["bash", str(resolver), "yaml", str(mod_path), *args])
         if r.returncode == 3:
-            print("hc harness: COULD NOT VERIFY — no interpreter on this host can import "
+            print("fleet harness: COULD NOT VERIFY — no interpreter on this host can import "
                   "PyYAML, so the harness registry cannot be read.", file=sys.stderr)
         sys.exit(r.returncode)
     # An older deploy with no resolver: run under our own interpreter. The module's
@@ -1318,11 +1322,11 @@ def cmd_harness(cfg: dict, args: list):
 def _resolve_script(name: str):
     """Find a cortex script: repo checkout first, then the deployed tree.
 
-    Same resolution shape as cmd_harness, in ONE function — so every script `hc pi`
+    Same resolution shape as cmd_harness, in ONE function — so every script `fleet pi`
     names is found the same way, and a missing one names the fix instead of silently
     doing nothing (`bash <missing>` would exit 127 and read as a failed install).
     """
-    here = Path(__file__).resolve().parent          # repo: ops/scripts/hc — deployed: scripts
+    here = Path(__file__).resolve().parent          # repo: ops/scripts/fleet — deployed: scripts
     repo = Path.home() / "steadfaste-fleet"
     deployed = Path.home() / ".steadfaste-fleet"
     candidates = [
@@ -1340,7 +1344,7 @@ def _resolve_script(name: str):
 def _run_script(path, args):
     """Run a cortex script through bash; its output passes straight through.
 
-    Returns the script's own rc — `hc pi` reports what the owner reported, it does not
+    Returns the script's own rc — `fleet pi` reports what the owner reported, it does not
     re-judge it (a second opinion here would be a second definition).
 
     Flushes OUR stdout first: the child writes unbuffered, so without this its output
@@ -1352,15 +1356,15 @@ def _run_script(path, args):
 
 
 def cmd_pi(cfg: dict, args: list):
-    """`hc pi` — the HOST-level entry point for Pi's cortex wiring on this machine.
+    """`fleet pi` — the HOST-level entry point for Pi's cortex wiring on this machine.
 
-    A THIN DRIVER, like `hc harness`. Each half of Pi's wiring already has exactly one
+    A THIN DRIVER, like `fleet harness`. Each half of Pi's wiring already has exactly one
     owner, and this command NAMES them rather than re-encoding them:
       install-pi-mcp.sh          the MCP servers (tools, governance, memory/session)
       install-pi-integration.sh  the extensions AND the published skills tree
       audit-pi-integration.sh    the per-layer verdict
     so nobody has to remember two script names, and a second definition of "what Pi
-    needs" cannot grow here. Differences from `hc harness install pi`: that one is
+    needs" cannot grow here. Differences from `fleet harness install pi`: that one is
     PROJECT scope (copies files into a project and prints a derived run line); this one
     is USER scope — every Pi project on the host.
 
@@ -1370,20 +1374,20 @@ def cmd_pi(cfg: dict, args: list):
     rest = list(args[1:])
 
     if sub in ("help", "-h", "--help"):
-        print("hc pi — Pi's cortex wiring on THIS host\n")
-        print("  hc pi install   wire user-scope Pi (MCP servers + extensions + skills tree)")
-        print("  hc pi check     verdict: installer --check + the per-layer audit")
-        print("  hc pi skills    what Pi is pointed at, and how much of the tree it sees")
-        print("\n  project-scope install is a different command: hc harness install pi --dir <project>")
+        print("fleet pi — Pi's cortex wiring on THIS host\n")
+        print("  fleet pi install   wire user-scope Pi (MCP servers + extensions + skills tree)")
+        print("  fleet pi check     verdict: installer --check + the per-layer audit")
+        print("  fleet pi skills    what Pi is pointed at, and how much of the tree it sees")
+        print("\n  project-scope install is a different command: fleet harness install pi --dir <project>")
         sys.exit(0)
 
     if sub not in ("install", "check", "skills"):
-        print(f"hc pi: unknown subcommand '{sub}' (try: install | check | skills)",
+        print(f"fleet pi: unknown subcommand '{sub}' (try: install | check | skills)",
               file=sys.stderr)
         sys.exit(2)
 
     if not (Path.home() / ".pi" / "agent").is_dir() and sub != "skills":
-        print("hc pi: no Pi on this host (~/.pi/agent absent) — nothing to wire.")
+        print("fleet pi: no Pi on this host (~/.pi/agent absent) — nothing to wire.")
         print("  A host without Pi is not a fault; install Pi, then re-run.")
         sys.exit(0)
 
@@ -1392,15 +1396,15 @@ def cmd_pi(cfg: dict, args: list):
         for name in ("install-pi-mcp.sh", "install-pi-integration.sh"):
             path = _resolve_script(name)
             if path is None:
-                print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                print(f"fleet pi: {name} not found — run cortex-update.sh", file=sys.stderr)
                 rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
                 continue          # would report an earlier, milder failure
             print(f"── {name} ──")
             r = _run_script(path, rest)
             if r != 0:
-                print(f"hc pi: {name} failed (rc={r})", file=sys.stderr)
+                print(f"fleet pi: {name} failed (rc={r})", file=sys.stderr)
                 rc = max(rc, r)
-        print("hc pi: " + ("wired" if rc == 0 else f"NOT wired (rc={rc})"))
+        print("fleet pi: " + ("wired" if rc == 0 else f"NOT wired (rc={rc})"))
         sys.exit(rc)
 
     if sub == "check":
@@ -1413,26 +1417,26 @@ def cmd_pi(cfg: dict, args: list):
         ):
             path = _resolve_script(name)
             if path is None:
-                print(f"hc pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                print(f"fleet pi: {name} not found — run cortex-update.sh", file=sys.stderr)
                 rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
                 continue          # would report an earlier, milder failure
             print(f"── {label} ──")
             r = _run_script(path, extra)
             if r != 0:
                 rc = max(rc, r)
-        print("hc pi: " + ("OK" if rc == 0 else f"NOT OK (rc={rc})"))
+        print("fleet pi: " + ("OK" if rc == 0 else f"NOT OK (rc={rc})"))
         sys.exit(rc)
 
     # skills
     import json
     settings = Path.home() / ".pi" / "agent" / "settings.json"
     if not settings.is_file():
-        print(f"hc pi skills: {settings} missing — run: hc pi install", file=sys.stderr)
+        print(f"fleet pi skills: {settings} missing — run: fleet pi install", file=sys.stderr)
         sys.exit(1)
     try:
         data = json.loads(settings.read_text())
     except (OSError, ValueError) as exc:
-        print(f"hc pi skills: cannot read {settings} ({exc})", file=sys.stderr)
+        print(f"fleet pi skills: cannot read {settings} ({exc})", file=sys.stderr)
         sys.exit(1)
     entries = [e for e in data.get("skills", []) if isinstance(e, str)]
     print(f"Pi's registered skills entries ({settings}):")
@@ -1440,12 +1444,12 @@ def cmd_pi(cfg: dict, args: list):
         print(f"  {e}")
     if not entries:
         print("  (none — Pi sees no skills)")
-    # The VISIBILITY verdict belongs to the installer, which mirrors Pi's own traversal
-    # (dist/core/skills.js). This command reports the registration and delegates the
-    # count, so how Pi sees a tree stays defined in exactly one place.
+    # This command reports the registration and delegates the VISIBILITY verdict to the
+    # installer's own --check, so how Pi sees a tree stays defined there (not here). The
+    # delegation is pinned by tests/test_hc_pi.py's skills-delegation cases.
     path = _resolve_script("install-pi-integration.sh")
     if path is None:
-        print("hc pi: install-pi-integration.sh not found — run cortex-update.sh",
+        print("fleet pi: install-pi-integration.sh not found — run cortex-update.sh",
               file=sys.stderr)
         sys.exit(1)
     print("\n── visibility (delegated to the installer's own check) ──")
@@ -1457,25 +1461,25 @@ def cmd_help(cfg: dict, args: list):
     print(__doc__.strip())
     print()
     print("Quick reference:")
-    print(f"  hc inbox              — read your inbox ({cfg['agent']})")
-    print("  hc inbox <agent>      — read any agent's inbox")
-    print("  hc send <a> <subj>    — send a message")
-    print("  hc exec <a> <cmd>    — execute a script on remote agent")
-    print("  hc status             — bus health + queue depths + fleet")
-    print("  hc depth [agent]      — queue depth (all or specific)")
-    print("  hc fleet              — agent health statuses")
-    print("  hc bus                — full bus dashboard (queues, processing, stuck, DLQ)")
-    print("  hc bus --all          — include archived activity")
-    print("  hc watch              — watch ALL inbox queues (default)")
-    print("  hc watch moses        — watch only moses' inbox")
-    print("  hc doctor             — run cortex-doctor")
-    print("  hc harness <cmd>      — wire a coding agent to the cortex context store")
+    print(f"  fleet inbox              — read your inbox ({cfg['agent']})")
+    print("  fleet inbox <agent>      — read any agent's inbox")
+    print("  fleet send <a> <subj>    — send a message")
+    print("  fleet exec <a> <cmd>    — execute a script on remote agent")
+    print("  fleet status             — bus health + queue depths + fleet")
+    print("  fleet depth [agent]      — queue depth (all or specific)")
+    print("  fleet fleet              — agent health statuses")
+    print("  fleet bus                — full bus dashboard (queues, processing, stuck, DLQ)")
+    print("  fleet bus --all          — include archived activity")
+    print("  fleet watch              — watch ALL inbox queues (default)")
+    print("  fleet watch moses        — watch only moses' inbox")
+    print("  fleet doctor             — run cortex-doctor")
+    print("  fleet harness <cmd>      — wire a coding agent to the cortex context store")
     print("                          (list | show | install | verify | add)")
-    print("  hc pi <cmd>           — Pi's cortex wiring on THIS host, user scope")
+    print("  fleet pi <cmd>           — Pi's cortex wiring on THIS host, user scope")
     print("                          (install | check | skills)")
-    print("  hc dashboard          — open bus dashboard")
-    print("  hc env                — show config")
-    print("  hc help               — this message")
+    print("  fleet dashboard          — open bus dashboard")
+    print("  fleet env                — show config")
+    print("  fleet help               — this message")
 
 
 # ── Main ────────────────────────────────────────────────────────

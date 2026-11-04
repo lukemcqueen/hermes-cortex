@@ -30,4 +30,4 @@ If you're about to name a new file, pause. Could it be:
 | Searching once with one term, concluding "nothing exists" | Search 3+ different patterns across files, content, and git history |
 | Creating a parallel system when extending `cortex-update.sh`'s `register()` lines would work | Extend the existing deploy mechanism |
 | Building a one-off test file instead of running inline tests | Run tests in the terminal — don't create permanent files for ephemeral checks |
-| Creating a new CLI tool when an existing one can absorb the feature | Check if the feature fits as a new command in an existing CLI (e.g., `hc.py`) |
+| Creating a new CLI tool when an existing one can absorb the feature | Check if the feature fits as a new command in an existing CLI (e.g., `fleet.py`) |

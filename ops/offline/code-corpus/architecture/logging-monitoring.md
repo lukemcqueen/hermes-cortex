@@ -264,31 +264,31 @@ health = HealthCheck(
 
 @app.get("/health")
 async def health_check():
-    hc = HealthCheck(version=health.version, release_id=health.release_id)
+    healthcheck = HealthCheck(version=health.version, release_id=health.release_id)
 
     # Check database connectivity (example)
     try:
         await db.execute("SELECT 1")
-        hc.add_check("database", HealthStatus.PASS)
+        healthcheck.add_check("database", HealthStatus.PASS)
     except Exception as exc:
-        hc.add_check("database", HealthStatus.FAIL, str(exc))
+        healthcheck.add_check("database", HealthStatus.FAIL, str(exc))
 
     # Check Redis (example)
     try:
         await redis.ping()
-        hc.add_check("redis", HealthStatus.PASS)
+        healthcheck.add_check("redis", HealthStatus.PASS)
     except Exception as exc:
-        hc.add_check("redis", HealthStatus.FAIL, str(exc))
+        healthcheck.add_check("redis", HealthStatus.FAIL, str(exc))
 
     # Check disk space (example)
     import shutil
     usage = shutil.disk_usage("/")
     if usage.free / usage.total < 0.05:
-        hc.add_check("disk", HealthStatus.WARN, f"Only {usage.free / (1024**3):.1f}GB free")
+        healthcheck.add_check("disk", HealthStatus.WARN, f"Only {usage.free / (1024**3):.1f}GB free")
 
-    status_code = 200 if hc.status == HealthStatus.PASS else (503 if hc.status == HealthStatus.FAIL else 200)
+    status_code = 200 if healthcheck.status == HealthStatus.PASS else (503 if healthcheck.status == HealthStatus.FAIL else 200)
     return Response(
-        content=json.dumps(asdict(hc)),
+        content=json.dumps(asdict(healthcheck)),
         status_code=status_code,
         media_type="application/health+json",
     )

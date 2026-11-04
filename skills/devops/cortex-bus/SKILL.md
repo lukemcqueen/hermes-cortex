@@ -540,7 +540,7 @@ the messages sit in the local queues indefinitely.
 
 ## Dedup: consumed copies are never re-forwarded (2026-08-12)
 
-**Symptom:** a single `hc send gisu EXEC "…cortex-doctor.py…"` produced **3
+**Symptom:** a single `fleet send gisu EXEC "…cortex-doctor.py…"` produced **3
 identical EXECs** in `inbox_gisu` with the same `correlation_id`
 (`send-ba7f68e22d6a`) at 00:04/00:06/00:11 KST. Gisu's handler archived all
 three (corr-idempotent), but the duplicate-delivery race left a task row
@@ -559,15 +559,15 @@ forwards at most once per direction per host. A consumed copy is a DELIVERED
 message, not a gap to re-warm. Regression test:
 `tests/test-bus-forwarder-dedup.py` (RED on old code, GREEN on fix).
 
-**`hc bus` on hosts without the local bus schema (2026-08-12):** `hc bus`
+**`fleet bus` on hosts without the local bus schema (2026-08-12):** `fleet bus`
 reads the LOCAL Postgres via `docker exec` — on hosts whose `mycortex-postgres`
 lacks `bus.messages`/`bus.queues` (or container down), `cmd_bus` used to
 traceback with `UnboundLocalError` because the queue-summary block was skipped.
 Fixed in `6876e47c`: `total_pending`/`total_proc` initialized up front,
 `local_db_ok` flag set on error, and the final branch prints
 `⚠️ Local bus DB unavailable` instead of crashing or a false "No activity".
-`hc bus --all` never crashed (different branch) — that's why it slipped
-through. The remote bus itself is healthy; use `hc status`/`hc depth` for the
+`fleet bus --all` never crashed (different branch) — that's why it slipped
+through. The remote bus itself is healthy; use `fleet status`/`fleet depth` for the
 fleet view.
 
 **Inspect for duplicates** (per-agent, recent window):

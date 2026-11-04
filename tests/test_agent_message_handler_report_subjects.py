@@ -13,7 +13,7 @@ Cause: a contradiction between two lists in the same file.
     `cmd_dispatch()` returns None.
   * The report branch that exists to catch them matched PREFIX forms only
     ("PROPOSAL:", "📝 PROPOSAL:", ...) — so a BARE "PROPOSAL" (which is what
-    normalization produces and what a plain `hc send --subject PROPOSAL`
+    normalization produces and what a plain `fleet send --subject PROPOSAL`
     sends) matched nothing and fell through to the fatal fallback, which
     archives the message and replies with an error.
 

@@ -103,18 +103,18 @@ def check_preexisting(failures: list[str]) -> None:
 def check_titus(failures: list[str]) -> None:
     """The skill-content request to inbox_titus is corroborated, NOT proven.
 
-    hc inbox is a non-destructive peek. The message may already have been
+    fleet inbox is a non-destructive peek. The message may already have been
     consumed by titus's 5-min handler, so an empty queue proves nothing either
     way — this check is CORROBORATING evidence only, never a delivery claim.
-    The only hard failure is a missing hc CLI (the probe could not run).
+    The only hard failure is a missing fleet CLI (the probe could not run).
     """
-    hc = HOME / ".steadfaste-fleet" / "scripts" / "hc"
-    if not hc.is_file():
-        failures.append("hc CLI not found")
+    fleet = HOME / ".steadfaste-fleet" / "scripts" / "fleet"
+    if not fleet.is_file():
+        failures.append("fleet CLI not found")
         return
     # Record the peek for the transcript; a non-zero rc is NOT a failure —
     # an unreadable/consumed queue is expected and does not disprove delivery.
-    _run([str(hc), "inbox", "titus"])
+    _run([str(fleet), "inbox", "titus"])
 
 
 def main() -> int:

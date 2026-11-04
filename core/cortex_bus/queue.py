@@ -208,7 +208,7 @@ class BusClient:
                  since_minutes: int = 60) -> list[dict]:
         """Read recently archived messages from a queue (non-destructive).
 
-        Results are ordered newest-first. Used by hc exec to find an
+        Results are ordered newest-first. Used by fleet exec to find an
         EXEC_RESULT that was already archived by the handler before the
         live-queue poll saw it (the archive-blindness hang, 2026-08-06).
 

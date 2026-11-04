@@ -4,7 +4,7 @@
 #  ENFORCEMENT HOOKS for Pi at USER scope, so every Pi session in
 #  every project gets them.
 #
-#  Problem: `hc harness install pi` wires ONE project (it copies the
+#  Problem: `fleet harness install pi` wires ONE project (it copies the
 #  extension into ./extensions and prints a run line with --skill and
 #  --tools flags). That is right for a project, but it means the
 #  skills and the enforcement hooks are re-copied and re-typed per

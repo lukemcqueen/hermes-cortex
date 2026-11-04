@@ -194,7 +194,7 @@ be atomic with the bus send — the row's own text allows either ("or a dispatch
 helper that sets assignee + correlation_id and sends the bus TASK_REQUEST
 atomically"). Making the two atomic needs a transactional outbox and is a
 separate slice; this plan sets the field and leaves the send to the existing
-`hc send` path, and says so in the row.
+`fleet send` path, and says so in the row.
 
 ### 4.4 Verification that will be shown
 
@@ -246,6 +246,6 @@ separate slice; this plan sets the field and leaves the send to the existing
 Fix-direction items (a) and (b) ship in this change and are shown by the A/B
 tests plus the live round trip. Item (c) — the morning pass dispatching over the
 bus meanwhile — is already the practice (the 2026-10-27 pass dispatched `[cost/4]`
-with `hc exec` and got three answers). The row can therefore move
+with `fleet exec` and got three answers). The row can therefore move
 `in_progress → completed` on that evidence, with the transport half explicitly
 carried as its own tracked gap rather than folded into this closure.

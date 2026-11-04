@@ -382,12 +382,12 @@ When a new cross-agent feature needs every agent to support it:
 ### Example: EXEC Command (added 2026-07-21)
 
 ```
-Moses: hc exec esther cortex-doctor.py --json
+Moses: fleet exec esther cortex-doctor.py --json
   → sends EXEC to inbox_esther
   → handler picks up within 5 min
   → runs ~/.steadfaste-fleet/scripts/cortex-doctor.py --json
   → sends EXEC_RESULT back to inbox_moses
-  → hc exec polls and displays result
+  → fleet exec polls and displays result
 ```
 
 Message schema:
@@ -417,7 +417,7 @@ After making changes, verify through the correct path:
 
 | Path | What it proves | When to use |
 |------|---------------|-------------|
-| `hc send` (docker exec SQL) | SQL function works | Local dev only — not representative |
+| `fleet send` (docker exec SQL) | SQL function works | Local dev only — not representative |
 | `curl 127.0.0.1:8903 + Bearer` | MCP tools path works | Testing Moses/Esther MCP |
 | `curl domain:13004 + Basic` | **External agent path works** | Testing remote agent connectivity |
 | `agent-message-handler.py --once` | Consumer picks it up | Testing handler dispatch |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for `hc harness` — the CLI driver over the harness registry.
+"""Tests for `fleet harness` — the CLI driver over the harness registry.
 
 The registry (ops/install/harnesses/registry.yaml) already declares every
 coding-agent harness and its access layer. These tests pin the thing that was
@@ -23,8 +23,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-HARNESS_CMD = REPO / "ops/scripts/hc/harness.py"
-HC_PY = REPO / "ops/scripts/hc/hc.py"
+HARNESS_CMD = REPO / "ops/scripts/fleet/harness.py"
+HC_PY = REPO / "ops/scripts/fleet/fleet.py"
 TOOLS_PY = REPO / "ops/services/mycortex-mem/context_tools.py"
 
 
@@ -255,11 +255,11 @@ def _yaml_less_runner(tmp_path: Path) -> Path:
 
 
 def test_the_cli_does_not_need_the_invoking_interpreter_to_have_yaml(tmp_path):
-    """`hc harness` must resolve a CAPABLE interpreter itself.
+    """`fleet harness` must resolve a CAPABLE interpreter itself.
 
-    Measured on this host: `python3 ops/scripts/hc/harness.py list` printed
-    "hc harness: PyYAML required (pip install pyyaml)" and exited 1, because
-    hc.py loaded harness.py IN-PROCESS and harness.py exits at import without yaml
+    Measured on this host: `python3 ops/scripts/fleet/harness.py list` printed
+    "fleet harness: PyYAML required (pip install pyyaml)" and exited 1, because
+    fleet.py loaded harness.py IN-PROCESS and harness.py exits at import without yaml
     — while the fleet resolver on the same host selects an interpreter that HAS it.
     """
     assert (REPO / "ops/scripts/lib/python-with-module.sh").is_file(), \
@@ -306,8 +306,8 @@ def test_the_cli_reports_could_not_verify_when_no_interpreter_can_import_yaml(tm
 
 
 def test_hc_entrypoint_dispatches_harness():
-    """`hc harness` must work through the real CLI entrypoint, not just the module."""
-    r = subprocess.run([sys.executable, str(REPO / "ops/scripts/hc/hc.py"), "harness", "list"],
+    """`fleet harness` must work through the real CLI entrypoint, not just the module."""
+    r = subprocess.run([sys.executable, str(REPO / "ops/scripts/fleet/fleet.py"), "harness", "list"],
                        capture_output=True, text=True, timeout=90)
     assert r.returncode == 0, r.stderr
     assert "pi" in r.stdout and "cli-extension" in r.stdout

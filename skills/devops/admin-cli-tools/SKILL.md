@@ -17,14 +17,14 @@ Principles for building admin CLI tools (tools for the human operator, not for a
 
 Admin tools talk to the Agent Bus over **HTTP** via the shared
 `lib/cortex_bus.py` client (`ops/scripts/lib/cortex_bus.py`) — the SAME client
-every fleet script uses. This is host-independent: `hc` works identically on
+every fleet script uses. This is host-independent: `fleet` works identically on
 moses' and esther's hosts.
 
 ```
-hc inbox joseph    ← reads the ACTIVE bus (CORTEX_BUS_URL) over HTTP (peek)
-hc watch           ← peeks ALL queues over HTTP (non-destructive)
-hc send esther     ← POSTs to the ACTIVE bus
-hc exec gisu       ← sends EXEC + polls inbox_moses via peek
+fleet inbox joseph    ← reads the ACTIVE bus (CORTEX_BUS_URL) over HTTP (peek)
+fleet watch           ← peeks ALL queues over HTTP (non-destructive)
+fleet send esther     ← POSTs to the ACTIVE bus
+fleet exec gisu       ← sends EXEC + polls inbox_moses via peek
 ```
 
 | Approach | When |
@@ -32,13 +32,13 @@ hc exec gisu       ← sends EXEC + polls inbox_moses via peek
 | **HTTP via lib.cortex_bus** | Default — send (bus_send), peek (bus_peek), queues (bus_list_queues), health (bus_health) |
 | **SQL `bus.send()`** | Only for local-Postgres tooling that runs on the bus host (diagnostics) |
 
-**Why not docker exec?** The old `hc` ran `docker exec mycortex-postgres psql`
+**Why not docker exec?** The old `fleet` ran `docker exec mycortex-postgres psql`
 against the host-LOCAL bus. On Moses' host local == ACTIVE bus (13004), so it
 worked. On Esther's host local == her own fallback bus (14004), which NOTHING
-polls — every `hc send`/`hc exec` silently vanished into the void. The fix
+polls — every `fleet send`/`fleet exec` silently vanished into the void. The fix
 (2026-08-06, hc-bus-aware) routes everything through the HTTP client with
 `CORTEX_BUS_URL` (ACTIVE) + `CORTEX_BUS_FALLBACK_URL` (fallback) + Bearer→Basic
-auth fallback. `hc bus` (the deep dashboard) still reads local Postgres — it's
+auth fallback. `fleet bus` (the deep dashboard) still reads local Postgres — it's
 labeled as such in its output.
 
 ### Non-Destructive Reads
@@ -65,19 +65,19 @@ made esther's host silently impersonate moses.
 ## Command Structure
 
 ```bash
-hc <command> [target] [args...]
+fleet <command> [target] [args...]
 ```
 
 Commands operate at queue level, one per agent:
-- `hc inbox <agent>` — read pending messages
-- `hc send <agent> <subject> [body]` — send a message
-- `hc watch [agent]` — live-poll (default: all queues)
-- `hc bus` — full dashboard (queues, processing, stuck, DLQ)
-- `hc depth [agent]` — queue depth
+- `fleet inbox <agent>` — read pending messages
+- `fleet send <agent> <subject> [body]` — send a message
+- `fleet watch [agent]` — live-poll (default: all queues)
+- `fleet bus` — full dashboard (queues, processing, stuck, DLQ)
+- `fleet depth [agent]` — queue depth
 
 ### Watch Modes
-- `hc watch` — watches ALL inbox queues (default)
-- `hc watch moses` — watches only moses' inbox
+- `fleet watch` — watches ALL inbox queues (default)
+- `fleet watch moses` — watches only moses' inbox
 
 ## Common Pitfalls
 

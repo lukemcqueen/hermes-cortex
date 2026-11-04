@@ -8,7 +8,7 @@ was invisible: a host whose Claude Code or Codex wiring had rotted reported a cl
 doctor, and the knowledge of "what a harness needs" lived in two places.
 
 This check reads the registry, decides presence from what the REGISTRY declares, and
-judges the present ones by driving `hc harness verify <name>` — the same command an
+judges the present ones by driving `fleet harness verify <name>` — the same command an
 operator runs. It is a driver, never a second definition.
 
 Three outcomes, and the distinction between them is the point:
@@ -89,11 +89,11 @@ def _registry(tmp_path: Path, *, present: bool = True) -> Path:
 def _registry_view(regdir: Path) -> str:
     """The registry view from the REAL CLI, so no test restates its JSON shape.
 
-    This is the seam that matters: the check must consume what `hc harness list --json`
+    This is the seam that matters: the check must consume what `fleet harness list --json`
     actually prints, and a hand-written fixture would test my guess at that shape rather
     than the CLI's output.
     """
-    r = subprocess.run(["bash", str(_REPO / "ops" / "scripts" / "hc" / "bin" / "hc"),
+    r = subprocess.run(["bash", str(_REPO / "ops" / "scripts" / "fleet" / "bin" / "fleet"),
                         "harness", "list", "--json"],
                        capture_output=True, text=True, timeout=120,
                        env={**os.environ, "CORTEX_HARNESS_DIR": str(regdir)})
@@ -246,11 +246,11 @@ def test_the_real_doctor_reports_one_line_per_declared_harness(tmp_path):
     """End to end through cortex-doctor.py: the registry count and the verdict shape hold.
 
     This is the system path, not the function: the doctor's own CLI, its own registry
-    resolution, and — for a harness that IS installed here — the real `hc harness verify`
+    resolution, and — for a harness that IS installed here — the real `fleet harness verify`
     subprocess underneath. It asserts the INVARIANTS that hold on any host (one line per
     declared harness, no FAIL, every status one of the three outcomes) and then the
     host-specific consequence: where a harness's declared presence exists, its line must
-    not be SKIP, so a regression in `hc harness verify` fails here rather than in a
+    not be SKIP, so a regression in `fleet harness verify` fails here rather than in a
     doctor run nobody reads.
     """
     import yaml

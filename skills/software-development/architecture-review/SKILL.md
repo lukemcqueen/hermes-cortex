@@ -11,7 +11,7 @@ metadata:
   hermes:
     tags: [architecture, design-review, decision-matrix, cost-estimation, conflict-resolution, party, hc-party]
     aliases: [hc-party, party]
-    trigger_phrases: [architecture review, design review, evaluate approach, hc party, arch party]
+    trigger_phrases: [architecture review, design review, evaluate approach, fleet party, arch party]
     related_skills: [plan, writing-plans, spike, change-test-loop, codebase-design, root-cause-debugging]
 ---
 

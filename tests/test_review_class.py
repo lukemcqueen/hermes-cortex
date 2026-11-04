@@ -32,8 +32,8 @@ MCP = REPO / "mcp-servers" / "loop-gov-mcp.py"
 
 spec = importlib.util.spec_from_file_location("loop_gov_mcp", MCP)
 if spec and spec.loader:
-    hc = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(hc)
+    fleet = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fleet)
 else:
     raise AssertionError(f"cannot load {MCP}")
 
@@ -67,9 +67,9 @@ LOCKFILE_ONLY = ["Cargo.lock"]
 ], ids=lambda v: v)
 def test_review_class_deterministic(paths, expected):
     """The pure classifier answers the same way for every input (no ambient state)."""
-    assert hc._review_class(list(paths)) == expected
+    assert fleet._review_class(list(paths)) == expected
 
 
 def test_has_uncommitted_code_forces_C_even_for_docs():
     """Plan §3 rule 4: an uncommitted-code claim is never A0."""
-    assert hc._review_class(DOCS, has_uncommitted_code=True) == C
+    assert fleet._review_class(DOCS, has_uncommitted_code=True) == C

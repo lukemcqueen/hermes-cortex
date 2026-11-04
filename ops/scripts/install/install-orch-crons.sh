@@ -447,7 +447,7 @@ create_cron "orch-weekly-cost-report" "0 9 * * 1" \
   "true"
 
 # Daily task board digest — RETIRED 2026-10-02 (Luke: "please remove them as
-# they are done"). The cron is gone; the script stays (hc board / commands.py
+# they are done"). The cron is gone; the script stays (fleet board / commands.py
 # still calls it on demand). Nothing recreates the job.
 
 # Orchestrator morning pass (task model v3 T5) — decompose stories → slices
@@ -465,7 +465,7 @@ READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess colum
     ^ "column" is a RESERVED word in PostgreSQL — it MUST be written with the double quotes exactly like that in any SELECT, or the query fails with a syntax error.
   tasks.task_events: id, task_id, event_type, from_status, to_status, reason, by, session_id, correlation_id, at   <- the timestamp is 'at', NOT created_at
   Always qualify columns in a join (t.id, e.task_id): an unqualified id is ambiguous.
-  The bus schema is NOT readable by this role (permission denied BY DESIGN) — use the bus API or hc.py, never raw SQL on bus.*.
+  The bus schema is NOT readable by this role (permission denied BY DESIGN) — use the bus API or fleet.py, never raw SQL on bus.*.
   Status changes follow the legal arc pending -> in_progress -> completed; a direct pending -> completed is refused by the trigger.
 
 1. task-db.py list --repo ALL --status pending --kind story, then task-db.py list --repo ALL --claimable. (--repo ALL is REQUIRED on every read — bare reads from the agent home return repo-unknown and an empty board.)

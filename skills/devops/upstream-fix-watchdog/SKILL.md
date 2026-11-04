@@ -127,10 +127,10 @@ hermes cron create --name <name> --schedule '0 9 * * *' \
    for a fix/update dispatch — it is the default, not a decision point.
    `orch-bus-fleet-dispatch.py --execute` (sync stale local
    agent-registry from the bus host first — see `fleet-commands` skill), or
-   `hc send <agent> UPDATE_REQUEST ...`.
+   `fleet send <agent> UPDATE_REQUEST ...`.
    Include ALL agents; the dispatch tool skips dev-agents — send those
    manually. When the registry's `health_url` is a stale placeholder
-   (e.g. `your-domain.com`), `hc send` liveness refuses — use `--force`
+   (e.g. `your-domain.com`), `fleet send` liveness refuses — use `--force`
    (the bus is the authoritative proof; verify against `bus.archives`).
    Verify UPDATE_RESULT `git_sha_after` on the AUTHORITATIVE bus
    (never the local mirror — it lags).

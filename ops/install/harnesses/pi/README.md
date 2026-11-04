@@ -45,7 +45,7 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh          # the TOOLS (MCP)
 bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
 # PROJECT SCOPE — one repo, files copied in + a generated run line:
-hc harness install pi --dir <your-pi-project>
+fleet harness install pi --dir <your-pi-project>
 # (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
 ```
 

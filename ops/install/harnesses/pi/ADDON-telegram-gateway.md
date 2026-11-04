@@ -1,4 +1,4 @@
-# Optional add-on: Telegram gateway for Pi (hc / steadfaste)
+# Optional add-on: Telegram gateway for Pi (fleet / steadfaste)
 
 **Audience:** an agent setting up a Pi backend on the cortex-gateway daemon,
 answering a Telegram bot distinct from the Hermes bot. This is the macOS

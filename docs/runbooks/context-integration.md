@@ -33,18 +33,18 @@ python3 ops/install/harnesses/generate-harnesses.py --check    # CI: derived fil
 python3 ops/install/harnesses/generate-harnesses.py --add <name> --layer mcp --surface '...'
 ```
 
-**Or just use the driver** — `hc harness` reads the registry for you (never a second
+**Or just use the driver** — `fleet harness` reads the registry for you (never a second
 copy of the harness knowledge):
 
 ```bash
-hc harness list                       # every declared harness + its layer
-hc harness show pi                    # why this layer, install, run, verify
-hc harness install pi --dir <project> # do the file steps, print the DERIVED run line
-hc harness verify pi                  # registry current? store reachable? artifact there?
-hc harness add <name> --layer mcp --surface '...'   # scaffold a new entry
+fleet harness list                       # every declared harness + its layer
+fleet harness show pi                    # why this layer, install, run, verify
+fleet harness install pi --dir <project> # do the file steps, print the DERIVED run line
+fleet harness verify pi                  # registry current? store reachable? artifact there?
+fleet harness add <name> --layer mcp --surface '...'   # scaffold a new entry
 ```
 
-`hc harness install` derives the `--tools` allowlist from
+`fleet harness install` derives the `--tools` allowlist from
 `context_tools.TOOLS` — never hand-typed, because a hand-typed list rots silently
 when the contract grows a tool and the harness then cannot reach it. For an `mcp`
 layer harness it prints the registration entry and **does not touch that other

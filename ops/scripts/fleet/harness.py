@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""harness.py — `hc harness`: wire any coding agent to the cortex context store.
+"""harness.py — `fleet harness`: wire any coding agent to the cortex context store.
 
 WHY THIS EXISTS: the fleet will consume ONE capability from N heterogeneous
 coding agents (Pi, Hermes, Claude Code, Codex, …). That knowledge was already
@@ -12,14 +12,14 @@ while everything still looks wired.
 This command is a DRIVER over the registry, never a second definition of it:
 it reads the registry, executes the declared install operations, and DERIVES
 the run line's tool list from the contract — so adding a tool to the contract
-changes what `hc harness install pi` prints with no registry edit.
+changes what `fleet harness install pi` prints with no registry edit.
 
-    hc harness list                 what is declared, and its layer
-    hc harness show <name>          install / run / verify for one harness
-    hc harness install <name> [--dir DIR]
+    fleet harness list                 what is declared, and its layer
+    fleet harness show <name>          install / run / verify for one harness
+    fleet harness install <name> [--dir DIR]
                                     do the file steps, print the run line
-    hc harness verify [<name>]      registry current? store reachable? artifact there?
-    hc harness add <name> --layer mcp|cli-extension|cli-hook|none --surface '...'
+    fleet harness verify [<name>]      registry current? store reachable? artifact there?
+    fleet harness add <name> --layer mcp|cli-extension|cli-hook|none --surface '...'
 
 Layers (same four the registry declares):
   mcp            harness reads an MCP server from its own config — we print the
@@ -51,17 +51,17 @@ except ImportError:  # pragma: no cover
     # every harness as broken on a host that simply could not run the check — measured
     # on this host under the Hermes tools python3, while the same host has a capable
     # interpreter the resolver selects.
-    print("hc harness: COULD NOT VERIFY — no interpreter could import PyYAML, so the "
+    print("fleet harness: COULD NOT VERIFY — no interpreter could import PyYAML, so the "
           "harness registry cannot be read.", file=sys.stderr)
     print("  Run it through the fleet resolver, which selects an interpreter that can:",
           file=sys.stderr)
     print("    bash ops/scripts/lib/python-with-module.sh yaml "
-          "ops/scripts/hc/harness.py <args>", file=sys.stderr)
+          "ops/scripts/fleet/harness.py <args>", file=sys.stderr)
     sys.exit(3)
 
-HERE = Path(__file__).resolve().parent          # repo: <repo>/ops/scripts/hc
+HERE = Path(__file__).resolve().parent          # repo: <repo>/ops/scripts/fleet
 
-# The layer vocabulary, in the order the usage text lists it. `hc harness list`
+# The layer vocabulary, in the order the usage text lists it. `fleet harness list`
 # prints this so a reader can see every layer the registry trades in — a layer no
 # harness currently declares (cli-extension today) is still part of the contract.
 LAYERS = ("mcp", "cli-extension", "cli-hook", "none")
@@ -70,8 +70,8 @@ LAYERS = ("mcp", "cli-extension", "cli-hook", "none")
 def registry_dir() -> Path:
     """Where registry.yaml lives: override, repo layout, or deployed layout.
 
-    The deployed harness.py is FLAT (`~/.steadfaste-fleet/scripts/hc-harness.py`)
-    because `scripts/hc` is the launcher file — so this must not assume a
+    The deployed harness.py is FLAT (`~/.steadfaste-fleet/scripts/fleet-harness.py`)
+    because `scripts/fleet` is the launcher file — so this must not assume a
     directory shape. Every candidate is checked, and the last one is only a
     fallback for the error message.
     """
@@ -122,17 +122,17 @@ def context_cli() -> Path | None:
 def load_registry() -> dict:
     reg = registry_dir() / "registry.yaml"
     if not reg.is_file():
-        print(f"hc harness: registry.yaml not found (looked in {registry_dir()})",
+        print(f"fleet harness: registry.yaml not found (looked in {registry_dir()})",
               file=sys.stderr)
         sys.exit(1)
     try:
         data = yaml.safe_load(reg.read_text()) or {}
     except yaml.YAMLError as exc:
-        print(f"hc harness: registry is not valid YAML — fix it first.\n  {reg}\n  {exc}",
+        print(f"fleet harness: registry is not valid YAML — fix it first.\n  {reg}\n  {exc}",
               file=sys.stderr)
         sys.exit(1)
     if not isinstance(data.get("harnesses"), list) or not data["harnesses"]:
-        print("hc harness: registry declares no harnesses", file=sys.stderr)
+        print("fleet harness: registry declares no harnesses", file=sys.stderr)
         sys.exit(1)
     return data
 
@@ -216,7 +216,7 @@ def cmd_list(reg: dict, as_json: bool = False) -> int:
         # Machine-readable view, so a CONSUMER never has to parse the registry itself.
         # The doctor reads the harness list through this command because it may run under
         # an interpreter without PyYAML (cortex-update.sh invokes it as a bare `python3`),
-        # and `hc` already resolves a capable interpreter for the registry. One source,
+        # and `fleet` already resolves a capable interpreter for the registry. One source,
         # one capability resolution: a consumer that imported yaml here would be a second
         # copy of both.
         import json as _json
@@ -239,9 +239,9 @@ def cmd_list(reg: dict, as_json: bool = False) -> int:
     for h in hs:
         print(f"  {h['name']:<16} {h['layer']:<14} {h.get('status', 'planned'):<11} "
               f"{h.get('surface', 'n/a')}")
-    print(f"\n  layers: {' · '.join(LAYERS)}   (hc harness add <name> --layer <one>)")
-    print("  hc harness install <name> [--dir DIR]   wire it into a project")
-    print("  hc harness verify  [<name>]             prove it, don't assume it")
+    print(f"\n  layers: {' · '.join(LAYERS)}   (fleet harness add <name> --layer <one>)")
+    print("  fleet harness install <name> [--dir DIR]   wire it into a project")
+    print("  fleet harness verify  [<name>]             prove it, don't assume it")
     return 0
 
 
@@ -274,7 +274,7 @@ def cmd_install(reg: dict, name: str, target: Path) -> int:
     if h is None:
         return _unknown(name)
     layer = h["layer"]
-    print(f"hc harness install {name}  →  {target}   (layer: {layer})\n")
+    print(f"fleet harness install {name}  →  {target}   (layer: {layer})\n")
 
     if layer == "none":
         print(f"NOT SUPPORTED — {h.get('why', 'no surface declared').strip()}")
@@ -418,7 +418,7 @@ def cmd_verify(reg: dict, name: str | None) -> int:
         if run and not contract_tool_names():
             print("contract: tool surface not loadable — run line cannot be derived")
             ok = False
-        print(f"next: hc harness install {name} --dir <your-project>")
+        print(f"next: fleet harness install {name} --dir <your-project>")
     else:
         present = judged = 0
         for h in reg["harnesses"]:
@@ -438,7 +438,7 @@ def cmd_verify(reg: dict, name: str | None) -> int:
 def cmd_add(reg: dict, name: str, layer: str, surface: str) -> int:
     gen = registry_dir() / "generate-harnesses.py"
     if not gen.is_file():
-        print(f"hc harness: generator not found at {gen}", file=sys.stderr)
+        print(f"fleet harness: generator not found at {gen}", file=sys.stderr)
         return 1
     r = subprocess.run([sys.executable, str(gen), "--add", name,
                         "--layer", layer, "--surface", surface],
@@ -450,19 +450,19 @@ def cmd_add(reg: dict, name: str, layer: str, surface: str) -> int:
     print("\nNEXT (required — a scaffolded entry is not a wired harness):")
     print(f"  1. fill why / install / verify in {registry_dir() / 'registry.yaml'}")
     print(f"  2. {gen} && {gen} --check")
-    print(f"  3. hc harness install {name} --dir <your-project>")
+    print(f"  3. fleet harness install {name} --dir <your-project>")
     return 0
 
 
 def _unknown(name: str) -> int:
-    print(f"hc harness: unknown harness '{name}' — try: hc harness list", file=sys.stderr)
+    print(f"fleet harness: unknown harness '{name}' — try: fleet harness list", file=sys.stderr)
     return 2
 
 
 # ── entrypoint ──────────────────────────────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="hc harness",
+    ap = argparse.ArgumentParser(prog="fleet harness",
                                  description="Wire a coding agent to the cortex context store.")
     ap.add_argument("cmd", nargs="?", default="list",
                     choices=["list", "show", "install", "verify", "add", "help"])

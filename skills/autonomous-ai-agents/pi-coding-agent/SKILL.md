@@ -255,16 +255,16 @@ all — the manifest is cortex-owned at the REPO ROOT (`skills.yaml`, synced to
 `~/.steadfaste-fleet/skills.yaml` by `cortex-update.sh`) and is the record of Hermes's ritual set,
 not the source of a coding agent's exposure.
 
-**Drive it with `hc pi` instead of remembering script names** (a thin driver over the same
+**Drive it with `fleet pi` instead of remembering script names** (a thin driver over the same
 scripts — repo-then-deployed resolution, the owner's rc passed through unchanged):
 
 ```bash
-hc pi install   # user scope: MCP servers + both extensions + the published skills tree
-hc pi check     # installer --check (registration AND visible count) + the per-layer audit
-hc pi skills    # what Pi is pointed at, then the delegated visibility verdict
+fleet pi install   # user scope: MCP servers + both extensions + the published skills tree
+fleet pi check     # installer --check (registration AND visible count) + the per-layer audit
+fleet pi skills    # what Pi is pointed at, then the delegated visibility verdict
 ```
 
-`hc harness install pi --dir <project>` is the PROJECT-scope command; `hc pi` is the
+`fleet harness install pi --dir <project>` is the PROJECT-scope command; `fleet pi` is the
 HOST-scope one (every Pi project on the machine).
 
 - **Registering is not executing.** A deploy that COPIES an installer into

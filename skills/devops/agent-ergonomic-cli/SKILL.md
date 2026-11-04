@@ -21,7 +21,7 @@ Cortex-surface mapping lives in `~/steadfaste-fleet/docs/axi-agent-ergonomics.md
 ## When to use
 
 - Writing or modifying any script/CLI whose stdout an agent reads: fleet
-  scripts, `hc`-style CLIs, doctor/health output, task lists, previews.
+  scripts, `fleet`-style CLIs, doctor/health output, task lists, previews.
 - Auditing agent-facing output for token bloat or missing decision data.
 - Reviewing a change that emits lists, statuses, errors, or help text.
 
@@ -209,7 +209,7 @@ child, not to your own stdout:
 
 ## Cortex retrofit quick map (priority order)
 
-1. `hc` list/peek → TOON with totals (highest-frequency agent CLI)
+1. `fleet` list/peek → TOON with totals (highest-frequency agent CLI)
 2. MCP list tools (tasks, agent-bus) → trim default schemas + totals
 3. Doctor → `--toon` compact mode (keep human mode)
 4. Session-start orchestrator dashboard (ambient context, ≤15 lines)

@@ -500,7 +500,7 @@ DOGFOOD_HEAD=$(cd "${HOME}/steadfaste-fleet" && git show HEAD:plugins/governance
 # check compares THIS repo's committed enforcer against the DEPLOYED copy,
 # a cortex-internal sync state no other repo can act on. Unscoped, a single
 # stale deploy on one host hard-blocked every ordinary commit in every
-# unrelated repo (Titus: "push from a regular non-hc repo"). That is exactly
+# unrelated repo (Titus: "push from a regular non-fleet repo"). That is exactly
 # the "gates are scoped to what they govern" rule. Same ${HOME}/steadfaste-fleet
 # pattern as the IS_CORTEX_REPO guard further down.
 _DOGFOOD_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")

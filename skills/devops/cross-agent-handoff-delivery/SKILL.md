@@ -53,7 +53,7 @@ After the send, confirm the delivery side:
   — a 403 on peek is the expected send-only ACL, not an error.)
 
 Then confirm the BODY arrived whole — the peek display is not the payload:
-- `hc inbox <agent>` cuts the body after a line or two, so a plausible display proves
+- `fleet inbox <agent>` cuts the body after a line or two, so a plausible display proves
   nothing about what the queue holds. Read it programmatically and compare against the file
   you sent:
 

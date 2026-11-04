@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# fleet — transition-compat alias for the renamed `fleet` CLI (hermes-cortex brand
+# leftover; superseded by `fleet`). Invokes the fleet launcher beside it so old
+# invocations keep working while the fleet migrates. Runs identically whether
+# invoked from the repo (ops/scripts/fleet/bin/) or deployed flat
+# (~/.steadfaste-fleet/scripts/fleet beside scripts/fleet).
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+for cand in "${SCRIPT_DIR}/fleet" "${SCRIPT_DIR}/../bin/fleet"; do
+    if [ -x "$cand" ]; then
+        exec "$cand" "$@"
+    fi
+done
+exec bash "${HOME}/.steadfaste-fleet/scripts/fleet" "$@"

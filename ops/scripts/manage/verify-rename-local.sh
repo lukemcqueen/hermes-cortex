@@ -70,8 +70,8 @@ fi
 code=$(curl -fsS -o /dev/null -w '%{http_code}' 127.0.0.1:8903/health 2>/dev/null || echo ERR)
 ck "bus /health == 200 (got $code)" "[ '$code' = '200' ]"
 
-# --- 7. new-path hc present + executable ---
-ck "new hc present" "[ -x '$NEW_HOME/scripts/hc' ]"
+# --- 7. new-path fleet present + executable ---
+ck "new fleet present" "[ -x '$NEW_HOME/scripts/fleet' ]"
 
 # --- 8. deployed gate/guard intact (lives under ~/.hermes, unaffected by rename) ---
 ck "deployed enforcer intact" "[ -f '${HOME}/.hermes/plugins/governance-enforcer/__init__.py' ]"

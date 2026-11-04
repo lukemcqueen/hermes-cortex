@@ -7,7 +7,7 @@ platforms: [linux]
 author: moses
 metadata:
   hermes:
-    tags: [bus, fleet, commands, messaging, hc, pgmq]
+    tags: [bus, fleet, commands, messaging, fleet, pgmq]
     related_skills: [cortex-bus, steadfaste-fleet-deployment]
 ---
 
@@ -21,15 +21,15 @@ Send structured operational commands from the orchestrator (Moses) to any fleet 
 
 | Mode | Who | How | Covers |
 |------|-----|-----|--------|
-| **In-session** | Moses (orchestrator) | Directly reads its inbox via MCP tools + `hc` CLI during active sessions. | Skill reports, EXEC_RESULT, health pings, incoming requests. |
+| **In-session** | Moses (orchestrator) | Directly reads its inbox via MCP tools + `fleet` CLI during active sessions. | Skill reports, EXEC_RESULT, health pings, incoming requests. |
 | **Out-of-session** | Moses | `cortex-bus-workday/evening/overnight` LLM crons process `inbox_moses` using the Inbox Message Decision Framework. | Same as in-session, but when no user is chatting. |
 | **Fleet handler** | Esther, Joseph, Gisu, Kustos | `agent-message-handler.py` cron (every 5 min, no_agent script) processes their inbox. | UPDATE_REQUEST, EXEC, ROLLBACK_REQUEST, GIT_AUTH_CHECK from orchestrator. |
 
 **Corrected 2026-08-02: Moses DOES run `agent-message-handler.py` on itself** (cron list shows it every 5 min, thousands of runs). It processes `inbox_moses` — `*_RESULT` replies, silent noise subjects (DOCTOR_TEST/STATUS_REQUEST/HEARTBEAT/PING), and any registered data-subjects. **Unknown subjects get ARCHIVED + an error response sent** within minutes of landing. So any NEW inbound message type to `inbox_orchestrator` (fleet agents sending data TO the orchestrator) MUST get a handler branch first, or the payload is destroyed from the live flow. Example: "Skill Stub Recovery" messages (full skill content from agents) were eaten as unknown until the handler was patched to stage them to `state/skill-stub-recovery/` (commit 8a38e486). Design: agents CANNOT write the repo — they send payloads to `inbox_orchestrator`; the handler stages them to a state dir; the orchestrator evaluates/copies later (store-first, evaluate-later).
 
-**Primary tool:** `hc send <agent> <subject> <body>` (admin CLI, operates via docker exec into Postgres)
+**Primary tool:** `fleet send <agent> <subject> <body>` (admin CLI, operates via docker exec into Postgres)
 
-**Round-trip tool:** `hc exec <agent> <script> [args...]` (sends EXEC, polls up to 5min for EXEC_RESULT)
+**Round-trip tool:** `fleet exec <agent> <script> [args...]` (sends EXEC, polls up to 5min for EXEC_RESULT)
 
 The `COMMAND:` subject prefix is for human-readable messages (logged/archived, no automated response). For structured task delegation, use the agent-message-handler protocol below.
 
@@ -37,7 +37,7 @@ The `COMMAND:` subject prefix is for human-readable messages (logged/archived, n
 
 Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `ops/scripts/agent/agent-message-handler.py`.
 
-**Message format (sent via `hc send` or `bus.send`):**
+**Message format (sent via `fleet send` or `bus.send`):**
 ```json
 {
   "from": "moses",
@@ -94,23 +94,23 @@ was accepted (`msg_id 9c1366ec`).
 > slow hosts. When verifying a dispatch: poll `bus.archives` for
 > `UPDATE_RESULT` (subject filter), and if a host consumed the request but
 > no result appears within ~10 min, probe it directly with
-> `hc exec <agent> cortex-doctor.py --quiet` (the EXEC path is unaffected)
+> `fleet exec <agent> cortex-doctor.py --quiet` (the EXEC path is unaffected)
 > — the update may have completed with only the receipt lost.
 | `ROLLBACK_REQUEST` | Git checkout previous SHA | `ROLLBACK_RESULT` | `target_sha`, `reason` |
 | `GIT_AUTH_CHECK` | Verify git can `ls-remote` | `GIT_AUTH_RESULT` | `expected_url` |
 | `DIAGNOSTIC_REQUEST` | Run agent-diagnostic.py | `DIAGNOSTIC_RESULT` | `check`, `respond_to_queue` |
 
-### Round-trip with `hc exec` (Recommended)
+### Round-trip with `fleet exec` (Recommended)
 
-For EXEC commands, `hc exec` handles the full lifecycle:
+For EXEC commands, `fleet exec` handles the full lifecycle:
 
 ```bash
-hc exec esther cortex-doctor.py --json
-hc exec joseph cortex-doctor.py --quiet
-hc exec gisu cortex-doctor.py --quiet
+fleet exec esther cortex-doctor.py --json
+fleet exec joseph cortex-doctor.py --quiet
+fleet exec gisu cortex-doctor.py --quiet
 ```
 
-⚠️ **`hc exec <agent> -- <raw-command>` does NOT work — the `--` separator is NOT supported.** The EXEC handler only runs scripts that exist in `~/.steadfaste-fleet/scripts/` on the target; a `--` "raw command" attempt returns `Script not found: --` (exit -1). Verified 2026-08-11: `hc exec titus -- "python3 -c ..."` failed exactly this way. Use `--output-schema RAW` (which skips RESULT validation) with a real deployed script — the RAW schema is about validation, not about raw shell execution. To run an arbitrary probe on a fleet agent, ship it as a script in the repo + register it in cortex-update.sh, or use an existing deployed probe (`cortex-doctor.py`, `agent-diagnostic.py`).
+⚠️ **`fleet exec <agent> -- <raw-command>` does NOT work — the `--` separator is NOT supported.** The EXEC handler only runs scripts that exist in `~/.steadfaste-fleet/scripts/` on the target; a `--` "raw command" attempt returns `Script not found: --` (exit -1). Verified 2026-08-11: `fleet exec titus -- "python3 -c ..."` failed exactly this way. Use `--output-schema RAW` (which skips RESULT validation) with a real deployed script — the RAW schema is about validation, not about raw shell execution. To run an arbitrary probe on a fleet agent, ship it as a script in the repo + register it in cortex-update.sh, or use an existing deployed probe (`cortex-doctor.py`, `agent-diagnostic.py`).
 
 It generates a `correlation_id`, sends the EXEC, then polls `inbox_moses` every 15s for up to 5min waiting for `EXEC_RESULT`.
 
@@ -122,33 +122,33 @@ Use `--output-schema` to change the expected result schema:
 
 ```bash
 # Default: validates result against EXEC_RESULT schema
-hc exec kustos cortex-doctor.py --json
+fleet exec kustos cortex-doctor.py --json
 
 # Custom output schema: validates against WAVE_RESULT
-hc exec esther setup-push-metrics-cron.sh --output-schema WAVE_RESULT
+fleet exec esther setup-push-metrics-cron.sh --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation (use a deployed script — `--` raw commands don't work)
-hc exec moses cortex-doctor.py --output-schema RAW
+fleet exec moses cortex-doctor.py --output-schema RAW
 ```
 
 Available schemas: `EXEC`, `EXEC_RESULT`, `WAVE_RESULT`, `UPDATE_REQUEST`,
 `UPDATE_RESULT`. See `ops/scripts/lib/handoff_schema.py`.
 
-If validation fails, `hc exec` prints the violations before the result summary.
+If validation fails, `fleet exec` prints the violations before the result summary.
 
 ### Manual round-trip verification
 
-When using `hc send` instead:
+When using `fleet send` instead:
 
-1. Send: `hc send <agent> "<subject>" '<json-body>'`
+1. Send: `fleet send <agent> "<subject>" '<json-body>'`
 2. Confirm pending: check queue state
 3. Wait: handler runs `*/5 * * * *`
 4. Confirm processing → archived
 5. Check `inbox_moses` for response
 
-### `hc send` safety gates (2026-08-10)
+### `fleet send` safety gates (2026-08-10)
 
-`hc send` refuses to create known-bad messages. Both gates apply to fleet
+`fleet send` refuses to create known-bad messages. Both gates apply to fleet
 sends only (self-sends skip — you see your own queue) and are bypassed with
 `--force` (never for the `--self-tested` rule):
 
@@ -190,11 +190,11 @@ Procedure (proven end-to-end 2026-09-22, gate-fix commit 9f36544e):
    by intermingled instructions). Targets: moses, titus, joseph, gisu, kustos.
 2. **Subject is a plain UPPER_CASE name** — `FLEET_NOTICE`. The legacy
    `COMMAND:<action>` colon form is REJECTED by bus ingestion (HTTP 400).
-3. **Self-test first** — `hc send esther FLEET_NOTICE '<body>' --force`, run
+3. **Self-test first** — `fleet send esther FLEET_NOTICE '<body>' --force`, run
    `agent-message-handler.py --once`, confirm consumed + responded. Then
    re-send fleet-wide with `--self-tested` (the gate refuses without it).
 4. **Verify delivery with a PEEK, not the ssh/psql path:**
-   `~/.steadfaste-fleet/scripts/hc inbox <agent>` (non-destructive, HTTP-only —
+   `~/.steadfaste-fleet/scripts/fleet inbox <agent>` (non-destructive, HTTP-only —
    no docker socket, no approval prompt). ssh+psql on mosesaaron is the
    FALLBACK only when the HTTP peek looks wrong. Pending = delivered;
    empty = consumed+archived by the agent's 5-min handler (also delivered).
@@ -215,7 +215,7 @@ Before every fleet command round, check for stale UPDATE_REQUESTs, EXECs, and di
 4. Esther's NEW request lands but old stuck one is still there — now 2 stuck messages
 5. User: *"Clean the bus before you send"*
 
-**Fix:** Before any `for agent in ...; do hc send "$agent" ...`, run a bus check and archive stale messages.
+**Fix:** Before any `for agent in ...; do fleet send "$agent" ...`, run a bus check and archive stale messages.
 
 ## Workflow
 
@@ -237,7 +237,7 @@ for k,v in reg.get('agents',{}).items():
 ### 2. Send the command
 
 ```bash
-hc send <agent> "COMMAND:<action>" "<descriptive body>"
+fleet send <agent> "COMMAND:<action>" "<descriptive body>"
 ```
 
 Returns a msg_id on success. Save it for verification and cleanup.
@@ -365,7 +365,7 @@ before parsing for `stdout`/`exit_code`, or every field reads as absent.
 
 ## Consume vs Peek — Inspection Rule (HARD RULE)
 
-**Inspecting a queue must NEVER consume it.** Use `hc inbox <agent>` or
+**Inspecting a queue must NEVER consume it.** Use `fleet inbox <agent>` or
 `bus_peek()` — both are non-destructive reads that leave messages `pending`.
 `bus_read()` is a **consume** operation: it pops the message into `processing`
 with a visibility timeout (VT), stealing it from the target agent's handler.
@@ -380,7 +380,7 @@ should have stayed `pending` (waiting for his handler) were consumed into
 needed to deliver. Sends kept landing while the inspector chewed the
 originals, so duplicates piled up.
 
-**Rule:** if you want to LOOK at a queue, use `hc inbox <agent>` / `bus_peek()`.
+**Rule:** if you want to LOOK at a queue, use `fleet inbox <agent>` / `bus_peek()`.
 Only code that intends to PROCESS a message calls `bus_read()` — that is the
 agent's own handler. When in doubt, peek.
 
@@ -513,13 +513,13 @@ Missing any one checkpoint means the test is incomplete. The user will notice.
 
 **Critical: Telegram is for the user, NOT for you.** The handler sends Telegram notifications to Luke's DM so HE sees fleet activity in real time. When you see/hear about a Telegram notification, that is NOT a substitute for verifying the bus yourself. The Telegram tells you something happened — your own inbox query proves it. Do not report "agent X responded" based on a Telegram you heard about secondhand. Query your inbox, read the EXEC_RESULT/UPDATE_RESULT, then report.
 
-**Testing technique: run handler manually while hc exec polls** — when testing on your own machine, you don't need to wait for the 5-min cron tick. Send the EXEC via `hc exec` in background mode, then immediately run the handler manually:
+**Testing technique: run handler manually while fleet exec polls** — when testing on your own machine, you don't need to wait for the 5-min cron tick. Send the EXEC via `fleet exec` in background mode, then immediately run the handler manually:
 ```bash
-hc exec moses cortex-doctor.py --json
+fleet exec moses cortex-doctor.py --json
 # In another terminal or shell:
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
-The `hc exec` polls every 15s for up to 5min. The handler processes within seconds. This is the fastest test cycle.
+The `fleet exec` polls every 15s for up to 5min. The handler processes within seconds. This is the fastest test cycle.
 
 ## Fleet Agent Issue Detection & Response
 
@@ -543,14 +543,14 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 ## Pitfalls
 
-- **Reads succeed while sends fail — `_bus_post` Bearer→Basic cascade was gated `not fallback` (FIXED 2026-08-30, commit `0302c267`).** When the primary bus was unreachable and the fallback proxy required Basic auth (nginx validates Basic, ignores Bearer), `bus_send`/`hc send` failed with 401 while `bus_list_queues`/`hc status` still worked (`_bus_get` had no gate). The backup orchestrator could read the fleet bus but never dispatch — exactly the failover path it exists for. Regression test: `test_bus_post_fallback_retries_basic_auth` (tests/test_bus_outbox.py). Symptom to recognize: `hc status` says "Bus ok" but `hc send` returns `Fallback bus also failed: HTTP Error 401`. Both `_bus_post` and `_bus_get` now retry Basic on primary AND fallback.
-- **UPDATE_REQUEST on a host with a stale/off-main repo silently succeeds without deploying (2026-08-21).** A host whose repo is (a) on a non-main branch (doctor `Repo branch` WARN — e.g. a leftover `titus/*` PR branch) or (b) pulling from a stale origin (`Repo sync` PASS with origin/main pinned at an old SHA) will report `UPDATE_RESULT success=true` with `git_sha_before == git_sha_after` — the handler's `git pull origin main` doesn't move a divergent branch, and cortex-update deploys whatever the working tree already has. **Check the target's doctor state BEFORE dispatching:** `hc exec <agent> cortex-doctor.py --quiet` and read `Repo branch` / `Repo sync` / `Deploy sync`. If the target won't move, don't trust a same-SHA UPDATE_RESULT.
-- **Stale-host remediation: CLASSIFY with `git-main-sync.sh --check` before dispatching, and do NOT assume it is out of bus reach.** The deployed `git-main-sync.sh` supports a report-only mode — `hc exec <agent> git-main-sync.sh --check --output-schema RAW` prints branch + `behind/ahead` and changes nothing. That is the cheapest way to tell the three cases apart, and the fix differs per case:
-  - **behind > 0, ahead == 0** → pure fast-forward. Run `hc exec <agent> git-main-sync.sh` (no `--check`); the repo's post-merge hook auto-runs `cortex-update.sh` in the same pass, so a stale DEPLOYED tree is repaired without a separate UPDATE_REQUEST. Verified end-to-end: a host 53 commits behind went to `0 behind, 0 ahead` and its deploy-drift audit went from 31 items to exit 0 silent. The tool exits 1 and leaves the tree untouched on any error.
+- **Reads succeed while sends fail — `_bus_post` Bearer→Basic cascade was gated `not fallback` (FIXED 2026-08-30, commit `0302c267`).** When the primary bus was unreachable and the fallback proxy required Basic auth (nginx validates Basic, ignores Bearer), `bus_send`/`fleet send` failed with 401 while `bus_list_queues`/`fleet status` still worked (`_bus_get` had no gate). The backup orchestrator could read the fleet bus but never dispatch — exactly the failover path it exists for. Regression test: `test_bus_post_fallback_retries_basic_auth` (tests/test_bus_outbox.py). Symptom to recognize: `fleet status` says "Bus ok" but `fleet send` returns `Fallback bus also failed: HTTP Error 401`. Both `_bus_post` and `_bus_get` now retry Basic on primary AND fallback.
+- **UPDATE_REQUEST on a host with a stale/off-main repo silently succeeds without deploying (2026-08-21).** A host whose repo is (a) on a non-main branch (doctor `Repo branch` WARN — e.g. a leftover `titus/*` PR branch) or (b) pulling from a stale origin (`Repo sync` PASS with origin/main pinned at an old SHA) will report `UPDATE_RESULT success=true` with `git_sha_before == git_sha_after` — the handler's `git pull origin main` doesn't move a divergent branch, and cortex-update deploys whatever the working tree already has. **Check the target's doctor state BEFORE dispatching:** `fleet exec <agent> cortex-doctor.py --quiet` and read `Repo branch` / `Repo sync` / `Deploy sync`. If the target won't move, don't trust a same-SHA UPDATE_RESULT.
+- **Stale-host remediation: CLASSIFY with `git-main-sync.sh --check` before dispatching, and do NOT assume it is out of bus reach.** The deployed `git-main-sync.sh` supports a report-only mode — `fleet exec <agent> git-main-sync.sh --check --output-schema RAW` prints branch + `behind/ahead` and changes nothing. That is the cheapest way to tell the three cases apart, and the fix differs per case:
+  - **behind > 0, ahead == 0** → pure fast-forward. Run `fleet exec <agent> git-main-sync.sh` (no `--check`); the repo's post-merge hook auto-runs `cortex-update.sh` in the same pass, so a stale DEPLOYED tree is repaired without a separate UPDATE_REQUEST. Verified end-to-end: a host 53 commits behind went to `0 behind, 0 ahead` and its deploy-drift audit went from 31 items to exit 0 silent. The tool exits 1 and leaves the tree untouched on any error.
   - **ahead > 0 (divergent)** → a pull is a MERGE, not a fast-forward, and those local commits may be work in progress. Do NOT pull; escalate to the operator with the exact commands.
   - **A dirty tree that carries a `[deliberate (host, date)]` doctor disposition is an OWNER decision — a behind host whose pull is blocked by it does NOT self-heal.** The doctor's `Repo clean [deliberate ...]` is the signal the uncommitted changes were consciously left (deferred, not missed); on such a host `git pull --rebase` refuses (`cannot pull with rebase: You have unstaged changes`), so UPDATE_REQUEST and `git-main-sync.sh` both fail to advance it. Do NOT commit or stash the tree to unblock it — that is the owner's call — and do not read `git_sha_before == git_sha_after` as the update succeeding on that host. Read the doctor's `Repo sync` / `Deploy sync` / `Repo clean` LINES for the real state, and report the host as needing its dirty tree resolved by its owner, then a `git-main-sync.sh` fast-forward.
   - **stale ORIGIN** (`behind` large but HEAD never moves after a pull) → the one-liner ON the host (`git remote set-url origin <correct-url>`) — genuinely out of bus reach; escalate.
-- **EXEC bootstrap chicken-egg: a host whose repo is stale can't run tools that only exist in newer commits.** `hc exec <agent> git-main-sync.sh` → `Script not found` (exit -1) when the DEPLOYED tree predates the tool (the EXEC handler runs `~/.steadfaste-fleet/scripts/`, i.e. the deployed copy). New recovery tooling cannot reach the host it was written to fix — but any host that HAS deployed recently can run it, so try the probe above before concluding it is unreachable.
+- **EXEC bootstrap chicken-egg: a host whose repo is stale can't run tools that only exist in newer commits.** `fleet exec <agent> git-main-sync.sh` → `Script not found` (exit -1) when the DEPLOYED tree predates the tool (the EXEC handler runs `~/.steadfaste-fleet/scripts/`, i.e. the deployed copy). New recovery tooling cannot reach the host it was written to fix — but any host that HAS deployed recently can run it, so try the probe above before concluding it is unreachable.
 
 - **Poll after send is not optional and not a question.** After dispatching any bus command (EXEC, UPDATE_REQUEST, etc.), the next action is ALWAYS to poll for results. The question "Want me to poll?" has the same answer every time: yes. Replace it with the polling loop. A command that was sent but whose result was never verified is not a completed action — it's a fire-and-forget gamble.
   - Correct: send → immediately poll inbox for result
@@ -564,9 +564,9 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 - **Send separate messages per agent** — when multiple agents have the same issue, send each one its OWN standalone diagnostic message. Do not combine them into one message with agent names listed. Agents get confused when instructions for other agents are intermingled with theirs.
 
 - **`bus_archive()` can fail silently** — `bus_archive()` catches all exceptions and returns `False` on failure (network, auth, timeout). Before the fix (commit `c306e3d`), `archive_message()` ignored the return value, so failed archives left messages in `processing` forever. The cycle: handler reads (vt=30) → processes → archive returns False silently → message stays `processing` → VT expires → re-read → idempotency skip → tries to archive again → fails → loops. **Fix:** handler now logs `⚠️ Failed to archive message` when archive fails.
-- **`hc send` REFUSED "OFFLINE" on a host that's demonstrably alive = PII-scrubbed registry, not a dead host (2026-08-29).** A fleet-wide PII pass scrubbed `~/.steadfaste-fleet/state/agent-registry.json` health_urls to placeholder domains (`your-domain.com`, `your-kustos-host`) on ALL hosts — the liveness gate probes the URL and REFUSES every send to http-method agents. Diagnosis: `hc send <agent> …` prints the placeholder URL in the refusal; the agent's bus handler is still reading/archiving (audit_log shows recent `read`). Fix: restore the real health_urls from the pre-scrub backup `agent-registry.json.bak-*` (exists on esther; per-host health ports as before, all verified live), then re-send. Do NOT `--force` past it (that's how this was worked around for a full cycle before the root cause was found). Moses's host has no backup — restore from esther's. **Preferred restore source (2026-08-29): esther's LIVE v4 registry (`~/.steadfaste-fleet/state/agent-registry.json` on esther), not the v3 `.bak`** — the live file has the full v4 schema (fleet_concerns, capabilities, health_vector_map) so a surgical health_url-only patch preserves everything else; the v3 backup predates v4 and would downgrade the file. Patch script pattern: json load → back up first (`agent-registry.json.bak-<date>-scrubbed`) → replace only `agents[*].health_url` where `"your-" in old` → json.dump(indent=2) → re-read to validate. Verification: re-run the send — the refusal should move to the next gate (`--self-tested`), never the placeholder URL; then full 6-checkpoint with `agent-diagnostic.py` (self-test on moses, then real dispatch to one http-method agent).
+- **`fleet send` REFUSED "OFFLINE" on a host that's demonstrably alive = PII-scrubbed registry, not a dead host (2026-08-29).** A fleet-wide PII pass scrubbed `~/.steadfaste-fleet/state/agent-registry.json` health_urls to placeholder domains (`your-domain.com`, `your-kustos-host`) on ALL hosts — the liveness gate probes the URL and REFUSES every send to http-method agents. Diagnosis: `fleet send <agent> …` prints the placeholder URL in the refusal; the agent's bus handler is still reading/archiving (audit_log shows recent `read`). Fix: restore the real health_urls from the pre-scrub backup `agent-registry.json.bak-*` (exists on esther; per-host health ports as before, all verified live), then re-send. Do NOT `--force` past it (that's how this was worked around for a full cycle before the root cause was found). Moses's host has no backup — restore from esther's. **Preferred restore source (2026-08-29): esther's LIVE v4 registry (`~/.steadfaste-fleet/state/agent-registry.json` on esther), not the v3 `.bak`** — the live file has the full v4 schema (fleet_concerns, capabilities, health_vector_map) so a surgical health_url-only patch preserves everything else; the v3 backup predates v4 and would downgrade the file. Patch script pattern: json load → back up first (`agent-registry.json.bak-<date>-scrubbed`) → replace only `agents[*].health_url` where `"your-" in old` → json.dump(indent=2) → re-read to validate. Verification: re-run the send — the refusal should move to the next gate (`--self-tested`), never the placeholder URL; then full 6-checkpoint with `agent-diagnostic.py` (self-test on moses, then real dispatch to one http-method agent).
 - **Missing `AGENT_NAME` in .env** — handler determines which queue to poll from `AGENT_NAME` in `.env`. If unset, it falls back to hostname, polling the wrong queue (e.g. `inbox_cisnet02` instead of `inbox_kustos`). Commands land in the correct queue but the agent never reads them. **Fix:** set `AGENT_NAME=<agent>` in .env.\n- **COMMAND: prefix is not structured execution** — `COMMAND:health-check` messages land in the queue but are archived as "unknown subject" by the handler. For automated execution, use EXEC with a proper JSON body.
-- **Informational requests to an agent need a tracked subject, not a custom one (2026-09-30)** — the handler only routes `TASK_CREATING_SUBJECTS` = EXEC, UPDATE_REQUEST, TASK_REQUEST, **PROPOSAL**, ISSUES, IMPROVEMENTS (prefix form "📝 PROPOSAL: <what>" normalizes to PROPOSAL). Any other subject (e.g. `REQUEST_SKILL_CONTENT`) gets archived + an auto error-reply — the target agent NEVER sees the body. Verified: self-test with a custom subject produced only `Unknown subject` + error reply; resending as subject `PROPOSAL` created a durable task row the agent claims. Note: a PROPOSAL self-test creates a real task row on YOUR host — complete/cancel it after the test. **This includes a REPLY TO A PEER about its own report** — "your finding is fixed" is informational, so a bespoke subject like `FINDING_FIXED` is archived unread while a routed one (ISSUES / IMPROVEMENTS) reaches them; `hc depth` showing the message `pending` in their queue only proves it LANDED, not that they will ever read it.
+- **Informational requests to an agent need a tracked subject, not a custom one (2026-09-30)** — the handler only routes `TASK_CREATING_SUBJECTS` = EXEC, UPDATE_REQUEST, TASK_REQUEST, **PROPOSAL**, ISSUES, IMPROVEMENTS (prefix form "📝 PROPOSAL: <what>" normalizes to PROPOSAL). Any other subject (e.g. `REQUEST_SKILL_CONTENT`) gets archived + an auto error-reply — the target agent NEVER sees the body. Verified: self-test with a custom subject produced only `Unknown subject` + error reply; resending as subject `PROPOSAL` created a durable task row the agent claims. Note: a PROPOSAL self-test creates a real task row on YOUR host — complete/cancel it after the test. **This includes a REPLY TO A PEER about its own report** — "your finding is fixed" is informational, so a bespoke subject like `FINDING_FIXED` is archived unread while a routed one (ISSUES / IMPROVEMENTS) reaches them; `fleet depth` showing the message `pending` in their queue only proves it LANDED, not that they will ever read it.
 - **Handler drains up to 25 messages per 5-min tick** — `agent-message-handler.py` processes up to **25 messages per 5-min tick** on fleet agents (esther, joseph, gisu, kustos) AND on Moses (corrected 2026-08-02 — the orchestrator's cron list includes it). Previously (pre-2026-07-23, commit `9946158`) it processed only 1/tick, causing a 5+N-minute backlog for structured commands queued behind Learning Reports or health pings. Now the handler drains the queue on every tick, so backlog is rare. If commands still appear delayed, the agent has >25 backlogged messages or the handler fell behind.
 - **correlation_id must be unique and non-empty** — messages without a `correlation_id` or with an empty one get caught by the idempotency check if `""` is in the processed set. Always generate a unique UUID.
 - **Idempotency gap (FIXED 2026-07-21)** — previously, the handler skipped already-processed messages without archiving them, causing an infinite recovery→re-read→skip loop. Now the handler archives on idempotency skip. If you see messages stuck in `processing` forever, run `SELECT bus.recover_timeouts()` to flush them.
@@ -578,11 +578,11 @@ After they report back, fix the identified issue (corrupt state file, handler cr
   WHERE state = 'processing' AND timeout_at < NOW();
   ```
 - **Telegram notifications from handler** — the handler now sends Telegram notifications to the home channel on pickup (📥 `[agent] Received EXEC from moses`) and completion (✅/❌ `[agent] EXEC script.py: exit=N — output preview`). Uses Telegram Bot API directly: reads `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` from `~/.hermes/.env` (recipient never hardcoded — PII scrub 2026-08-06), with `timeout=10`. Not `hermes send` (may time out when gateway has MCP issues).
-- **`hc send` was local-only (FIXED 2026-08-06)** — it used `docker exec` to reach Postgres directly on this machine, so on Esther's host it wrote to her own (unpolled) bus. Now hc routes through `lib.cortex_bus` over HTTP (`CORTEX_BUS_URL` ACTIVE + fallback) — host-independent, works identically on moses and esther. Remote agents connect via the nginx proxy (port 13004) with Basic auth. The `hc bus` dashboard remains a local-Postgres view (labeled).
+- **`fleet send` was local-only (FIXED 2026-08-06)** — it used `docker exec` to reach Postgres directly on this machine, so on Esther's host it wrote to her own (unpolled) bus. Now fleet routes through `lib.cortex_bus` over HTTP (`CORTEX_BUS_URL` ACTIVE + fallback) — host-independent, works identically on moses and esther. Remote agents connect via the nginx proxy (port 13004) with Basic auth. The `fleet bus` dashboard remains a local-Postgres view (labeled).
 
-- **Fleet dispatch BLOCKS silently without `--self-tested` — the warning is a gate, not a note.** `hc send <agent> UPDATE_REQUEST <body>` (no flag) prints *"Use --self-tested only AFTER the self-test is verified"* and sends NOTHING — the message never lands (bus stays empty). Verified 2026-08-02: 5 sends without the flag → zero messages in any inbox; re-issuing all 5 with `--self-tested` → all 5 landed `pending`. The required sequence is: (1) prove the identical flow on yourself — `hc send moses UPDATE_REQUEST <body>`, run `python3 scripts/agent-message-handler.py --once`, verify consumed/archived in `bus.archives`; (2) THEN re-issue the fleet loop with `--self-tested`. Self-test first, flag second — the flag exists to force exactly that order.
-- **Direct API auth quirks** — the PGMQ `/api/pgmq/archive` endpoint may return "Invalid or expired token" when the Bearer token has whitespace/quote issues from shell extraction. The `hc` tool avoids this by going through psql directly. Use `bus.archive()` via psql for reliable cleanup.
-- **Titus receives bus messages like every other agent (corrected 2026-08-02)** — Titus has `bus_access: client`, but that does NOT make him push-only. UPDATE_REQUESTs, COMMAND: notes, and EXEC payloads sent to `inbox_titus` land `pending` and are consumed by his `agent-message-handler.py` cron on the normal 5-min cycle — exactly like joseph/gisu/kustos. **Always include Titus in the fleet dispatch loop.** The user explicitly corrected this: *"titus gets messages just like everyone else."* (The earlier "push_only agents never poll — use a forwarder" pitfall was wrong and has been removed; `hc send titus ... --self-tested` delivers and he processes normally.)\n- **Active consumers archive immediately** — agents with `bus_access: host` that have a message handler will read and archive the message. You may not see it in `pending` if you check late.
+- **Fleet dispatch BLOCKS silently without `--self-tested` — the warning is a gate, not a note.** `fleet send <agent> UPDATE_REQUEST <body>` (no flag) prints *"Use --self-tested only AFTER the self-test is verified"* and sends NOTHING — the message never lands (bus stays empty). Verified 2026-08-02: 5 sends without the flag → zero messages in any inbox; re-issuing all 5 with `--self-tested` → all 5 landed `pending`. The required sequence is: (1) prove the identical flow on yourself — `fleet send moses UPDATE_REQUEST <body>`, run `python3 scripts/agent-message-handler.py --once`, verify consumed/archived in `bus.archives`; (2) THEN re-issue the fleet loop with `--self-tested`. Self-test first, flag second — the flag exists to force exactly that order.
+- **Direct API auth quirks** — the PGMQ `/api/pgmq/archive` endpoint may return "Invalid or expired token" when the Bearer token has whitespace/quote issues from shell extraction. The `fleet` tool avoids this by going through psql directly. Use `bus.archive()` via psql for reliable cleanup.
+- **Titus receives bus messages like every other agent (corrected 2026-08-02)** — Titus has `bus_access: client`, but that does NOT make him push-only. UPDATE_REQUESTs, COMMAND: notes, and EXEC payloads sent to `inbox_titus` land `pending` and are consumed by his `agent-message-handler.py` cron on the normal 5-min cycle — exactly like joseph/gisu/kustos. **Always include Titus in the fleet dispatch loop.** The user explicitly corrected this: *"titus gets messages just like everyone else."* (The earlier "push_only agents never poll — use a forwarder" pitfall was wrong and has been removed; `fleet send titus ... --self-tested` delivers and he processes normally.)\n- **Active consumers archive immediately** — agents with `bus_access: host` that have a message handler will read and archive the message. You may not see it in `pending` if you check late.
 
 - **`poll_once()` has no exception handler** — the dispatch block in `agent-message-handler.py` (lines 591–670) has no top-level try/except. If any of `process_update_request()`, `send_bus_result()`, or `save_state()` throws an unhandled exception, the handler **crashes silently** — message stays in `processing`, no log, no result returned. Unlike the archive-failure loop, no "Skipping already-processed" pattern appears. See `references/stuck-agent-diagnostics.md` → "The Poll-Once Crash Pattern" for diagnosis and fix.
 
@@ -599,7 +599,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
   - **Triage: read the DETAIL TEXT before touching the subject.** A detail that is a WARNING (`could not X, skipping`, `no interpreter to do Y`) rather than an error means the script is over-verbose on a path where it had nothing to do. Fix THAT — decide "is there anything to do?" with a cheap check on the file and return silently when there is not, resolving the dependency by capability for the case that needs it. Do NOT loosen the caller's success rule: it exists because stderr usually does mean a problem, and widening it changes every host's failure detection to treat a real error as success.
   - **Authoring rule for anything a fleet handler calls:** never write to stderr on a healthy, nothing-to-do path. A `warn` is an operator FYI; under this caller it is a fleet outage.
 
-- **`hc exec` polls only 300s but a fleet agent's handler ticks every 5 min — results can land AFTER the poll gives up (2026-08-11).** The round-trip worked (probe was read/processed), but `hc exec` reported "Timed out waiting for EXEC_RESULT" because the result arrived at ~5:05 while the poll window closed at 5:00. **Decoupled pattern that always wins:** use `hc send <agent> EXEC '<json>' --self-tested` with a correlation_id, then poll `bus.archives` for `EXEC_RESULT` after ~5.5 min (see the archive queries above). Also: archiving your own stuck probe messages is fine — the handler already read them into `processing` (early-archive), so the result still comes back; don't resend the same probe, just wait and check archives.
+- **`fleet exec` polls only 300s but a fleet agent's handler ticks every 5 min — results can land AFTER the poll gives up (2026-08-11).** The round-trip worked (probe was read/processed), but `fleet exec` reported "Timed out waiting for EXEC_RESULT" because the result arrived at ~5:05 while the poll window closed at 5:00. **Decoupled pattern that always wins:** use `fleet send <agent> EXEC '<json>' --self-tested` with a correlation_id, then poll `bus.archives` for `EXEC_RESULT` after ~5.5 min (see the archive queries above). Also: archiving your own stuck probe messages is fine — the handler already read them into `processing` (early-archive), so the result still comes back; don't resend the same probe, just wait and check archives.
 
 - **UPDATE_REQUEST partial-pull: git moves but the update "fails" — check git_sha_after, not success flag (2026-08-11).** Titus's update reported `success: false, error: "cortex-update failed: TIMEOUT after 120s"` but `git_sha_before: 9f110a8b → git_sha_after: 9d292bfe` — the pull succeeded and the file sync ran; the timeout killed the tail (doctor/registration). The handler timeout fix itself was IN the pulled commits, so the retry with the same target_sha completed the deploy. **Rule:** on UPDATE_RESULT, always compare `git_sha_before` vs `git_sha_after` vs requested `target_sha`. If `git_sha_after == target_sha`, the pull landed — resend the UPDATE_REQUEST (dedup gate may refuse an identical pending one; archive the stale pending first) rather than assuming the deploy failed outright.
 
@@ -620,7 +620,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 - **send_bus_result failure needs Telegram fallback** — when bus_send fails (returns None), send_bus_result currently only logs "Failed to send" and returns False. The orchestrator has NO way to know the agent successfully completed the work. Fix: the handler should also call notify_telegram() when send_bus_result fails, so the orchestrator knows via the fallback channel. This converts a silent failure into a visible alert, giving the orchestrator actionable information even when the bus is broken.
 
-- **Schema validation requires runtime deployment** — `hc exec` and `orch-bus-fleet-dispatch.py` validate payloads against `handoff_schema.py` at runtime. If the script errors with `ImportError: No module named 'handoff_schema'`, the module hasn't been deployed. Run `cortex-update.sh` to deploy. The validation is best-effort — missing schemas are skipped with a log message, execution continues.
+- **Schema validation requires runtime deployment** — `fleet exec` and `orch-bus-fleet-dispatch.py` validate payloads against `handoff_schema.py` at runtime. If the script errors with `ImportError: No module named 'handoff_schema'`, the module hasn't been deployed. Run `cortex-update.sh` to deploy. The validation is best-effort — missing schemas are skipped with a log message, execution continues.
 
 - **Testing bus_send from interactive shell != handler's bus_send** — multiple agents confirmed bus_send works when run manually from the command line, but the handler's bus_send returns None when run via cron. Possible root causes:
   1. Cron has different $CORTEX_DEPLOY_HOME pointing to a different config file

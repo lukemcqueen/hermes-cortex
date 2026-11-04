@@ -219,20 +219,20 @@ against JSON Schema before sending and after receiving. See `ops/scripts/lib/han
 
 | Schema | Validates | Applied to |
 |--------|-----------|------------|
-| `EXEC` | Outbound EXEC payload | `hc exec` before send |
-| `EXEC_RESULT` | Inbound EXEC result | `hc exec` after receive (default) |
-| `WAVE_RESULT` | Aggregated wave output | `hc exec --output-schema WAVE_RESULT` |
+| `EXEC` | Outbound EXEC payload | `fleet exec` before send |
+| `EXEC_RESULT` | Inbound EXEC result | `fleet exec` after receive (default) |
+| `WAVE_RESULT` | Aggregated wave output | `fleet exec --output-schema WAVE_RESULT` |
 | `UPDATE_REQUEST` | Update payload | `orch-bus-fleet-dispatch.py` before send |
 | `UPDATE_RESULT` | Update response | `orch-bus-fleet-dispatch.py` after receive |
 
 Usage:
 ```bash
 # Default: validates result against EXEC_RESULT schema
-hc exec esther cortex-doctor.py --json
+fleet exec esther cortex-doctor.py --json
 
 # Custom schema validation on output
-hc exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT
+fleet exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation
-hc exec moses -- df -h / --output-schema RAW
+fleet exec moses -- df -h / --output-schema RAW
 ```

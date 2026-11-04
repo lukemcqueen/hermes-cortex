@@ -335,7 +335,7 @@ def handle_git_auth(msg_body: dict, msg_raw: dict) -> dict:
 @command("EXEC_RESULT", "Run a script under ~/.steadfaste-fleet/scripts/")
 def handle_exec(msg_body: dict, msg_raw: dict) -> dict:
     request = _parse_body(msg_body.get("body", {}))
-    # Tolerate the generic `hc send` body wrapper (commit 458b1594 rewired
+    # Tolerate the generic `fleet send` body wrapper (commit 458b1594 rewired
     # cmd_send to nest the payload under {"topic","text"}). If the body has no
     # `command` but a `text` field, that JSON string holds the real payload.
     if "command" not in request and isinstance(request.get("text"), str):

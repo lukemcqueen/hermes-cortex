@@ -58,7 +58,7 @@ Sent when Moses pushes new code to main and the fleet should update.
 MCP servers), the orchestrator ALSO sends a `FLEET_NOTICE` to every agent
 (one message per agent) describing what changed, the commit SHA, and any
 action needed. Verify delivery with the non-destructive peek
-`~/.steadfaste-fleet/scripts/hc inbox <agent>` (HTTP — never the
+`~/.steadfaste-fleet/scripts/fleet inbox <agent>` (HTTP — never the
 ssh+docker/psql path by default). Full procedure:
 `skills/devops/fleet-commands/SKILL.md` → "Fleet Broadcast After
 Fleet-Wide Changes".
