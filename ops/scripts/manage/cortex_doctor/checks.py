@@ -4731,9 +4731,14 @@ def check_deploy_checksums(res):
       _check_pair(label, src_path, dest_path, res)
 
   # ── Category 2: Non-register path mappings ──
+  # NOTE (2026-11-04): AGENTS.md is NOT mapped here. It is PER-REPO — seeded
+  # from docs/templates/AGENTS.seed.md via seed-project.sh; there is no global
+  # ~/.hermes/AGENTS.md to checksum (the sync was removed in the per-repo
+  # change). Mapping it here caused a false "Checksum: AGENTS.md" FAIL on any
+  # host whose stale ~/.hermes copy differed or was missing. Per-repo AGENTS
+  # presence is covered by check_dev_repo_agents.
   known_mappings = [
     # (label, repo_source_path, deployed_path)
-    ("AGENTS.md", repo_dir / "AGENTS.md", HERMES_HOME / "AGENTS.md"),
     ("Governance plugin __init__.py", repo_dir / "plugins" / "governance-enforcer" / "__init__.py",
      HERMES_HOME / "plugins" / "governance-enforcer" / "__init__.py"),
     ("Governance plugin plugin.yaml", repo_dir / "plugins" / "governance-enforcer" / "plugin.yaml",
