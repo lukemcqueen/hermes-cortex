@@ -48,8 +48,9 @@ per bot, so there is no 409 conflict.
 PI_TELEGRAM_BOT_TOKEN=<read from ~/.titus_pi_bot_telegram.txt>
 
 # Same allowlist / home channel names Hermes uses
-TELEGRAM_ALLOWED_USERS=TELEGRAM_CHAT_ID
-TELEGRAM_HOME_CHANNEL=TELEGRAM_CHAT_ID
+# (fill in your numeric chat id — message @userinfobot in Telegram to get it)
+TELEGRAM_ALLOWED_USERS=<your-numeric-telegram-chat-id>
+TELEGRAM_HOME_CHANNEL=<your-numeric-telegram-chat-id>
 
 # HMAC signing secret for bus envelopes
 GATEWAY_SECRET=$(openssl rand -hex 32)
