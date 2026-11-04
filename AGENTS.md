@@ -82,6 +82,19 @@ Survey/leverage and plan-review are **gates, not prose**, and run in **every rep
 
 The reflexion questions apply to **any** development, not steadfaste-fleet-specific work.
 
+## Slice Discipline — Small, Pro-Reviewed, Verified (Luke 2026-11-04)
+
+For ANY non-trivial task (multi-file, >50 lines, a feature, a pipeline, a harness wiring):
+
+1. **Decompose into small, independently testable slices** — each a few dozen lines, provable in isolation. Never one big change shipped unverified.
+2. **Have a pro reviewer review the plan/decomposition BEFORE implementing** — run the adversarial review (the plan-review-before-slice gate) on the slice plan and act on its findings first. Ask of each slice: is it right-sized and independently testable? Does it have a terminal case, or a cross-slice dependency hazard that forces an ordering? Freeze shared boundaries (schemas, interfaces) before the slices that depend on them.
+3. **Implement slice-by-slice**, each slice landing with:
+   - a RED→GREEN test proving it — run it, watch it fail, then pass; compile-only is not a test;
+   - zero lint errors and no regressions;
+   - a committed, re-runnable evidence record.
+4. **Fix the ROOT issue, not the symptom** — if a deeper cause surfaces mid-slice, re-review rather than patch over it.
+5. **Never ship an unverified slice** — "test your own code first" is non-negotiable; do not make the user find errors in something you handed them.
+
 ## Three Reach Dimensions — Check All Three Before Shipping
 
 Your change runs in more places than your session. Name all three before calling it done:
