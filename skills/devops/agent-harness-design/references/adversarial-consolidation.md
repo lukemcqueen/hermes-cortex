@@ -8,7 +8,7 @@ step; never go from a nice consolidated doc straight to "done".
 
 ## The two-role party
 
-Pin the delegated model (this fleet: `delegation.model: deepseek/deepseek-v4-pro`,
+Pin the delegated model (this fleet: `delegation.model: deepseek/deepseek-v4-pro-0813`,
 provider openrouter — confirm in ~/.hermes/config.yaml before dispatch). Dispatch
 TWO parallel subagents via delegate_task, each with the full source list + the
 list of LATER-added principles to fold in:

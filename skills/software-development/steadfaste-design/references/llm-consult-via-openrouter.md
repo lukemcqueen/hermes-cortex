@@ -10,7 +10,7 @@ Use when a design question benefits from an outside expert model opinion (e.g. i
 2. Write the request body to a JSON file (heredoc-quoted, no curl|pipe-to-python):
    ```bash
    cat > /tmp/q.json <<'EOF'
-   {"model": "deepseek/deepseek-v4-pro", "messages": [{"role": "user", "content": "<the concrete design question>"}], "max_tokens": 3000}
+   {"model": "deepseek/deepseek-v4-pro-0813", "messages": [{"role": "user", "content": "<the concrete design question>"}], "max_tokens": 3000}
    EOF
    ```
 3. POST and parse from file, not pipe:

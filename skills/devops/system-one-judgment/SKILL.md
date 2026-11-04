@@ -153,7 +153,7 @@ pitfalls — live in `references/pricing-list-policy.md`.
 - Jev answers a narrow judgment only: no text generation, no reasoning, no
   tool use. If the task needs synthesis or explanation, keep the LLM session.
 - The DeepSeek direct key may be unfunded — prefer the OpenRouter fallback
-  (`deepseek/deepseek-v4-pro` via OPENROUTER_API_KEY) for pro-model reviews.
+  (`deepseek/deepseek-v4-pro-0813` via OPENROUTER_API_KEY) for pro-model reviews.
 - **Steadfaste's Ledger rejects IEEE-754 floats in hashed content** — a Jev
   answer is a probability (`noul: 0.87`, `score: 1.4`, `confidence`) and the
   Ledger's `canonical_bytes` returns `FloatRejected` for any float spelling
