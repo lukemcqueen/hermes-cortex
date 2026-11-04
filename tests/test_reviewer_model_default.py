@@ -101,13 +101,13 @@ def test_every_blob_verdict_records_the_model_that_judged_it():
     try:
         mod._review_uncovered_blobs(
             {"a.py": "shaA"}, reviewer=lambda sha, path, material: '{"verdict": "CLEAN", "findings": []}',
-            material_for=lambda sha, path: "material", reviewer_label="deepseek/deepseek-v4-pro",
+            material_for=lambda sha, path: "material", reviewer_label="deepseek/deepseek-v4-pro-0813",
             conn=conn)
         row = conn.execute("SELECT verdict, reviewer_model FROM blob_reviews "
                            "WHERE blob_sha='shaA'").fetchone()
         assert row is not None, "the verdict was not recorded at all"
         assert row[0] == "CLEAN", row
-        assert row[1] == "deepseek/deepseek-v4-pro", (
+        assert row[1] == "deepseek/deepseek-v4-pro-0813", (
             f"the stored verdict must name its judge, got {row[1]!r}")
     finally:
         conn.close()
@@ -148,12 +148,12 @@ def test_a_BLOCKING_verdict_also_records_its_judge():
             reviewer=lambda sha, path, material: json.dumps(
                 {"verdict": "FINDINGS", "findings": [
                     {"finding_id": "F-1", "severity": "high", "evidence": "quoted fragment"}]}),
-            material_for=lambda sha, path: "material", reviewer_label="deepseek/deepseek-v4-pro",
+            material_for=lambda sha, path: "material", reviewer_label="deepseek/deepseek-v4-pro-0813",
             conn=conn)
         row = conn.execute("SELECT verdict, reviewer_model FROM blob_reviews "
                            "WHERE blob_sha='shaB'").fetchone()
         assert row is not None and str(row[0]).upper() == "FINDINGS", row
-        assert row[1] == "deepseek/deepseek-v4-pro", f"a blocking verdict must name its judge: {row}"
+        assert row[1] == "deepseek/deepseek-v4-pro-0813", f"a blocking verdict must name its judge: {row}"
     finally:
         conn.close()
     print("  a blocking verdict records its judge too ✓")

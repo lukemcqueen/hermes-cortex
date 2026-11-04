@@ -318,8 +318,8 @@ def test_the_reviewer_is_the_canonical_model_on_every_path():
         for k in saved:
             os.environ.pop(k, None)
         canonical = mcp.REVIEWER_MODEL_DEFAULT
-        _check("the canonical reviewer model is deepseek-v4-pro",
-               canonical == "deepseek/deepseek-v4-pro", canonical)
+        _check("the canonical reviewer model is deepseek-v4-pro-0813",
+               canonical == "deepseek/deepseek-v4-pro-0813", canonical)
 
         # With nothing configured, every resolution path agrees.
         _check("_reviewer_model() is the canonical model",

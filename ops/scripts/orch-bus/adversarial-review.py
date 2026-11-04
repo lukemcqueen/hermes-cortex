@@ -131,7 +131,7 @@ def _material_for(row: dict) -> str:
 
 def _call_model(prompt: str) -> str:
     model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL",
-                           "deepseek/deepseek-v4-pro")
+                           "deepseek/deepseek-v4-pro-0813")
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         # Cron runs may not inherit the shell env — source the Hermes deploy
@@ -366,7 +366,7 @@ def main() -> int:
             return 0
         reviewer_id = args.reviewer_id or f"adv-review-{uuid.uuid4().hex[:8]}"
         model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL",
-                               "deepseek/deepseek-v4-pro")
+                               "deepseek/deepseek-v4-pro-0813")
         print(f"sweep: {len(pending)} cycle(s) to review (reviewer {reviewer_id})")
         failed = 0
         for row in pending:
@@ -416,7 +416,7 @@ def main() -> int:
         p.error("nothing to do: pass --dry-run, --review, --re-review, or --sweep")
 
     model = os.environ.get("ADVERSARIAL_REVIEWER_MODEL",
-                           "deepseek/deepseek-v4-pro")
+                           "deepseek/deepseek-v4-pro-0813")
     text = _call_model(prompt)
     reviewer_id = args.reviewer_id or f"adv-review-{uuid.uuid4().hex[:8]}"
     return _record(Path(args.db).expanduser(), args.cycle_id, reviewer_id,

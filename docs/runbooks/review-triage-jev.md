@@ -133,7 +133,7 @@ misconfigured or unreachable reviewer can only make closing harder.
 
 **All agents configure the reviewer the SAME way (2026-10-07):**
 `ADVERSARIAL_REVIEW_BACKEND=llm` with
-`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro` — the single canonical
+`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro-0813` — the single canonical
 reviewer. Keep the reviewer model DIFFERENT from the worker's model. The endpoint
 is `ADVERSARIAL_REVIEW_BASE_URL` (default OpenRouter, so a local or self-hosted
 endpoint can review). Name the credential with `ADVERSARIAL_REVIEW_API_KEY_ENV`;
@@ -162,7 +162,7 @@ measurement it already uses to decide *whether* to review:
   a **fast chat-completions call** rather than spawning the agent, even when
   `ADVERSARIAL_REVIEW_BACKEND=agent`. The tier changes the **transport, not the
   model** — it uses `ADVERSARIAL_REVIEWER_MODEL` (the canonical
-  `deepseek/deepseek-v4-pro`), the same reviewer as every other change. Set
+  `deepseek/deepseek-v4-pro-0813`), the same reviewer as every other change. Set
   `ADVERSARIAL_REVIEW_LIGHT_MODEL` to review the light tier with a different
   model on purpose; before 2026-10-08 this tier silently defaulted to
   `deepseek/deepseek-v4-flash-0731`.

@@ -4520,7 +4520,7 @@ COMPLEXITY_FILE_THRESHOLD = 3       # files touched (non-noise)
 REVIEWER_LIGHT_LINE_THRESHOLD = 200  # added+removed lines that force the deep reviewer
 REVIEWER_LIGHT_FILE_THRESHOLD = 10   # files that force the deep reviewer
 
-REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro"  # distinct from worker
+REVIEWER_MODEL_DEFAULT = "deepseek/deepseek-v4-pro-0813"  # distinct from worker
 
 # Spend per tier (2026-10-13, Luke: "too expensive for the deepseek pro reviews").
 #

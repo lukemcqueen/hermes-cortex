@@ -10,7 +10,7 @@ All agents configure the reviewer the SAME way — a single chat-completions
 transport, not a per-host mix:
 
 - **`ADVERSARIAL_REVIEW_BACKEND=llm`** on every host.
-- **`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro`** — the sole reviewer
+- **`ADVERSARIAL_REVIEWER_MODEL=deepseek/deepseek-v4-pro-0813`** — the sole reviewer
   model (distinct from the worker's model). Do not reuse a host's worker model
   for reviews; a model reviewing its own output is not a review.
 - Endpoint and credential as below (`ADVERSARIAL_REVIEW_BASE_URL` default

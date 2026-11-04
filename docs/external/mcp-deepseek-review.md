@@ -60,14 +60,14 @@ The full server definition lives in `~/.pi/agent/mcp.json` (user-level, outside 
 ```
 mcp__deepseek__review(
     plan_text="<your full memo here>",
-    model="deepseek/deepseek-v4-pro",   # the default; see below
+    model="deepseek/deepseek-v4-pro-0813",   # the default; see below
     focus_questions="Optional: what to focus on"
 )
 ```
 
 ## Default model
 
-**`deepseek/deepseek-v4-pro`.** A cheap judge is a weaker judge, and this server exists to attack a plan before it is built — the review is the whole point, so the default does not trade depth for cost. Pass `model=` explicitly to choose something else for a one-off.
+**`deepseek/deepseek-v4-pro-0813`.** A cheap judge is a weaker judge, and this server exists to attack a plan before it is built — the review is the whole point, so the default does not trade depth for cost. Pass `model=` explicitly to choose something else for a one-off.
 
 ## Keeping the name current (automated)
 
@@ -113,7 +113,7 @@ notes, so the behaviour is not surprising:
 
 ## Model slugs
 
-Default: `deepseek/deepseek-v4-pro`.
+Default: `deepseek/deepseek-v4-pro-0813`.
 
 `deepseek/deepseek-v4-flash` is the cheap tier where a shallow pass is genuinely enough.
 

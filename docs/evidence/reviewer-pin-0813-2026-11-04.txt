@@ -1,0 +1,44 @@
+Reviewer model pinned: deepseek/deepseek-v4-pro -> deepseek/deepseek-v4-pro-0813
+Captured 2026-11-04. Verifies the pin across all reviewer model-selection surfaces.
+
+WHY: Luke directive — the official reviewer must be the dated snapshot
+deepseek/deepseek-v4-pro-0813 so agents do not use the unpinned deepseek-v4-pro
+alias (which resolves to a newer/more-expensive version).
+
+SUFFACES CHANGED (functional model selection)
+  - mcp-servers/loop-gov-mcp.py       REVIEWER_MODEL_DEFAULT (close-time per-blob reviewer)
+  - ops/scripts/orch-bus/adversarial-review.py  default in _call_model (3 sites; orchestrator cron)
+  - ops/scripts/manage/reviewer-agent-pi.sh     REVIEWER_PI_MODEL default (agent backend)
+  - .env.example                                ADVERSARIAL_REVIEWER_MODEL
+  - docs + skills naming the canonical reviewer (env-vars, review-triage-jev, reviewer-transport,
+    mcp-deepseek-review, loop-governance SKILL, README, install-orch-crons comment)
+
+TEST RUNS (all pass):
+$ python3 tests/test_reviewer_model_default.py
+RESULT: ALL PASS (7 tests)
+  ordinary change -> tier light, judge deepseek/deepseek-v4-pro-0813 ✓
+
+$ ~/.steadfaste-fleet/venv/bin/python3 tests/test_reviewer_backends.py
+ALL PASS (canonical revision: "the canonical reviewer model is deepseek-v4-pro-0813")
+
+$ ~/.steadfaste-fleet/venv/bin/python3 tests/test_per_blob_findings_recorded.py
+RESULT: ALL PASS (5 tests)
+
+$ ~/.steadfaste-fleet/venv/bin/python3 tests/test_review_append_only.py ; rc=0
+$ ~/.steadfaste-fleet/venv/bin/python3 tests/test_plan_review_gate.py      ; rc=0
+
+SYNTAX:
+$ python3 -m py_compile ops/scripts/orch-bus/adversarial-review.py mcp-servers/loop-gov-mcp.py \
+    tests/test_reviewer_model_default.py tests/test_reviewer_backends.py  -> OK
+$ bash -n ops/scripts/manage/reviewer-agent-pi.sh ops/scripts/install/install-orch-crons.sh -> OK
+
+ADVERSARIAL GATE (A4) on changed .py/.sh -> GATE_PASSED (no critical/high).
+
+DOCTOR: reads REVIEWER_MODEL_DEFAULT from the source (checks.py regex), so the
+"Adversarial reviewer model config" check now PASSes with deepseek/deepseek-v4-pro-0813
+(code default) with no doctor-code change needed.
+
+UNCHANGED BY DESIGN:
+  - ADVERSARIAL_REVIEWER_MODEL env override still works (a host may override).
+  - Cheap light-tier judge opt-in (ADVERSARIAL_REVIEW_LIGHT_MODEL / deepseek-v4-flash) untouched.
+  - delegation.model and general design-consult v4-pro mentions (non-reviewer) intentionally intact.
