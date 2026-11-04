@@ -2604,6 +2604,14 @@ _PII_UUID_RE = re.compile(
 # Private server URLs — a URL whose host is NOT a well-known public site is
 # flagged as personal-infra exposure. Well-known public hosts pass.
 _PII_SERVER_URL_RE = re.compile(r"https?://([a-z0-9.-]+)", re.IGNORECASE)
+# Hardcoded absolute home paths (Linux /home/<user>/, macOS /Users/<user>/,
+# root's /root/). These are machine-specific and expose the operator account;
+# the shared surface must use ~ / $HOME / Path.home() (2026-11-04 home-folder
+# gate hardening).
+_HOME_ABS_RE = re.compile(
+    r"/(?:home/[a-zA-Z][a-zA-Z0-9_-]*(?=/)|Users/[a-zA-Z][a-zA-Z0-9_-]*(?=/)|root(?=/))",
+    re.IGNORECASE,
+)
 _PUBLIC_HOST_RE = re.compile(
     r"^(github\.com|gitlab\.com|docs\.[a-z0-9.-]+|localhost|127\.0\.0\.1|"\
     r"[a-z0-9.-]+\.(org|io|dev|"
@@ -2651,10 +2659,54 @@ def _is_shared_surface_path(path: str) -> bool:
     )
 
 
+def _pii_block_message(tool_name: str, violations: list, shared: bool) -> dict:
+    """Build the PII-guard block message. Never echoes the matched term.
+
+    `shared` only changes the closing sentence (client/private paths stay
+    affected by the deny-list check even though email/phone/server-URL checks
+    stay shared-surface scoped), never whether a violation blocks.
+    """
+    detail = "\n".join("  • " + v for v in violations)
+    scope = (
+        "The write is blocked until the PII is removed. Real emails, phone "
+        "numbers and private server URLs are only checked on the shared "
+        "surface (repo + ~/.hermes/skills); deny-listed personal identifiers "
+        "are blocked everywhere — a home-folder write is one deploy/copy from "
+        "the public repo.\n"
+        if shared else
+        "This write is NOT on the shared surface, but the deny-listed personal "
+        "identifier must never be written anywhere — a home-folder write is "
+        "one deploy/copy from the public repo. Generalize it.\n"
+    )
+    return {
+        "action": "block",
+        "message": (
+            "🛑 PII GUARD — personal data in content being written.\n\n"
+            "Tool '" + tool_name + "' content contains:\n" + detail + "\n\n"
+            "Rule 16 (agent-contract): never write real emails, personal "
+            "identifiers (names, domains, surnames), phone numbers, or "
+            "private server URLs where they can reach the public repo "
+            "(Luke 2026-08-24). Generalize:\n"
+            "  admin@client-domain.com   (not a real address)\n"
+            "  example.com               (not a real domain)\n"
+            "  'the fleet operator'      (not a real name)\n\n"
+            + scope
+        ),
+    }
+
+
 def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
-    """Block writes of real email addresses into the shared surface.
+    """Block PII in tool-write content. Deny-listed identifiers block ANY
+    path; emails/phones/private server URLs block the shared surface only.
 
     Returns None (pass) or {"action": "block", "message": str}.
+
+    Path-independence for the deny-list (2026-11-04, home-folder gap): these
+    are the uniquely-personal identifiers (surname, operator WAN address) and
+    must never be written anywhere — a home-folder write is one deploy/copy
+    (skill_manage -> skills, cortex-update deploy, git add of a local file)
+    from the public repo. The shared-surface early-return that let the home
+    folder through is removed for this class.
     """
     if tool_name == "skill_manage":
         content = _skill_write_content(args)
@@ -2668,26 +2720,15 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
         shared = _is_shared_surface_path(args.get("path", ""))
     else:
         return None
-    if not content or not shared:
+    if not content:
         return None
 
-    bad_domains = set()
-    for email in _PII_EMAIL_RE.findall(content):
-        domain = email.split("@", 1)[1]
-        if not _PLACEHOLDER_DOMAIN_RE.match(domain):
-            bad_domains.add(domain)
-
+    # ── Deny-listed personal identifiers: checked REGARDLESS of target path ──
+    # The repo's own public GitHub URL is allowed even though its owner segment
+    # embeds the surname — that URL is the sanctioned public address, so a hit
+    # inside it is skipped. Every other occurrence (any path, home included)
+    # is blocked.
     violations = []
-    if bad_domains:
-        violations.append(
-            "real email address(es) on non-placeholder domain(s): "
-            + ", ".join(sorted(bad_domains))
-        )
-
-    # Personal identifiers (surname, personal domain, full names), matched by
-    # digest so the terms are not restated in this file. The repo's own public
-    # GitHub URL is allowed even though its owner segment embeds the surname —
-    # that URL is the sanctioned public address, so a hit inside it is skipped.
     for start, end, digest in _pii_sensitive_hits(content):
         if digest in _PII_SENSITIVE_URL_ALLOWED:
             ctx_start = max(0, start - 60)
@@ -2699,10 +2740,30 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
         violations.append("personal identifier (deny-list entry)")
         break  # one report per class is enough
 
+    if not shared:
+        return _pii_block_message(tool_name, violations, shared) if violations else None
+
+    bad_domains = set()
+    for email in _PII_EMAIL_RE.findall(content):
+        domain = email.split("@", 1)[1]
+        if not _PLACEHOLDER_DOMAIN_RE.match(domain):
+            bad_domains.add(domain)
+
+    if bad_domains:
+        violations.append(
+            "real email address(es) on non-placeholder domain(s): "
+            + ", ".join(sorted(bad_domains))
+        )
+
     # Phone numbers. Canonical UUIDs are removed first: they are identifiers, and
     # their hex groups can align to this shape by chance (see _PII_UUID_RE).
     if _PII_PHONE_RE.search(_PII_UUID_RE.sub(" ", content)):
         violations.append("phone number")
+
+    # Hardcoded absolute home paths: machine-specific, expose the account, and
+    # a home write is one deploy/copy from the public repo — use ~/$HOME/Path.home().
+    if _HOME_ABS_RE.search(content):
+        violations.append("hardcoded absolute home path (use ~, $HOME, or Path.home())")
 
     # Private server URLs (host not on the public allowlist). NOTE: the
     # placeholder regex allows `internal` as a doc-host — but .internal is
@@ -2718,27 +2779,7 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
 
     if not violations:
         return None
-
-    detail = "\n".join("  • " + v for v in violations)
-    return {
-        "action": "block",
-        "message": (
-            "🛑 PII GUARD — personal data in content being written.\n\n"
-            "Tool '" + tool_name + "' is writing into the shared surface "
-            "(steadfaste-fleet repo or ~/.hermes/skills), and the content "
-            "contains:\n" + detail + "\n\n"
-            "Rule 16 (agent-contract): never commit real emails, personal "
-            "identifiers (names, domains, surnames), phone numbers, or "
-            "private server URLs to the public repo (Luke 2026-08-24). "
-            "Generalize or move to the private repo:\n"
-            "  admin@client-domain.com   (not a real address)\n"
-            "  example.com               (not a real domain)\n"
-            "  'the fleet operator'      (not a real name)\n\n"
-            "The write is blocked until the PII is removed. Writes to "
-            "client/project paths outside the shared surface are not "
-            "affected.\n"
-        ),
-    }
+    return _pii_block_message(tool_name, violations, shared)
 
 
 # ── Commit-scope gate: a BARE commit, refused in the agent's OWN commands ──────────

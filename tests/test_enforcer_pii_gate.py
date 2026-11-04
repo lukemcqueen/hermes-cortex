@@ -361,6 +361,50 @@ def test_a_dashed_digit_run_that_is_not_a_uuid_still_fires():
     assert gate("acct " + "1234" + _DASH + "5678" + _DASH + "9012")
 
 
+# ── deny-listed identifiers block ANY path, incl. the home folder (2026-11-04) ──
+# The gate used to early-return for writes OUTSIDE the shared surface (any
+# path other than the repo or ~/.hermes/skills), so a deny-listed identifier
+# (surname, operator WAN address) written into the HOME folder passed — one
+# deploy/copy away from the public repo. The deny-list check is now
+# path-independent; emails/phones/private-server-URLs keep the shared-surface
+# scope (client/private work legitimately carries them).
+_HOME_PATH = str(Path.home() / ".hermes" / "notes" / "scratch.md")
+
+
+def gate_home(text: str) -> bool:
+    """Run the PII gate against a write to a HOME-folder path; True = blocked."""
+    args = {"path": _HOME_PATH, "content": text}
+    return enf._check_pii_content_gate("write_file", args) is not None
+
+
+def test_denylisted_identifier_is_blocked_in_the_home_folder(synthetic_denylist):
+    """The hole this change closes: a deny-listed identifier written into the
+    home folder (not repo, not ~/.hermes/skills) used to pass — it is now blocked."""
+    assert gate_home(f"a note signed {_SYNTH_TERM} at the office")
+
+
+def test_repo_url_allowance_survives_the_path_independent_check(synthetic_denylist):
+    """The sanctioned repo URL is allowed even on a home-folder path."""
+    assert not gate_home(f"clone https://github.com/{_SYNTH_TERM}/hermes-cortex")
+
+
+def test_real_owner_handle_is_blocked_in_the_home_folder():
+    """The REAL deny-list value (the public owner handle) is blocked in home too."""
+    assert gate_home(f"contact {_OWNER} about deployment")
+
+
+def test_real_owner_handle_allowed_in_home_only_inside_the_repo_url():
+    """And it stays allowed inside the sanctioned repo URL on a home path."""
+    assert not gate_home(f"clone https://github.com/{_OWNER}/steadfaste-fleet.git")
+
+
+def test_email_and_phone_in_the_home_folder_are_still_allowed():
+    """Emails/phones keep the shared-surface scope: client/private home files
+    legitimately carry them, and blocking would break operational writes."""
+    assert not gate_home(f"reach {_FAKE_EMAIL} or call {_PHONE}")
+
+
+
 def test_the_committed_transcript_records_the_numbers_this_file_claims():
     """Bind the comment's measurement to the committed artifact, not to prose.
 
@@ -426,3 +470,21 @@ def test_the_uuid_false_positive_existed_before_this_change():
     for p in (f"call {_PHONE}", f"ring {_PHONE_INTL}"):
         assert prev_gate(p), f"baseline did not match a phone: {p}"
         assert gate(p), f"the narrowing lost a phone: {p}"
+
+# ── hardcoded absolute home paths: blocked on the shared surface (2026-11-04) ──
+# The public repo must use ~ / $HOME / Path.home(). A hardcoded /home/<user>/
+# reveals the operator account and is one deploy/copy from a leak. The check is
+# shared-surface scoped: a client/private file (not one deploy from the public
+# repo) may legitimately cite an absolute home path.
+def test_hardcoded_absolute_home_path_is_blocked_on_the_shared_surface():
+    assert gate("cd /home/alice/.hermes && echo hi")
+
+
+def test_home_variable_forms_are_allowed_on_the_shared_surface():
+    assert not gate("installed to ~/.hermes/bin")
+    assert not gate("installed to $HOME/.hermes/bin")
+    assert not gate("Path.home() / '.hermes'")
+
+
+def test_hardcoded_absolute_home_path_is_allowed_off_the_shared_surface():
+    assert not gate_home("cd /home/alice/project && make")

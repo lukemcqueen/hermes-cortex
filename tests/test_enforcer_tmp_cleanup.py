@@ -60,7 +60,7 @@ def test_tmp_cleanup_is_sanctioned(cmd):
 
 BLOCKED = [
     "rm -rf /tmp",                       # bare scratch root itself
-    "rm -rf /home/esther/x",             # outside scratch
+    f"rm -rf {pathlib.Path.home()}/x",   # outside scratch (operator home, runtime)
     "rm /tmp/../repo/x",                 # .. escape
     "rm -rf /tmp/x*",                    # wildcard
     "rm -rf /tmp/x?",                    # wildcard
@@ -95,8 +95,9 @@ def test_tmpdir_var_operand_resolves(monkeypatch):
     monkeypatch.setenv("TMPDIR", "/tmp")
     assert _ok("rm -f $TMPDIR/scratch.txt && echo done")
     # A $TMPDIR that points outside /tmp is NOT promoted to a scratch root:
-    # the operand resolves to /home/esther/scratch.txt and is refused.
-    monkeypatch.setenv("TMPDIR", "/home/esther")
+    # the operand resolves to <HOME>/scratch.txt and is refused.
+    operator_home = pathlib.Path.home()
+    monkeypatch.setenv("TMPDIR", str(operator_home))
     assert _no("rm -f $TMPDIR/scratch.txt")
     # monkeypatch restores the original TMPDIR (or its absence) after the test.
 
