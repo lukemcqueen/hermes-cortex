@@ -5,7 +5,7 @@
 | Directory | Purpose | Managed by |
 |-----------|---------|-----------|
 | `~/steadfaste-fleet/` | Git repo — source of truth for all scripts | `git pull` → `cortex-update.sh` |
-| `~/.steadfaste-fleet/scripts/` | Canonical runtime location | `cortex-update.sh` register map (`HERMES_HOME=${HOME}/.hermes-cortex`) |
+| `~/.steadfaste-fleet/scripts/` | Canonical runtime location | `cortex-update.sh` register map (`HERMES_HOME=${HOME}/.steadfaste-fleet`) |
 | `~/.hermes/scripts/` | Hermes Agent cron resolution | Copies from `~/.steadfaste-fleet/scripts/` via sync script |
 
 ## Deployment Flow

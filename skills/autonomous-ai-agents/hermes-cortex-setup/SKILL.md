@@ -34,7 +34,7 @@ behavioral_principles:
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
  - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
- - When running cortex-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/hermes-cortex first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
+ - When running cortex-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/steadfaste-fleet first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
 trigger: User asks to install, set up, deploy, or bootstrap Hermes Cortex, or mentions 'cortex setup', 'install cortex', 'hermes-cortex components'. The cron health report shows an agent as 🔴 unreachable — the fix is often missing health server + agent registry on that machine.
 ---
 
@@ -197,7 +197,7 @@ sg docker -c "docker compose -f ~/steadfaste-fleet/ops/install/deploy/docker-com
 python3 ~/steadfaste-fleet/ops/services/mycortex/migrate.py
 
 # 3. Register a brain source (git repo required per source)
-MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="$HOME/.steadfaste-fleet/scripts/mycortex"
 "$MYCORTEX_CLI" sources add hermes-cortex --path ~/steadfaste-fleet
 
 # 4. Sync it (index now; the cron keeps it fresh)
@@ -351,7 +351,7 @@ retention policy. There is nothing to enable with systemd.
 
 ```bash
 # Manual sync (index now, don't wait for the cron)
-MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="$HOME/.steadfaste-fleet/scripts/mycortex"
 "$MYCORTEX_CLI" sync --source hermes-cortex
 
 # Verify the cron is registered
@@ -457,7 +457,7 @@ git config user.email "<agent-name>@hermes-cortex"
 
 The `install-crons.sh` script in the repo installs the universal crons listed in AGENTS.md (health monitors, inbox sensors, governance auditors, etc.). These are no_agent scripts that run on every agent machine.
 
-**Pitfall — script search path is `~/.steadfaste-fleet/scripts/`:** The `install-crons.sh` script (line 34) looks for scripts in `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`, NOT `~/.hermes/scripts/`. If scripts aren't found at that path, it silently skips those crons. Deploy scripts there first:
+**Pitfall — script search path is `~/.steadfaste-fleet/scripts/`:** The `install-crons.sh` script (line 34) looks for scripts in `SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"`, NOT `~/.hermes/scripts/`. If scripts aren't found at that path, it silently skips those crons. Deploy scripts there first:
 
 ```bash
 # Copy critical monitor scripts to both locations
@@ -517,7 +517,7 @@ grep -rl "resolve().parent" ~/.hermes/scripts/ 2>/dev/null | while read handler;
  handler_dir=$(dirname "$handler")
  # Extract script names referenced as siblings
  grep -oP 'parent\s*/\s*"\K[^"]+' "$handler" 2>/dev/null | while read sibling; do
-  src="$HOME/.hermes-cortex/scripts/$sibling"
+  src="$HOME/.steadfaste-fleet/scripts/$sibling"
   dst="$handler_dir/$sibling"
   if [ -f "$src" ] && [ ! -f "$dst" ]; then
    cp "$src" "$dst"
@@ -527,7 +527,7 @@ grep -rl "resolve().parent" ~/.hermes/scripts/ 2>/dev/null | while read handler;
  # Also sync lib/ directory if handler has peer imports from lib.
  if grep -q "from lib\." "$handler" 2>/dev/null; then
   mkdir -p "$handler_dir/lib"
-  cp "$HOME/.hermes-cortex/scripts/lib/"*.py "$handler_dir/lib/" 2>/dev/null
+  cp "$HOME/.steadfaste-fleet/scripts/lib/"*.py "$handler_dir/lib/" 2>/dev/null
  fi
 done
 ```
@@ -620,7 +620,7 @@ curl -s http://127.0.0.1:11434/api/tags
 # Should show nomic-embed-text:v1.5
 
 # 4. mycortex
-"$HOME/.hermes-cortex/scripts/mycortex" doctor --json
+"$HOME/.steadfaste-fleet/scripts/mycortex" doctor --json
 
 # 5. Bun
 bun --version
@@ -671,7 +671,7 @@ After extracting brain files into the MECE brain directory structure, register
 the tree as a mycortex source and sync it to become searchable:
 
 ```bash
-MYCORTEX_CLI="$HOME/.hermes-cortex/scripts/mycortex"
+MYCORTEX_CLI="$HOME/.steadfaste-fleet/scripts/mycortex"
 
 # Register the brain dir as a source (git repo required)
 "$MYCORTEX_CLI" sources add default --path ~/brain/default

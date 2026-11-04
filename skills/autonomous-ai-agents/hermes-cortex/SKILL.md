@@ -115,7 +115,7 @@ rm ~/.hermes/scripts/<file> && ln -sf ~/.steadfaste-fleet/scripts/<file> ~/.herm
 ```
 This was done for 42 files in June 2026. Any future cortex-update maintenance should follow the same pattern — never leave stale regular-file copies in `~/.hermes/scripts/`.
 
-**Cron job script resolution:** The cron scheduler resolves scripts from `HERMES_HOME/scripts/` (`~/.hermes/scripts/`), resolving symlinks via `.resolve()`. The `install-crons.sh` function checks `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"` when verifying script existence during cron creation.
+**Cron job script resolution:** The cron scheduler resolves scripts from `HERMES_HOME/scripts/` (`~/.hermes/scripts/`), resolving symlinks via `.resolve()`. The `install-crons.sh` function checks `SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"` when verifying script existence during cron creation.
 
 **External access (via nginx):**
 - Langfuse: `https://your-domain.com:11002` (TLS + basic auth, upstream `127.0.0.1:3000`)
@@ -293,7 +293,7 @@ head -5 ~/.steadfaste-fleet/offline/auto-update.sh 2>/dev/null || head -5 ~/stea
 grep "^HERMES_DIR\|^OFFLINE_DIR" ~/.steadfaste-fleet/offline/auto-update.sh 2>/dev/null
 ```
 
-If the script references `$HOME/hermes-cortex/offline/` (hardcoded path), it breaks
+If the script references `$HOME/steadfaste-fleet/offline/` (hardcoded path), it breaks
 when the repo is cloned somewhere other than `~/steadfaste-fleet`. The script should
 derive its path from its own location or use `~/.steadfaste-fleet/offline/`.
 
@@ -561,7 +561,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 **Dogfood your own rules:** When you introduce a new rule or process that mandates scoring, immediately run `score-cycle` on your own changes to validate the tooling works end-to-end. This catches missing shebangs, Python version mismatches, scoring calibration gaps, and feedback CLI tooling issues before they hit production. The user will call you out if you mandate something and don't do it yourself — it erodes trust in the rule.
 
-**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.steadfaste-fleet/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.hermes-cortex/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
+**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.steadfaste-fleet/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
 
 **Verification:** Run `bash ~/steadfaste-fleet/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
 
@@ -601,7 +601,7 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 
 **PROBLEM:** `cortex-update.sh ` maps `~/.steadfaste-fleet/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.steadfaste-fleet/bin/` directory does not exist, the symlink creation fails with:
 ```
-ln: $HOME/.hermes-cortex/bin/offline_knowledge: No such file or directory
+ln: $HOME/.steadfaste-fleet/bin/offline_knowledge: No such file or directory
 ```
 This is a **non-fatal error by itself**, but if `cortex-update.sh` runs with `set -e` (exit on error), the script stops immediately. Any `register()` lines AFTER the broken symlink — including newly added scripts — never get deployed.
 
