@@ -173,6 +173,7 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/review-receipt-gate.md` | **Review receipt gate** — a push touching an always-review path needs a CLEAN review receipt for that exact range (review before push) |
 | `docs/loop-governance-reference.md` | Loop governance reference |
 | `docs/seeding-brain-content.md` | Seeding brain content |
+| `docs/rename-followups-steadfaste-fleet.md` | **Rename follow-ups: hermes-cortex → steadfaste-fleet** — what was DELIBERATELY kept under the old name and why (skill dirs + `name:` frontmatter, enforcement dual-URL detection, migration tools, historical evidence), the `cortex` short-name layer, and pull-before-rename sequencing. Per-host completion: `docs/runbooks/fleet-local-dir-rename.md` |
 
 ## Knowledge & Offline
 
