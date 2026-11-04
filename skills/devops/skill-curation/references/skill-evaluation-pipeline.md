@@ -167,7 +167,7 @@ cd ~/steadfaste-fleet
 python3 -c "
 import json
 from pathlib import Path
-m = json.loads(Path('~/.steadfaste-fleet/state/skills-manifest.json').expanduser().read_text())
+m = json.loads(Path('~/.steadfaste-fleet/state/skills-manifest.json').expanduser().expanduser().read_text())
 r = {p.parent.name for p in Path('runtime/skills').rglob('SKILL.md')}
 for s in m['skills']:
     if s['name'] not in r:

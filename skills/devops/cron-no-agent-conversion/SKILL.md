@@ -98,7 +98,7 @@ python3 ~/.hermes/scripts/local-nginx-error-summary.py
 - ❌ **Converting a cron that genuinely needs tools** — tool loops belong in
   agent crons; forcing them into scripts creates brittle subprocess chains.
 - ❌ **Secrets in the script** — read API keys from a file
-  (`KEY = open("~/.secrets/key").read().strip()`), never hardcode.
+  (`KEY = open(os.path.expanduser("~/.secrets/key")).read().strip()`), never hardcode.
 - ❌ **Manual test ≠ scheduler test** — after fixing a cron, run
   `cronjob action=run job_id=<id>` so the scheduler's recorded status
   refreshes, then run the doctor to confirm it clears.

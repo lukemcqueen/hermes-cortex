@@ -227,7 +227,7 @@ curl -s "https://api.telegram.org/bot<PI_TELEGRAM_BOT_TOKEN>/getMe"
 cd ~/.steadfaste-fleet/scripts && \
   set -a && source ~/steadfaste-fleet/.env && set +a && \
   python3 -c "from cortex_gateway.daemon import build_gateway; \
-              gw = build_gateway(Path('~/.steadfaste-fleet/gateway.yaml')); \
+              gw = build_gateway(Path('~/.steadfaste-fleet/gateway.yaml').expanduser()); \
               print('OK:', list(gw.backends.keys()))"
 
 # Send /status then /restart to the bot on Telegram

@@ -406,7 +406,7 @@ and check one of:
 
 2. **Agent health data** (Moses can check):
    ```bash
-   python3 -c "import json;d=json.load(open('~/.steadfaste-fleet/state/inbox-health-state.json'));print(d.get('titus'))"
+   python3 -c "import json;d=json.load(open(os.path.expanduser('~/.steadfaste-fleet/state/inbox-health-state.json')));print(d.get('titus'))"
    ```
    A dict with `vector` + `ts` means your latest ping was drained and recorded.
 

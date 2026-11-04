@@ -16,7 +16,7 @@ Write a diagnostic script to `/tmp/check-jobs.py`:
 
 ```python
 import json
-with open('~/.hermes/cron/jobs.json') as f:
+with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 jobs = data.get('jobs', [])
 for j in jobs:
@@ -37,7 +37,7 @@ Cron output lives in `~/.hermes/cron/output/<job-id>/` as `.md` files (not `late
 
 ```bash
 ls -t ~/.hermes/cron/output/<job-id>/   # Find most recent
-read_file("~/.hermes/cron/output/<job-id>/<most-recent>.md")
+read_file(os.path.expanduser("~/.hermes/cron/output/<job-id>/<most-recent>.md"))
 ```
 
 ### Step 3: Trace the error to source

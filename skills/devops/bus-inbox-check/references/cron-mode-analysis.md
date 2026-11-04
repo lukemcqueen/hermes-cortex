@@ -13,7 +13,7 @@ Use `python3 -c` with an inline script for all batch analysis. Example patterns:
 ```bash
 python3 -c "
 import json
-with open('~/.hermes/cron/jobs.json') as f:
+with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 jobs = data['jobs']
 print(f'Total jobs: {len(jobs)}')
@@ -29,7 +29,7 @@ for e in errors:
 python3 -c "
 from collections import Counter
 import json
-with open('~/.hermes/cron/jobs.json') as f:
+with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 statuses = Counter(j.get('last_status','unknown') for j in data['jobs'])
 print(f'Status counts: {dict(statuses)}')
@@ -41,7 +41,7 @@ print(f'Status counts: {dict(statuses)}')
 python3 -c "
 from datetime import datetime, timezone, timedelta
 import json
-with open('~/.hermes/cron/jobs.json') as f:
+with open(os.path.expanduser('~/.hermes/cron/jobs.json')) as f:
     data = json.load(f)
 cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 for j in data['jobs']:
