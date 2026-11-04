@@ -137,6 +137,39 @@ grep -rl 'hermes-cortex' ~/.steadfaste-fleet/scripts/                    # nothi
 - **No systemd** means no bridge-timer regeneration; the macOS cron bridge uses launchd
   equivalents. Same rule: drop any launchd job still named `agent-hermes-cortex-sync`.
 
+### macOS: repoint the Pi-harness + agent surfaces (required before removing the symlinks)
+
+The repo sweep and §1–§7 leave several **harness-owned, non-repo** configs still resolving
+`~/.hermes-cortex`/`~/hermes-cortex` through the transition symlinks. Verified on Titus 2026-11-04:
+
+- `~/.pi/agent/mcp.json` — the **Pi-harness MCP manifest Pi actually reads** (not a repo
+  `.mcp.json`). Six servers carry `~/.hermes-cortex/...` (`deepseek` `command`, and
+  `loop-governance`, `tasks`, `executor`, `agent-bus`, `cortex-context` `args`); repoint to
+  `~/.steadfaste-fleet/...`.
+- `~/.pi/agent/settings.json` — Pi harness extension scripts
+  `/Users/luke/.hermes-cortex/harnesses/pi/extensions/{cortex-context,cortex-governance}.ts` →
+  `~/.steadfaste-fleet/harnesses/pi/extensions/`.
+- `~/.steadfaste-fleet/agent.env` — `CORTEX_PYTHON=/Users/luke/.hermes-cortex/venv/bin/python3` →
+  `~/.steadfaste-fleet/venv/bin/python3` (the doctor flags this if left).
+- `~/.steadfaste-fleet/gateway.yaml` — the `cortex-gateway/pi_control.py` commands (`compact`,
+  `check-model`) carry `/Users/luke/.hermes-cortex/...` → `~/.steadfaste-fleet/...`.
+- `~/.hermes/hermes-agent/.claude/settings.local.json` — a couple of `Read(//Users/luke/hermes-cortex/...)`
+  permission rules. **Redundant** (superseded by `Read(//Users/luke/**)`); edit only if handy — the
+  file sits in its own git checkout (`~/.hermes/hermes-agent`), so a fleet-repo governance cycle
+  cannot write it directly.
+
+After repointing, confirm `grep -rl hermes-cortex` is empty across `~/.pi/agent/`, `~/.config`,
+`~/Library/LaunchAgents`, `~/.local/bin`, shell rc, and the tool-visible keys of `~/.hermes/`
+(`config.yaml`, `repos.yaml`, `gateway.yaml`, `agent.env`) — then the transition symlinks are
+genuinely removable:
+
+```bash
+rm -f ~/hermes-cortex ~/.hermes-cortex
+```
+
+(The `has_hermes_cortex:` fields and the enforcer's dual-URL accept list are intentional string
+matches, not path loads — they do not require the symlink.)
+
 ## What is deliberately kept
 
 The names below are stable identifiers, not stale paths — do **not** sweep them:
