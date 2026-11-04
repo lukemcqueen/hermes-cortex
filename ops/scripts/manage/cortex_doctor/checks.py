@@ -872,195 +872,24 @@ def check_dev_repo_claude(res: "Results") -> None:
         f"all {checked} active dev repo(s) have CLAUDE.md")
 
 
-def _extract_soul_markers(path: Path) -> set:
-  """Extract all bold-marker sub-points from a SOUL.md file (across all sections).
-  Returns a set of marker strings (e.g. 'Do real work', 'Proactive', 'Orchestrator')."""
-  if not path.exists():
-    return set()
-  text = path.read_text()
-  # Find the content after the frontmatter/YAML header (--- ... ---)
-  main_start = 0
-  if text.startswith('---'):
-    end = text.find('---', 3)
-    if end != -1:
-      main_start = end + 3
-  content = text[main_start:]
-  # Extract all **bold** markers from list items anywhere in the file
-  markers = set()
-  for line in content.split('\n'):
-    # Match: - **Marker** — description
-    bm = re.search(r'^\s*-\s+\*\*([^*]+)\*\*', line)
-    if bm:
-      markers.add(bm.group(1).strip())
-  return markers
+def check_restart_pending(res):
+  """Warn when Hermes was updated but the daemon has not been restarted.
 
-
-def _extract_soul_principle_titles(path) -> dict:
-    """Extract '### N. Title' principle headings from a SOUL.md.
-
-    Returns {number: title} for every principle heading (canonical 1-12
-    plus any local 13+). Tier headers ('### Tier N — …') are not principles.
-    """
-    titles = {}
-    if not path.exists():
-        return titles
-    for line in path.read_text().splitlines():
-        m = re.match(r'^###\s+(\d+)\.\s+(.+)$', line.strip())
-        if m:
-            titles[int(m.group(1))] = m.group(2).strip()
-    return titles
-
-
-def _soul_title_key(title: str) -> str:
-    """Normalize a principle title for matching (number-agnostic, lowercase)."""
-    return re.sub(r'^#{3,4}\s*\d+\.\s*', '', title).strip().lower()
-
-
-def check_soul_sync(res):
-  """Check SOUL.md is synced from repo template — for ALL agents."""
-  # Restart-pending marker: hermes update replaces source files but the
-  # running daemon keeps stale modules until a real restart (O1-S1b:
-  # scheduler.py patched on disk at 22:23, daemon from 16:52 still wrote
-  # audit without the cache split). Surface the marker instead of
-  # silently running stale code.
+  hermes update replaces source files but the running daemon keeps stale
+  modules until a real restart (O1-S1b: scheduler.py patched on disk at
+  22:23, daemon from 16:52 still wrote audit without the cache split).
+  Surface the marker instead of silently running stale code.
+  (Extracted from the removed check_soul_sync — SOUL.md is Hermes-owned
+  and the fleet no longer manages it; this signal is unrelated and stays.)
+  """
   marker = CORTEX_HOME / "state" / "restart-pending"
-  if marker.exists() and "updated:" in marker.read_text(encoding="utf-8", errors="replace"):
-    res.add("Restart pending", "WARN",
-        "Hermes updated but the daemon has not been restarted — running stale code",
-        f"Run from a separate shell: hermes gateway restart  (or remove {marker} after restart)")
-  template = CORTEX_REPO / "docs" / "templates" / "SOUL.md"
-  if not template.exists():
-    res.add("SOUL.md template", "WARN", "template not found at docs/templates/SOUL.md",
-        "REQUIRED: verify repo is up to date")
+  try:
+    if marker.exists() and "updated:" in marker.read_text(encoding="utf-8", errors="replace"):
+      res.add("Restart pending", "WARN",
+          "Hermes updated but the daemon has not been restarted — running stale code",
+          f"Run from a separate shell: hermes gateway restart  (or remove {marker} after restart)")
+  except OSError:
     return
-
-  hostname = os.uname().nodename.split('.')[0] # e.g. 'esther' or 'gisu'
-  hermes_soul = Path.home() / ".hermes" / "SOUL.md"
-  if not hermes_soul.exists():
-    res.add("SOUL.md (~/.hermes)", "FAIL", "not found at ~/.hermes/SOUL.md",
-        "REQUIRED: cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md")
-    return
-
-  # Size check: warn if >15K, fail if >20K
-  size_bytes = hermes_soul.stat().st_size
-  size_kb = size_bytes / 1024
-  if size_bytes > 20480:
-    res.add("SOUL.md (~/.hermes)", "FAIL",
-        f"{size_kb:.0f}K — exceeds 20K maximum",
-        "Trim content: remove deprecated sections, consolidate verbose entries")
-    return
-  elif size_bytes > 15360:
-    res.add("SOUL.md (~/.hermes)", "WARN",
-        f"{size_kb:.0f}K — target <15K for optimal loading",
-        "Trim: keep scripture gleanings short (full study lives in ~/brain/<agent>/bible/); archive old entries")
-
-  soul_text = hermes_soul.read_text()
-
-  # Placeholder identity WARN — deployed copy still ships the template stub
-  if "[your agent's name]" in soul_text or "Replace with your identity" in soul_text:
-    res.add("SOUL.md identity (~/.hermes)", "WARN",
-        "Identity still uses the template placeholder",
-        "Replace 'You are [your agent's name]' with your real identity (hostname-derived)")
-
-  # ── Canonical 12 principles (title-based) ──────────────────────────
-  template_titles = _extract_soul_principle_titles(template)
-  agent_titles = _extract_soul_principle_titles(hermes_soul)
-  template_by_key = {_soul_title_key(t): n for n, t in template_titles.items()}
-  agent_by_key = {_soul_title_key(t): n for n, t in agent_titles.items()}
-
-  # Every canonical principle must be present in the deployed copy
-  missing_canonical = [t for k, t in [(k, t) for t in template_titles.values()
-                                      for k in [template_by_key.get(_soul_title_key(t), t)]]
-                       if _soul_title_key(t) not in agent_by_key]
-  if missing_canonical:
-    res.add("SOUL.md canonical 12 (~/.hermes)", "FAIL",
-        f"Missing {len(missing_canonical)} canonical principle(s): {', '.join(sorted(missing_canonical)[:5])}",
-        "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
-  else:
-    res.add("SOUL.md canonical 12 (~/.hermes)", "PASS",
-        f"all {len(template_titles)} canonical principles present")
-
-  # ── Local principles (0-12, generic, no duplicates) ────────────────
-  local_titles = [t for t in agent_titles.values()
-                  if _soul_title_key(t) not in template_by_key]
-  dup_local = [t for t in local_titles
-               if any(_soul_title_key(t) == _soul_title_key(ct)
-                      for ct in template_titles.values())]
-  if dup_local:
-    res.add("SOUL.md local principles (~/.hermes)", "FAIL",
-        f"Local principle(s) duplicate canonical set: {', '.join(sorted(dup_local)[:5])}",
-        "Remove or rename; local principles must not duplicate the canonical 12")
-  elif len(local_titles) > 12:
-    res.add("SOUL.md local principles (~/.hermes)", "WARN",
-        f"{len(local_titles)} local principle(s) — max 12 allowed",
-        "Consolidate local principles into the canonical set or trim to ≤12")
-  elif local_titles:
-    res.add("SOUL.md local principles (~/.hermes)", "PASS",
-        f"{len(local_titles)} local principle(s) — allowed (≤12, generic, non-duplicating)")
-  else:
-    res.add("SOUL.md local principles (~/.hermes)", "PASS", "none (0 allowed)")
-
-  # ── Scripture brevity ──────────────────────────────────────────────
-  # Gleanings must be SHORT; the full study lives in ~/brain/<agent>/bible/.
-  # Warn above ~2.5K chars (roughly 3 entries — matches the cron's archive rule).
-  m_sc = re.search(r'## Scripture Insights\n(.*?)(?=\n## )', soul_text, re.S)
-  scripture_len = len(m_sc.group(1)) if m_sc else 0
-  if scripture_len > 2500:
-    res.add("SOUL.md scripture (~/.hermes)", "WARN",
-        f"Scripture Insights ~{scripture_len//1024}K chars — gleanings should be short",
-        "Archive old entries to ~/brain/<agent>/bible/archive/SOUL-archive.md; keep ~1-2 in SOUL.md")
-
-  # ── Trait marker sync (Core Traits bullets) ────────────────────────
-  template_markers = _extract_soul_markers(template)
-  agent_markers = _extract_soul_markers(hermes_soul)
-  orchestrators = {"moses", "esther"}
-  is_orchestrator = hostname in orchestrators
-  effective_template = template_markers
-
-  if len(effective_template) > len(agent_markers) + 2:
-    missing = len(template_markers) - len(agent_markers)
-    res.add("SOUL.md template sync (~/.hermes)", "FAIL",
-        f"Template has {len(template_markers)} trait markers, local has {len(agent_markers)} — {missing} missing",
-        "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
-  elif len(agent_markers) < len(effective_template):
-    missing_markers = effective_template - agent_markers
-    critical_missing = {m for m in missing_markers
-              if not any(skip in m for skip in
-                    ["This principle absorbs", "Template verse", "Replace with"])}
-    if critical_missing:
-      res.add("SOUL.md template sync (~/.hermes)", "FAIL",
-          f"Missing {len(critical_missing)} trait markers: {', '.join(sorted(critical_missing)[:5])}",
-          "REQUIRED: Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py")
-    else:
-      res.add("SOUL.md template sync (~/.hermes)", "PASS")
-  else:
-    res.add("SOUL.md template sync (~/.hermes)", "PASS")
-
-  # Reverse drift: deployed has trait markers not in template. Diff against
-  # the FULL template — filtering "Orchestrator" out then diffing made every
-  # faithful non-orch copy a false WARN. Orchestrators may carry it locally;
-  # non-orchestrators claiming it is a real defect.
-  extra_in_deployed = agent_markers - template_markers
-  if extra_in_deployed:
-    skip_patterns = ["Scripture", "Bible", "Scripture Insights",
-                     "Replace with", "your agent", "your purpose",
-                     "your name", "your mission"]
-    if is_orchestrator:
-      skip_patterns.append("Orchestrator")  # orch may carry it locally
-    real_extra = {m for m in extra_in_deployed
-           if not any(skip in m for skip in skip_patterns)}
-    if "Orchestrator" in extra_in_deployed and not is_orchestrator:
-      res.add("SOUL.md orchestrator claim (~/.hermes)", "WARN",
-          "Deployed claims the Orchestrator trait — you are NOT an orchestrator",
-          "Remove the Orchestrator trait from Core Traits; orchestrator status is host-derived (moses/esther only)")
-    elif real_extra:
-      res.add("SOUL.md reverse drift (~/.hermes)", "WARN",
-        f"Deployed has {len(real_extra)} markers not in template: {', '.join(sorted(real_extra)[:5])}",
-        "Copy new principles to docs/templates/SOUL.md so all agents get them.")
-    else:
-      res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
-  else:
-    res.add("SOUL.md reverse drift (~/.hermes)", "PASS")
 
 
 def check_user_template(res):
@@ -4747,30 +4576,9 @@ def check_deploy_checksums(res):
      HERMES_HOME / "plugins" / "governance-enforcer" / "README.md"),
   ]
 
-  # Add profile-specific SOUL.md mapping for the current agent's local copy.
-  # Resolve identity from config only — NEVER hostname (a machine name is not
-  # an agent name; Luke directive 2026-08-14). Unresolvable = no label.
-  current_agent = os.environ.get("AGENT_NAME", "").lower().strip()
-  if not current_agent or current_agent == "unknown":
-      for _idf in (Path.home() / ".steadfaste-fleet" / "agent.env",
-                   Path.home() / "steadfaste-fleet" / ".env"):
-          try:
-              if _idf.is_file():
-                  for _line in _idf.read_text().splitlines():
-                      _line = _line.strip()
-                      if _line.startswith("AGENT_NAME="):
-                          _val = _line.split("=", 1)[1].strip().strip("\"'").lower()
-                          if _val and _val != "unknown":
-                              current_agent = _val
-                              break
-          except OSError:
-              continue
-  if current_agent:
-    local_soul = HERMES_HOME / "SOUL.md"
-    if local_soul.exists():
-      known_mappings.append(
-        (f"SOUL.md (profile: {current_agent})", local_soul, local_soul)
-      )
+  # SOUL.md is NOT added here — it is Hermes-owned identity (~/.hermes/SOUL.md),
+  # managed by Hermes, not fleet-synced (removed 2026-11-04 with check_soul_sync /
+  # soul-merge). The fleet governs agents via per-repo AGENTS.md only.
 
   for label, src, dst in known_mappings:
     _check_pair(label, src, dst, res)

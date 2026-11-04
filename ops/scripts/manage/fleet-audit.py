@@ -203,15 +203,6 @@ def validate_f1(registry, suggest=False):
         if not agent.get("is_server", False) and health_method == "http":
             agent_warnings.append(f"{agent_key}.health_method: '{health_method}' but is_server=false — non-servers should use 'inbox'")
 
-        # Check SOUL.md profile exists
-        soul_path = Path.home() / ".hermes" / "SOUL.md"
-        if not soul_path.exists():
-            agent_warnings.append(f"{agent_key}: SOUL.md not found at ~/.hermes/SOUL.md — run: cp ~/steadfaste-fleet/docs/templates/SOUL.md ~/.hermes/SOUL.md")
-        else:
-            soul_size = soul_path.stat().st_size
-            if soul_size < 500:
-                agent_warnings.append(f"{agent_key}: SOUL.md is only {soul_size} bytes — may be incomplete")
-
         results[agent_key] = {
             "name": name,
             "role": role,

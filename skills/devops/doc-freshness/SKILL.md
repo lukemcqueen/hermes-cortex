@@ -20,35 +20,21 @@ metadata:
 
 ## What This Is
 
-A cross-document freshness system that ensures AGENTS.md (fleet coordination rules) and SOUL.md (agent identity docs) don't drift from what the fleet expects. Five enforcement layers:
+A cross-document freshness system that ensures AGENTS.md (fleet coordination rules) and SOUL.md (agent identity docs) stay fit for what the fleet expects. Since 2026-11-04 `~/.hermes/SOUL.md` is **Hermes-owned** (soul-merge / soul-sync / template-diff-check were removed — nothing fleet-side auto-syncs or checks it against `docs/templates/SOUL.md`). Remaining layers:
 
 | Layer | What | Who runs | Frequency |
 |-------|------|----------|-----------|
-| **Template drift check** | `template-diff-check.py` runs during `cortex-update.sh` after every `git pull`. Compares local `~/.hermes/SOUL.md` against `docs/templates/SOUL.md` for missing sections, stale content markers, and deprecated patterns. | Each agent's own `cortex-update.sh` | Every `git pull` (typically daily) |
 | **Weekly audit** | `agents-doc-audit.py` checks all SOUL.md + AGENTS.md for mandatory section *presence* | Moses (orchestrator) | Monday 7am KST |
-| **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md or his SOUL.md | Moses (orchestrator) | On change |
+| **Post-update broadcast** | Moses sends inbox message to all agents after modifying AGENTS.md | Moses (orchestrator) | On change |
 | **Daily gap fill** | `orch-skill-lifecycle` cron (orchestrator) evaluates agent data, patches skills/SOUL.md. Non-orchestrators use the bus to submit learning reports. | Per-agent | Daily 04:00 (orchestrator) |
 | **Session-start check** | Every agent reads AGENTS.md + own SOUL.md at session start | Each agent | Every session |
 
-**Key insight:** The template drift check (Layer 1) is the earliest detection layer — it fires on every `git pull` before the agent even starts a work session. It detects *content* drift (stale markers, deprecated patterns), not just missing sections. The weekly audit catches anything structural that slipped through. The daily gap fill auto-recovers. The session-start check is the last resort.
+**Key insight:** SOUL.md identity is now the agent's own to maintain (Hermes-owned); the weekly audit catches anything structurally slipped, the daily gap fill auto-recovers, and the session-start check is the last resort. The `template-diff-check.py` auto-drift layer was removed 2026-11-04.
 
-### Template drift detection
+`docs/templates/SOUL.md` remains the reference for the shared **12 Behavioral Principles**. Want to compare yours:
 
-The `template-diff-check.py` script (deployed via `cortex-update.sh` MAP) compares `~/.hermes/SOUL.md` against `docs/templates/SOUL.md`:
-
-| Check | What it detects | Example |
-|-------|----------------|---------|
-| **Missing sections** | Template has a `## Section` the local copy lacks | Template has `Behavioral Principles` but local doesn't |
-| **Stale content markers** | Key version markers missing from a section | Loop Governance should mention `MCP-enforced` but says `skip=self-destruct` |
-| **Deprecated patterns** | Known-old language found in the file | `Strike 3 → propose`, `Three strikes → propose` |
-
-Exit code 1 triggers a warning in the `cortex-update.sh` output. Silent (exit 0) means current.
-
-**To resolve drift:**
 ```bash
 diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
-# Merge changes, then re-run cortex-update to confirm
-cortex-update --status
 ```
 
 ### First-time seeding
@@ -76,12 +62,11 @@ On first install, `install.sh` Step 9 copies `docs/templates/SOUL.md` to `~/.her
 - Pre-commit / pre-push hooks
 
 **Size gate:** AGENTS.md is PER-REPO (no global `~/.hermes/AGENTS.md` copy
-since 2026-11-04, and no doctor size-check on it). SOUL.md is still
-size-gated — WARN >15K, FAIL >20K (`check_repo` in cortex_doctor/checks.py).
-A size WARN on SOUL.md can't be cleared by re-syncing (it is the single
-source) — it needs a real trim of the template, or a deliberate threshold
-re-baseline. Trimming is orchestrator-owned
-(AGENTS.md is in `docs/orchestrator-only-paths.txt`).
+since 2026-11-04, and no doctor size-check on it). SOUL.md is also NOT
+doctor-size-gated since 2026-11-04 — `check_soul_sync` (which enforced the
+15K/20K budget) was removed; SOUL is Hermes-owned. Keep it lean for loading,
+but nothing fleet-side fails on its size. Trimming the shared template is
+orchestrator-owned (AGENTS.md is in `docs/orchestrator-only-paths.txt`).
 
 ## Triggers
 
@@ -90,7 +75,6 @@ Use this skill when:
 - AGENTS.md or SOUL.md has been modified (broadcast to other agents)
 - It's Monday morning (run the weekly audit)
 - A cron delivered a `Missing: X, Y, Z` warning from the audit
-- `cortex-update.sh` reports `⚠ Template drift detected` after a pull
 - User asks "how do agents get notified when docs change?"
 - User asks to update or audit the README — verify every section matches current repo state, paths exist, counts are accurate, installation instructions work
 - **You see** `ValueError: Model X context (N tokens) below 64K minimum` — the cron's model doesn't have enough context window. Fix it by pinning a 64K+ model (see "Model Requirements" below)
@@ -359,8 +343,7 @@ means the deployed agents and the fresh-project agents disagree on the rule.
   the seeded copy cite a document the reader will never load.
 - **The stale flag is normal mid-session** — only worry if it persists through a commit cycle
 - **Don't build a second AGENTS.md checker** — `agents-doc-audit.py` is the canonical tool. Before creating any new script, search existing tools that already handle the domain. The `check-agents-dot-md.py` → `agents-doc-audit.py` merge (July 2026) was caused by not searching first.
-- **`template-diff-check.py` is a structural/language check, not a content audit** — it detects missing sections and stale markers, but doesn't verify the quality or completeness of the content within those sections. The weekly `agents-doc-audit.py` and daily `orch-skill-lifecycle` cron handle content-level gap filling.
-- **Template drift check only fires if you run `cortex-update.sh`** — agents that never pull or update will never see the template drift warning. The weekly audit and daily `orch-skill-lifecycle` cron are the fallback for those agents.
+- **`agents-doc-audit.py` is the same tool in audit AND hook mode; SOUL.md content-level quality is not auto-checked** — since template-diff-check.py was removed (2026-11-04) SOUL completeness is reviewed by the weekly audit and daily `orch-skill-lifecycle` cron only.
 - **README accuracy decays faster than agent docs** — the README is public-facing and describes install methods, scripts, paths, and counts that drift with every commit. After any significant merge (new scripts, reorganized directories, new deploy artifacts), check `docs/DOCS-INDEX.md` AND `README.md` against the actual repo tree. A stale README is how new users get stuck on first install.
 - **Model pinning is required** for LLM-driven crons with data-collection scripts. If a cron fails with "context below 64K minimum", pin its model to one with >=64K context. Check `cronjob action=list` for `model: null` on LLM-driven crons and pin them.
-- **Template-merge tools must REBUILD when the template shrinks, never append (2026-08-03).** `soul-merge.py` appended the new 12-principle template on top of stale pre-consolidation 34-principle content — stacking 46 principles and blowing the SOUL size budget (26,957 B, doctor FAIL). The trap: after the first bad merge, every template title IS present in the copy, so "missing titles" detection reports up-to-date and the balloon sticks forever. Fix pattern: detect consolidation by **count mismatch** (`len(template) < len(agent)`) gated on stale titles actually present (titles in the PREVIOUS template but NOT the current one — surviving titles like "Loop Governance" exist in both and must not re-trigger). On consolidation, rebuild the section from the template as authoritative, dropping stale template-origin principles while preserving genuinely agent-specific ones (title never in any template version, checked via git). Verify idempotency: run 1 rebuilds, runs 2+ report up-to-date with byte-stable content. A re-baseline of the template is the documented response to intentional restructuring — the merge tool must follow, not fight it.
+- **Template-merge tools must REBUILD when the template shrinks, never append (2026-08-03; mechanism `soul-merge.py` removed 2026-11-04).** `soul-merge.py` appended the new 12-principle template on top of stale pre-consolidation 34-principle content — stacking 46 principles and blowing the SOUL size budget (26,957 B, doctor FAIL at the time). The trap: after the first bad merge, every template title IS present in the copy, so "missing titles" detection reports up-to-date and the balloon sticks forever. Fix pattern: detect consolidation by **count mismatch** (`len(template) < len(agent)`) gated on stale titles actually present (titles in the PREVIOUS template but NOT the current one — surviving titles like "Loop Governance" exist in both and must not re-trigger). On consolidation, rebuild the section from the template as authoritative, dropping stale template-origin principles while preserving genuinely agent-specific ones (title never in any template version, checked via git). Verify idempotency: run 1 rebuilds, runs 2+ report up-to-date with byte-stable content. A re-baseline of the template is the documented response to intentional restructuring — the merge tool must follow, not fight it.

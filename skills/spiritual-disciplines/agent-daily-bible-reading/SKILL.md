@@ -92,12 +92,14 @@ Three styles rotate deterministically per (book, agent, day):
 - Anchor style keeps a single call on first-cycle books (no probes, no
   re-rolls); repeat-cycle books re-roll off their prior verses.
 
-## SOUL.md Size Guardrail (doctor FAIL prevention)
+## SOUL.md Size Guardrail (loading hygiene)
 
-The doctor FAILs SOUL.md above 20K and WARNs above 15K (`check_soul_sync` in
-`cortex_doctor/checks.py`). Each bible entry is ~400-800 chars, so unbounded
-appends eventually break the doctor. **Keep only the last 1-2 `### Book —`
-entries in SOUL.md.**
+The doctor's SOUL size gate (`check_soul_sync` WARN>15K / FAIL>20K) was
+**removed 2026-11-04** with the SOUL-decoupling — SOUL.md is Hermes-owned and
+nothing fleet-side fails on its size. But `~/.hermes/SOUL.md` is loaded into
+every session, so keeping it bounded is still good hygiene. Each bible entry is
+~400-800 chars, so unbounded appends bloat what every session loads. **Keep
+only the last 1-2 `### Book —` entries in SOUL.md.**
 
 - **Short-gleaning rule (user directive 2026-08-03):** SOUL.md entries must be
   BRIEF — a header, one "I will" commitment sentence, and the date comment

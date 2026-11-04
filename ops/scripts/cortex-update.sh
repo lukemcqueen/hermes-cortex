@@ -514,7 +514,8 @@ register "ops/scripts/manage/agent-governance-auditor.py"            "${CORTEX_D
 register "ops/scripts/manage/purge-stale-governance-locks.py" "${CORTEX_DEPLOY_HOME}/scripts/purge-stale-governance-locks.py"
 register "ops/scripts/manage/backfill-legacy-reaper-cycles.py" "${CORTEX_DEPLOY_HOME}/scripts/backfill-legacy-reaper-cycles.py"
 # prune-soul-profiles.py removed — profiles no longer in repo
-register "ops/scripts/manage/soul-merge.py"                    "${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
+# soul-merge.py / soul-sync-all.sh removed 2026-11-04 (SOUL.md decoupled —
+# Hermes-owned, not fleet-managed). docs/templates/SOUL.md stays as reference.
 register "ops/scripts/manage/session-active-guard.py"          "${CORTEX_DEPLOY_HOME}/scripts/session-active-guard.py"
 register "ops/install/deploy/nginx/hermes-plugin-lock"           "${CORTEX_DEPLOY_HOME}/scripts/hermes-plugin-lock"
 register "ops/scripts/manage/session-identity.sh"               "${CORTEX_DEPLOY_HOME}/scripts/session-identity.sh"
@@ -534,7 +535,7 @@ register "ops/scripts/manage/env-value.sh"                    "${CORTEX_DEPLOY_H
 # Advisory: warn (never block) when a commit stacks work under a lock whose close
 # the review refused. Called by pre-commit-score.
 register "ops/scripts/governance-refused-close-advisory.sh"     "${CORTEX_DEPLOY_HOME}/scripts/governance-refused-close-advisory.sh"
-register "ops/scripts/manage/soul-sync-all.sh"                 "${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
+# soul-sync-all.sh removed 2026-11-04 (SOUL.md decoupled — Hermes-owned)
 register "ops/scripts/agent/agents-doc-audit.py"          "${CORTEX_DEPLOY_HOME}/scripts/agents-doc-audit.py"
 register_orch "ops/scripts/agent/orch-restic-backup.py"        "${CORTEX_DEPLOY_HOME}/scripts/orch-restic-backup.py"
 register "ops/scripts/agent/agent-agents-md-prune-scan.py"      "${CORTEX_DEPLOY_HOME}/scripts/agent-agents-md-prune-scan.py"
@@ -644,7 +645,7 @@ register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HO
 register "ops/scripts/install/install-post-commit-hook.sh"    "${CORTEX_DEPLOY_HOME}/scripts/install-post-commit-hook.sh"
 
 # Template drift checker (runs during cortex-update.sh)
-register "ops/scripts/manage/template-diff-check.py"          "${CORTEX_DEPLOY_HOME}/scripts/template-diff-check.py"
+# template-diff-check.py removed 2026-11-04 (SOUL.md/AGENTS.md decoupled — Hermes-owned)
 
 # project-run-scripts skill assets — canonical ./run template + Alembic head checker.
 # Deployed under scripts/project-run-scripts/ mirroring the repo layout; the skill
@@ -3462,28 +3463,11 @@ main() {
   # deploy_hc_lean_index() into ~/.hermes/plugins/hc-lean-index/ above — the
   # core tree is never modified.
 
-  # Merge template updates into agent SOUL.md (preserves customizations)
-  local soul_merge="${CORTEX_DEPLOY_HOME}/scripts/soul-merge.py"
-  if [[ -f "$soul_merge" ]]; then
-    if python3 "$soul_merge" --check >/dev/null 2>&1; then
-      : # up to date — silent
-    else
-      info "Merging template updates into SOUL.md..."
-      # soul-merge exits 1 after a SUCCESSFUL merge (0=up-to-date, 1=merged,
-      # 2=error — asserted in tests/test_soul_merge.py). Without || true the
-      # exit-1 pipeline aborts the whole update under set -euo pipefail,
-      # skipping the state save, doctor, and enforcement re-lock.
-      python3 "$soul_merge" 2>&1 | sed 's/^/    /' || true
-      COPIED=$((COPIED + 1))
-    fi
-  fi
-
-  # Sync current agent SOUL.md with template (repo profiles removed per d43e776)
-  local soul_sync_all="${CORTEX_DEPLOY_HOME}/scripts/soul-sync-all.sh"
-  if [[ -f "$soul_sync_all" ]]; then
-    info "Syncing current agent SOUL.md with template..."
-    bash "$soul_sync_all" 2>&1 | sed 's/^/    /' || true
-  fi
+  # SOUL.md is Hermes-owned identity — the fleet does NOT auto-manage it.
+  # docs/templates/SOUL.md remains a reference only (Luke 2026-11-04); the
+  # soul-merge / soul-sync-all deploy steps were removed so nothing writes
+  # ~/.hermes/SOUL.md on a fleet update. Agents are governed by per-repo
+  # AGENTS.md.
 
   # Restart affected services
   if [[ ${#TO_RESTART[@]} -gt 0 ]]; then

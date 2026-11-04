@@ -57,7 +57,7 @@ grep -rn '<name>' ~/.steadfaste-fleet/scripts/install*.sh ~/steadfaste-fleet/ops
 | `~/.steadfaste-fleet/data/loop-governance.db`, `session-embeddings.db` | Live governance/scoring DBs |
 | `~/.hermes/bin/uv`, `uvx`, `tirith` | Python toolchain + security scanner (tirith referenced in `config.yaml` `security.tirith_*`) |
 | `~/.hermes/node/`, `~/.hermes/lsp/` | Runtimes for desktop/LSP features |
-| `~/.hermes/agent-profiles/` | SOUL.md templates — `soul-merge.py` + `pre-commit-score` read them |
+| `~/.hermes/agent-profiles/` | SOUL.md profile templates (legacy) — `soul-merge.py`/`soul-sync-all.sh` that read them were removed 2026-11-04; `pre-commit-score` no longer syncs SOUL |
 | `~/.hermes/AGENTS.md.local`, any `local-*` | Preserved by rule (cortex-update never deletes) |
 | `~/.steadfaste-fleet/state/deploy-backups/`, `scripts-unique-backup-*` | Recent deploy rollback safety nets |
 

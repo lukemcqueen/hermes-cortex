@@ -926,16 +926,16 @@ bash ~/steadfaste-fleet/core/governance/setup.sh --symlinks-only
 bash ~/steadfaste-fleet/install.sh
 ```
 
-### Template drift detected after cortex update
+### SOUL.md template drift
 
-The `template-diff-check.py` script runs after every `cortex-update.sh` pull. It flags if your `~/.hermes/SOUL.md` is missing sections or has stale content.
+Since 2026-11-04 `~/.hermes/SOUL.md` is **Hermes-owned** — the fleet no longer
+auto-manages it (soul-merge / soul-sync / template-diff-check were removed).
+`docs/templates/SOUL.md` is a reference for the shared **12 Behavioral
+Principles**; edit your own SOUL to fit your identity. If you want to compare
+yours against the reference:
 
 ```bash
-# See what's different:
 diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
-# Merge changes into your SOUL.md
-# Re-run cortex-update to verify:
-cortex-update --status
 ```
 
 ## 🍎 macOS-Specific Cortex Update Issues

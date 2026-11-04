@@ -15,32 +15,31 @@ metadata:
 
 ## What This Is
 
-Instruction docs (SOUL.md, AGENTS.md) carry byte budgets enforced by the doctor
-(SOUL: WARN >15K, FAIL >20K) or by explicit user targets ("get SOUL to 10k").
-Shrinking them is not free-form editing: enforcement layers count specific
-markers, titles, and headings, and the merge tool that propagates template →
-deployed copies is **add-only** — a wrong trim permanently WARNs/FAILs every
-deployed copy fleet-wide.
+Instruction docs (SOUL.md, AGENTS.md) carry byte budgets — for SOUL.md enforced
+through 2026-11-04 by the doctor (WARN >15K, FAIL >20K), and since then only by
+explicit user targets ("keep SOUL for loading", "get AGENTS to 10k"). The
+fleet-side SOUL enforcers (`_extract_soul_markers`, `check_soul_sync`,
+`soul-merge.py`) were **removed 2026-11-04** with the SOUL-decoupling —
+`~/.hermes/SOUL.md` is Hermes-owned and nothing fleet-side auto-syncs or
+size-gates it. Shrinking AGENTS.md (per-repo) and SOUL.md is therefore now
+free-form editing constrained mainly by the `agents-doc-audit` heading gate and
+by not changing behaviour.
 
 ## When to Use
 
 - User asks to slim SOUL.md / AGENTS.md / a template to a byte target
-- Doctor flags SOUL.md size WARN/FAIL and the fix is a real trim (not a re-baseline)
 - Consolidating or merging template principles/sub-points
-- Any doc whose propagation is governed by soul-merge.py or an audit regex gate
+- Any doc whose propagation is governed by an audit regex gate
 
 ## Know What Each Enforcement Layer Counts — BEFORE Cutting
 
 | Layer | What it counts | Wrong trim's consequence |
 |-------|---------------|--------------------------|
-| Doctor `_extract_soul_markers` | `- **` list bullets ONLY (Core Traits) | ADDING a new trait bullet to the template FAILs "SOUL.md template sync" on every host — soul-merge propagates principles + sub-points only, never `- **` trait bullets, so deployed SOULs never gain the marker; consolidating/removing WARNs as reverse drift (soul-merge never removes them) |
-| Doctor `check_soul_sync` | `### N. Title` principle headings (title-key matched) | Removing a canonical title = FAIL "missing canonical principles" |
-| soul-merge `_find_missing_subpoints` | `**marker**` prefix anywhere in a principle body | Renaming/merging markers = OLD marker stays + NEW one added on deployed = duplication, not consolidation |
 | agents-doc-audit | heading regexes (`^## Identity`, `^## Core Mission`, …) | Removing a heading = commit-gate FAIL |
+| (removed 2026-11-04) | `_extract_soul_markers` / `check_soul_sync` / `soul-merge.py` — the doctor no longer checks SOUL markers, principle titles, or size | none — SOUL is Hermes-owned, free-form |
 
 **Safe to compress freely (proven 2026-08-19: SOUL template 14,737 → 10,032 B):**
-- Preambles and continuation prose after bold markers — they only reach FRESH
-  deploys; existing deployed copies keep their rich versions (add-only merge).
+- Preambles and continuation prose after bold markers.
 - Merge a redundant sub-point INTO an existing one under the EXISTING marker
   name — never introduce a new marker name.
 - Scripture entries: keep ONE anchor (the LAST `### Book —` is the daily-bible
@@ -70,10 +69,11 @@ the same file from memory while claiming to compress; byte count never changed.
 3. **Compress by replacement** — Python script with a list of (old, new) pairs
    applied via `str.replace`, counting hits and misses. Re-measure.
 4. **Re-verify invariants** — same counts as step 2 (or deliberate, documented
-   deltas). Run `soul-merge.py --check` for idempotency.
-5. **Deploy + verify** — copy to repo template, run `soul-merge.py` (updates
-   deployed), run the doctor (`check_soul_sync` PASS, size ≤ WARN), run
-   `agents-doc-audit.py --repo . --json` (missing sections == []).
+   deltas).
+5. **Verify** — run `agents-doc-audit.py --repo . --json` (missing sections ==
+   []). SOUL is Hermes-owned — trim the deployed `~/.hermes/SOUL.md` itself if
+   it must shrink; there is no fleet-side sync to refresh it (soul-merge
+   removed 2026-11-04).
 6. **Commit + push** — pre-push hook requires deployed == repo checksum, so run
    `cortex-update.sh` BEFORE `git push` (doc changes: the enforcement chain is
    commit → deploy → push).
@@ -110,29 +110,17 @@ EOF
 
 ## Pitfalls
 
-- **Adding OR consolidating trait bullets** in the SOUL template breaks sync:
-  a NEW `- **` bullet under Core Traits is never merged into deployed SOULs —
-  soul-merge propagates principles and bold-marker sub-points only, so the
-  doctor's `SOUL.md template sync` FAILs on every host until each SOUL is
-  edited by hand; consolidating WARNs as reverse drift. Keep trait marker
-  NAMES unchanged; shorten only their prose, and put a NEW rule where every
-  agent actually reads it (AGENTS.md) instead of a new SOUL trait.
-- **Renaming a sub-point marker** duplicates content on deployed copies (old +
-  new both present). Fold into the existing marker name instead.
 - **Rewriting from memory** re-pastes identical bytes — always edit on-disk via
   programmatic replace and verify the byte delta.
 - **Pushing before cortex-update** — pre-push hook fails "Checksum: AGENTS.md"
   when deployed != repo. Deploy first.
-- **soul-merge.py only adds** — a leaner template does NOT shrink existing
-  deployed copies; it only makes fresh deploys lean. If the deployed copy must
-  shrink too, trim it directly (keeping marker parity).
+- **AGENTS.md / SOUL.md are no longer auto-synced** (soul-merge / soul-sync
+  removed 2026-11-04) — there is no fleet-side copy to diverge from; edit each
+  file where it lives.
 
 ## Verification
 
-- `wc -c docs/templates/SOUL.md` ≤ target; deployed ≤ 15,360 (WARN) / 20,480 (FAIL)
-- Doctor: `✅ SOUL.md template sync`, `✅ SOUL.md canonical 12`, `✅ SOUL.md
-  reverse drift`, no FAILs
-- `soul-merge.py --check` → exit 0 ("up to date")
+- `wc -c docs/templates/SOUL.md` ≤ target (a user target; no doctor FAIL since 2026-11-04)
 - `agents-doc-audit.py --repo . --json` → `missing_sections: []`
 - Always-set measured per skill AND in total, with no single skill dominating the total
 - `git log --oneline -1 origin/main` shows the pushed commit

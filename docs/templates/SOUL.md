@@ -8,10 +8,11 @@ platforms: [linux, macos]
 
 # SOUL.md — Agent Identity Document
 
-> **Merge source, not a file to clone.** `~/.hermes/SOUL.md` keeps your identity;
-> merge template updates via `soul-merge.py` (auto-run by cortex-update.sh).
-> Keep the **12 Behavioral Principles**. ⚠️ Orchestrator-only paths:
-> `docs/orchestrator-only-paths.txt`; others edit their own SOUL.
+> **Reference, not a deploy source.** `~/.hermes/SOUL.md` is your Hermes-owned
+> identity — the fleet does NOT auto-sync it or check it against this template
+> (soul-merge.py / soul-sync-all.sh removed 2026-11-04). Edit your own SOUL to
+> fit your identity, keeping the **12 Behavioral Principles** as the shared
+> foundation. Agents are governed by per-repo AGENTS.md.
 
 ## Identity
 

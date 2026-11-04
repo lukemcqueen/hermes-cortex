@@ -656,32 +656,6 @@ if [[ -n "$STAGED_MD" ]]; then
   fi
 fi
 
-# ── Governance: SOUL.md template sync ────────────────────
-# ~/.hermes/SOUL.md is the agent's identity document. It must stay
-# in sync with the canonical template in docs/templates/SOUL.md.
-SOUL_LOCAL="${HOME}/.hermes/SOUL.md"
-SOUL_TEMPLATE="docs/templates/SOUL.md"
-if [[ -f "$SOUL_LOCAL" ]] && [[ -f "$SOUL_TEMPLATE" ]]; then
-  # Extract bold markers from the Behavioral Principles section of both
-  SOUL_LOCAL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_LOCAL" | grep -oE '\*\*[^*]+\*\*' | sort -u)
-  SOUL_TMPL_MARKERS=$(sed -n '/## Behavioral Principles/,/^## /p' "$SOUL_TEMPLATE" | grep -oE '\*\*[^*]+\*\*' | sort -u)
-  LOCAL_COUNT=$(wc -l <<< "$SOUL_LOCAL_MARKERS")
-  TMPL_COUNT=$(wc -l <<< "$SOUL_TMPL_MARKERS")
-  # Allow small variance for agent-specific bullets (non-orchestrators skip "Orchestrator" marker)
-  THRESHOLD=$((TMPL_COUNT - 3))
-  if [[ "$LOCAL_COUNT" -lt "$THRESHOLD" ]] 2>/dev/null; then
-    MISSING=$((TMPL_COUNT - LOCAL_COUNT))
-    echo ""
-    echo "❌  ~/.hermes/SOUL.md is out of sync with the template."
-    echo "    Template has ~${TMPL_COUNT} principle markers, local has ~${LOCAL_COUNT} — ${MISSING} missing."
-    echo "    Governance: identity document must follow the template."
-    echo "    Run: python3 ~/steadfaste-fleet/ops/scripts/manage/soul-merge.py"
-    echo "    No bypass flags — governance is non-negotiable."
-    echo ""
-    exit 1
-  fi
-fi
-
 # ── Orchestrator-only paths guard (config-driven, tamper-proof) ──
 # Reads the COMMITTED version of docs/orchestrator-only-paths.txt
 # (never the working copy) so a non-orch agent can't edit their

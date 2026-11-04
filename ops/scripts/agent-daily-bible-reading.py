@@ -1031,7 +1031,9 @@ def archive_and_reset(agent_name: str) -> None:
 def archive_old_entries(agent_name: str, max_before_archive: int = 3, max_kept: int = 2) -> int:
     """Move old book entries from SOUL.md Scripture Insights to the archive.
 
-    Keeps the section bounded (doctor check_soul_sync FAILs SOUL.md > 20K).
+    Keeps the section bounded — SOUL.md is loaded into every session, so we
+    archive rather than let it grow without bound (the doctor's >20K size gate
+    was removed 2026-11-04 with the SOUL-decoupling).
     Each book entry is treated as a BLOCK: the '### Book —' header plus all
     following lines (commitment text, date comment) until the next '### '
     header or the section end — whole blocks are moved so no orphaned text

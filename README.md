@@ -396,7 +396,6 @@ offline_knowledge query "symptoms of malaria"
 | `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |
 | `ops/scripts/manage/deploy-blocked-ips.sh` | Deploy shared blocklist across fleet |
 | `ops/scripts/manage/analyze-failures.py` | Analyze cron failure patterns |
-| `ops/scripts/manage/template-diff-check.py` | Detect template drift across agents |
 
 ---
 

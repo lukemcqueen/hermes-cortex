@@ -70,7 +70,7 @@ Every improvement you make that benefits other agents MUST go into the `steadfas
 - **Dogfood gate** — The pre-commit hook enforces that deployed code matches the repo source.
   **Correct:** `bash ops/scripts/cortex-update.sh`, run doctor, fix issues, commit.
   **Wrong:** Push without testing.
-- **Rule 2** is enforced by the template-diff-check.py in cortex-update.sh — it warns when your local SOUL.md drifts from the template
+- **Rule 2** is enforced by per-repo **AGENTS.md** checks (`agents-doc-audit.py`) — the SOUL.md auto-sync gates (template-diff-check / soul-merge) were removed 2026-11-04 and are no longer enforced
 - **Both rules** are embedded in every agent-facing document: AGENTS.md, fleet-reference.md, SOUL.md templates, loop-governance skill, troubleshooting guide, git-enforcement docs, and install.sh
 
 ## The Litmus Test
