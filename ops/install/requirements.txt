@@ -25,6 +25,11 @@
 # fix-cortex-venv.py also PROBES this capability, not just the import — a version that
 # imports but cannot construct the handlers is reported as a gap.
 mcp>=2.0
+# certifi is LOAD-BEARING (2026-11-04, esther): requests/urllib3 and the deepseek MCP
+# resolve their TLS CA bundle from certifi.where(). Pin it (and requests) so a silent
+# uninstall cannot break TLS — a pip check / pip freeze diff flags a missing cacert.
+certifi>=2023.5.7
+requests>=2.31
 PyYAML>=6.0
 fastapi>=0.100
 uvicorn>=0.23

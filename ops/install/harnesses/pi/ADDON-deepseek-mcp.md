@@ -82,8 +82,8 @@ looking; an interpreter that imports `mcp` alone can still die on TLS:
 
 ```bash
 PY=$(bash ~/steadfaste-fleet/ops/scripts/lib/python-with-module.sh --print mcp)
-"$PY" -c "import mcp, certifi; print(certifi.where())"   # must print a real cacert.pem
-"$PY" -m pip install certifi 2>/dev/null || true         # if certifi was missing from it
+"$PY" -c "import os, mcp, certifi; p=certifi.where(); print(p); assert os.path.exists(p), 'cacert.pem missing'"   # must print a real cacert.pem
+"$PY" -m pip install certifi || { echo "certifi install failed"; exit 1; }   # fail loud — never 2>/dev/null || true
 # then set that "$PY" (absolute) as the deepseek entry's "command" and restart Pi:
 pi mcp list | grep deepseek     # connected, with its 3 tools named `review`
 ```
