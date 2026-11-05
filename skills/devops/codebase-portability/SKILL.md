@@ -632,6 +632,7 @@ grep -rc 'old-deploy-dir/' target-dir/ 2>/dev/null | grep -v ':0$'
   change them.
 - **`/etc/nginx` on Linux** is a standard OS path, not project-specific.
   OS-aware dispatch is the right fix, not removing it.
+- **A hardcoded `/home/<operator>/` path in a repo is ALSO PII, not just a portability bug** — it leaks the local username and machine home layout. Target the REAL resolver (`Path.home().name`), not every `/home/*/` (generic `/home/user/` placeholders are intentional). Replace shell script defaults with `$HOME/`, docs with `~/`, and Python TEST FIXTURES with `pathlib.Path.home()` at runtime — a fixture that hardcodes the operator home is non-hermetic AND leaks it.
 - **Don't touch the table structure** when updating tables in docs — replace
   only the content, not the pipe/dash separator rows.
 - **Escape-drift warning:** When using `patch` tool, read the exact line

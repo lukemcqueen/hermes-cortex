@@ -100,7 +100,11 @@ Path.home() / ".dir" / "old.conf"      →  Path.home()/".dir"/".env" # ✗ old 
 Enumerate the FORMS first, then give each its own rule, most specific first:
 `$HOME/.dir/old.conf`, `${VAR}/old.conf`, `~/.dir/old.conf`, `%h/.dir/old.conf`,
 `Path.home()/".dir"/"old.conf"`, `HOME/".dir"/"old.conf"`, `.dir/old.conf`,
-and only then the bare basename. Finish with the residue grep — the NEW
+and only then the bare basename.
+
+**A PATH sweep aimed at the home dir must cover the ABSOLUTE spellings too, not just the `~/` form.** A pass that replaces `~/.old` / `.old` rewrites only the tilde spellings; the `${HOME}/.old`, `$HOME/.old` spellings are the SAME physical path under a different token, and a `~/`-grep leaves them untouched — the close reviewer counts them as an incomplete sweep and files a finding. Put every home-expansion spelling in the form list and sweep them ALL in the same pass; then residue-grep each spelling independently.
+
+Finish with the residue grep — the NEW
 basename still sitting in the OLD directory
 (`grep -rnE '"\.dir" */ *"\.env"'`) — that grep, not the old-name grep, is
 what finds these mangles. Dry-run the table and read the plan before writing.
@@ -252,10 +256,28 @@ treat that as part of the deliverable, not a follow-up.
   the old name is the SUBJECT of the sentence, not a reference to a path. A
   blanket replace turns `stray ~/old/dir/.env` into a message naming the
   CANONICAL file: a tautology that now misreports which path is wrong.
+- **Exclude the skill that TEACHES the sweep itself.** A how-to/rename skill whose worked example uses the old term as the EXAMPLE (a mapping line, a migration command) must be kept out of the blanket sweep: a path-token replace rewrites BOTH sides of its `old → new` mapping to the new term — the mapping inverts to `new → new` and the worked example silently disappears (measured: a device's own rename-sweep example corrupted this way; revert the file and re-exclude it). Pull such a file to a fixed baseline before sweeping, keep it out of the residue grep, and say so in the commit message so a later reader does not "finish" the sweep on it.
 - **A clean residue grep does not prove the surviving text is TRUE.** It only
   proves no old token survives. This is the code-side twin of the prose-mangle
   check in step 6.4 — re-read every string the run changed, error/warning
   message strings included, and confirm each still describes what it claims.
+- **Renaming a BARE IDENTIFIER (a var/function name) needs a full word-boundary
+  on BOTH sides — a space-anchored replace splits assignments from usages into
+  NameErrors you introduced.** `term ` (word + trailing space) rewrites `x = …`
+  assignments but not `x.attr`, `x)`, `{x}`, or `x.method(…)` usages (no space
+  after the token), so the renamed assignment and the untouched usages diverge.
+  Rewrite with `(?<![A-Za-z0-9_])term(?![A-Za-z0-9_])`, then AUDIT for split
+  files: grep every touched code file for the NEW identifier in an assignment
+  position AND a bare OLD identifier, and fix both sides consistently (a sweep
+  that changes the same local name across 60+ tests and scripts is exactly where
+  this bites).
+- **When the swept token is a DIFFERENT abbreviation in some files, don't force
+  the target's new name — give the colliding local variable a DESCRIPTIVE
+  name.** A token that is the product/CLI name in most files (e.g. `hc` the bus
+  CLI) can be an unrelated local abbreviation elsewhere (`hc` = a HealthCheck
+  instance, `hc` = hymn count). Renaming those to the CLI's new name (e.g.
+  `fleet`) is misleading scope-drift an adversarial reviewer will flag; use a
+  name that states the variable's meaning (`healthcheck`, `hymn_count`) instead.
 - **Exclude same-basename files in other directories.** `~/.dir/conf.d/old.conf`
   and `~/.other/old.conf` are DIFFERENT files; a basename rule rewrites them
   happily. Guard per-line on the full distinguishing path, and verify the
@@ -277,6 +299,15 @@ treat that as part of the deliverable, not a follow-up.
   staged, the OLD path can no longer appear in a pathspec (`git add <old>` / `git commit -- <old>`
   → `pathspec '…' did not match any files`): stage/commit the live paths, or omit the pathspec and
   let the staged rename carry the deletion.
+- **`git diff --cached --name-only` collapses renames to their NEW path — a
+  pathspec commit of a rename sweep silently leaves the deleted sources staged
+  and uncommitted.** When you commit with `git commit -m … -- $(git diff
+  --cached --name-only)` (the name-your-paths gate route), rename detection
+  drops the deleted `old/…` entries from the list, so HEAD still contains them
+  and the old dir survives the commit. Collect the pathspec with
+  `--no-renames` (`git diff --cached --name-only --no-renames`) so deletions
+  are included, then verify after the commit that `git ls-tree HEAD
+  -- <old-dir>` is empty and `git status` is clean.
 - **A launcher or executable moved into a subdirectory needs its self-relative module resolution
   changed in the SAME commit.** See `shell-scripting` → "Moving an executable": without it the
   script silently runs a different tree's module through its known-path fallback, and every test

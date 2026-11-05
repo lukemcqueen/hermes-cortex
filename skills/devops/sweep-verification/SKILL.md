@@ -15,13 +15,31 @@ rename or decommission sweep (legacy-brain → mycortex, service renames).
 Performing the sweep is `rename-sweep`'s job; THIS skill is
 the independent verification pass that finds the leftovers the sweep missed.
 
+## Read the migration's own follow-up doc FIRST
+
+A completed fleet rename (hermes-cortex → steadfaste-fleet, legacy → mycortex)
+ships two docs that define what "done" means: `docs/rename-followups-<new>.md`
+(the repo-side exclusion list — which skill dirs were kept as load keys, the
+enforcer's dual-URL accept list, the migration tools that must keep the old
+name literal, the historical/evidence records) and a per-host completion runbook
+under `docs/runbooks/` (e.g. `fleet-local-dir-rename.md`) that lists the live
+repoint steps (hooks + `core.hooksPath`, cron-bridge units, systemd/launchd unit
+paths, stale deployed scripts, root-owned copies) and what is deliberately kept
+on the host. Read both BEFORE grepping: a verification pass that starts with
+`grep -r <token>` files hundreds of hits that are NOT leftovers — the old token
+surviving in the repo is expected, and only what these docs do NOT exempt is
+stale. Find them with `git log --oneline -20 | grep -i rename` before trusting a
+raw count. The two are different scopes: the follow-up records what the SWEEP
+kept in the repo; the runbook is the per-HOST completion check, so a clean repo
+can still be an un-migrated host with load-bearing transition symlinks.
+
 ## Surface checklist — sweep ALL of these, in this order
 
 1. **Repo tracked content**: `git grep -il <token> -- .` (count + list)
 2. **Repo tracked file NAMES**: `git ls-files | grep -i <token>`
 3. **Repo worktree** (incl. untracked): `grep -rli` excluding `.git/__pycache__/.venv/node_modules`, plus `find . -iname '*<token>*'`
 4. **Deployed tree** `~/.steadfaste-fleet`: grep excluding logs/__pycache__/backups. Deploy never prunes → stale files linger here (see pitfall 1)
-5. **~/.hermes live config**: `cron/jobs.json` (0 expected), `cron/scripts`, `plugins/`, `config.yaml`, `memories/`, `SOUL.md`, `AGENTS.md`, `skills/` (deployed copies), **`agent-profiles/*/SOUL.md`** (profile templates seed other hosts' SOULs — a stale ref here ships to the fleet)
+5. **~/.hermes live config**: `cron/jobs.json` (0 expected), `cron/scripts`, `plugins/`, `config.yaml`, `memories/`, `repos.yaml` (a repo-rename leaves the OLD path here even after the code is swept), `SOUL.md`, `AGENTS.md`, `skills/` (deployed copies), **`agent-profiles/*/SOUL.md`** (profile templates seed other hosts' SOULs — a stale ref here ships to the fleet). A transition symlink at the old home keeps these resolving, so a running host is NOT proof they were repointed — grep each surface explicitly.
 6. **~/.hermes historical** (count, do NOT delete): logs, `sessions/`, `state-snapshots/`, `cron/output/` (old run records)
 7. **~/.steadfaste-fleet/data + state**: `loop-events/*.jsonl`, `loop-governance.db` (audit trail — task IDs legitimately mention the token), `state/` (dead state files with old keys, e.g. agent-health-data.json — check readers before deleting)
 8. **~/brain**: lesson files (historical knowledge — keep)
@@ -155,6 +173,34 @@ discovering them in a later grep.
    `~/.steadfaste-fleet/scripts/`, not the repo. Unit tests pass against repo
    source while L2 fails → the fix isn't deployed. Run `cortex-update.sh`
    (ops/scripts/) before L2, then re-run.
+12. **A deployed file's frozen `# SOURCE:` header is the stale-file fingerprint.**
+    Deployed `.py`/`.sh` carry a generated `# SOURCE: <repo-path>` header from the
+    deploy that wrote them; when that header names a path absent from the current
+    repo, the deployed copy is a leftover (deploy never prunes it) whose body still
+    carries the OLD name while the codebase moved on. Before deleting, find the
+    artifact's CURRENT home — the component often moved within the repo
+    (`ops/services/agent-bus/server.py` → `core/cortex_bus/server.py`, repo-served
+    and already clean). A deployed file whose source is gone AND that is not
+    registered in the deploy map is stale and removable.
+13. **A stale WORKTREE survives under the old name as a `.git` FILE, not a
+    directory.** A linked worktree's `.git` is a one-line file reading
+    `gitdir: <path>`, so `.git/config` is not found there and repo content-greps
+    never see it — its tree predates the sweep and was never touched. Inspect that
+    pointer (its gitdir may resolve through the transition symlink) and remove it
+    with `git worktree remove <dir>`; do this BEFORE removing the transition
+    symlink the pointer rides on.
+14. **Transition symlinks mask live config that was never repointed — running
+    services are not proof of completion.** A symlink at the old location keeps
+    `~/old-name` resolving, so the host works while a live surface still loads the
+    old path. "Fully migrated" is false until EVERY live surface is repointed, not
+    just the code: enumerate them (`repos.yaml`, `config.yaml`, `gateway.yaml`,
+    `agent.env`, `cron/jobs.json`, shell rc, root-owned copies) and grep each for
+    the token; only when they are empty are the symlinks genuinely removable
+    (`rm -f ~/old ~/.old`).
+    **`git remote -v` is write-class under the governance classifier** — the
+    lock-free read allowlist is `ls, cat, grep, find, git status/log/diff`, and
+    `git remote` is not in it. When verifying a repo's origin was repointed, read
+    `.git/config` via `read_file` instead of opening a lock for a read.
 
 ## Steps
 

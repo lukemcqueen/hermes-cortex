@@ -730,3 +730,11 @@ Rules:
   (Apple Silicon) or `/usr/local/bin` (Intel), and a GUI-launched pi sees a narrower
   PATH than your shell. Make the interpreter overridable (e.g.
   `CORTEX_CONTEXT_PYTHON`) instead of hardcoding `python3`.
+- **An MCP entry's interpreter needs its TLS dependencies, not just the module you probed.**
+  `python-with-module.sh --print mcp` proves `mcp` imports and says nothing about the CA bundle the
+  server's HTTP client needs, so an entry can resolve clean and still start DEAD on TLS. The
+  `Could not find a suitable TLS CA certificate bundle` message is raised byte-identically by both
+  `requests` and `httpx`, so it names no library — and never justify KEEPING a package with "pip
+  would break": pip vendors its own certifi/requests/urllib3/truststore and is unaffected. An
+  interpreter resolution, the import-chain rule for deciding a dependency is load-bearing, and the
+  old-venv-path failure after a home-dir migration: `references/mcp-server-interpreter-tls.md`.

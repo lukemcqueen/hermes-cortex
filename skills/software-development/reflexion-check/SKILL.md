@@ -30,7 +30,11 @@ Every stated fact must be backed by an actual command, file read, or API call. "
 
 **Only when the runner genuinely cannot execute HERE, verify the SUBSTANCE by another route and say which route you used.** Read the shipped artifact directly — parse it and assert the value or branch you claim (an extracted constant beats a quoted line), exercise the path with stubs, or cite a committed transcript of a run made elsewhere. Then label it: checked by reading the shipped source, the suite itself did NOT run here — never report that as a passing suite. A green claim you did not observe is the one error that gets every other claim in the same delivery discounted.
 
-Recipes for the shapes above — substance-read, active-vs-repo path check, exception-type assertions, identity-not-count, pinning a deliberate default — are in `references/evidence-recipes.md`.
+**A message identifies its PRODUCER only where the message is UNIQUE to it.** An identical string raised by two libraries is not provenance, and naming one from the text is a claim you will have to retract: a missing CA bundle raises the byte-identical `Could not find a suitable TLS CA certificate bundle, invalid path:` from both `requests` and `httpx`. Grep EVERY candidate producer before naming one, and where two share the text, state the fact client-agnostically or verify it at the producer's own source.
+
+**A verdict is only as sound as its weakest REASON — verify each stated reason independently.** One verified reason does not vouch for its neighbours: a claim can carry a correct conclusion and a false supporting reason beside it (a wrong "pip's TLS would break" next to a right "requests needs it"), and a false reason left in place is repeated forward as the next session's premise. Correct the false reason explicitly in the delivery rather than dropping it quietly.
+
+Recipes for the shapes above — substance-read, active-vs-repo path check, exception-type assertions, identity-not-count, pinning a deliberate default, attributing a message to a producer — are in `references/evidence-recipes.md`.
 
 ### 3. Did I follow governance for every change?
 Every file created/modified: `begin_change` → work → `feedback_accept` → `end_change`, all scored, no orphans. If NO: score the missing cycle or confess the gap.

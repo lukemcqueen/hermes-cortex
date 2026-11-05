@@ -263,6 +263,16 @@ rules for a skip-class: `references/review-gate-spend.md`.
   commit `5e7a4b50d` (branch `fix/deepseek-cache-write-tokens`,
   esther 08-29) must NOT be pushed. If a metric reads a fake 100%, fix the
   metric formula (`read/(read+input_tokens)`), never the token buckets.
+- **An unpinned model id is an ALIAS that upgrades silently.**
+  `deepseek/deepseek-v4-pro` resolves to whatever OpenRouter currently maps it
+  to, so a provider revision bump becomes a cost increase (and a
+  behaviour change) with no config edit. To freeze a price/behaviour, pin a DATED
+  SNAPSHOT (`deepseek/deepseek-v4-pro-0813`). When you pin a default, sweep EVERY
+  surface that selects it — code default + `.env.example` + agent-facing
+  skills/docs + tests (both the fixture/label literal AND the assertion literal)
+  — because an env override beats the code default and a stale doc makes agents
+  re-apply the expensive id. Check the fleet-wide surfaces cold before calling it
+  done. Full procedure: `references/pinning-model-defaults.md`.
 
 ## Verification
 
@@ -305,3 +315,8 @@ rules for a skip-class: `references/review-gate-spend.md`.
   reading the gate's decision instead of its tier names, where verdicts are
   recorded and how to count them read-only, computed risk classes with their
   fail-closed rules, and the two caps that manufacture false negatives.
+- `references/pinning-model-defaults.md` — pin a model DEFAULT to a dated snapshot
+  (over the alias that silently upgrades): the surfaces to sweep (code default,
+  env-override template + live .env, agent-facing skills/docs, tests, the
+  doctor/check), and the "no agent-facing doc re-applies the expensive id"
+  verification.

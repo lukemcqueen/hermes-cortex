@@ -290,6 +290,27 @@ xxd <<< "$workdir"                            # see the literal byte values
 
 **Best practice for paths in scripts that will run on multiple machines:** Always `"$HOME"` (un-escaped) when you intend the user's home directory. Use a full absolute path like `"/home/moses"` only when the path must be hardcoded (and document why). Use `"${HOME}/subdir"` when you need a subdirectory. Never `"\$HOME"` — it never does what you want in this context.
 
+### `printf` — the FORMAT string is the first argument
+
+`printf FMT [ARG...]` treats its FIRST argument as the format. When you mean to inject
+a value into a JSON/config fragment, put the `%s` in FMT — never in the data you pass
+to the first `%s`:
+
+```bash
+# ❌ the JSON literal is consumed WHOLE by the first %s; $PY is a SURPLUS arg, so
+#    printf re-uses the format and prints it on its OWN line, leaving %s in the file
+printf '%s\n' '{"command": "%s"}' "$PY" > mcp.json
+#   → file: {"command": "%s"}\n/home/user/venv/bin/python3   (two lines; command stays "%s")
+
+# ✅ the placeholder lives in the FORMAT string itself
+printf '{"command": "%s"}\n' "$PY" > mcp.json
+```
+
+The symptom is a config that "should" hold the value but reads back a literal `%s` (or the
+value on a separate line), so a JSON loader gets a placeholder and the probe blames the code
+under test. Trace the FIXTURE before the code: `cat "$file"` first. Summary for the table:
+`%s` in your DATA is not a placeholder — write the format to carry it.
+
 ## Deploy-Time Mode Overrides — Run AFTER the Unlock, Not at Register Time
 
 When a deploy script (e.g. `cortex-update.sh`) locks enforcement files immutable
@@ -582,6 +603,15 @@ REAL_HOME="${REAL_HOME:-$HOME}"
 latent bug. The idiom only makes sense when the point is to *fail loudly*
 under `set -u` — if you want the default, assign it.
 
+**Never chain a `|| exit` guard to a `:` command — `:` ALWAYS exits 0, so the
+guard is dead code.** `: "${VAR:=$(mktemp ...)}" || { ...; exit 1; }` looks like
+it goes down the failure branch when mktemp fails, but `:` returns 0 whatever the
+expansion did, so `||` never runs and an empty `VAR` flows into the redirect it
+was meant to guard. Guard the ASSIGNMENT directly: `VAR="$(mktemp "$TMPDIR/x.XXXXXX" 2>/dev/null)" || { printf '%s\n' "cannot create a temp file under $TMPDIR" >&2; exit 1; }`. That create-and-verify-then-exit shape is the accepted failure
+mode for a temp/scratch-file acquisition — never a silent `|| echo <path>` fallback
+(a predictable, possibly-unwritable path is a race and reads as swallowed-error to
+an automated reviewer), and never a bare mktemp whose empty value reaches a redirect.
+
 ## Idempotent Installer Patterns: Dual Detection
 
 When an installer script (e.g., `install-crons.sh`) must avoid creating duplicate
@@ -866,6 +896,7 @@ exit 3
   venvs. Run probes AND payloads as `env -u PYTHONPATH -u PYTHONHOME "$py" …` (POSIX, so Linux +
   macOS), and SAY what you ignored — a variable silently dropped by the tooling is how the venv
   took the blame for the caller's environment.
+- **Strip the env at the CALL SITE, not only in the resolver that chose the interpreter.** A check that reads an interpreter path from CONFIG and invokes it later must wrap ITS OWN invocation in `env -u PYTHONPATH -u PYTHONHOME` — a resolver (or a test premise probe) that probes with clean env does NOT fix the consumer, which runs in the ambient environment. Measured: a host-local TLS guard resolved the fleet venv clean, then invoked it BARE and reported BROKEN because the agent session's PYTHONPATH shadowed the venv's own `mcp` with a foreign 3.14 site-packages. Env hygiene is per-invocation: after a script acquires an interpreter, grep every site that calls it (`rg -n '\"\$PY\" -c|\"\$py\"|exec \"\$PY\"'`) and strip at each — and when landing a peer's host-local check from another box, re-run it on THIS host (see shared-repo-push-gates: a script "tested on their host" can carry an env-shadow defect that only your session's environment surfaces).
 - **Fix the CLASS, and pin the enumeration with a committed test.** A probe fixed at one call site
   is a claim about that site. `rg -n "-c [\"']import" ops/` (and any other interpreter form that
   makes a DECISION — a `yaml.safe_load` validator counts) before saying the fix is complete; then
@@ -1413,3 +1444,6 @@ Before shipping changes to installer scripts (`install-crons.sh`, `setup.sh`, et
 | **A normaliser whose stages run in the wrong order cannot match** | Replacing `$HOME` with `~` BEFORE rewriting a scratch path that lives under `$HOME` leaves the later stage nothing to match, so the transcript keeps the very path it existed to remove — the leftover sits in the artifact and reads as a redaction that failed | Apply the LONGEST / most specific rewrite FIRST, then the general one. For the path rewrite itself, the `sed` form with an escaped `$` in the replacement did not produce the literal; `awk -v w="$VAR" '{gsub(w, "REPL"); print}'` did (a `$` in awk's replacement string is not expanded). Verify against the OUTPUT, not the code: `grep -c '/home/' <artifact>` must be 0 AND `grep -c '<scratch-prefix>' <artifact>` must be 0 before committing |
 | **A command inside a `while read` loop that reads stdin eats the loop's remaining input** | A loop over a file (`while IFS= read -r name; do tool.py --disposition "$name"; done < list.txt`) applies only the FIRST item: the inner program inherits the loop's stdin and consumes the rest of the file, so the loop ends after one iteration and the run reports a smaller number as if it had succeeded — twelve intended actions become one, with no error | Redirect the inner command's stdin (`… </dev/null`), or read the list into an array first (`mapfile -t items < list.txt`). Then COUNT what was applied and assert the total against the input count, so a loop that stopped early cannot pass as a batch. The same swallow hits `ssh` and any tool that prompts or reads a stream |
 | **`grep -c` on ZERO matches prints NOTHING and exits 1** | A count captured from it renders BLANK: a summary line meant to read `N -> 0` prints `N -> ` and reads as a probe that never ran rather than a clean result, and a field-splitting `awk` yields an empty string | Sum with a defaulted END — `grep -c -E 'pat' "$f" 2>/dev/null \| awk -F: '{t+=$NF} END {print t+0}'` — and decide the rc deliberately (`\|\| true`) instead of letting `set -e` take it. Never equate an empty count with zero |
+| **A symlink built from a glob (`ln -sf dir/* "$name"`)** | The glob expands to EVERY match and the LAST (alphabetical) wins, so N hook-names can all point at one script — or a copied runbook command silently links the wrong thing (a close reviewer catches it before ship; the author's own host was fine) | Map each target explicitly (`ln -sf "$source" "$name"` per pair); a loop wanting per-name sources must bind each name to its OWN source, never a wildcard into a single target. `readlink` the result to prove the link is what you meant |
+| **`printf` format-vs-data — `%s` inside your DATA is not a placeholder** | `printf '%s\n' '{"k": "%s"}' "$V"` consumes the JSON literal whole; the surplus `$V` is printed by format re-use on its own line, leaving a literal `%s` in the file and a mis-keyed probe | Put the placeholder in the FORMAT (`printf '{"k": "%s"}\n' "$V"`). Read the written file before re-running the probe — `cat "$file"` traces it |
+| **A capability probe validated clean by a resolver, then invoked bare downstream** | A check that reads an interpreter from config and calls it WITHOUT `env -u PYTHONPATH -u PYTHONHOME` reports a healthy venv BROKEN on a contaminated host (agent-session PYTHONPATH shadows the venv's own package with a foreign site-packages) | Strip the env at every call site that invokes the interpreter, not only where it was resolved. Re-run a peer's host-local check on YOUR host both ways before landing it |
