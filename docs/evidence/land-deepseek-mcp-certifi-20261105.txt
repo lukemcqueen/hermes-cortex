@@ -1,0 +1,71 @@
+=== bash -n (syntax) ===
+
+$ bash -n "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
+rc=0
+
+$ bash -n "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
+rc=0
+=== hermetic guard regression test ===
+
+$ bash "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
+A. healthy — deepseek entry with a full, working TLS stack
+  PASS  A: exits 0 (rc=0)
+  PASS  A: prints deepseek TLS ok
+B. missing ~/.pi/agent/mcp.json — refuse
+  PASS  B: exits 1 (rc=1)
+  PASS  B: says MISSING
+C. mcp.json present but no deepseek entry — refuse
+  PASS  C: exits 1 (rc=1)
+  PASS  C: says entry unreadable
+D. deepseek command is a non-executable path — refuse
+  PASS  D: exits 1 (rc=1)
+  PASS  D: says interpreter not executable
+
+ALL PASS
+rc=0
+=== adversarial-verify A4 gate ===
+
+$ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh" --level A4 --gate
+
+── /home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh ──
+   Level: A4
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ⚠️ State: 1 item(s)
+     ⚠️ Dependencies: 4 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+
+$ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh" --level A4 --gate
+
+── /home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh ──
+   Level: A4
+   Attack Surface:
+     ✅ Inputs: 0 item(s)
+     ✅ State: 0 item(s)
+     ⚠️ Dependencies: 1 item(s)
+     ✅ Concurrency: 0 item(s)
+   Fuzz inputs generated: 0
+
+📊 Summary: 1 file(s), 0 finding(s)
+   ✅ No findings — but standard tests should still pass!
+
+✅ GATE_PASSED — no critical/high findings
+rc=0
+=== guard vs esther's real mcp.json (no deepseek entry -> rc=1 expected) ===
+
+$ bash "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
+deepseek entry unreadable: 'deepseek'
+rc=1
+=== canonical venv imports the new 8-declared set (--check, changes nothing) ===
+
+$ python3 "/home/esther/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py" --check
+ok: /home/esther/.steadfaste-fleet/venv/bin/python3 imports all 8 declared requirements and satisfies their capability probes
+rc=0
+=== done ===
