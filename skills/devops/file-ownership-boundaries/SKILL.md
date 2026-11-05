@@ -115,6 +115,29 @@ If you need a capability that a Hermes default skill provides but it's missing s
 3. **Reference the Hermes default** in your new skill's `related_skills` field
 4. **Deploy via cortex-update.sh** so the fleet gets it
 
+## Protected agent-instruction files: ownership is not write-consent
+
+AGENTS.md, USER.md, AGENTS.seed, USER.seed, and SOUL.md are **protected
+instruction files**. Even when they live in our repo (so you own the content),
+writing to them fires a SECOND, independent UI approval prompt — a governance
+lock (`begin_change`) does NOT cover the write, and a chat message like
+"continue"/"go ahead" does NOT satisfy it (silence is not consent; the prompt
+must be answered in the operator's UI). A timed-out write returns
+`BLOCKED: approval prompt timed out ... silence is not consent` and the gate
+forbids retrying via another path (terminal, execute_code, a different file).
+
+- Spend the governed cycle drafting + pro-reviewing the instruction text, then
+  do the protected write LAST and tell the operator to watch for the prompt —
+  a chat go-ahead alone will still time it out.
+- Do NOT route around a timed-out protected write (sed, terminal, alternate
+  path): the gate treats that as a bypass. Close the cycle honestly (score it,
+  note the write is operator-gated), and re-attempt only when the operator is
+  present to click the prompt.
+- Contrast: editing the DEPLOYED copy of a script (`~/.steadfaste-fleet/...`)
+  uses the patch tool under the skill-gate only — the UI-approval gate is
+  specific to protected AGENTS/USER/SOUL-style instruction-file paths, not
+  ordinary repo/deployed files.
+
 ## Pitfalls
 
 - ❌ Editing a skill that's only at `~/.hermes/hermes-agent/skills/` (e.g. `software-development/spike`) — we don't own it, upstream overwrites
