@@ -1,13 +1,13 @@
 === bash -n (syntax) ===
 
-$ bash -n "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
+$ bash -n "~/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
 rc=0
 
-$ bash -n "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
+$ bash -n "~/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
 rc=0
 === hermetic guard regression test ===
 
-$ bash "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
+$ bash "~/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh"
 A. healthy — deepseek entry with a full, working TLS stack
   PASS  A: exits 0 (rc=0)
   PASS  A: prints deepseek TLS ok
@@ -25,9 +25,9 @@ ALL PASS
 rc=0
 === adversarial-verify A4 gate ===
 
-$ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh" --level A4 --gate
+$ python3 "~/.steadfaste-fleet/scripts/adversarial-verify.py" --file "~/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh" --level A4 --gate
 
-── /home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh ──
+── ~/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh ──
    Level: A4
    Attack Surface:
      ✅ Inputs: 0 item(s)
@@ -42,9 +42,9 @@ $ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file 
 ✅ GATE_PASSED — no critical/high findings
 rc=0
 
-$ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file "/home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh" --level A4 --gate
+$ python3 "~/.steadfaste-fleet/scripts/adversarial-verify.py" --file "~/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh" --level A4 --gate
 
-── /home/esther/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh ──
+── ~/steadfaste-fleet/tests/test_deepseek_mcp_tls.sh ──
    Level: A4
    Attack Surface:
      ✅ Inputs: 0 item(s)
@@ -60,12 +60,12 @@ $ python3 "/home/esther/.steadfaste-fleet/scripts/adversarial-verify.py" --file 
 rc=0
 === guard vs esther's real mcp.json (no deepseek entry -> rc=1 expected) ===
 
-$ bash "/home/esther/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
+$ bash "~/steadfaste-fleet/ops/scripts/manage/check-deepseek-mcp-tls.sh"
 deepseek entry unreadable: 'deepseek'
 rc=1
 === canonical venv imports the new 8-declared set (--check, changes nothing) ===
 
-$ python3 "/home/esther/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py" --check
-ok: /home/esther/.steadfaste-fleet/venv/bin/python3 imports all 8 declared requirements and satisfies their capability probes
+$ python3 "~/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py" --check
+ok: ~/.steadfaste-fleet/venv/bin/python3 imports all 8 declared requirements and satisfies their capability probes
 rc=0
 === done ===
