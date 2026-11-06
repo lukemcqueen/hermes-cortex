@@ -14,19 +14,6 @@
 
 ---
 
-## 📊 By the Numbers
-
-| Metric | Count |
-|--------|-------|
-| 🛡️ Evidence-based blocked IPs | **14,000+** — one per line, drop into nginx/fail2ban/UFW |
-| 🧠 Curated offline code snippets | **540+** across many topic areas and 30+ languages |
-| 💻 Shared skills | **~390** across 50+ categories |
-| ⚙️ Operational scripts | **400+** — installers, health checks, watchdogs, security |
-| 🕐 Cron jobs shipped | **~70** across the installers (a few hundred live across the fleet) |
-| 🤖 Agents in the fleet | **6** — 2 orchestrators + 4 specialists (illustrative) |
-
----
-
 ## 🏗️ Architecture
 
 The repository is organized into three layers, separating contracts from runtime integration from operations:
