@@ -24,6 +24,7 @@ SELF_EXCLUDES = (
     "docs/evidence/cortex-to-fleet-scope-2026-11-06.txt",
     "docs/evidence/cortex-to-fleet-worktree-2026-11-06.sh",
     "docs/evidence/cortex-to-fleet-worktree-2026-11-06.txt",
+    "tests/test_cortex_to_fleet_scope_evidence.py",
 )
 
 # The four hermes-cortex* skills are MEASURED in the family totals but DEFERRED from
@@ -66,12 +67,16 @@ def main() -> int:
     print("=" * 72)
 
     print("\n## 1. Token families (tracked text files, .pyc skipped)")
-    print(f"{'family':26s} {'total':>8s} {'files':>7s} {'sweep':>8s}")
+    print(f"{'family':26s} {'total':>8s} {'files':>7s} {'in-scope':>9s}")
     for label, rx in FAMILIES:
         hits = collections.Counter()
         for f in files:
             p = REPO / f
             if p.suffix == ".pyc" or not p.is_file():
+                continue
+            if f in SELF_EXCLUDES:
+                # the change-describing docs (incl. this script's own .txt dump)
+                # are regenerated every run — counting them makes `total` drift
                 continue
             try:
                 txt = p.read_text(errors="replace")
@@ -81,10 +86,10 @@ def main() -> int:
             if n:
                 hits[f] = n
         total = sum(hits.values())
-        sweep = sum(v for k, v in hits.items() if not excluded(k))
-        print(f"{label:26s} {total:8d} {len(hits):7d} {sweep:8d}")
+        inscope = sum(v for k, v in hits.items() if not excluded(k))
+        print(f"{label:26s} {total:8d} {len(hits):7d} {inscope:9d}")
 
-    print("\n## 2. Sweep-scope carriers, top 5 by hit count")
+    print("\n## 2. In-scope carriers, top 5 by hit count")
     rx = re.compile(r"cortex-|cortex_|CORTEX_|(?<![a-zA-Z])Cortex|(?<![a-zA-Z])cortex(?![a-zA-Z_-])")
     hits = collections.Counter()
     for f in files:
@@ -99,7 +104,7 @@ def main() -> int:
     print("\n## 3. Tracked paths containing 'cortex' (excluding mycortex)")
     named = [f for f in files if "cortex" in f.lower() and "mycortex" not in f.lower()]
     records = [f for f in named if excluded(f)]
-    print(f"  total = {len(named)}   excluded = {len(records)}   sweep = {len(named) - len(records)}")
+    print(f"  total = {len(named)}   excluded = {len(records)}   in-scope = {len(named) - len(records)}")
     print("  excluded (records + self-documents + Q4-deferred skills):")
     for d in EXCLUDE_DIRS:
         print(f"    dir  {d}")

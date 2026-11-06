@@ -63,6 +63,15 @@ except the deliberately-repointed artifacts below.
 
 Not part of P0–P7 (Q3). Both come from ONE run of the scope evidence script.
 
+## Environment surfaces — repoint them in the same change that renames their target
+
+The repo sweep renames files; the host references them by name (Hermes `config.yaml` MCP args,
+the Pi manifest `~/.pi/agent/mcp.json` + `settings.json`, macOS LaunchAgents, Linux systemd units,
+`/usr/local/{bin,sbin}` root copies, `gateway.yaml`). Miss one and the next agent spawn 404s on a
+moved path. Full inventory with per-surface repoint commands: **plan §4.9**; the P7 doctor FAIL
+check enforces it. The harness **generator** (`ops/install/harnesses/generate-harnesses.py`) must
+be swept too, or every future host regenerates the old names.
+
 ## Verify a phase is converged
 
 - Residue grep of the active families (`cortex-`, `cortex_`, `Cortex`, `\bcortex\b`) == 0 in
