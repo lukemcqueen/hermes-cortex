@@ -162,7 +162,7 @@ hermes mcp add fleet-context \
 hermes mcp list | grep fleet-context      # verify it registered
 ```
 
-The tools then appear as `mcp__cortex_context__mem_context`, etc.
+The tools then appear as `mcp__fleet_context__mem_context`, etc.
 
 ### 3c. Pi
 

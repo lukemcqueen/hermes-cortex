@@ -238,7 +238,7 @@ harnesses:
           --args ~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py
     verify:
       - 'hermes mcp list | grep fleet-context'
-      - 'Call mcp__cortex_context__mem_context; the peer card must come back.'
+      - 'Call mcp__fleet_context__mem_context; the peer card must come back.'
     triggers:
       note: 'Harness side: ops/scripts/session-autocheckpoint.py at a boundary, or a cron.'
 
