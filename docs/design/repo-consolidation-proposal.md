@@ -82,8 +82,8 @@ DOCS-INDEX, skills that hardcode `core/`/`tools/`/`mcp-servers/` paths.
 ## Implementation slices (each its own governed cycle)
 
 1. **Docs/skill**: rewrite `repo-organization` skill + write `REPO-MAP.md` +
-   rewrite AGENTS.md nav + DOCS-INDEX. (No file moves — kills the #1 stale
-   reference immediately.)
+   its generator + rewrite AGENTS.md nav + DOCS-INDEX. (No file moves — kills
+   the #1 stale reference immediately.)
 2. **Consolidation moves**: `core/`,`tools/`,`evals/`,`mcp-servers/` → `ops/`;
    full reference sweep; deploy-manifest + MCP re-registration; tests green;
    dogfood + doctor.
@@ -91,7 +91,28 @@ DOCS-INDEX, skills that hardcode `core/`/`tools/`/`mcp-servers/` paths.
 4. **Live src/ purge**: shim note, score_cycle examples, any live doc refs.
 5. **Enforcement**: doctor check asserting the new invariant (no top-level
    `core/`/`tools/`/`evals/`/`mcp-servers/`/`config/`/`laptop/`/`profiles/`
-   dirs, REPO-MAP.md present) + migration runbook + fleet convergence note.
+   dirs, REPO-MAP.md present) + a `check_repo_map` freshness check (below) +
+   migration runbook + fleet convergence note.
+
+## REPO-MAP freshness (must never go stale)
+
+The reason `repo-organization` drifted stale is that nobody enforced it after
+the `src/`→`ops/` move. REPO-MAP must not repeat that:
+
+- **Generated, not hand-maintained.** `ops/scripts/manage/regenerate-repo-map.sh`
+  deterministically derives the STRUCTURAL skeleton from the tree
+  (`git ls-files` top-level trees + each tree's first segment list + counts),
+  and appends a human-authored purpose fragment (`REPO-MAP.purpose.md`) so the
+  per-tree "what this is/for" prose is written once, not re-derived by hand.
+- **Enforced, not trusted.** A doctor check `check_repo_map` FAILs when the
+  committed REPO-MAP's structural skeleton diverges from `git ls-files` (a
+  moved/renamed tree, a new or removed top-level, a relocation the map doesn't
+  show), with a `fix:` line naming the regenerator. The map cannot silently
+  drift — same enforcement pattern as the existing `skill-drift-parity` check.
+- **The move sweep feeds the regenerator.** Every slice-② move and slice-③
+  relocation ends by running the regenerator, so the committed map tracks the
+  sweep in the same change (rename-sweep §6 spirit: ship the map update with
+  the move, never as a follow-up).
 
 ## Evidence pointers
 
@@ -102,8 +123,9 @@ DOCS-INDEX, skills that hardcode `core/`/`tools/`/`mcp-servers/` paths.
   (`git ls-files | cut -d/ -f1 | sort | uniq -c`, commit `9cb85f27`).
 - src/ retirement commits: `b416ed5c`, `0e5be574`, `f51df21a`, `7e8a8eac`,
   `05f6ff68` (`git log --oneline --diff-filter=D -- 'src/*'`).
-- Live src/ refs: `git grep -n 'src/' -- core/` (6 hits in 2 files, listed in
-  the Live-code bullet above);
-  strays: `git ls-files config/ laptop/ profiles/` + `git ls-files | grep -v '/'`.
+- Live src/ refs + skill exemption + poll-script source: RECORDED in
+  `docs/evidence/repo-consolidation-evidence-20261106.md` (verbatim grep output
+  of `git grep -n 'src/' -- core/` and `git grep -ln 'src/' -- skills/`, with
+  per-file classification, plus the poll-script source head);
 - poll-bus-inbox_titus.sh verified live by reading its source (reads
   hermes-inbox.conf, curls `$URL/api/pgmq/peek/inbox_titus`).
