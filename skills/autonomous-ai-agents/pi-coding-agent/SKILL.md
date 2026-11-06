@@ -442,9 +442,9 @@ triggers stay in the extension.
 ### The COMMIT-time ritual gate — where DISCIPLINE binds (all repos)
 
 Beyond the write lock, a Pi commit is judged by the same pre-commit ritual gate as
-Hermes — in EVERY repo. `hc-reflexion-check.py --skill <name>` is generic, and the
-gate's loop demands `reflexion-check survey-before-action prove-before-create
-agent-contract` for a governed session. The session split is what makes "all repos"
+Hermes — in EVERY repo. `reflexion-check.py --skill <name>` is generic, and the
+gate's loop demands `task-orient execute-right
+verify-and-ship` for a governed session. The session split is what makes "all repos"
 safe: a Pi session holds a begin_change lock, so it is JUDGED anywhere; a human
 commit has no session and is skipped (`--skip-no-session`). A discipline meant to
 change Pi's behaviour belongs HERE — a skill in the loop that the gate refuses until

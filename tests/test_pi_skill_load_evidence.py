@@ -149,7 +149,7 @@ def test_identity_before_begin_change_uses_the_id_the_lock_will_carry(tmp_path):
 def test_identity_prefers_an_interactive_lock_over_a_cron_one(tmp_path):
     """Two locks covering one repo: the writer must pick what the GATE picks.
 
-    hc-reflexion-check prefers a non-cron/bg lock (judging an interactive commit by
+    reflexion-check.py prefers a non-cron/bg lock (judging an interactive commit by
     a cron's evidence is wrong). If the writer picked the other lock, the two sides
     would disagree exactly when it matters — so the preference is pinned here.
     """

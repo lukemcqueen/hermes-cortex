@@ -874,14 +874,14 @@ fi
 # no-session commit is still refused (HC commits must be governed).
 if [[ "$SANCTIONED_PIPELINE" != "1" ]]; then
   HC_REFLEXION_CHECK=""
-  for _cand in "$REPO_ROOT/ops/scripts/hc-reflexion-check.py" \
-               "$HOME/.steadfaste-fleet/scripts/hc-reflexion-check.py" \
-               "$HOME/.local/bin/hc-reflexion-check.py"; do
+  for _cand in "$REPO_ROOT/ops/scripts/reflexion-check.py" \
+               "$HOME/.steadfaste-fleet/scripts/reflexion-check.py" \
+               "$HOME/.local/bin/reflexion-check.py"; do
     if [[ -f "$_cand" ]]; then HC_REFLEXION_CHECK="$_cand"; break; fi
   done
   if [[ -z "$HC_REFLEXION_CHECK" ]]; then
     echo ""
-    echo "❌  Reflexion gate verifier missing (hc-reflexion-check.py)."
+    echo "❌  Reflexion gate verifier missing (reflexion-check.py)."
     echo "    Re-run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
     echo "    Failing closed — a gate that cannot verify must not pass."
     echo ""
@@ -929,9 +929,9 @@ fi
 # steadfaste-fleet is one condition away.
 if [[ "$SANCTIONED_PIPELINE" != "1" && "$IS_CORTEX_REPO" -ne 1 ]]; then
   HC_PLAN_REVIEW=""
-  for _cand in "$REPO_ROOT/ops/scripts/hc-plan-review-check.py" \
-               "$HOME/.steadfaste-fleet/scripts/hc-plan-review-check.py" \
-               "$HOME/.local/bin/hc-plan-review-check.py"; do
+  for _cand in "$REPO_ROOT/ops/scripts/plan-review-check.py" \
+               "$HOME/.steadfaste-fleet/scripts/plan-review-check.py" \
+               "$HOME/.local/bin/plan-review-check.py"; do
     if [[ -f "$_cand" ]]; then HC_PLAN_REVIEW="$_cand"; break; fi
   done
   if [[ -n "$HC_PLAN_REVIEW" ]]; then

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the hc-lean-index user plugin — the distinct 'lean' mode.
+"""Tests for the lean-index user plugin — the distinct 'lean' mode.
 
 Replaces the retired ``install-lean-index.py`` core patch, which rewrote
 ``~/.hermes/hermes-agent/agent/coding_context.py`` and dirtied the upstream git
@@ -18,11 +18,11 @@ import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_PLUGIN = _REPO / "plugins" / "hc-lean-index" / "__init__.py"
+_PLUGIN = _REPO / "plugins" / "lean-index" / "__init__.py"
 
 
 def _load_plugin():
-    spec = importlib.util.spec_from_file_location("hc_lean_index_test", str(_PLUGIN))
+    spec = importlib.util.spec_from_file_location("lean_index_test", str(_PLUGIN))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -37,7 +37,7 @@ repo = os.environ['HC_REPO']
 sys.path.insert(0, str(Path.home() / '.hermes' / 'hermes-agent'))
 os.environ.setdefault('HERMES_HOME', os.path.expanduser('~/.hermes'))
 import importlib.util
-spec = importlib.util.spec_from_file_location('hc_lean_index', os.path.join(repo, 'plugins', 'hc-lean-index', '__init__.py'))
+spec = importlib.util.spec_from_file_location('lean_index', os.path.join(repo, 'plugins', 'lean-index', '__init__.py'))
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 from agent.coding_context import coding_compact_skill_categories, resolve_runtime_mode
 cfg = {'agent': {'coding_context': 'lean'}}

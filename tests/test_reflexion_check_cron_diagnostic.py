@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-CHECKER = REPO / "ops" / "scripts" / "hc-reflexion-check.py"
+CHECKER = REPO / "ops" / "scripts" / "reflexion-check.py"
 
 JOB_ID = "f6694d02d29c"
 CRON_SESSION = f"cron_{JOB_ID}_20261026_073743"
@@ -67,7 +67,7 @@ def _sandbox(tmp_path: Path, *, jobs, loaded: bool, with_store: bool = True) -> 
     """Return (checker_copy, home) for one hermetic run."""
     root = tmp_path / "root"
     (root / "ops" / "scripts").mkdir(parents=True, exist_ok=True)
-    checker = root / "ops" / "scripts" / "hc-reflexion-check.py"
+    checker = root / "ops" / "scripts" / "reflexion-check.py"
     shutil.copy2(CHECKER, checker)
     if with_store:
         store_dir = root / "ops" / "services" / "mycortex-mem"
@@ -179,7 +179,7 @@ def test_store_unreachable_stays_rc3_single_line(tmp_path):
 
 def test_helper_requires_positive_evidence(tmp_path):
     hint = getattr(_load_checker_module(), "automated_session_job_hint", None)
-    assert hint is not None, "automated_session_job_hint is missing from hc-reflexion-check.py"
+    assert hint is not None, "automated_session_job_hint is missing from reflexion-check.py"
 
     jobs = tmp_path / "jobs.json"
     jobs.write_text(json.dumps({"jobs": [_job("orch-task-morning-pass", ["terminal", "web", "file"])]}))

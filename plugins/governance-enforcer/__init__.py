@@ -2141,7 +2141,7 @@ def _is_sanctioned_tmp_cleanup_command(command: str) -> bool:
 
 
 # ── Plan-review record is sanctioned and lock-free (2026-10-30) ─────────────
-# The plan-review-before-slice gate (hc-plan-review-check.py) refuses a
+# The plan-review-before-slice gate (plan-review-check.py) refuses a
 # non-trivial slice unless the active cycle has a row in `adversarial_reviews`.
 # The ONLY sanctioned writer is adversarial-review.py --cycle-id N --review,
 # which writes into ~/.steadfaste-fleet/data/loop-governance.db — governance DATA,

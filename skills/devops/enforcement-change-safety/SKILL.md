@@ -1444,10 +1444,10 @@ the same signal the reflexion gate already uses:
 
 A host-wide gate is therefore safe only when it SKIPS on "no session resolvable" and fires only
 on "active governance session present". Missing that split is both failure modes at once:
-HC-only placement misses the agent the gate was meant to change, and an unscoped host-wide
-version blocks manual commits. (Same signal as `hc-reflexion-check.py active_session_id()`.)
+cortex-only placement misses the agent the gate was meant to change, and an unscoped host-wide
+version blocks manual commits. (Same signal as `reflexion-check.py active_session_id()`.)
 
-Reuse the shared session-resolution implementation (`hc-reflexion-check.py active_session_id()`,
+Reuse the shared session-resolution implementation (`reflexion-check.py active_session_id()`,
 and pass `--skip-no-session` for the ungoverned skip) rather than re-deriving "which session does
 this repo's commit belong to" in each new gate — one implementation, or the copies drift and one
 host is refused forever while nothing reports a fault.
@@ -1455,7 +1455,7 @@ host is refused forever while nothing reports a fault.
 Making a behaviour discipline (survey, leverage, plan-review) actually BIND, rather than being
 prose an agent skips: promote the governing skill into the required-set (`_REQUIRED_SKILLS` +
 `skills.yaml always:` + the doctor's required list — the three MUST stay in sync), and verify the
-LOAD in the commit gate. `hc-reflexion-check.py` is a generic checker — `--skill <name>` answers
+LOAD in the commit gate. `reflexion-check.py` is a generic checker — `--skill <name>` answers
 "did this session load X" — so the gate loops it over the ritual set instead of defaulting to
 reflexion-check only. The `prove-before-create` skill's "Enforcement — Pinned ≠ Enforced" section
 is the worked example.

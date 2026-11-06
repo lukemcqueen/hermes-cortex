@@ -1,4 +1,4 @@
-"""Hermetic tests for the plan-review-before-slice gate (hc-plan-review-check).
+"""Hermetic tests for the plan-review-before-slice gate (plan-review-check).
 
 Drives the DETECTOR with controlled inputs in both directions — never a live
 ambient session/DB state (change-checklist: a regression test must exercise the
@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "hc-plan-review-check.py"
-_spec = importlib.util.spec_from_file_location("hc_plan_review_check", SCRIPT)
-assert _spec and _spec.loader, "could not resolve hc-plan-review-check.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "plan-review-check.py"
+_spec = importlib.util.spec_from_file_location("plan_review_check", SCRIPT)
+assert _spec and _spec.loader, "could not resolve plan-review-check.py"
 p = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(p)
 

@@ -2,7 +2,7 @@
 # test-reflexion-gate-repoint.sh — the re-pointed reflexion gate's contract.
 #
 # The gate no longer queries Hermes's conversation DB; it delegates to
-# hc-reflexion-check.py, which answers from HC's OWN session/memory store.
+# reflexion-check.py, which answers from HC's OWN session/memory store.
 #
 # This test is HERMETIC: it extracts the real block out of ops/scripts/pre-commit-score
 # and runs it against a STUB verifier in a temp dir, so the result never depends on
@@ -24,7 +24,7 @@ set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="${REPO_DIR}/ops/scripts/pre-commit-score"
-CHECKER="${REPO_DIR}/ops/scripts/hc-reflexion-check.py"
+CHECKER="${REPO_DIR}/ops/scripts/reflexion-check.py"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -35,7 +35,7 @@ fail() { F=$((F + 1)); echo "  ❌ $1${2:+ — $2}"; }
 # ── Extract the REAL block, anchored on markers (never line numbers) ──
 BLOCK="$WORK/block.sh"
 awk '/── Reflexion gate/{p=1} p{print} p && /^fi$/{exit}' "$SRC" > "$BLOCK"
-if ! grep -q "hc-reflexion-check" "$BLOCK"; then
+if ! grep -q "reflexion-check" "$BLOCK"; then
   echo "❌ could not extract the re-pointed reflexion block from $SRC" >&2
   exit 1
 fi
@@ -55,12 +55,12 @@ run_case() {
   rm -rf "$root"; mkdir -p "$root/ops/scripts"
   if [[ "$stub" == "SKIPAWARE" ]]; then
     printf 'import sys\nsys.exit(0 if "--skip-no-session" in sys.argv else 1)\n' \
-      > "$root/ops/scripts/hc-reflexion-check.py"
+      > "$root/ops/scripts/reflexion-check.py"
   elif [[ "$stub" != "none" ]]; then
     # The gate invokes the verifier with python3 (it is a python script), so the
     # stub must be python too — a bash stub would fail to parse and every case
     # would "pass" for the wrong reason.
-    printf 'import sys\nsys.exit(%s)\n' "$stub" > "$root/ops/scripts/hc-reflexion-check.py"
+    printf 'import sys\nsys.exit(%s)\n' "$stub" > "$root/ops/scripts/reflexion-check.py"
   fi
   {
     echo 'set -uo pipefail'
@@ -116,7 +116,7 @@ echo "═══ AC5/AC6: skip paths preserved (non-HC repo, sanctioned pipeline)
 echo ""
 echo "═══ AC7: the real verifier ═══"
 if [[ ! -f "$CHECKER" ]]; then
-  fail "hc-reflexion-check.py missing"
+  fail "reflexion-check.py missing"
 else
   out=$(python3 "$CHECKER" --session "definitely-no-such-session-$$" 2>&1); rc=$?
   [[ "$rc" == "1" ]] && pass "refuses a session with no recorded evidence" || fail "did not refuse an unknown session (rc=$rc)"
@@ -174,10 +174,10 @@ echo "═══ AC9: STORE UNREACHABLE → rc 3, fail-closed, actionable ══�
 # bigger hole than the one being closed.
 NOSEAM="$WORK/noseam"
 mkdir -p "$NOSEAM/ops/scripts" "$WORK/home"
-cp "$CHECKER" "$NOSEAM/ops/scripts/hc-reflexion-check.py"
+cp "$CHECKER" "$NOSEAM/ops/scripts/reflexion-check.py"
 
 # (a) no store module at all
-out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/reflexion-check.py" --session any 2>&1); rc=$?
 if [[ "$rc" == "3" ]] && echo "$out" | grep -q "cortex-update.sh"; then
   pass "store module missing → rc 3, names the fix"
 else
@@ -188,7 +188,7 @@ fi
 mkdir -p "$NOSEAM/ops/services/mycortex-mem"
 printf 'class Store:\n    def __init__(self, *a, **k): pass\n    def available(self): return False\n' \
   > "$NOSEAM/ops/services/mycortex-mem/store.py"
-out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/reflexion-check.py" --session any 2>&1); rc=$?
 if [[ "$rc" == "3" ]] && echo "$out" | grep -q "mycortex-postgres"; then
   pass "store unreachable → rc 3 with the actionable fix named"
 else
@@ -199,7 +199,7 @@ echo ""
 echo "═══ AC10: store raises mid-query → rc 3, no stack dump leaked ═══"
 printf 'class _S:\n    def loaded_skill(self, *a, **k):\n        raise RuntimeError("internal detail that must not be dumped raw")\n\nclass Store:\n    def __init__(self, *a, **k):\n        self.sessions = _S()\n    def available(self):\n        return True\n' \
   > "$NOSEAM/ops/services/mycortex-mem/store.py"
-out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/hc-reflexion-check.py" --session any 2>&1); rc=$?
+out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/reflexion-check.py" --session any 2>&1); rc=$?
 [[ "$rc" == "3" ]] && \
   pass "an exception inside the store still refuses (rc 3), never crashes or passes" || \
   fail "store exception gave rc=$rc (expected 3)" "$out"

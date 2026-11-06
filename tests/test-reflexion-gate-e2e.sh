@@ -16,7 +16,7 @@
 set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECKER="$REPO_DIR/ops/scripts/hc-reflexion-check.py"
+CHECKER="$REPO_DIR/ops/scripts/reflexion-check.py"
 ENFORCER="$REPO_DIR/plugins/governance-enforcer/__init__.py"
 STORE="$REPO_DIR/ops/services/mycortex-mem/store.py"
 SID="probe-e2e-$$"

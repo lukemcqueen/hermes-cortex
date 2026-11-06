@@ -504,8 +504,8 @@ register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/script
 # HC's own session/memory store instead of the Hermes conversation DB, so the gate
 # works for every harness rather than only Hermes. pre-commit-score fails CLOSED if
 # this is missing, so an unregistered verifier would block every commit.
-register "ops/scripts/hc-reflexion-check.py"       "${CORTEX_DEPLOY_HOME}/scripts/hc-reflexion-check.py"
-register "ops/scripts/hc-plan-review-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/hc-plan-review-check.py"
+register "ops/scripts/reflexion-check.py"       "${CORTEX_DEPLOY_HOME}/scripts/reflexion-check.py"
+register "ops/scripts/plan-review-check.py"      "${CORTEX_DEPLOY_HOME}/scripts/plan-review-check.py"
 register "ops/scripts/post-commit-audit" "${CORTEX_DEPLOY_HOME}/scripts/post-commit-audit"
 register "ops/scripts/prepare-commit-msg-session" "${CORTEX_DEPLOY_HOME}/scripts/prepare-commit-msg-session"
 register "ops/scripts/pre-push-pull" "${CORTEX_DEPLOY_HOME}/scripts/pre-push-pull"
@@ -2643,17 +2643,17 @@ PY
   return 0
 }
 
-# ── hc-lean-index user plugin deploy ──────────────────────
-# Deploys the hc-lean-index general plugin into the Hermes USER plugin dir.
+# ── lean-index user plugin deploy ──────────────────────
+# Deploys the lean-index general plugin into the Hermes USER plugin dir.
 # Replaces the old marker-patch into agent/coding_context.py (which dirtied the
 # agent git tree). The plugin installs the distinct "lean" coding-context mode
 # via a runtime monkeypatch, so `agent.coding_context: lean` keeps working with
 # zero core edits and survives `hermes update` untouched.
 deploy_hc_lean_index() {
-  local repo_plugin="${REPO_DIR}/plugins/hc-lean-index"
-  local dest="${HOME}/.hermes/plugins/hc-lean-index"
+  local repo_plugin="${REPO_DIR}/plugins/lean-index"
+  local dest="${HOME}/.hermes/plugins/lean-index"
   if [[ ! -d "$repo_plugin" ]]; then
-    warn "  hc-lean-index source missing: ${repo_plugin}"
+    warn "  lean-index source missing: ${repo_plugin}"
     return 0
   fi
   mkdir -p "$dest"
@@ -2664,10 +2664,10 @@ deploy_hc_lean_index() {
     changed=$((changed + 1))
   done
   if command -v hermes &>/dev/null; then
-    hermes plugins disable hc-lean-index 2>/dev/null || true
-    hermes plugins enable hc-lean-index 2>/dev/null || true
+    hermes plugins disable lean-index 2>/dev/null || true
+    hermes plugins enable lean-index 2>/dev/null || true
   fi
-  [[ "${changed:-0}" -gt 0 ]] && info "  hc-lean-index plugin deployed (${changed} file(s); activates after gateway restart)"
+  [[ "${changed:-0}" -gt 0 ]] && info "  lean-index plugin deployed (${changed} file(s); activates after gateway restart)"
   return 0
 }
 
@@ -3438,7 +3438,7 @@ main() {
   # that selected the provider. Idempotent — a no-op on a clean host.
   remove_cost_tracking
 
-  # Deploy the hc-lean-index user plugin (distinct "lean" coding-context mode).
+  # Deploy the lean-index user plugin (distinct "lean" coding-context mode).
   # Replaces the old agent/coding_context.py core patch — zero core edits.
   deploy_hc_lean_index
 
@@ -3460,7 +3460,7 @@ main() {
   # ── Lean skill index is now a user plugin ──
   # Previously a marker-patch that rewrote agent/coding_context.py in the
   # agent git tree (deleted on every `hermes update`). Now deployed by
-  # deploy_hc_lean_index() into ~/.hermes/plugins/hc-lean-index/ above — the
+  # deploy_hc_lean_index() into ~/.hermes/plugins/lean-index/ above — the
   # core tree is never modified.
 
   # SOUL.md is Hermes-owned identity — the fleet does NOT auto-manage it.

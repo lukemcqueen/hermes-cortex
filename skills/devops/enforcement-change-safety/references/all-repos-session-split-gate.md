@@ -7,8 +7,8 @@ any ritual discipline) is placed by WHERE that agent commits, not by where an
 existing gate happens to live. A reflexion gate wired only into the cortex repo
 governs NONE of a dev agent's work in project repos — the exact failure that made
 Titus-style agents build without surveying. The fix reused the EXISTING generic
-skill-checker (`hc-reflexion-check.py --skill <name>`) in a loop over the ritual
-skills (`reflexion-check survey-before-action prove-before-create agent-contract`)
+skill-checker (`reflexion-check.py --skill <name>`) in a loop over the ritual
+skills (`task-orient execute-right verify-and-ship`)
 rather than writing a new verifier: loading = reading the SKILL.md, recorded as a
 tool event, so the gate refuses a commit until each ritual skill's content was
 loaded that session.

@@ -86,8 +86,8 @@ else
 
 # B2. deploy map: every fleet register source must exist; no old hc register may remain
 reg=$(grep -E 'register "ops/scripts/(hc|fleet)' "$REPO/ops/scripts/cortex-update.sh")
-# flag ONLY the moved CLI package (ops/scripts/hc/{hc,harness,bin}), never the separate
-# hc-reflexion-check / hc-plan-review-check gate tools which are deliberately kept.
+# flag ONLY the moved CLI package (ops/scripts/hc/{hc,harness,bin}); the gate tools
+# were renamed off the hc- prefix (reflexion-check.py / plan-review-check.py).
 if echo "$reg" | grep -qE 'register "ops/scripts/hc/(hc|harness|bin)'; then bad "cortex-update.sh still registers an ops/scripts/hc CLI source"; echo "$reg"; else ok "cortex-update.sh registers no old hc CLI source"; fi
 while read -r line; do
   src=$(echo "$line" | sed -E 's/.*register "([^"]+)".*/\1/')
@@ -116,7 +116,7 @@ bad_cli=$(
       --include=*.md --include=*.sh --include=*.py 2>/dev/null \
       --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ \
       --exclude-dir=evidence --exclude-dir=older --exclude-dir=sessions \
-    | grep -viE 'hc-reflexion-check|hc-plan-review-check|HC_' \
+    | grep -viE 'HC_' \
     | grep -viE "$RECORD_FILTER"
 )
 if [ -z "$bad_cli" ]; then

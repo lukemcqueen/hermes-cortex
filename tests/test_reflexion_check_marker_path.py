@@ -35,7 +35,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-CHECKER = REPO / "ops" / "scripts" / "hc-reflexion-check.py"
+CHECKER = REPO / "ops" / "scripts" / "reflexion-check.py"
 
 JOB_ID = "f6694d02d29c"
 CRON_SESSION = f"cron_{JOB_ID}_20261030_073743"
@@ -75,7 +75,7 @@ def _sandbox(tmp_path: Path, *, jobs, marker: "str | None" = None,
     """
     root = tmp_path / "root"
     (root / "ops" / "scripts").mkdir(parents=True, exist_ok=True)
-    checker = root / "ops" / "scripts" / "hc-reflexion-check.py"
+    checker = root / "ops" / "scripts" / "reflexion-check.py"
     shutil.copy2(CHECKER, checker)
     # stub store (loaded=False) so the store-backed question answers NOT-LOADED.
     store_dir = root / "ops" / "services" / "mycortex-mem"

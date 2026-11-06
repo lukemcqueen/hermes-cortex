@@ -2,7 +2,7 @@
 """Worker plan-review recording must be sanctioned and lock-free.
 
 WHY (2026-10-30, operator directive + measured deadlock): the plan-review-before-slice
-gate (hc-plan-review-check.py) refuses a non-trivial slice unless the active cycle has a
+gate (plan-review-check.py) refuses a non-trivial slice unless the active cycle has a
 row in `adversarial_reviews`. The ONLY sanctioned writer is adversarial-review.py
 --cycle-id N --review, deployed to the SHARED path (~/.steadfaste-fleet/scripts/) for all
 agents. But it writes into ~/.steadfaste-fleet/data/loop-governance.db — governance DATA, not
