@@ -375,11 +375,6 @@ treat that as part of the deliverable, not a follow-up.
   fetched ref and the pull itself fetches. If you must compare before opening a
   cycle, read the lock-free primitives (`git rev-parse HEAD origin/main`,
   `git status -sb`) and treat that ``behind N`` as "open the cycle and pull", not
-  a reason to fetch first. Opening a full governance cycle just to see whether
-  the remote moved is overkill; `git rev-parse origin/main` reads the last
-  fetched ref and the pull itself fetches. If you must compare before opening a
-  cycle, read the lock-free primitives (`git rev-parse HEAD origin/main`,
-  `git status -sb`) and treat that ``behind N`` as "open the cycle and pull", not
   a reason to fetch first.
 
 ## Verification
