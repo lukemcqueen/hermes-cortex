@@ -250,41 +250,116 @@ async function askGovernance(repo: string): Promise<{ verdict: Verdict; detail: 
 }
 
 // ── bash classification: a read-only ALLOWLIST, deny by default ─────────────
-// Only these command names may run unlocked, and only as a SINGLE simple
-// command (no pipe, no redirect, no substitution, no chaining).
+// A bash call is lock-free ONLY when every `|`/`&&`/`;` segment is itself a
+// read-only single command — the same compound-aware model the Hermes enforcer
+// uses. The enforcer's purpose is to protect against CHANGES, not against
+// investigation: docker ps/logs/inspect, journalctl, ss, curl GET, git log are
+// investigation and stay lock-free; anything that can mutate (a redirect, a
+// substitution, a second non-read command, a mutating flag) is write-class and
+// needs a lock. Compound segments make this narrower, never looser: `ls | sh`
+// and `git status; rm -rf x` are still write-class because a segment fails.
 const READ_ONLY_COMMANDS = new Set([
-  "ls", "cat", "head", "tail", "wc", "file", "stat", "pwd", "echo", "printf",
-  "which", "type", "date", "uname", "hostname", "id", "whoami", "ps", "du", "df",
-  "basename", "dirname", "realpath", "readlink", "tree", "less", "more", "man",
-  "sort", "uniq", "cut", "tr", "jq", "diff", "cmp", "sha256sum", "shasum",
-  "md5sum", "command", "test", "true", "false", "grep", "rg", "egrep", "fgrep",
-  "column", "nl", "seq", "tac", "rev",
+  "ls", "cat", "head", "tail", "less", "more", "wc", "file", "stat", "pwd",
+  "echo", "printf", "which", "type", "uname", "id", "whoami",
+  "ps", "top", "htop", "free", "uptime", "du", "df", "ss", "netstat", "lsof",
+  "pgrep", "nproc", "lscpu", "lsblk", "getent",
+  "printenv", "basename", "dirname", "realpath", "readlink", "tree", "man",
+  "uniq", "cut", "tr", "jq", "diff", "cmp", "comm", "sha256sum",
+  "shasum", "md5sum", "test", "true", "false", "grep", "rg", "egrep", "fgrep",
+  "column", "nl", "seq", "tac", "rev", "w", "who", "last",
+  // Commands that mutate given certain flags/args are NOT here — they have their
+  // own guard branch (date -s, sort -o, hostname <name>, journalctl --vacuum-*,
+  // env <cmd>, dmesg -C). Keeping them OUT of the flat set preserves the
+  // invariant: this set is ONLY commands that never mutate under any args.
 ]);
 
 /** git subcommands whose BARE form only reads. `branch`/`tag`/`remote` are
  *  handled separately because they mutate given extra args. */
 const READ_ONLY_GIT = new Set([
-  "status", "log", "diff", "show", "rev-parse", "ls-files", "ls-tree", "blame",
-  "describe", "reflog", "shortlog", "whatchanged", "grep", "cat-file",
+  "status", "log", "diff", "show", "rev-parse", "rev-list", "ls-files",
+  "ls-tree", "blame", "describe", "reflog", "shortlog", "whatchanged", "grep",
+  "cat-file", "for-each-ref", "show-ref", "merge-base",
 ]);
+
+/** docker read-only subcommands — container investigation, not change.
+ *  `exec`/`run`/`rm`/`build`/`compose up`/... are NOT here, so they stay
+ *  write-class. Compose's read surface is separate below. */
+const READ_ONLY_DOCKER = new Set([
+  "ps", "images", "logs", "inspect", "stats", "top", "port", "events",
+  "version", "info", "diff", "history",
+]);
+/** docker compose read-only subcommands. up/down/run/exec/build/pull mutate. */
+const READ_ONLY_DOCKER_COMPOSE = new Set([
+  "ps", "logs", "config", "top", "images", "events", "port",
+]);
+/** systemctl read-only subcommands. start/stop/restart/enable/... mutate. */
+const READ_ONLY_SYSTEMCTL = new Set([
+  "is-active", "is-enabled", "is-failed", "status", "show", "list-units",
+  "list-timers", "list-sockets", "list-services", "list-jobs",
+  "list-dependencies", "get-default", "show-environment", "cat",
+]);
+/** pip/npm read-only subcommands. install/uninstall/edit mutate. */
+const READ_ONLY_MANAGER = new Set(["list", "show", "search"]);
 
 /** Only flags that cannot delete or create a ref. */
 const LISTING_ONLY_FLAGS = new Set([
-  "-a", "-r", "-v", "-vv", "-l", "--list", "--all", "--verbose", "-d-",
+  "-a", "-r", "-v", "-vv", "-l", "-d-", "--list", "--all", "--verbose",
 ]);
 
-/** Metacharacters that make a command compound or write-capable. Note this list
- *  is a NARROWING condition on top of the allowlist, never the classifier
- *  itself: `cp a b` has none of these and must still be refused (by name). */
-const METACHARS = [";", "|", "&", ">", "<", "`", "$(", "\n", "\r", "\\"];
+/** Characters that can never appear in a lock-free command: they are a
+ *  redirect (`>`,`<`), a substitution (`` ` ``, `$(`), or a line/escape join
+ *  the classifier cannot see past. Pipes/`&&`/`;` are handled by SEGMENTING
+ *  first — each segment must independently match — so lone `&` (backgrounding,
+ *  `||`) is deliberately NOT here: it fails the segment check instead. */
+const COMPOUND_WRITE_CHARS = [">", "<", "`", "$(", "\n", "\r", "\\"];
 
-function isReadOnlyBash(command: unknown): boolean {
-  if (typeof command !== "string") return false;
-  const cmd = command.trim();
-  if (!cmd) return false;
-  for (const meta of METACHARS) if (cmd.includes(meta)) return false;
+/** Split a command into its segments and require EVERY one to read. An empty
+ *  segment (`a || b`, a trailing pipe) fails — that shape hides a branch. */
+function allSegmentsReadOnly(cmd: string): boolean {
+  // Segment on `&&`, `|`, then `;`. A `&&`*replaced first so a lone `&` left
+  // over (backgrounding, `||`) cannot parse as a separator.
+  const segments = cmd
+    .split("&&").join("\u0001")
+    .split("|").join("\u0001")
+    .split(";").join("\u0001")
+    .split("\u0001");
+  for (const seg of segments) {
+    const s = seg.trim();
+    if (!s) return false;                 // empty segment = a branch the check cannot see
+    if (s.includes("&")) return false;    // leftover `&` = backgrounding / `||`
+    if (!isReadOnlySingle(s)) return false;
+  }
+  return true;
+}
 
-  // Split on whitespace only — no shell parsing, because metachars are already out.
+/** env read-only: only VAR=value assignments and flags. A bare word is a
+ *  program env will run — write-class. */
+function envReadOnly(args: string[]): boolean {
+  if (!args.length) return true; // bare `env` prints the environment
+  return args.every((a) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(a) || a.startsWith("-"));
+}
+
+/** curl read-only: HEAD to anywhere, or GET to a local/read-only host with -s.
+ *  Anything that sends data (`-d`, `-X`, `-F`, `-T`) or writes a file
+ *  (`-o`, `-O`, `-c`) is write-class. Mirrors the Hermes enforcer's curl rules
+ *  so Pi and Hermes agree on what a health check is. */
+function curlReadOnly(args: string[]): boolean {
+  const sends = (a: string) => /^-d($|-)/.test(a) || /^--data/.test(a)
+    || /^-X($|-)/.test(a) || /^--request/.test(a) || /^-F($|-)/.test(a)
+    || /^--form/.test(a) || /^-T($|-)/.test(a) || /^--upload/.test(a);
+  const writes = (a: string) => /^-o($|-)/.test(a) || /^--output/.test(a)
+    || /^-O($|-)/.test(a) || /^-c($|-)/.test(a) || /^--cookie-jar/.test(a);
+  if (args.some((a) => sends(a) || writes(a))) return false;
+  const URL = "https?://|file:///dev/|localhost:|127\\.0\\.0\\.1:";
+  const lastUrl = args[args.length - 1] ?? "";
+  const head = args.some((a) => a === "-I" || a === "-sI" || a === "--head");
+  if (head) return true;                   // HEAD mutates nothing anywhere
+  if (!args.includes("-s")) return false;  // GET must be explicit about silence
+  return new RegExp(`^(${URL})`).test(lastUrl); // GET only to local/read host
+}
+
+/** Single-command read check — the per-segment predicate. */
+function isReadOnlySingle(cmd: string): boolean {
   const parts = cmd.split(/\s+/).filter(Boolean);
   if (!parts.length) return false;
   const name = path.basename(parts[0]);
@@ -307,7 +382,43 @@ function isReadOnlyBash(command: unknown): boolean {
     return !args.some((a) => a.startsWith("-exec") || a.startsWith("-delete")
       || a.startsWith("-ok") || a.startsWith("-fprint") || a.startsWith("-fls"));
   }
+  if (name === "docker") {
+    const sub = args[0];
+    if (!sub) return false;
+    if (READ_ONLY_DOCKER.has(sub)) return true;
+    if (sub === "compose") {
+      const s = args[1];
+      return !!s && READ_ONLY_DOCKER_COMPOSE.has(s);
+    }
+    return false; // docker exec/run/rm/build/create/... -> write-class
+  }
+  if (name === "systemctl") {
+    const s = args[0];
+    return !!s && READ_ONLY_SYSTEMCTL.has(s);
+  }
+  if (name === "journalctl") {
+    // journalctl reads, but vacuum/rotate/flush delete or move journal files.
+    return !args.some((a) => /^--(vacuum-|rotate|flush|sync|relinquish)/.test(a));
+  }
+  if (name === "curl") return curlReadOnly(args);
+  if (name === "pip" || name === "npm") {
+    const s = args[0];
+    return !!s && READ_ONLY_MANAGER.has(s);
+  }
+  if (name === "env") return envReadOnly(args);
+  if (name === "date") return !args.some((a) => a === "-s" || a === "--set");
+  if (name === "sort") return !args.some((a) => a === "-o" || /^--output/.test(a));
+  if (name === "hostname") return args.every((a) => a.startsWith("-")); // bare sets it
+  if (name === "dmesg") return !args.some((a) => a === "-C" || a === "-c" || a === "--clear");
   return READ_ONLY_COMMANDS.has(name);
+}
+
+function isReadOnlyBash(command: unknown): boolean {
+  if (typeof command !== "string") return false;
+  const cmd = command.trim();
+  if (!cmd) return false;
+  for (const ch of COMPOUND_WRITE_CHARS) if (cmd.includes(ch)) return false;
+  return allSegmentsReadOnly(cmd);
 }
 
 function toolNeedsLock(toolName: string, input: any): boolean {
@@ -381,9 +492,10 @@ function refusedMessage(repo: string, detail: string): string {
     "  pi's loop-governance MCP tool:  begin_change(task_id=\"...\", description=\"...\")",
     `  the generic CLI:                python3 ${CLI} begin_change '{"task_id":"...","description":"..."}'`,
     "",
-    "Read-only work needs no lock: use the read/grep/find/ls tools, or a SINGLE",
-    "simple read-only command (ls, cat, grep, git status, ...). Anything compound",
-    "— a pipe, a redirect, a second command — counts as a write here.",
+    "Read-only work needs no lock: use the read/grep/find/ls tools, or read-only",
+    "commands (ls, cat, grep, git status, docker ps/logs, journalctl, curl GET,",
+    "...) — compounds of read-only commands (a pipe, &&) are also lock-free.",
+    "A redirect, a substitution, or any mutating command/flag is a write here.",
     "",
     "Governance said:",
     boundedDetail(detail),

@@ -245,22 +245,42 @@ for (const cmd of [
   "touch /tmp/fake-repo/newfile", "ln -s a b", "truncate -s 0 f", "install a b",
   "python3 -c import_os", "sh -c echo", "git commit -m x", "git push", "git checkout main",
   "git branch newbranch", "git tag v9",
+  // docker/systemctl WRITE subcommands stay gated now the name is familiar
+  "docker run -d app", "docker exec -it app sh", "docker rm app", "docker build .",
+  "docker compose up -d", "docker compose down", "docker start app", "docker stop app",
+  "systemctl start app", "systemctl restart app", "systemctl enable app", "systemctl daemon-reload",
+  // mutating flags INSIDE a read primitive
+  "find . -exec rm {} +", "sort -o out f", "date -s 2026-01-01", "journalctl --vacuum-time=1d",
+  "env bash -c x", "hostname newname", "curl -s https://example.com/api -d data=1", "pip install foo",
 ]) {
   const res = await call("bash", { command: cmd });
   note(res.blocked, `NO lock => bash WRITE-CLASSIFIED blocked: \`${cmd}\``);
 }
 
-// ── 4. compound commands need a lock even when every part reads ─────────────
-for (const cmd of ["ls | grep foo", "cat f > out", "echo hi; ls", "ls && rm x"]) {
+// ── 4. compound commands: read compounds are lock-free, write-segment ones aren't
+// A pipe/&&/; of read-only primitives is investigation and needs no lock
+// (`ls | grep foo`, `docker logs c | tail -20`). A redirect, a substitution, or
+// ANY non-read segment makes the whole thing write-class.
+for (const cmd of ["cat f > out", "echo hi > f", "ls && rm x", "ls | sh", "ls; echo $(pwd)"]) {
   const res = await call("bash", { command: cmd });
-  note(res.blocked, `NO lock => COMPOUND bash blocked: \`${cmd}\``);
+  note(res.blocked, `NO lock => COMPOUND-with-write/bash-branch blocked: \`${cmd}\``);
+}
+for (const cmd of ["ls | grep foo", "git log | head -5", "docker logs app | tail -20", "echo hi; ls", "ss -ltn | grep :80 && df -h"]) {
+  const res = await call("bash", { command: cmd });
+  note(!res.blocked, `read-only COMPOUND stays lock-free: \`${cmd}\``);
 }
 
 // ── 5. read-only stays lock-free, and must not even consult governance ──────
 const before = callCount();
 for (const cmd of ["ls -la /tmp/fake-repo", "cat /tmp/fake-repo/x", "grep -rn TODO .",
                    "git status --short", "git log --oneline -5", "git branch -a",
-                   "git diff HEAD", "find . -name '*.py'"]) {
+                   "git diff HEAD", "find . -name '*.py'",
+                   // investigation tools an agent needs without a lock
+                   "docker ps", "docker logs pull_cn2_ack", "docker inspect worker",
+                   "docker images", "docker stats --no-stream", "docker compose ps",
+                   "docker compose logs worker", "journalctl -u hermes-gateway", "ss -ltn",
+                   "free -h", "uptime", "systemctl status hermes-gateway", "curl -s https://localhost:8903/health",
+                   "env CORTEX_SESSION_REPO=/x", "printenv OPENROUTER_API_KEY", "pip list"]) {
   const res = await call("bash", { command: cmd });
   note(!res.blocked, `read-only bash stays lock-free: \`${cmd}\``);
 }

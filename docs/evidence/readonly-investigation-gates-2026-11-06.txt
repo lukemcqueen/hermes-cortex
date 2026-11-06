@@ -1,0 +1,61 @@
+Investigation-read-only gate expansion — Pi + Hermes enforcer parity
+====================================================================
+Date: 2026-11-06
+Task: gisu-docker-readonly-allowlist (cycle 8189)
+
+WHY: gisu (pi worker on a koscap-mwi checkout that has no .git) could not run
+  read-only investigation (docker ps/logs/inspect, grep) because the pi
+  cortex-governance.ts write gate failed CLOSED on "cannot determine the repo"
+  for any command NOT on its read-only allowlist. docker was not on the
+  allowlist, so docker ps/logs/inspect were classed as writes -> repo lookup
+  -> fail-closed block. The gate's purpose is protection against CHANGES, not
+  against investigation.
+
+WHAT CHANGED
+  ops/install/harnesses/pi/extensions/cortex-governance.ts
+    - classifier now SEGMENT-aware: every `|`/`&&`/`;` segment must match a
+      read-only primitive individually (read compounds lock-free, like the
+      Hermes enforcer). Empty or `&`-leftover segments and `>``$(` fail.
+    - docker read subcommands allowed: ps images logs inspect stats top port
+      events version info diff history; docker compose ps logs config top images
+      events port. docker run/exec/rm/build/compose up/down/... stay write-class.
+    - systemctl read subcommands: is-active is-enabled is-failed status show
+      list-units list-timers list-sockets list-services list-jobs
+      list-dependencies get-default show-environment cat.
+    - journalctl (guard vacuum/rotate/flush/sync/relinquish), curl GET/HEAD
+      (guard -d/-X/-F/-T/-o/-O/-c), pip/npm list/show/search, env VAR-only.
+    - mutating-flag guards on read primitives: find -exec/-delete, sort -o,
+      date -s, hostname <name>, dmesg -C. date/sort/hostname/journalctl/env/
+      dmesg pulled OUT of the flat set into guarded branches (flat = only
+      never-mutating primitives).
+  plugins/governance-enforcer/__init__.py (+ README.md)
+    - docker list widened to ps images logs inspect stats top port events version
+      info diff history; added docker compose read subcommands.
+    - systemctl list widened (is-failed show list-timers list-sockets
+      list-services list-jobs list-dependencies list-unit-files get-default
+      show-environment cat).
+  skills/autonomous-ai-agents/pi-coding-agent/SKILL.md
+    - gate section rewritten: investigation tools on the allowlist, read
+      compounds lock-free, mutation list.
+
+VERIFICATION (real execution, PI_INSTALL_ROOT -> scratch jiti so the real .ts
+loads through pi's own loader)
+  command: node ops/install/harnesses/pi/verify-governance-extension.mjs
+  result:  "GOVERNANCE GATE OK" exit 0
+  covered: gisu's exact commands docker ps / docker logs pull_cn2_ack / docker
+    inspect worker -> lock-free; docker exec/rm/run/compose up/down -> blocked;
+    read compounds (ls|grep, docker logs c|tail, git log|head) -> lock-free;
+    write compounds (cat f>out, ls&&rm, ls|sh, $() ) -> blocked.
+  python: tests/test_pi_governance_gate.py  (3 subtests; env-skips documented
+    for mise host — the direct node run above is the driving execution)
+  enforcer: _is_readonly_terminal_command probed directly (import of the repo
+    module): 24 read/write cases all correct; 14 boundary strings all correct.
+  pytest: tests/test_enforcer_mycortex_readonly.py + test_governance_bypass.py
+    -> 261 passed; 2 pre-existing failures reproduced at origin/main
+    (TestSkillsStatePerSession, TestSkillsDirResolution — unrelated, confirmed
+    failing on the unmodified base via worktree).
+  adversarial: A4 --gate PASSED (no critical/high) on both governance files.
+
+DEPLOY NOTE: enforcer lives at ~/.hermes/plugins (copy). cortex-update.sh
+copies plugins/governance-enforcer then requires a gateway restart to load.
+Pi hosts get cortex-governance.ts via install-pi-integration.sh / cortex-update.
