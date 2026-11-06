@@ -5773,8 +5773,8 @@ def check_fleet_gateway(res: "Results") -> None:
             "daemon imports hermetically; config + unit independent of hermes-gateway")
 
 
-def check_cortex_env(res: "Results") -> None:
-    """The ONE canonical cortex env: ~/steadfaste-fleet/.env.
+def check_fleet_env(res: "Results") -> None:
+    """The ONE canonical fleet env: ~/steadfaste-fleet/.env.
 
     Since the 2026-10 single-env refactor every script reads that file, so a
     missing or misplaced env silently degrades the whole host. The deploy dir
@@ -5789,7 +5789,7 @@ def check_cortex_env(res: "Results") -> None:
     legacy = CORTEX_HOME / "cortex-bus.conf"
 
     if not canon.exists() and not legacy.exists() and not deploy_env.exists():
-        res.add("cortex env", "SKIP", "no cortex env on this host (not installed)")
+        res.add("fleet env", "SKIP", "no fleet env on this host (not installed)")
         return
 
     problems = []
@@ -5824,11 +5824,11 @@ def check_cortex_env(res: "Results") -> None:
             problems.append("retired cortex-bus.conf symlink is broken")
 
     if problems:
-        res.add("cortex env", "FAIL", "; ".join(problems),
+        res.add("fleet env", "FAIL", "; ".join(problems),
                 "run fleet-update.sh (it runs consolidate-env.sh), or "
                 "bash ~/.steadfaste-fleet/scripts/consolidate-env.sh")
     else:
-        res.add("cortex env", "PASS",
+        res.add("fleet env", "PASS",
                 "canonical ~/steadfaste-fleet/.env present (600); "
                 "~/.steadfaste-fleet/.env is the sanctioned symlink; cortex-bus.conf retired")
 

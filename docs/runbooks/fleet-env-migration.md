@@ -1,4 +1,4 @@
-# Runbook — cortex env migration (one canonical `.env`)
+# Runbook — fleet env migration (one canonical `.env`)
 
 > **Audience:** any agent, on Linux or macOS, that maintains a Steadfaste Fleet host.
 > **Status:** current since the 2026-10 single-env refactor (updated 2026-10-17: the back-compat symlink is now `~/.steadfaste-fleet/.env`; `cortex-bus.conf` retired).
@@ -6,7 +6,7 @@
 
 ## The convention
 
-There is exactly **one** cortex env file:
+There is exactly **one** fleet env file:
 
 ```
 ~/steadfaste-fleet/.env          ← the canonical env (gitignored, mode 600)
@@ -16,7 +16,7 @@ The deploy dir carries a **sanctioned back-compat symlink to it** (so legacy rea
 
 | Path | What it is | Rule |
 |---|---|---|
-| `~/steadfaste-fleet/.env` | the canonical cortex env | **edit this** |
+| `~/steadfaste-fleet/.env` | the canonical fleet env | **edit this** |
 | `~/.steadfaste-fleet/.env` | symlink → the canonical env (back-compat) | never edit; recreate with `consolidate-env.sh` if missing |
 | `~/.steadfaste-fleet/cortex-bus.conf` | **retired 2026-10-17** (was the old legacy symlink name) | must not exist; `consolidate-env.sh` removes it |
 | `~/.hermes/.env` | **Hermes-owned** (provider keys, Telegram) | never merge into it |
@@ -60,7 +60,7 @@ bash ~/.steadfaste-fleet/scripts/consolidate-env.sh --check    # dry check; exit
 ## Verify
 
 The behaviours this runbook documents are pinned by committed tests, runnable in
-the repo: `tests/test_doctor_cortex_env.py` drives `check_cortex_env` both ways
+the repo: `tests/test_fleet_doctor_env.py` drives `check_fleet_env` both ways
 (sanctioned symlink PASS, real-file FAIL, missing-symlink FAIL, leftover
 `cortex-bus.conf` FAIL) and `tests/test-consolidate-env.sh` drives
 `consolidate-env.sh`'s migration / idempotence / real-file refusal / `--check`
@@ -69,7 +69,7 @@ trusting this prose.
 
 ```bash
 # 1. the doctor's own check (FAILs on a missing/misplaced env, with the fix)
-python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py 2>&1 | grep -i "cortex env"
+python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py 2>&1 | grep -i "fleet env"
 
 # 2. the canonical env exists, is 600, and the deploy-dir .env symlink resolves to it
 ls -la ~/steadfaste-fleet/.env ~/.steadfaste-fleet/.env
@@ -81,15 +81,15 @@ ls -la ~/steadfaste-fleet/.env ~/.steadfaste-fleet/.env
 
 The doctor reports:
 
-- `✅ cortex env — canonical ~/steadfaste-fleet/.env present (600); ~/.steadfaste-fleet/.env is the sanctioned symlink; cortex-bus.conf retired`
-- `❌ cortex env — <problem>; fix: run fleet-update.sh (it runs consolidate-env.sh)`
+- `✅ fleet env — canonical ~/steadfaste-fleet/.env present (600); ~/.steadfaste-fleet/.env is the sanctioned symlink; cortex-bus.conf retired`
+- `❌ fleet env — <problem>; fix: run fleet-update.sh (it runs consolidate-env.sh)`
 
 ## What changed in the refactor (so you can implement it)
 
 1. **All references swept to `.env`.** ~66 `cortex-bus.conf` references across
    code, docs, skills and AGENTS.md now point at the canonical env. The only
    legitimate remaining references are `ops/scripts/manage/consolidate-env.sh`
-   (it performs the migration) and the doctor's `check_cortex_env` (it enforces
+   (it performs the migration) and the doctor's `check_fleet_env` (it enforces
    the retirement). A `cortex-bus.conf` reference elsewhere is a regression —
    `git grep -n cortex-bus.conf` should show only those two (and genuinely
    different files: `~/.steadfaste-fleet/conf.d/…`, `~/.hermes/cortex-bus.conf`).
@@ -104,7 +104,7 @@ The doctor reports:
    `docs/templates/com.hermes.fleet-gateway.plist` — because systemd does not
    exist on macOS and launchd has no `EnvironmentFile`; the plist wrapper
    sources the same canonical env before exec'ing the daemon.
-4. **Enforcement.** `check_cortex_env` in `fleet_doctor/checks.py` FAILs when
+4. **Enforcement.** `check_fleet_env` in `fleet_doctor/checks.py` FAILs when
    the canonical env is missing, when a REAL file (not a symlink) appears at
    `~/.steadfaste-fleet/.env`, when the sanctioned symlink is missing or points
    elsewhere, or when a retired `cortex-bus.conf` still exists.
@@ -122,6 +122,15 @@ The doctor reports:
 
 ## Do not
 
-- Do **not** write cortex variables into `~/.hermes/.env` (Hermes-owned).
+- Do **not** write fleet variables into `~/.hermes/.env` (Hermes-owned).
 - Do **not** replace `~/.steadfaste-fleet/.env` with a real file — it must stay a symlink to the canonical env.
 - Do **not** recreate `cortex-bus.conf` — it is retired.
+
+> **Deliberately kept names (P3 scope):** `cortex-bus.conf` is the RETIRED
+> symlink name — it is the doctor check's subject and must stay spelled that
+> way (`consolidate-env.sh` retires it, `check_fleet_env` enforces its
+> absence; a surviving reference is the regression signal). Env var NAMES
+> (`CORTEX_BUS_URL`, `CORTEX_BUS_FALLBACK_URL`, …) are CORTEX_ env-name
+> tokens and are P4-deferred by the rename plan — only file/command/service
+> names are renamed in P3. The test file `tests/test_fleet_doctor_env.py`
+> keeps those subject tokens for the same reason.
