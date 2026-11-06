@@ -61,7 +61,7 @@ def test_governance_injection_unchanged(monkeypatch):
 def test_unrelated_namespace_is_not_stamped_with_a_repo(monkeypatch):
     _patch_repo(monkeypatch, _OBSERVED)
     args = {}
-    _enforcer._inject_session_context(_SESSION, "mcp__cortex_bus__inbox_send", args)
+    _enforcer._inject_session_context(_SESSION, "mcp__fleet_bus__inbox_send", args)
     assert args == {"session_id": _SESSION}
 
 
