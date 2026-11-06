@@ -243,8 +243,13 @@ def bus_send(queue: str, message_body: dict) -> dict | None:
             return None
         try:
             try:
-                from lib.bus_outbox import enqueue  # lazy: break import cycle
-            except ImportError:  # adversarial-ignore: error-swallow — dual-mode import fallback (lib. vs bare)
+                from lib.bus_outbox import enqueue  # lazy: break import cycle; deployed layout (scripts/lib/ on path)
+            except ImportError:
+                # Sweep cron runs with lib/ directly on sys.path, so the module is
+                # top-level there; try the bare form before giving up. Whichever
+                # import fails is named in the debug line to keep the branch
+                # debuggable.
+                logging.getLogger("fleet_bus").debug("lib.bus_outbox not importable — trying bare bus_outbox")
                 from bus_outbox import enqueue  # lib/ directly on sys.path (sweep cron)
             return enqueue(queue, message_body)  # pristine message, not wire_body
         except Exception as outbox_err:  # noqa: BLE001 — outbox must not mask the original
