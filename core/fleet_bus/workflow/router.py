@@ -120,8 +120,11 @@ def process_step_result(msg: dict) -> Optional[str]:
     # human_review, or a step_name matching a route value) is dispatched without
     # consulting the definition. When a hint IS present, the human_review flag
     # on the snapshotted workflow_definition decides (block vs dispatch). Both
-    # layers are deliberate — pinned by the router tests in
-    # tests/test_bus_import_graph.py.
+    # layers are deliberate — all four combinations are pinned in
+    # tests/test_bus_import_graph.py: test_route_workflow_human_review_blocks,
+    # test_route_workflow_prefilter_hint_does_not_block,
+    # test_route_workflow_value_match_opens_gate,
+    # test_route_workflow_value_match_no_definition_flag_dispatches.
     if next_step_data.get("route_if", {}).get("human_review") or next_step_data.get("step_name", "").lower() in (
         s.lower() for s in next_step_data.get("route_if", {}).get("routes", {}).values()
     ):
