@@ -6,9 +6,11 @@ scope 1): every module here resolves with zero Hermes import. The legacy
 thin re-export shims of these canonical modules so existing callers keep working
 unmodified.
 
-This package was renamed from `fleet_lib` (2026-11-06, cortex->fleet short-name
-sweep). The old name remains as a one-release re-export shim
-(`ops/scripts/fleet_lib/`) so undeployed/legacy callers keep resolving.
+This package was renamed from `cortex_lib` (2026-11-06, cortex->fleet short-name
+sweep). The old name remains as a one-release re-export shim at
+`ops/scripts/cortex_lib/` (and `scripts/cortex_lib/` deployed) so
+undeployed/legacy callers keep resolving; that shim is deleted when the old name
+is retired.
 
 Imports resolve from `ops/scripts/` being on sys.path (see fleet_lib.paths.
 ensure_scripts_path). This package is Hermes-agnostic by rule: no `import hermes*`
