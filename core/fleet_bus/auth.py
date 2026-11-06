@@ -17,7 +17,7 @@ import secrets
 from typing import Optional
 from pathlib import Path
 
-# Use a simple SHA-256 hash for now (bcrypt requires extra deps)
+# PBKDF2-HMAC-SHA256, 100k iterations (bcrypt requires extra deps; see TODO)
 # TODO: upgrade to bcrypt: pip install bcrypt
 HASH_ALGO = "sha256"
 
