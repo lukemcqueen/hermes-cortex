@@ -1,5 +1,5 @@
 [Unit]
-Description=Cortex Bus Server (PGMQ) — canonical bus for both orchestrators
+Description=Fleet Bus Server (PGMQ) — canonical bus for both orchestrators
 After=network.target docker.service
 
 [Service]
