@@ -116,17 +116,15 @@ def process_step_result(msg: dict) -> Optional[str]:
                     detail={"pending_deps": pending_deps, "step": next_step})
         return "blocked"
     
-    # HINT-ONLY prefilter: this whether maybe-human check costs nothing when the
-    # step has no human routing hints; the AUTHORITATIVE decision is the
-    # `human_review` flag on the step definition in the snapshotted
-    # workflow_definition below. The route_if/routes generator expression is
-    # heuristic (a step_name can match a route target verbatim); changing it
-    # changes routing, so both checks are kept deliberately (2026-11-06).
+    # GATE then authoritative: a step row with NO human hint (route_if
+    # human_review, or a step_name matching a route value) is dispatched without
+    # consulting the definition. When a hint IS present, the human_review flag
+    # on the snapshotted workflow_definition decides (block vs dispatch). Both
+    # layers are deliberate — pinned by the router tests in
+    # tests/test_bus_import_graph.py.
     if next_step_data.get("route_if", {}).get("human_review") or next_step_data.get("step_name", "").lower() in (
         s.lower() for s in next_step_data.get("route_if", {}).get("routes", {}).values()
     ):
-        # Actually, human_review is in the snapshotted workflow_definition
-        # Let me check the workflow definition
         wf_def = workflow.get("workflow_definition", {})
         steps_def = wf_def.get("steps", []) if isinstance(wf_def, dict) else []
         for s in steps_def:

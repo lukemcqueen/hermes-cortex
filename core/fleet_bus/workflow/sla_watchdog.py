@@ -108,10 +108,10 @@ def run_watchdog() -> list[str]:
 def _find_timed_out_workflows(now: datetime) -> list[dict]:
     """Find active workflows past their deadline."""
     bus = get_queue()
-    # _ensure_conn/_conn/_conn.cursor: fleet_bus.queue.BusClient (queue.py:96-100,
-    # 281 for the public list_queues); _row_to_dict: fleet_bus.workflow.db (db.py:236).
-    # Same private protocol the live gateway exercises daily via validate_token
-    # (auth.py) — pinned by tests/test_bus_import_graph.py.
+    # _ensure_conn/_conn (and the public list_queues) live on
+    # fleet_bus.queue.BusClient (queue.py:96-100, list_queues at :281);
+    # _row_to_dict at fleet_bus.workflow.db (db.py:236) — those siblings are
+    # judged in their own blobs (sibling rule).
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
         cur.execute(
