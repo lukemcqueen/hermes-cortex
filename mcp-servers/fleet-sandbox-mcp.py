@@ -1,8 +1,8 @@
 #!/usr/bin/env python3.12
 """
 Fleet Sandbox MCP Server — exposes disk access control as MCP tools.
-P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-sandbox-mcp.py via
-git mv — token-swap rename only.
+P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-sandbox-mcp.py;
+provenance: git log --follow -- mcp-servers/fleet-sandbox-mcp.py.
 
 Tools:
     sandbox_status     — show current DISK_ACCESS_LEVEL and allowed path
@@ -56,15 +56,15 @@ if not _SANDBOX_MODULE.exists():
 import importlib.machinery
 import importlib.util as iu
 
-_loader = importlib.machinery.SourceFileLoader("cortex_sandbox", str(_SANDBOX_MODULE))
-_spec = iu.spec_from_loader("cortex_sandbox", _loader)
-_cortex_sandbox = iu.module_from_spec(_spec)
-_loader.exec_module(_cortex_sandbox)
-SandboxConfig = _cortex_sandbox.SandboxConfig
-Sandbox = _cortex_sandbox.Sandbox
-SandboxBlocked = _cortex_sandbox.SandboxBlocked
-SandboxError = _cortex_sandbox.SandboxError
-load_config = _cortex_sandbox.load_config
+_loader = importlib.machinery.SourceFileLoader("fleet_sandbox", str(_SANDBOX_MODULE))
+_spec = iu.spec_from_loader("fleet_sandbox", _loader)
+_fleet_sandbox = iu.module_from_spec(_spec)
+_loader.exec_module(_fleet_sandbox)
+SandboxConfig = _fleet_sandbox.SandboxConfig
+Sandbox = _fleet_sandbox.Sandbox
+SandboxBlocked = _fleet_sandbox.SandboxBlocked
+SandboxError = _fleet_sandbox.SandboxError
+load_config = _fleet_sandbox.load_config
 
 
 # ── Tools ────────────────────────────────────────────────────

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-bus-mcp.py via git mv —
-a pure rename whose only content delta is the fleet-* token swap (the MCP
-server's own name string below). History: git log --follow -- mcp-servers/fleet-bus-mcp.py.
+P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-bus-mcp.py.
+Provenance: git log --follow -- mcp-servers/fleet-bus-mcp.py (the p3
+sweep moved the file and swapped the fleet-* tokens, incl. the server
+name below).
 
 Agent Bus MCP Server — Hermes fleet agent messaging + task delegation.
 
-SAME tool interface as the old `inbox-mcp.py` — ZERO agent disruption.
-Backend switched to the Agent Bus (Postgres-native PGMQ on port 8903).
+Interface keeps the inbox-mcp.py tool names (covered by the bus suites:
+tests/test_bus_import_graph.py, tests/test_mcp_servers_deployed.py).
+Backend: Agent Bus (Postgres-native PGMQ on port 8903).
 
 PRIMARY: Agent Bus (Bearer token auth)
 FALLBACK: Old file-based inbox (Basic auth, port 8903, being deprecated)
@@ -1017,7 +1019,7 @@ def _inbox_cancel_task(args: dict) -> CallToolResult:
 #  SERVER
 # ═══════════════════════════════════════════════════════════════
 
-server = Server("cortex-bus", on_list_tools=list_tools, on_call_tool=call_tool)
+server = Server("fleet-bus", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 # ═══════════════════════════════════════════════════════════════
