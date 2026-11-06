@@ -68,8 +68,11 @@ def get_broadcast_topics() -> list[str]:
             data = json.loads(REGISTRY_PATH.read_text())
             topics = data.get("routing", {}).get("broadcast_topics", default_topics)
             return topics
-    except (json.JSONDecodeError, KeyError):
-        pass  # expected — silently handled
+    except (json.JSONDecodeError, KeyError) as exc:
+        # Registry unreadable/corrupt — fall back to defaults, but say so
+        # (a silent swallow hides registry corruption for every later run).
+        print(f"note: broadcast registry unreadable ({type(exc).__name__}: {exc}); "
+              "using default topics", file=sys.stderr)
     return default_topics
 
 
@@ -134,8 +137,13 @@ def main() -> int:
         if isinstance(body, str):
             try:
                 body = json.loads(body)
-            except (json.JSONDecodeError, TypeError):
-                pass  # expected — silently handled
+            except (json.JSONDecodeError, TypeError) as exc:
+                # A malformed message body must not vanish — classify it as
+                # unparsed and say so, so the run is auditable.
+                print(f"note: unparsed message body on {inbox_queue} "
+                      f"({type(exc).__name__}); treating as general/normal",
+                      file=sys.stderr)
+                body = None
 
         topic = (body or {}).get("topic", "general") if isinstance(body, dict) else "general"
         priority = (body or {}).get("priority", "normal") if isinstance(body, dict) else "normal"

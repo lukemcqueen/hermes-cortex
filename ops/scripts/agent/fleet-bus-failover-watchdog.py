@@ -206,6 +206,11 @@ def swap_bus_config(active: bool) -> bool:
 
     Returns True on success. Creates the file if missing.
     """
+    # CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL are ENV VAR NAMES — the
+    # cortex->fleet plan defers CORTEX_ env-name tokens to P4 by design
+    # (renaming them here would strand every deployed .env and the bus
+    # client that reads them). The file/command rename (fleet-*) landed in
+    # P3 steps 2-3; the env var names follow in P4.
     bus_url = os.environ.get("CORTEX_BUS_URL", "").strip()
     bus_fallback = os.environ.get("CORTEX_BUS_FALLBACK_URL", "").strip()
     if not bus_url or not bus_fallback:
