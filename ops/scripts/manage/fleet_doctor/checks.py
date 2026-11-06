@@ -1555,7 +1555,7 @@ def check_bridge_unit_killmode(res) -> None:
             f"{len(missing)} enabled bridge unit(s) leave KillMode at the default "
             f"control-group, so a tick's cgroup teardown kills any worker it "
             f"detached: {', '.join(missing[:5])}" + (" …" if len(missing) > 5 else ""),
-            "Repair: python3 ~/steadfaste-fleet/ops/scripts/cortex-bus-bridge-generate.py "
+            "Repair: python3 ~/steadfaste-fleet/ops/scripts/fleet-bus-bridge-generate.py "
             "--repair && systemctl --user daemon-reload")
     else:
         res.add("Bridge unit kill mode", "PASS",

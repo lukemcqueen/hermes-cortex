@@ -30,8 +30,8 @@ _SUITES = [
     "tests/test_telegram_bridge.py",
     "tests/test_telegram_bridge_e2e.py",
     "tests/test_telegram_notify_unit.py",
-    "tests/test_cortex_gateway_parity_matrix.py",
-    "tests/test_cortex_gateway_daemon_slice.py",
+    "tests/test_fleet_gateway_parity_matrix.py",
+    "tests/test_fleet_gateway_daemon_slice.py",
 ]
 
 # The WHOLE gateway test surface, recorded next to the parity count because they are
@@ -41,9 +41,9 @@ _SUITES = [
 _SURFACE = [
     "tests/test_cortex_gateway_backend.py",
     "tests/test_cortex_gateway_daemon.py",
-    "tests/test_cortex_gateway_daemon_slice.py",
+    "tests/test_fleet_gateway_daemon_slice.py",
     "tests/test_cortex_gateway_key_guard.py",
-    "tests/test_cortex_gateway_parity_matrix.py",
+    "tests/test_fleet_gateway_parity_matrix.py",
     "tests/test_cortex_gateway_systemd.py",
     "tests/test_cortex_gateway_telegram_env.py",
     "tests/test_cortex_gateway_transport.py",
@@ -86,7 +86,7 @@ def test_gateway_suites_pass_and_the_count_is_reproducible():
     passed = int(m.group(1))
     assert passed >= 111, (
         f"the parity claim is >= 111 passing gateway tests; this run shows {passed}. "
-        "If suites were removed, the claim in docs/design/cortex-gateway-parity.md must "
+        "If suites were removed, the claim in docs/design/fleet-gateway-parity.md must "
         "be corrected to the measured number.")
     assert r.returncode == 0, f"suites failed (rc={r.returncode}):\n{r.stdout[-800:]}"
     print(f"  VERIFIED: {passed} gateway tests pass (claim >= 111) ✓")
@@ -153,7 +153,7 @@ def test_gateway_suites_pass_and_the_count_is_reproducible():
     # "5 tests" claim fabrication because the material (truncated mid-file) showed
     # only four — the fifth existed and was cut. A collected list is short, survives
     # the material bound, and is regenerated here rather than asserted by hand.
-    cited = ["tests/test_review_material_bound.py", "tests/test_cortex_gateway_daemon_slice.py"]
+    cited = ["tests/test_review_material_bound.py", "tests/test_fleet_gateway_daemon_slice.py"]
     names = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", *cited],
                            cwd=_REPO, capture_output=True, text=True, timeout=300)
     combined = names.stdout + names.stderr
@@ -178,7 +178,7 @@ def test_gateway_suites_pass_and_the_count_is_reproducible():
 
 def test_gap_register_in_the_doc_is_numbered_and_matches_the_test():
     """The doc's register must be numbered 1-9 with status, so 9 -> 3 is checkable."""
-    doc = (_REPO / "docs" / "design" / "cortex-gateway-parity.md").read_text()
+    doc = (_REPO / "docs" / "design" / "fleet-gateway-parity.md").read_text()
     # the register: one row per original gap, G1..G9
     ids = re.findall(r"\bG([1-9])\b", doc)
     assert len(set(ids)) == 9, \
@@ -200,7 +200,7 @@ def test_gap_register_in_the_doc_is_numbered_and_matches_the_test():
 
 def test_correction_is_recorded_in_the_doc():
     """The media/caption claim was corrected BY execution — that must be on the record."""
-    doc = (_REPO / "docs" / "design" / "cortex-gateway-parity.md").read_text().lower()
+    doc = (_REPO / "docs" / "design" / "fleet-gateway-parity.md").read_text().lower()
     assert "corrected" in doc or "revision" in doc, \
         "the doc must record that an earlier claim was corrected by execution"
     assert "caption" in doc, "the corrected claim was about captioned media"

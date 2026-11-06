@@ -162,7 +162,7 @@ ones as today's behaviour, so closing one fails the test until this table is upd
 | G9 | Reactions, inline callbacks, edited messages | closed | `tg_kind` forwarding assertions |
 
 **Gap register: 9 → 0 open — every named gap is now closed.** G5/G6/G7 closed by the
-daemon slice (`tests/test_cortex_gateway_daemon_slice.py`, 11 tests); G7's recovery loop is
+daemon slice (`tests/test_fleet_gateway_daemon_slice.py`, 11 tests); G7's recovery loop is
 exponential backoff with a conflict fault-tolerance of 3 consecutive cycles before exit 4.
 
 ## Revision note — claims corrected by execution
@@ -214,7 +214,7 @@ exponential backoff with a conflict fault-tolerance of 3 consecutive cycles befo
   - **The model is declared exactly once.** `/model` can only override a model the argv does
     not hardcode, so the model moved out of `command` into `model_args` — and a spec that has
     both is refused at STARTUP, because two `--model` flags make the switch a silent no-op
-    (the failure mode this field removes). `tests/test_cortex_gateway_daemon_slice.py`'s
+    (the failure mode this field removes). `tests/test_fleet_gateway_daemon_slice.py`'s
     "unknown command is forwarded" case used `/model gpt-5` as its example; it now uses a
     genuinely unknown command, because `/model` is handled.
   - **A control command is declared, not coded.** `/compact` needs pi's RPC mode, so the
@@ -311,7 +311,7 @@ startup instead of silently serving a menu that stores an override nothing appli
 
 ## Evidence
 
-- Capability test (executed): `tests/test_cortex_gateway_parity_matrix.py` — golden updates
+- Capability test (executed): `tests/test_fleet_gateway_parity_matrix.py` — golden updates
   → the target's real `parse()`/`send()`, gap register printed each run.
 - Fixtures: `tests/fixtures/telegram-golden-updates.json` (synthetic ids/dates — real chat
   ids are personal identifiers and 10-digit unix timestamps read as phone numbers).

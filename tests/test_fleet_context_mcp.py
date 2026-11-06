@@ -10,7 +10,7 @@ Covers the three decisions the design makes (docs/design/fleet-memory-session-mc
 Hermetic: an injected fake psql seam — no live database. The real MCP wire
 protocol is exercised separately at the bottom.
 
-Run: python3 -m pytest tests/test_cortex_context_mcp.py -q
+Run: python3 -m pytest tests/test_fleet_context_mcp.py -q
 """
 import importlib.util
 import json

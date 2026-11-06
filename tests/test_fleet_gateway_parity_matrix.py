@@ -6,7 +6,7 @@ Answers Luke's "thoroughly test for parity between the two gateways" and then
 
 Parity is built in SLICES and this file is the progress bar: every entry in the gap
 register is asserted as TODAY'S behavior, so implementing it FAILS the test and forces
-the matrix (docs/design/cortex-gateway-parity.md) to be updated. A gap register that
+the matrix (docs/design/fleet-gateway-parity.md) to be updated. A gap register that
 cannot notice an improvement is not a register.
 
 Slice 1 (transport) closed: media inbound + caption, reply linkage, edited/reaction/
@@ -16,7 +16,7 @@ when TELEGRAM_API_BASE is unset.
 Still open (daemon slice): slash-command dispatch (/stop), inline keyboards, DM-topic
 anchors, busy/interrupt queueing, typing indicators.
 
-Run: python3 -m pytest tests/test_cortex_gateway_parity_matrix.py -q -s
+Run: python3 -m pytest tests/test_fleet_gateway_parity_matrix.py -q -s
 """
 import json
 import sys

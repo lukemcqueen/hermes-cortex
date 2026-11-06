@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Daemon parity slice 2 — G5 (slash dispatch), G6 (busy/interrupt), G7 (poll recovery).
 
-Each gap in docs/design/cortex-gateway-parity.md is asserted here as the daemon's actual
+Each gap in docs/design/fleet-gateway-parity.md is asserted here as the daemon's actual
 behaviour against fakes (no network): a fake transport, a fake backend, scripted polls and
 replies. The gaps were previously registered as OPEN, asserted as today's behaviour so
 that implementing them FAILED a test; these tests are that flip.
 
-Run: python3 -m pytest tests/test_cortex_gateway_daemon_slice.py -q -s
+Run: python3 -m pytest tests/test_fleet_gateway_daemon_slice.py -q -s
 """
 import sys
 import urllib.error

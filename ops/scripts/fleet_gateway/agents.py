@@ -1,6 +1,6 @@
 """fleet_gateway.agents — the agent registry: adding an agent is CONFIG, not code.
 
-The gateway's promise (ADR-0005, docs/design/cortex-gateway-parity.md) is that swapping or
+The gateway's promise (ADR-0005, docs/design/fleet-gateway-parity.md) is that swapping or
 adding an agent never changes the poll → dispatch → reply loop. This module is where that
 promise is made mechanical: a `backend:` entry in gateway.yaml names a **kind**, the kind
 names an implementation, and everything agent-specific (the command, the timeout, what the

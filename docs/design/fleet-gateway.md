@@ -37,7 +37,7 @@ in a transport or a backend. The reply must round-trip through
 | CR2 | `fleet_gateway/backend.py` — BackendAdapter ABC + structural `__subclasshook__` | ✅ |
 | CR3 | `fleet_gateway/daemon.py` + `hermes_backend.py` — poll_bot + drain_outbound + dispatch/reply step; hermes (bus) adapter first | ✅ |
 | CR4 | `fleet-gateway.service` systemd user unit + `gateway.yaml.example` + deploy-map + doctor check; independence proof vs hermes-gateway.service (offline: no hermes dep; live cutover = S2d window) | ✅ |
-| CR5 | pi backend adapter | ✅ — as a `command` SPEC, not an adapter: `ops/scripts/gateway-pi.example.yaml` (`kind: command`), live on @Esther0001Bot. The seam needed no code; the four reply-path defects it exposed (truncation, a wedged chat, a silent failed turn, no typing prompt) are fixed in the daemon/backend and tabled in `cortex-gateway-parity.md` |
+| CR5 | pi backend adapter | ✅ — as a `command` SPEC, not an adapter: `ops/scripts/gateway-pi.example.yaml` (`kind: command`), live on @Esther0001Bot. The seam needed no code; the four reply-path defects it exposed (truncation, a wedged chat, a silent failed turn, no typing prompt) are fixed in the daemon/backend and tabled in `fleet-gateway-parity.md` |
 | CR6 | steadfaste backend adapter (blocked until steadfaste gateway is complete — Luke) | pending |
 
 ## Fail-closed guarantees

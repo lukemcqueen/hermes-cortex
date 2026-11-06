@@ -1,10 +1,10 @@
 """fleet-bus-bridge tests — S2a systemd-timer bridge for no_agent cron jobs.
 
 component-hermes-separation scope 2, slice S2a. Proves the bridge:
-  - the RUNNER (cortex-bus-bridge-run.py) runs a job's script standalone and
+  - the RUNNER (fleet-bus-bridge-run.py) runs a job's script standalone and
     delivers non-empty stdout (silent-when-clean preserved), WITHOUT any Hermes
     runtime import;
-  - the GENERATOR (cortex-bus-bridge-generate.py) maps simple no_agent jobs to
+  - the GENERATOR (fleet-bus-bridge-generate.py) maps simple no_agent jobs to
     systemd OnCalendar values that systemd-analyze validates, and skips only
     what it should (LLM/chained jobs, unsupported schedules).
 """
@@ -39,7 +39,7 @@ def _jobs_stub() -> list:
 
 # ── Generator schedule translation ──────────────────────────────────────────
 def test_generator_maps_common_cron_forms():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     cases = {
         "0 1 * * *": "*-*-* 01:00:00",
         "15 3 * * *": "*-*-* 03:15:00",
@@ -54,14 +54,14 @@ def test_generator_maps_common_cron_forms():
 
 
 def test_generator_maps_interval_forms():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     assert g.instance_interval({"kind": "every", "every": "5m"}) == "*-*-* *:0/5:00"
     assert g.instance_interval({"kind": "every", "every": "2h"}) == "*-*-* *:00/2:00"
     assert g.instance_interval({"kind": "every", "every": "360m"}) == "*-*-* *:00/6:00"
 
 
 def test_generator_skips_unsupported():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     assert g.cron_to_oncalendar("0 1 * * *")  # sanity
     assert g.cron_to_oncalendar("bad expr here") is None
     assert g.instance_interval({"kind": "every", "every": "70m"}) is None  # non-dividing
@@ -69,7 +69,7 @@ def test_generator_skips_unsupported():
 
 
 def test_generator_job_is_simple_filter():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     assert g.job_is_simple(_jobs_stub()[0]) is True   # daily no_agent
     assert g.job_is_simple(_jobs_stub()[1]) is True   # every-5m no_agent
     assert g.job_is_simple(_jobs_stub()[2]) is False  # LLM job
@@ -77,7 +77,7 @@ def test_generator_job_is_simple_filter():
 
 
 def test_generated_on_calendar_values_all_pass_systemd():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     data = json.loads(Path.home().joinpath(".hermes/cron/jobs.json").read_text())
     jobs = data if isinstance(data, list) else data.get("jobs", [])
     vals = set()
@@ -100,7 +100,7 @@ def test_generated_on_calendar_values_all_pass_systemd():
 
 # ── Runner: standalone, silent-when-clean, delivers non-empty stdout ─────────
 def test_runner_sources_loaded_and_script_resolution(tmp_path):
-    r = _load("cortex-bus-bridge-run")
+    r = _load("fleet-bus-bridge-run")
     # _resolve_script: relative resolves under scripts dir; absolute stays.
     assert r._resolve_script("agent-daily-bible-reading.py") == \
         str(r._SCRIPTS_DIR / "agent-daily-bible-reading.py")
@@ -108,7 +108,7 @@ def test_runner_sources_loaded_and_script_resolution(tmp_path):
 
 
 def test_runner_executes_python_script_and_captures_stdout(tmp_path):
-    r = _load("cortex-bus-bridge-run")
+    r = _load("fleet-bus-bridge-run")
     script = tmp_path / "echo.py"
     script.write_text("print('hello from test')\n")
     import os, subprocess as sp
@@ -120,7 +120,7 @@ def test_runner_executes_python_script_and_captures_stdout(tmp_path):
     env = dict(os.environ)
     env["CORTEX_DEPLOY_HOME"] = str(tmp_path)
     proc = sp.run(
-        ["/usr/bin/env", "python3", str(SCRIPTS / "cortex-bus-bridge-run.py"),
+        ["/usr/bin/env", "python3", str(SCRIPTS / "fleet-bus-bridge-run.py"),
          "--name", "test-echo", "--script", str(script),
          "--deliver", "local", "--enabled", "true"],
         capture_output=True, text=True, timeout=120, env=env,
@@ -137,7 +137,7 @@ def test_runner_executes_python_script_and_captures_stdout(tmp_path):
 
 
 def test_runner_local_deliver_saves_not_sends(tmp_path):
-    r = _load("cortex-bus-bridge-run")
+    r = _load("fleet-bus-bridge-run")
     # _deliver('local') must write the output file and NOT touch the messenger.
     import os
     os.environ["CORTEX_DEPLOY_HOME"] = str(tmp_path)
@@ -152,7 +152,7 @@ def test_runner_default_deliver_is_telegram(tmp_path):
     # save). We assert the dispatch decision: _deliver with deliver='' reaches
     # the notify branch (which attempts the real messenger; gated by env token
     # presence in the deployed lib, so we mock the import).
-    r = _load("cortex-bus-bridge-run")
+    r = _load("fleet-bus-bridge-run")
     import os
     os.environ["CORTEX_DEPLOY_HOME"] = str(tmp_path)
     r._CORTEX_ENV = tmp_path
@@ -179,7 +179,7 @@ def test_runner_default_deliver_is_telegram(tmp_path):
 
 
 def test_runner_hermes_free():
-    r = _load("cortex-bus-bridge-run")
+    r = _load("fleet-bus-bridge-run")
     src = Path(r.__file__).read_text()
     # The wrapper must not import the Hermes runtime.
     for bad in ("import hermes", "from hermes", "hermes_bus", "hermes_models"):
@@ -195,8 +195,8 @@ def test_runner_hermes_free():
 # sweep timeout.
 def _service_body() -> str:
     """The [Service] section of the unit the generator would write."""
-    g = _load("cortex-bus-bridge-generate")
-    service, _ = g.unit_text("j-daily", "x.py", "/repo/ops/scripts/cortex-bus-bridge-run.py")
+    g = _load("fleet-bus-bridge-generate")
+    service, _ = g.unit_text("j-daily", "x.py", "/repo/ops/scripts/fleet-bus-bridge-run.py")
     return service
 
 
@@ -214,7 +214,7 @@ def test_generated_service_sets_killmode_process():
 
 
 def test_with_killmode_inserts_after_type_and_is_idempotent():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     # Shape of a real already-deployed unit (esther, 2026-10-24) — no KillMode.
     deployed = (
         "[Unit]\n"
@@ -223,7 +223,7 @@ def test_with_killmode_inserts_after_type_and_is_idempotent():
         "[Service]\n"
         "Type=oneshot\n"
         "ExecStart=/usr/bin/env python3 /home/e/steadfaste-fleet/ops/scripts/"
-        "cortex-bus-bridge-run.py --name agent-message-handler --script "
+        "fleet-bus-bridge-run.py --name agent-message-handler --script "
         "agent-message-handler.py --deliver local\n"
     )
     assert g.unit_needs_killmode(deployed) is True
@@ -239,7 +239,7 @@ def test_with_killmode_inserts_after_type_and_is_idempotent():
 
 
 def test_with_killmode_respects_an_explicit_operator_override():
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     # An operator who deliberately chose another mode must not be overwritten.
     unit = "[Service]\nType=oneshot\nKillMode=control-group\nExecStart=/bin/true\n"
     assert g.unit_needs_killmode(unit) is False
@@ -247,7 +247,7 @@ def test_with_killmode_respects_an_explicit_operator_override():
 
 
 def test_repair_units_fixes_deployed_units_and_is_idempotent(tmp_path, capsys, monkeypatch):
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     units = tmp_path / "user"
     units.mkdir()
     old = units / "cortex-bridge-agent-message-handler.service"
@@ -274,7 +274,7 @@ def test_repair_units_fixes_deployed_units_and_is_idempotent(tmp_path, capsys, m
 
 def test_repair_units_reports_unreadable_units_nonzero(tmp_path, capsys, monkeypatch):
     """ADV-0-1: a unit that cannot be read must be reported, not silently skipped."""
-    g = _load("cortex-bus-bridge-generate")
+    g = _load("fleet-bus-bridge-generate")
     units = tmp_path / "user"
     units.mkdir()
     (units / "cortex-bridge-ok.service").write_text(

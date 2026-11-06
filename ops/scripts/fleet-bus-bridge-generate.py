@@ -69,7 +69,7 @@ from pathlib import Path
 _HOME = Path.home()
 _JOBS = Path(os.environ.get("CRON_JOBS_FILE", str(_HOME / ".hermes" / "cron" / "jobs.json")))
 _UNITS = Path.home() / ".config" / "systemd" / "user"
-_RUNNER = "ops/scripts/cortex-bus-bridge-run.py"  # repo-relative; resolved at install
+_RUNNER = "ops/scripts/fleet-bus-bridge-run.py"  # repo-relative; resolved at install
 _PREFIX = "cortex-bridge-"
 # A bridge unit is Type=oneshot; the default KillMode (control-group) would kill
 # any child the job detached when the tick exits. See the module docstring.
