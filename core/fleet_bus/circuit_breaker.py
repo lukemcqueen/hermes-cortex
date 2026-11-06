@@ -109,6 +109,10 @@ class CircuitBreaker:
             return
 
         try:
+            # `fleet_bus` is the top-level package when this runs: the gateway
+            # unit sets WorkingDirectory/PYTHONPATH to repo core/ (uvicorn
+            # fleet_bus.server:app), so NO `core.` prefix — one would break the
+            # live invocation. Proven by tests/test_bus_import_graph.py.
             from fleet_bus.queue import get_queue
             bus = get_queue()
             # Quick health check — list queues

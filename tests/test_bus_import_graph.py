@@ -41,10 +41,13 @@ class TestImportGraphFromCoreContext:
 
     def test_circuit_breaker_imports_from_core_context(self):
         # The exact finding: circuit_breaker does `from fleet_bus.queue import
-        # get_queue` — must resolve with core/ as package root.
+        # get_queue` — must resolve with core/ as package root. The methods live
+        # on CircuitBreaker (module-level import proof only).
         r = self._run(
             "import fleet_bus.circuit_breaker as c; "
-            "assert hasattr(c, 'check_and_restore') and hasattr(c, 'is_available')"
+            "assert hasattr(c, 'CircuitBreaker'); "
+            "assert hasattr(c.CircuitBreaker, 'check_and_restore'); "
+            "assert hasattr(c.CircuitBreaker, 'is_available')"
         )
         assert r.returncode == 0, r.stderr
 
@@ -67,6 +70,40 @@ class TestImportGraphFromCoreContext:
         )
         assert r.returncode == 0, r.stderr
         assert r.stdout.strip() == "ok"
+
+    def test_circuit_breaker_exercises_mocked_dependency(self):
+        # The reviewer's exact ask: exercise check_and_restore/is_available with
+        # fleet_bus.queue.get_queue MOCKED, proving the dotted import resolves
+        # at runtime AND the function uses it. No DB touched; STATE_FILE is
+        # redirected to a temp path so the runner cannot clobber the live
+        # ~/.steadfaste-fleet/bus-circuit-breaker.json.
+        r = self._run(
+            "import pathlib, tempfile, unittest.mock\n"
+            "import fleet_bus.circuit_breaker as cb\n"
+            "cb.STATE_FILE = pathlib.Path(tempfile.mkstemp(prefix='cb-test-')[1])\n"
+            "breaker = cb.CircuitBreaker()\n"
+            "# pgmq path: get_queue resolves + is used\n"
+            "breaker._state.state = 'pgmq'\n"
+            "with unittest.mock.patch('fleet_bus.queue.get_queue') as gq:\n"
+            "    gq.return_value.list_queues.return_value = []\n"
+            "    ok = breaker.is_available()\n"
+            "assert ok is True\n"
+            "# file path: get_queue raising degrades to file (never flips to pgmq)\n"
+            "breaker._state.state = 'file'\n"
+            "with unittest.mock.patch('fleet_bus.queue.get_queue') as gq:\n"
+            "    gq.return_value.list_queues.side_effect = RuntimeError('pg down')\n"
+            "    breaker.check_and_restore()\n"
+            "assert breaker._state.state == 'file'\n"
+            "# file path: get_queue ok restores to pgmq\n"
+            "breaker._state.state = 'file'\n"
+            "with unittest.mock.patch('fleet_bus.queue.get_queue') as gq:\n"
+            "    gq.return_value.list_queues.return_value = []\n"
+            "    breaker.check_and_restore()\n"
+            "assert breaker._state.state == 'pgmq'\n"
+            "print('exercised')\n"
+        )
+        assert r.returncode == 0, r.stderr
+        assert "exercised" in r.stdout, r.stdout
 
 
 class TestCortexBusShimFromCoreContext:
