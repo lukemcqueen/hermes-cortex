@@ -1,10 +1,16 @@
-"""fleet_lib tests — S1a–S1c of component-hermes-separation.
+"""fleet_lib tests — S1a–S1c of component-hermes-separation, cortex->fleet P2.
 
 Proves the neutral client library is Hermes-independent and that the legacy
 hermes_* modules are thin re-export shims (back-compat intact). The critical
 property under test: every fleet_lib.tz/paths/tools/models module imports and
 behaves with ZERO Hermes import (isolated mode + explicit hermetic sys.path),
 and the shims resolve to the same callables.
+
+This file carries the cortex->fleet P2 slice-1 scope: the renamed package
+(fleet_lib), the legacy hermes_* re-export shims, and the ONE-RELEASE
+cortex_lib shim (which aliases fleet_lib and must resolve to the IDENTICAL
+callables — the whole point of the transition). The core/cortex_bus hermetic
+invariant moved out with the cortex_bus slice.
 
 Tests import through the interface (codebase-design: the interface is the test
 surface) — get_timezone/format_timestamp on fleet_lib.tz, ensure_scripts_path
@@ -71,14 +77,14 @@ def test_fleet_lib_paths_bootstraps_scripts_dir(hermetic_scripts_path):
     assert str(SCRIPTS_DIR) in sys.path, "ops/scripts must be on sys.path"
 
 
-def test_hermes_tz_shim_reexports_cortex_lib(hermetic_scripts_path):
+def test_hermes_tz_shim_reexports_fleet_lib(hermetic_scripts_path):
     shim = importlib.import_module("hermes_tz")
     canonical = importlib.import_module("fleet_lib.tz")
     assert shim.format_timestamp is canonical.format_timestamp
     assert shim.get_timezone is canonical.get_timezone
 
 
-def test_hermes_paths_shim_reexports_cortex_lib(hermetic_scripts_path):
+def test_hermes_paths_shim_reexports_fleet_lib(hermetic_scripts_path):
     shim = importlib.import_module("hermes_paths")
     canonical = importlib.import_module("fleet_lib.paths")
     assert shim.ensure_scripts_path is canonical.ensure_scripts_path
@@ -105,15 +111,39 @@ def test_fleet_lib_models_are_hermes_free_and_resolve(hermetic_scripts_path):
     assert models.get_model("JUDGE_MODEL", "qwen2.5:3b") == "qwen2.5:3b"
 
 
-def test_hermes_models_shim_reexports_cortex_lib(hermetic_scripts_path):
+def test_hermes_models_shim_reexports_fleet_lib(hermetic_scripts_path):
     shim = importlib.import_module("hermes_models")
     canonical = importlib.import_module("fleet_lib.models")
     assert shim.get_model is canonical.get_model
     assert shim.load_models_env is canonical.load_models_env
 
 
+# ── The ONE-RELEASE cortex_lib shim (the cortex->fleet transition) ─────────
+# cortex_lib/__init__.py aliases fleet_lib; the whole point of the shim is
+# that legacy imports resolve to the IDENTICAL callables, not copies. These
+# tests pin that identity on every submodule surface the shim must serve.
+def test_cortex_lib_shim_is_fleet_lib(hermetic_scripts_path):
+    fleet = importlib.import_module("fleet_lib")
+    legacy = importlib.import_module("cortex_lib")
+    assert legacy is fleet, "the cortex_lib shim must BE fleet_lib (sys.modules alias)"
+
+
+def test_cortex_lib_shim_reexports_fleet_lib_submodules(hermetic_scripts_path):
+    for sub in ("tz", "paths", "session_repo", "tools", "models"):
+        legacy = importlib.import_module(f"cortex_lib.{sub}")
+        canonical = importlib.import_module(f"fleet_lib.{sub}")
+        assert legacy is canonical, f"cortex_lib.{sub} must alias fleet_lib.{sub}"
+
+
+def test_cortex_lib_shim_paths_resolves_same_functions(hermetic_scripts_path):
+    legacy_paths = importlib.import_module("cortex_lib.paths")
+    canonical = importlib.import_module("fleet_lib.paths")
+    assert legacy_paths.resolve_repo_resource is canonical.resolve_repo_resource
+    assert legacy_paths.deploy_manifest is canonical.deploy_manifest
+
+
 # ── S1b: analyze-failures.py now uses fleet_lib.tools (no hermes_tools) ────
-def test_analyze_failures_uses_cortex_lib_not_hermes_tools():
+def test_analyze_failures_uses_fleet_lib_not_hermes_tools():
     src = (SCRIPTS_DIR / "manage" / "analyze-failures.py").read_text()
     # The executed (line-start, non-docstring) imports must be fleet_lib.
     executed = [
@@ -131,20 +161,6 @@ def test_analyze_failures_uses_cortex_lib_not_hermes_tools():
     assert not docstring_mentions, (
         f"analyze-failures.py must not import from the Hermes-runtime hermes_tools; "
         f"found executed import: {docstring_mentions}"
-    )
-
-
-# ── S1e: cortex_bus/__init__.py is hermetic (no hermes_bus seam) ────────────
-def test_cortex_bus_init_is_hermes_free():
-    # The bus __init__ must not reference the phantom Hermes-runtime module
-    # `hermes_bus` (its docstring used to show it as the import example; the
-    # real import was always the package's own `.queue`).
-    init = Path(__file__).resolve().parents[1] / "core" / "cortex_bus" / "__init__.py"
-    text = init.read_text()
-    assert "from .queue import" in text, "bus must import from its own .queue"
-    assert "hermes_bus" not in text, (
-        "cortex_bus/__init__.py must not reference the Hermes-runtime hermes_bus "
-        "module (component-hermes-separation S1e)"
     )
 
 
