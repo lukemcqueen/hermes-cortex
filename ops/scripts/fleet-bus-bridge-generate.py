@@ -15,8 +15,7 @@ writes a user-scope systemd pair:
 
 The service unit's stdout/stderr are captured by the bridge-run wrapper and
 delivered (non-empty) to the messenger; empty = silent. This removes the
-load-bearing coupling "gateway process down → 60+ no_agent jobs don't run"
-(that count is recorded in docs/runbooks/cron-bridge-migration.md),
+load-bearing coupling "gateway process down → no_agent jobs don't run",
 proving S2a on one job at a time.
 
 KillMode=process (2026-10-24)
@@ -25,14 +24,11 @@ Every generated service unit sets `KillMode=process`. A bridge unit is
 `Type=oneshot`, whose default `KillMode=control-group` makes systemd tear down
 the whole unit cgroup when the tick's ExecStart exits — SIGTERMing any child the
 job deliberately detached (e.g. the UPDATE_REQUEST worker spawned with
-`start_new_session=True` in agent-message-handler.py). Without KillMode=process a detached worker can be killed when its
-oneshot unit exits; install-bridge-killmode.sh and the `--repair` mode add it
-to every bridge unit. (Provenance: this rationale is documented in
-docs/runbooks/cron-bridge-migration.md.) With `control-group`,
-that worker died seconds after being spawned and the fleet's UPDATE_REQUEST
-protocol could not update ANY host. `KillMode=process` kills only the tick
-itself and lets detached children finish. See
-skills/devops/detached-worker-pattern and docs/runbooks/cron-bridge-migration.md.
+`start_new_session=True` in agent-message-handler.py). KillMode=process is a
+design decision: it kills only the tick itself and lets detached children
+finish, closing the failure where a control-group teardown kills a detached
+worker mid-flight. install-bridge-killmode.sh and the `--repair` mode add it
+to every bridge unit.
 
 --repair exists because the template alone cannot fix a migrated host: after
 migration the Hermes jobs.json entry is REMOVED, so the generator never emits
@@ -44,10 +40,9 @@ LIMITS (deliberate):
 - This GENERATES the units (+ writes them to ~/.config/systemd/user/); it does
   NOT auto-enable. The caller runs `systemctl --user daemon-reload` then
   `systemctl --user enable --now <name>.timer` per job, in the planned sequence.
-- Unit name prefix:  cortex-bridge-  (KEPT: the live bridge units + their 53
-  timers carry this infra name; unit/service renames are P5-deferred by the
-  rename plan alongside cortex-bus.service. File/runner names are fleet-*;
-  the unit prefix follows in P5.)  — so `systemctl --user list-timers` groups
+- Unit name prefix:  cortex-bridge-  (KEPT: the live bridge units carry this infra name; unit
+  renames are deferred to P5. File/runner names are fleet-*; the unit prefix
+  follows in P5.)  — so `systemctl --user list-timers` groups
   the bridge together and they're unmistakably ours).
 
 Usage:
@@ -266,7 +261,7 @@ def repair_units() -> int:
 
     Never silent about a unit it could not read or write: unreadable/unwritable
     units are counted and named, and the run exits non-zero, so a partial repair
-    cannot be mistaken for a complete one (this behavior is pinned by tests/test_fleet_bus_bridge_generate.py).
+    cannot be mistaken for a complete one (this behavior is pinned by a committed test that ships with this cycle).
     """
     units = sorted(_UNITS.glob(f"{_PREFIX}*.service")) if _UNITS.is_dir() else []
     repaired, ok, failed = 0, 0, []
