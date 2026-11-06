@@ -329,7 +329,7 @@ its own cwd can never identify a session's repo. A pi-style harness spawns its
 MCP child inside the project, which is why step 4 covers it.
 
 Callers that must name their repo explicitly: the doctor's Task-DB probe
-(`cortex_doctor/checks.py::check_task_db` passes `--repo <canonical repo>`), and
+(`fleet_doctor/checks.py::check_task_db` passes `--repo <canonical repo>`), and
 any script running outside a git checkout. Regression proof:
 `tests/run_task_query_repo_scope_repro.py` (real Postgres + the real MCP server
 over stdio, pinned before/after), `tests/test_task_query_repo_scope.py`,

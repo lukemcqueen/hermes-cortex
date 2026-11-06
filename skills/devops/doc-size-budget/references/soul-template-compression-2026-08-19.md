@@ -20,7 +20,7 @@ you need" → "it's enough."
 
 ## Enforcement-layer mechanics (the critical knowledge)
 
-1. **Doctor `_extract_soul_markers`** (cortex_doctor/checks.py) matches ONLY
+1. **Doctor `_extract_soul_markers`** (fleet_doctor/checks.py) matches ONLY
    `^\s*-\s+\*\*([^*]+)\*\*` — `- **` list bullets. In SOUL.md that's the Core
    Traits section (9 bullets). Principle sub-points (`**Text** — ...` paragraphs
    without `- `) are NOT counted. → Consolidating trait bullets would create a

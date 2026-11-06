@@ -32,7 +32,7 @@ doctor DERIVE the required set from it instead of hardcoding a second list.
   same file the cron bootstrap at line 3119 already reads), with a documented
   fail-closed fallback constant for remote backends where the path is not
   mounted (README:561 case).
-- `ops/scripts/manage/cortex_doctor/checks.py:966-972` `required` list becomes
+- `ops/scripts/manage/fleet_doctor/checks.py:966-972` `required` list becomes
   self-consistent: compare deployed `always:` against the repo template's and
   check each declared name has a loadable SKILL.md — no hardcoded N-list.
 - The gate predicate (`__init__.py:305 _session_skills_loaded[...] >=
@@ -57,7 +57,7 @@ not just today's count.
 - `__init__.py:3110-3138` cron bootstrap — already reads skills.yaml, verify
 - `README.md:240,252,281-285` "7 required" — update to 3
 
-**Doctor:** `ops/scripts/manage/cortex_doctor/checks.py:931-1000` `check_skills`
+**Doctor:** `ops/scripts/manage/fleet_doctor/checks.py:931-1000` `check_skills`
 derive required from template `always:`, self-consistent; update comment :966.
 
 **Pre-commit ritual gate (names skills — the wire that actually binds):**

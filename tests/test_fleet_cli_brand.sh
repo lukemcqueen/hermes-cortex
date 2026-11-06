@@ -103,11 +103,11 @@ for f in "$REPO/ops/scripts/fleet/fleet.py" "$REPO/ops/scripts/fleet/harness.py"
 done
 
 # B4. doctor resolves the NEW launcher paths, not the old ones
-if grep -qE 'scripts" / "fleet"|"scripts" / "fleet"|"ops" / "scripts" / "fleet" / "bin" / "fleet"' "$REPO/ops/scripts/manage/cortex_doctor/checks.py" \
-   && ! grep -qE 'CORTEX_HOME / "scripts" / "hc"|"ops" / "scripts" / "hc"' "$REPO/ops/scripts/manage/cortex_doctor/checks.py"; then
+if grep -qE 'scripts" / "fleet"|"scripts" / "fleet"|"ops" / "scripts" / "fleet" / "bin" / "fleet"' "$REPO/ops/scripts/manage/fleet_doctor/checks.py" \
+   && ! grep -qE 'CORTEX_HOME / "scripts" / "hc"|"ops" / "scripts" / "hc"' "$REPO/ops/scripts/manage/fleet_doctor/checks.py"; then
   ok "doctor harness-CLI resolver points at fleet paths"
 else
-  bad "doctor resolver not fully migrated:"; grep -n 'scripts" / "hc"\|scripts / "hc"\|ops / "scripts / "hc' "$REPO/ops/scripts/manage/cortex_doctor/checks.py"
+  bad "doctor resolver not fully migrated:"; grep -n 'scripts" / "hc"\|scripts / "hc"\|ops / "scripts / "hc' "$REPO/ops/scripts/manage/fleet_doctor/checks.py"
 fi
 
 # B5. taught surface: no bare-CLI hc invocations in active skills/docs (records excluded)

@@ -32,7 +32,7 @@ def _load_auditor():
 
 
 aud = _load_auditor()
-import cortex_doctor.immutability as imm  # noqa: E402
+import fleet_doctor.immutability as imm  # noqa: E402
 
 
 @pytest.fixture

@@ -6,12 +6,12 @@ When agents run the doctor, it checks the *deployed* version. If the repo has a 
 
 ## Solution
 
-Added `_check_self_stale(res)` to `cortex_doctor/checks.py`:
+Added `_check_self_stale(res)` to `fleet_doctor/checks.py`:
 
 ```python
 def _check_self_stale(res):
     deployed = Path(__file__).resolve()
-    repo_source = CORTEX_REPO / "ops/scripts/manage/cortex_doctor/checks.py"
+    repo_source = CORTEX_REPO / "ops/scripts/manage/fleet_doctor/checks.py"
     if repo_source.is_file() and repo_source.stat().st_mtime > deployed.stat().st_mtime:
         res.add("Doctor version", "WARN",
                 "Running older version — repo source is newer",

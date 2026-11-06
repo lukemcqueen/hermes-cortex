@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the cross-platform immutability probe (cortex_doctor/immutability.py).
+"""Tests for the cross-platform immutability probe (fleet_doctor/immutability.py).
 
 2026-09-15: the doctor's immutable check probed with Linux-only lsattr;
 on macOS (Titus) every enforcement file WARNed/FAILed "cannot verify"
@@ -18,7 +18,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
     sys.path.insert(0, str(_REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import immutability  # noqa: E402
+from fleet_doctor import immutability  # noqa: E402
 
 
 def _run_probe(monkeypatch, is_mac, cmd, stdout, returncode=0):

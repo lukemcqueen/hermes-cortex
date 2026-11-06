@@ -1,12 +1,12 @@
 # Agent-Type Branching Audit — 2026-07-23
 
 ## Scope
-Audited `install.sh`, `cortex-update.sh`, and `cortex_doctor/` for proper agent-type branching in deploy behavior.
+Audited `install.sh`, `cortex-update.sh`, and `fleet_doctor/` for proper agent-type branching in deploy behavior.
 
 ## Files Examined
 - `ops/install/install.sh` (2652 lines)
 - `ops/scripts/cortex-update.sh` (1501 lines)
-- `ops/scripts/manage/cortex_doctor/` (7 modules)
+- `ops/scripts/manage/fleet_doctor/` (7 modules)
 - `ops/scripts/install-crons.sh` (979 lines)
 - `ops/scripts/install/install-orch-crons.sh` (482 lines)
 
@@ -24,7 +24,7 @@ Audited `install.sh`, `cortex-update.sh`, and `cortex_doctor/` for proper agent-
 - `deploy_nginx_configs()` and `deploy_system_scripts()` run unconditionally from `main()`
 - `verify_services()` always checks dashboard/gateway even on non-orch agents
 
-### 3. cortex_doctor — Partial cron awareness, no systematic type differentiation
+### 3. fleet_doctor — Partial cron awareness, no systematic type differentiation
 - `check_crons()` correctly uses hostname to detect orchestrators (moses/esther)
 - `parse_expected_crons()` correctly filters out orch crons from universal list
 - But: **`EXTERNAL_SERVICES` hardcodes Dashboard, Langfuse, Agent Bus** — always fails on non-orch
@@ -52,4 +52,4 @@ Audited `install.sh`, `cortex-update.sh`, and `cortex_doctor/` for proper agent-
 ## Hostname Detection Mismatch
 - `cortex-update.sh`: `IS_ORCHESTRATOR` env var + hostname fallback (moses, esther)
 - `install-orch-crons.sh`: `IS_ORCHESTRATOR` env var + hostname fallback (moses, esther)
-- `cortex_doctor/checks.py`: hostname only (moses, esther) — no env var read
+- `fleet_doctor/checks.py`: hostname only (moses, esther) — no env var read

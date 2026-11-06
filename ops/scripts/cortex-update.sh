@@ -549,24 +549,28 @@ register "ops/scripts/manage/fleet-set-origin.sh"     "${CORTEX_DEPLOY_HOME}/scr
 register "ops/scripts/manage/migrate-home-dirs.sh"    "${CORTEX_DEPLOY_HOME}/scripts/migrate-home-dirs.sh"
 register "ops/scripts/manage/verify-rename-local.sh" "${CORTEX_DEPLOY_HOME}/scripts/verify-rename-local.sh"
 register "ops/scripts/manage/cron_manifest.py"        "${CORTEX_DEPLOY_HOME}/scripts/manage/cron_manifest.py"
+register "ops/scripts/manage/fleet_doctor/__init__.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/__init__.py"
+# ONE-release shim for fleet_doctor (cortex->fleet, P2): legacy `cortex_doctor`
+# imports + `python3 -m cortex_doctor.cli` keep resolving while peers redeploy.
+# Delete with the old name.
 register "ops/scripts/manage/cortex_doctor/__init__.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/__init__.py"
-register "ops/scripts/manage/cortex_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/bus_alert.py"
-register "ops/scripts/manage/cortex_doctor/checks.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/checks.py"
-register "ops/scripts/manage/cortex_doctor/cli.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/cli.py"
-register "ops/scripts/manage/cortex_doctor/config.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/config.py"
-register "ops/scripts/manage/cortex_doctor/dispositions.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/dispositions.py"
-register "ops/scripts/manage/cortex_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/fix.py"
-register "ops/scripts/manage/cortex_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/immutability.py"
+register "ops/scripts/manage/fleet_doctor/bus_alert.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/bus_alert.py"
+register "ops/scripts/manage/fleet_doctor/checks.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/checks.py"
+register "ops/scripts/manage/fleet_doctor/cli.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/cli.py"
+register "ops/scripts/manage/fleet_doctor/config.py"  "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/config.py"
+register "ops/scripts/manage/fleet_doctor/dispositions.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/dispositions.py"
+register "ops/scripts/manage/fleet_doctor/fix.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/fix.py"
+register "ops/scripts/manage/fleet_doctor/immutability.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/immutability.py"
 # Every file in the package is registered INDIVIDUALLY: a new module added here
 # but not registered simply never reaches a host, and the check it holds reads
 # as absent everywhere except the machine that wrote it.
-register "ops/scripts/manage/cortex_doctor/mcp_names.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/mcp_names.py"
-register "ops/scripts/manage/cortex_doctor/jev.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/jev.py"
-register "ops/scripts/manage/cortex_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/helpers.py"
-register "ops/scripts/manage/cortex_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/results.py"
+register "ops/scripts/manage/fleet_doctor/mcp_names.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/mcp_names.py"
+register "ops/scripts/manage/fleet_doctor/jev.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/jev.py"
+register "ops/scripts/manage/fleet_doctor/helpers.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/helpers.py"
+register "ops/scripts/manage/fleet_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/results.py"
 # Task-model integrity: migrations must actually deploy, and no slice may be
 # pending-with-an-assignee (unclaimable AND unwatched).
-register "ops/scripts/manage/cortex_doctor/task_integrity.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_doctor/task_integrity.py"
+register "ops/scripts/manage/fleet_doctor/task_integrity.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/task_integrity.py"
 
 register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
 

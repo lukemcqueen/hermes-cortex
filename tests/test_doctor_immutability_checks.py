@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tests that the doctor's immutable checks route through the
-cross-platform probe (cortex_doctor/immutability.py) instead of calling
+cross-platform probe (fleet_doctor/immutability.py) instead of calling
 Linux-only lsattr directly — the macOS false-positive fix (2026-09-15).
 
 Run: python3 -m pytest tests/test_doctor_immutability.py -q
@@ -15,8 +15,8 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
     sys.path.insert(0, str(_REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks, immutability  # noqa: E402
-from cortex_doctor.results import Results  # noqa: E402
+from fleet_doctor import checks, immutability  # noqa: E402
+from fleet_doctor.results import Results  # noqa: E402
 
 
 def test_immutable_check_uses_shared_probe_on_macos(monkeypatch, tmp_path):

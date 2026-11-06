@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hermetic fault-injection suite for agent-deploy-drift-audit (O5-S2).
 
-The drift-audit mirrors cortex_doctor/checks.py's deploy-content + stale-deploy
+The drift-audit mirrors fleet_doctor/checks.py's deploy-content + stale-deploy
 rules on a schedule (daily, no_agent). This test proves the six behaviours the
 doctor check only exercises on-demand:
 

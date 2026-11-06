@@ -63,7 +63,7 @@ sliced, but several are `CHECK` (fail-closed) and several are pure-doc `BUILD`.
 - Depends: nothing (the registry already exists).
 
 **M1.2 — Doctor check: every known failure mode has its restraint present** — CHECK
-- File: `cortex_doctor/checks.py` (new check) — for each class in
+- File: `fleet_doctor/checks.py` (new check) — for each class in
   `guardrail-registry.json`, confirm the `restraint` names an artifact that
   actually exists on disk (a `doctor:` check, a `hook:`, a `skill:`, an
   `enforcer:`).
@@ -162,7 +162,7 @@ sliced, but several are `CHECK` (fail-closed) and several are pure-doc `BUILD`.
 - Depends: nothing (bus schema is in `core/fleet_bus/`).
 
 **M5.2 — Doctor check: no indefinite grants without a named decision** — CHECK
-- File: `cortex_doctor/checks.py` — warn if any bus grant has `expires_at IS NULL`
+- File: `fleet_doctor/checks.py` — warn if any bus grant has `expires_at IS NULL`
   AND no "indefinite" justifier field is set.
 - Test: fixture with an indefinite grant lacking a justifier → doctor WARNS.
 - Depends: M5.1.

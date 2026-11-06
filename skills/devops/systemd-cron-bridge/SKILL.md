@@ -57,7 +57,7 @@ Full per-host procedure, the 3-part verification, and pitfalls:
 - **Installers** — `create_cron()` in `install-crons.sh` and
   `install-orch-crons.sh` returns early for a bridge-owned job, so an install
   run can never recreate one and hand the bridge a second owner.
-- **Doctor** — `cortex_doctor/checks.py::_bridge_owned_jobs()` excludes bridged
+- **Doctor** — `fleet_doctor/checks.py::_bridge_owned_jobs()` excludes bridged
   names from the expected-cron, orphan and extra scans.
 - **Manifest** — `cron_manifest.py::check_drift()` skips bridged names, so a
   migrated job is not reported as "declared in manifest, absent from live jobs"

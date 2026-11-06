@@ -27,7 +27,7 @@ bash ops/scripts/cortex-update.sh --dry-run cortex-update.sh
 
 ### 2. Doctor Stale Deploy Detection
 
-**File:** `cortex_doctor/checks.py` — `check_stale_deploys()` function
+**File:** `fleet_doctor/checks.py` — `check_stale_deploys()` function
 
 Runs in full doctor mode (not quick mode). Reports:
 - Files in deploy dir not in any register() mapping → WARN
@@ -60,7 +60,7 @@ python3 ops/scripts/manage/cortex-doctor.py --quick
 
 ## Architecture
 
-The doctor was modularized into `cortex_doctor/` package (8 modules):
+The doctor was modularized into `fleet_doctor/` package (8 modules):
 - `config.py` — paths, constants, dynamic registries, AGENT_ROLE detection
 - `results.py` — Results class
 - `helpers.py` — run_bg, curl, helpers

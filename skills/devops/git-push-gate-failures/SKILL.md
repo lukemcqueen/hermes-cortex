@@ -206,7 +206,7 @@ all of them in one pass, then grep the set clean before continuing.
 that presents itself as a recorded review, and the pre-push gate blocks every
 push on the host — regardless of how unrelated your diff is.
 
-**Mechanism:** `check_review_provenance` (cortex_doctor) shells out to
+**Mechanism:** `check_review_provenance` (fleet_doctor) shells out to
 `ops/scripts/quality/review-provenance-check.py`, which scans every text file
 under `docs/` for a `recorded-in: adversarial_reviews review_id=…` CLAIM in
 its header. A claim is verified against the host's LOCAL loop-governance DB

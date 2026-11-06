@@ -32,7 +32,7 @@ metadata:
 ## Phase 1.5 — Adversarial Verification (MANDATORY — no bypass)
 
 - [ ] Run the static gate on every changed script file: `python3 ops/scripts/quality/adversarial-verify.py --file <changed-file> --level A2 --gate`
-- [ ] **A4 is MANDATORY** for security/guard/hook/enforcer files (anything under `plugins/`, `hooks/`, `mcp-servers/`, `ops/scripts/manage/`, `ops/scripts/cortex_doctor/`, `ops/scripts/quality/`, `tests/`, plus `pre-commit-score` and `cortex-update.sh`)
+- [ ] **A4 is MANDATORY** for security/guard/hook/enforcer files (anything under `plugins/`, `hooks/`, `mcp-servers/`, `ops/scripts/manage/`, `ops/scripts/fleet_doctor/`, `ops/scripts/quality/`, `tests/`, plus `pre-commit-score` and `cortex-update.sh`)
 - [ ] Critical/high findings → block: fix before proceeding. No `--no-verify`.
 - [ ] **Verifier step — "0 findings" is NOT a pass:** execute the changed path with boundary inputs (`-1`, `0`, `None`, empty, whitespace, `inf`/`nan`, non-ASCII) and attack the code's implicit assumptions (deployed file == loaded module, input already validated, etc.)
 - [ ] Record what was checked: finding IDs, boundary inputs run, assumptions violated, exit codes

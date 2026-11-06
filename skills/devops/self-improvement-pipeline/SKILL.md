@@ -107,7 +107,7 @@ A session where you review the conversation and find nothing to update is a miss
    - "No. Refactor. Do it right" → workflow correction → updated **repo-health-review** skill with full-refactor pattern
    - "Make agent know what to clean up" → asked for structural guardrail → added `clean_stale_deploys()` + doctor `check_stale_deploys()`
    - "Can we have install/update automatically run doctor" → system integration → added auto-doctor to install.sh and cortex-update.sh
-   - "Make it modular" → code architecture → split doctor into 8-module `cortex_doctor/` package
+   - "Make it modular" → code architecture → split doctor into 8-module `fleet_doctor/` package
    - Protected `change-checklist` can't be edited → updated `repo-health-review` instead (same task class, editable skill)
 
 **What NOT to capture:**

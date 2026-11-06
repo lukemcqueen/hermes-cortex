@@ -27,11 +27,11 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
     sys.path.insert(0, str(_REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
 
 
 class _FakeResults:
-    """Minimal stand-in for cortex_doctor.results.Results (add only)."""
+    """Minimal stand-in for fleet_doctor.results.Results (add only)."""
 
     def __init__(self):
         self.items = []

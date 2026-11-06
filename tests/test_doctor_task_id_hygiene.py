@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-CHECKS_DIR = REPO / "ops" / "scripts" / "manage"   # holds the cortex_doctor package
+CHECKS_DIR = REPO / "ops" / "scripts" / "manage"   # holds the fleet_doctor package
 NL = chr(10)
 MALFORMED = f"precommit-repo-HEAD{NL}unknown/update"
 
@@ -36,7 +36,7 @@ PROBE = '''
 # so loading the file by path raises "attempted relative import with no known parent".
 import sys
 sys.path.insert(0, sys.argv[1])
-from cortex_doctor import checks as mod
+from fleet_doctor import checks as mod
 
 class Stub:
     def __init__(self):

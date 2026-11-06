@@ -761,7 +761,7 @@ heartbeat, send-agent-learning, memory-to-brain-sync). Also added
 `ensure_agent_identity` so first cortex-update works on fresh non-orch installs.
 
 **Guardrail:** the doctor's `check_install_sh_refs` check (in
-`ops/scripts/manage/cortex_doctor/checks.py`) verifies every `$(_scripts)/<name>`
+`ops/scripts/manage/fleet_doctor/checks.py`) verifies every `$(_scripts)/<name>`
 reference resolves to a real file — it WARNS if a helper path breaks again.
 
 **For repo maintainers:** if you add a new helper script, update install.sh's

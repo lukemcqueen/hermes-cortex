@@ -17,7 +17,7 @@ this one's next deploy) re-creating the old name. Surface to grep for a server-n
 - the enforcer's help/instruction text (it tells blocked agents to `hermes mcp add <name>`
   and to call `mcp__<name>__<tool>` — a stale name there teaches agents to fix the host
   wrong)
-- the doctor's wiring map (`cortex_doctor/config.py EXPECTED_MCP_SERVERS`) AND its twin in
+- the doctor's wiring map (`fleet_doctor/config.py EXPECTED_MCP_SERVERS`) AND its twin in
   the wiring CLI (`mcp_wiring.py DEFAULT_EXPECTED`) — a consistency test enforces the two
   agree by KEY AND VALUE, so change both together or the test goes red
 - tests pinning the name in fixtures and CLI `--expected` args

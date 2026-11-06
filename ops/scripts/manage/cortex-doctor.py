@@ -7,7 +7,7 @@ and fixes your entire installation — repo, crons, scripts,
 services, system, config, governance (MCP servers, hooks), and
 install footprint.
 
-This is now a thin wrapper around the cortex_doctor package.
+This is now a thin wrapper around the fleet_doctor package.
 
 Usage:
     python3 cortex-doctor.py                  # full check (default)
@@ -30,7 +30,7 @@ import sys
 # (ops/scripts/manage/) layouts so that hermes_paths and lib.fleet_bus
 # are importable regardless of CWD.
 _this_dir = os.path.dirname(os.path.abspath(__file__))
-_pkg_dir = os.path.join(_this_dir, "cortex_doctor")
+_pkg_dir = os.path.join(_this_dir, "fleet_doctor")
 if os.path.isdir(_pkg_dir):
     if _this_dir not in sys.path:
         sys.path.insert(0, _this_dir)
@@ -158,5 +158,5 @@ def reexec_if_degraded():
 
 if __name__ == "__main__":
     reexec_if_degraded()
-    from cortex_doctor.cli import main
+    from fleet_doctor.cli import main
     main()

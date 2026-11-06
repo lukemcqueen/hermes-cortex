@@ -25,8 +25,8 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "ops" / "scripts" / "manage"))
 
-import cortex_doctor.checks as chk  # noqa: E402
-from cortex_doctor.results import Results  # noqa: E402
+import fleet_doctor.checks as chk  # noqa: E402
+from fleet_doctor.results import Results  # noqa: E402
 
 
 @pytest.fixture()
@@ -83,20 +83,26 @@ def test_reports_pass_when_module_is_older_than_daemon(temp_module):
 
 
 def test_reports_warn_when_module_is_newer_than_daemon(temp_module):
-    """Stale daemon: module written after the daemon started ⟶ WARN."""
+    """Stale daemon (no startup stamp): module newer than the daemon start must
+    STILL warn — COULD-NOT-VERIFY-by-content fires the warning per the
+    content-first contract (2026-10-18 refactor: the daemon's sha256 stamp is
+    the authority; without one, the mtime-only signal is reported as
+    unverified, never as PASS). Fake pid 39999 can never collide with a real
+    loop-gov daemon, so the real stamp file never enters this case.
+    """
     now = time.time()
     os.utime(temp_module, (now, now))                 # module written NOW
-    restore = _patch_ps_path(2222, temp_module, now - 60, exists=True)
+    restore = _patch_ps_path(39999, temp_module, now - 60, exists=True)
     try:
         hit = _run_check()
     finally:
         restore()
     assert hit, "check produced no loop-gov-daemon row"
-    assert hit[0]["status"] == "WARN"
-    assert "changed after the daemon started" in hit[0]["detail"]
+    assert hit[0]["status"] == "WARN", hit[0]
+    assert "wrote no startup stamp" in hit[0]["detail"], hit[0]["detail"]
     # The printed fix must name a real, runnable command (change-checklist
     # Phase 4: a check's fix text is pasted verbatim).
-    assert "hermes gateway restart" in hit[0]["fix"]
+    assert "gateway restart" in hit[0]["fix"], hit[0]["fix"]
 
 
 def test_reports_skip_when_daemon_argv_names_a_missing_module(tmp_path):

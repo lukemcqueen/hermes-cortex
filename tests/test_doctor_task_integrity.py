@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-DOCTOR_DIR = _REPO / "ops" / "scripts" / "manage" / "cortex_doctor"
+DOCTOR_DIR = _REPO / "ops" / "scripts" / "manage" / "fleet_doctor"
 
 
 def _load(name, path):
@@ -29,7 +29,7 @@ ti = _load("task_integrity_under_test", DOCTOR_DIR / "task_integrity.py")
 
 
 class FakeResults:
-    """Minimal stand-in for cortex_doctor.results.Results."""
+    """Minimal stand-in for fleet_doctor.results.Results."""
 
     def __init__(self):
         self.checks = []
@@ -59,7 +59,7 @@ def test_the_check_is_registered_in_the_doctor_run_list():
 def test_the_module_is_registered_for_deploy():
     """An unregistered doctor module is absent on the host → ImportError at startup."""
     update = (_REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
-    assert "cortex_doctor/task_integrity.py" in update, (
+    assert "fleet_doctor/task_integrity.py" in update, (
         "task_integrity.py must be in the deploy register or the deployed doctor "
         "cannot import it")
 

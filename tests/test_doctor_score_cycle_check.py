@@ -18,7 +18,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
     sys.path.insert(0, str(_REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
 
 
 def test_a_script_invoking_the_cli_is_a_consumer(tmp_path):
@@ -94,7 +94,7 @@ def test_the_default_roots_are_the_fleet_trees():
 
 def test_the_check_branches_on_consumers_instead_of_calling_it_old():
     """Source-level pin for the branch that needs a live host to exercise."""
-    src = (_REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py").read_text()
+    src = (_REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py").read_text()
     i = src.index("Score-cycle CLI (old system)")
     block = src[i:i + 1400]
     assert "_score_cycle_consumers" in block, block[:400]

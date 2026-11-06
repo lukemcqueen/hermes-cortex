@@ -52,8 +52,8 @@ _gate_log.propagate = False
 
 # ── load the doctor package ──
 sys.path.insert(0, str(REPO / "ops" / "scripts" / "manage"))
-from cortex_doctor import checks as doc           # noqa: E402
-from cortex_doctor.results import Results         # noqa: E402
+from fleet_doctor import checks as doc           # noqa: E402
+from fleet_doctor.results import Results         # noqa: E402
 
 
 def _iso(delta_s: int) -> str:
@@ -210,7 +210,7 @@ def test_the_orphan_cases_do_not_leak_the_doctor_home() -> None:
     """Regression: the cases point the SHARED checks module at a temp home.
 
     `_doctor_case` did `setattr(doc, "CORTEX_HOME", tmp)` and never restored it,
-    so once this module ran, `cortex_doctor.checks.CORTEX_HOME` pointed at a
+    so once this module ran, `fleet_doctor.checks.CORTEX_HOME` pointed at a
     DELETED temp directory for the rest of the process. Every later test that
     called `check_governance()` read that missing home and silently produced no
     "PENDING cycles" entry — which is exactly how
@@ -222,11 +222,11 @@ def test_the_orphan_cases_do_not_leak_the_doctor_home() -> None:
     with tempfile.TemporaryDirectory() as td:
         _doctor_case(Path(td), "leak-task", "leak-session", hold_lock=False)
         assert doc.CORTEX_HOME == before, (
-            "the temp CORTEX_HOME leaked into the shared cortex_doctor.checks module "
+            "the temp CORTEX_HOME leaked into the shared fleet_doctor.checks module "
             "while the temp dir still existed")
         leaked = doc.CORTEX_HOME
     assert doc.CORTEX_HOME == before, (
-        f"cortex_doctor.checks.CORTEX_HOME is still {leaked!r} after the temp dir was "
+        f"fleet_doctor.checks.CORTEX_HOME is still {leaked!r} after the temp dir was "
         f"removed (expected {before!r}) — later tests in this process read a dead home")
 
 

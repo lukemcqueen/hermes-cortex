@@ -1,4 +1,4 @@
-"""cortex_doctor.task_integrity — the two ways task work goes invisible.
+"""fleet_doctor.task_integrity — the two ways task work goes invisible.
 
 Both were found in the wild on 2026-10-04, each having hidden real work for weeks
 while every board looked healthy:
@@ -32,7 +32,7 @@ _ROW_ID = re.compile(r"^[0-9a-f]{8}\s")
 
 
 def _is_orchestrator() -> bool:
-    """Host-derived role, same rule as cortex_doctor.config.AGENT_ROLE.
+    """Host-derived role, same rule as fleet_doctor.config.AGENT_ROLE.
 
     The probe uses the fleet view (`--repo ALL`) ONLY for an orchestrator so it
     can see stranded slices on every host; a worker keeps its repo-scoped view

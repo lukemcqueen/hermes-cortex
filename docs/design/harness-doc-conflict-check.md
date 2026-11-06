@@ -21,7 +21,7 @@ canonical paths, the absence of the retired name/paths.
 
 ## What already exists (do not duplicate)
 
-- `check_dev_repo_claude` (`cortex_doctor/checks.py:786`) — dev repos have a
+- `check_dev_repo_claude` (`fleet_doctor/checks.py:786`) — dev repos have a
   CLAUDE.md with the `## Excellence — Core Value, Every Action` heading.
 - `check_dev_repo_agents` (`checks.py:669`) — dev repos have AGENTS.md.
 - Pi harness check (`checks.py:3288`).

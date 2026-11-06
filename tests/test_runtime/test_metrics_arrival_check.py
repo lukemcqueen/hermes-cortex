@@ -18,7 +18,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 REPO = Path(__file__).resolve().parents[2]
-CHECKS = REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py"
+CHECKS = REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py"
 
 
 def _load_checks():
@@ -33,7 +33,7 @@ def _load_checks():
     for p in (manage_dir, scripts_dir):
         if p not in sys.path:
             sys.path.insert(0, p)
-    return importlib.import_module("cortex_doctor.checks")
+    return importlib.import_module("fleet_doctor.checks")
 
 
 class _Sink(http.server.BaseHTTPRequestHandler):

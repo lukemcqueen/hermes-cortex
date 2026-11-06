@@ -3325,7 +3325,7 @@ def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
     """Close PENDING cycles whose task holds no live lock (leaked/abandoned)
     as UNSCORED, with a recomputable reason — never as a judged MOVE_ON.
 
-    The doctor's rule (cortex_doctor/checks.py, single source of truth):
+    The doctor's rule (fleet_doctor/checks.py, single source of truth):
     a PENDING cycle whose task_id has NO active .governance-*.json lock is a
     LEAK — begin_change ran but feedback_accept never did, and the session
     (or its lock) is gone. This is the auto-resolve half of that rule so a
@@ -3402,7 +3402,7 @@ def _resolve_orphaned_pending_cycles(task_ids: set[str] | None = None) -> int:
             # auditor can RECOMPUTE (the task held no live lock; the cycle was
             # older than the TTL), so a forged reaper claim for a cycle that does
             # hold a lock, or is younger than the TTL, fails corroboration
-            # (cortex_doctor "Orphan-cycle resolution" check).
+            # (fleet_doctor "Orphan-cycle resolution" check).
             reason = (
                 f"{ORPHAN_REAPER_TAG} abandoned: no live lock for task '{r['task_id']}'"
                 + (f" and cycle age {age_s}s > TTL {DEFAULT_TTL}s" if age_s is not None else "")

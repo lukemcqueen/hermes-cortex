@@ -23,7 +23,7 @@ class Results:
         self.json_mode = False
         self.show_fixes = True
         # name -> disposition record. Set by the CLI from the store; empty means "nothing is
-        # disposed", which is the visible direction (see cortex_doctor.dispositions).
+        # disposed", which is the visible direction (see fleet_doctor.dispositions).
         self.dispositions = {}
 
     def add(self, name, status, detail="", fix=""):

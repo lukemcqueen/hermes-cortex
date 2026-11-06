@@ -12,7 +12,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-PKG = Path(__file__).resolve().parents[1] / "ops/scripts/manage/cortex_doctor"
+PKG = Path(__file__).resolve().parents[1] / "ops/scripts/manage/fleet_doctor"
 failures = []
 
 
@@ -29,7 +29,7 @@ def load_checks():
     # package __init__ (-> cli -> checks) run around a half-initialised module and
     # raised a misleading "cannot import name check_repo" — the code was fine.
     sys.path.insert(0, str(PKG.parent))
-    import cortex_doctor.checks as mod
+    import fleet_doctor.checks as mod
     return mod
 
 

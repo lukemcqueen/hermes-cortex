@@ -87,7 +87,7 @@
       "source": "steadfaste-fleet",
       "scope": "federated",
       "expected_top3": [
-        "ops/scripts/manage/cortex_doctor/checks.py",
+        "ops/scripts/manage/fleet_doctor/checks.py",
         "ops/scripts/manage/gen-skills-manifest.py",
         "docs/SKILLS-MANIFEST.md"
       ],

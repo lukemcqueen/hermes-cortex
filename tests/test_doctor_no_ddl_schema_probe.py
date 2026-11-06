@@ -4,7 +4,7 @@
 Backlog row `72b2c69b` (found 2026-10-27 by the build cycle, cycle 13866). The
 defect, measured rather than argued:
 
-  * `cortex_doctor/checks.py` ran `task-db.py --apply-schema` as a HEALTH CHECK
+  * `fleet_doctor/checks.py` ran `task-db.py --apply-schema` as a HEALTH CHECK
     — on every `agent-message-handler` tick (~5 minutes);
   * `task-db.py`'s `cmd_apply_schema()` resolved `migrate.py` from a candidate
     list whose FIRST entry was `Path(os.environ.get("CORTEX_REPO", ""))/…`, i.e.
@@ -29,7 +29,7 @@ Three properties are pinned here:
   3. `task-db.py` resolves the DEPLOYED runner first and never builds a
      cwd-relative candidate.
 
-`cortex_doctor/checks.py` is a package module (relative imports, import-time
+`fleet_doctor/checks.py` is a package module (relative imports, import-time
 side effects), so properties 1 and 2's call site are asserted against its SOURCE
 — the same technique the precedent above uses. Everything testable behaviourally
 lives in `task-db.py` and is driven for real below.
@@ -42,7 +42,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parent.parent
-CHECKS = REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py"
+CHECKS = REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py"
 TASK_DB = REPO / "ops" / "scripts" / "manage" / "task-db.py"
 
 

@@ -39,8 +39,8 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
     sys.path.insert(0, str(_REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks  # noqa: E402
-from cortex_doctor.results import Results  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
+from fleet_doctor.results import Results  # noqa: E402
 
 DOCTOR = _REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 

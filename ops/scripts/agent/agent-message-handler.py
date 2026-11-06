@@ -1345,7 +1345,7 @@ def main():
     # --- END EARLY ARCHIVE ---
 
     # Silent subjects — known noise: the doctor's own bus round-trip probe
-    # (cortex_doctor checks.py _check_bus_e2e sends DOCTOR_TEST to
+    # (fleet_doctor checks.py _check_bus_e2e sends DOCTOR_TEST to
     # inbox_<agent> on EVERY doctor run — updates, dogfood, readiness-check,
     # manual runs). Archive and move on WITHOUT notifying Telegram. This MUST
     # precede the pickup notify: previously the notify fired first and every

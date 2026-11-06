@@ -345,7 +345,7 @@ def _check_infrastructure() -> list[str]:
           # are irrelevant (file cannot be modified regardless of bits).
           # chattr +i is stronger than 0o444 alone.
           try:
-            from cortex_doctor.immutability import is_file_immutable
+            from fleet_doctor.immutability import is_file_immutable
             if is_file_immutable(path):
               continue  # immutable flag set — skip permission warning
           except (subprocess.TimeoutExpired, OSError, IndexError):
@@ -381,7 +381,7 @@ def _check_infrastructure() -> list[str]:
       # Resolve symlinks — the immutable flag is on the target file
       probe_path = os.path.realpath(path)
       try:
-        from cortex_doctor.immutability import is_file_immutable
+        from fleet_doctor.immutability import is_file_immutable
         if not is_file_immutable(probe_path):
           issues.append(
             f" 🔓 Immutable flag MISSING on {path} (target: {probe_path}).\n"

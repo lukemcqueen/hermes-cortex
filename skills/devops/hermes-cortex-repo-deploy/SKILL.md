@@ -221,7 +221,7 @@ is the same wrong move whichever way it fails, loudly or silently.
 ## New shared module → register() entry in the SAME commit
 
 A new module that an existing deployed script imports (e.g. a helper under
-`cortex_doctor/`) must get its own `register()` line in `cortex-update.sh`,
+`fleet_doctor/`) must get its own `register()` line in `cortex-update.sh`,
 placed next to its importer's. `register()` copies ONLY listed files — a
 missing entry makes the next deploy break every importer with
 `ModuleNotFoundError: No module named '<module>'` at the deploy's verification
@@ -368,7 +368,7 @@ green local run becomes evidence nobody else can reproduce.
 
 ## Cron manifest: create_cron vs uninstall arrays
 
-- `parse_expected_crons()` (cortex_doctor/config.py) reads **create_cron**
+- `parse_expected_crons()` (fleet_doctor/config.py) reads **create_cron**
   blocks, role-filtered (non-orch hosts exclude orch crons). Uninstall arrays
   are the CLEANUP list, not the expected list.
 - When a cron moves from universal (`install-crons.sh`) to orchestrator-only

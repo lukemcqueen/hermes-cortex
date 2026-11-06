@@ -92,7 +92,7 @@ delivering) / ZERO (cannot verify core claims — investigate, do not deliver).
 **Phase 1.5 — adversarial verification (mandatory, no bypass):**
 - Static gate per changed script: `adversarial-verify.py --file <f> --level
   A2 --gate`; A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/,
-  cortex_doctor/, enforcer, tests. Critical/high → block. No --no-verify.
+  fleet_doctor/, enforcer, tests. Critical/high → block. No --no-verify.
 - Pin before/after comparisons to an immutable revision (the RANGE BASE —
   `git merge-base origin/main HEAD`), name both shas in the artifact; assert
   the baseline reproduces the defect or the comparison proves nothing.

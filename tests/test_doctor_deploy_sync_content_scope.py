@@ -26,7 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # checks.py uses relative imports (from .immutability import ...), so it must be
 # imported as part of its package — a bare spec_from_file_location fails.
 sys.path.insert(0, str(REPO_ROOT / "ops" / "scripts" / "manage"))
-import cortex_doctor.checks as checks  # noqa: E402
+import fleet_doctor.checks as checks  # noqa: E402
 
 _FAIL: list = []
 

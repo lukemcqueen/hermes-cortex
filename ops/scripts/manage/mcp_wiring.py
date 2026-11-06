@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 #: name -> server script (relative), and whether only an orchestrator host is expected to
-#: carry it. These MUST agree with the doctor's own map (ops/scripts/manage/cortex_doctor/
+#: carry it. These MUST agree with the doctor's own map (ops/scripts/manage/fleet_doctor/
 #: config.py, EXPECTED_MCP_SERVERS / ORCH_ONLY_MCP_SERVERS) — a test asserts the two match BY
 #: KEY AND BY VALUE, so there is one source of truth even though the CLI cannot import the
 #: doctor's package. The values are BARE filenames (the doctor's convention); the repo-relative

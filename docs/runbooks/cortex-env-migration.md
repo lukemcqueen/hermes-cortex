@@ -98,13 +98,13 @@ The doctor reports:
    REAL file (not a symlink) at `~/.steadfaste-fleet/.env`, not on the
    symlink itself. Readers were repointed in the Oct refactor
    (`agent-push-metrics.sh`, `install-soft-session-cap.sh`,
-   `cortex_doctor._env_file_value`); `VICTORIA_METRICS_URL` +
+   `fleet_doctor._env_file_value`); `VICTORIA_METRICS_URL` +
    `_FALLBACK_URL` were migrated into the canonical env.
 3. **macOS parity.** The gateway service has a launchd counterpart —
    `docs/templates/com.hermes.cortex-gateway.plist` — because systemd does not
    exist on macOS and launchd has no `EnvironmentFile`; the plist wrapper
    sources the same canonical env before exec'ing the daemon.
-4. **Enforcement.** `check_cortex_env` in `cortex_doctor/checks.py` FAILs when
+4. **Enforcement.** `check_cortex_env` in `fleet_doctor/checks.py` FAILs when
    the canonical env is missing, when a REAL file (not a symlink) appears at
    `~/.steadfaste-fleet/.env`, when the sanctioned symlink is missing or points
    elsewhere, or when a retired `cortex-bus.conf` still exists.

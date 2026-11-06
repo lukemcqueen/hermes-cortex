@@ -40,11 +40,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ops" / "scripts" /
 # hermetic assertion. Force a fresh resolve: reload config + checks after
 # setting the env vars (2026-08-24: full-suite run exposed this isolation
 # bug — test_terminal_lock_is_leak read the real home's lock).
-import cortex_doctor.config as _cfg  # noqa: E402
+import fleet_doctor.config as _cfg  # noqa: E402
 importlib.reload(_cfg)
 
-from cortex_doctor import checks  # noqa: E402
-from cortex_doctor.results import Results  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
+from fleet_doctor.results import Results  # noqa: E402
 
 # checks.py imports CORTEX_HOME from config — reload it too so it sees the
 # temp home.

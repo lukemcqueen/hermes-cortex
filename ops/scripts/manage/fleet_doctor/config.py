@@ -285,7 +285,7 @@ def find_script_consumers(roots=None):
     known_vars = ["JUDGE_MODEL", "EMBEDDING_MODEL", "CODING_MODEL", "CREATIVE_MODEL"]
     consumers = {v: [] for v in known_vars}
     skip_dirs = {"__pycache__", ".git", "node_modules", "docs", "evidence", "fixtures",
-                 "cortex_doctor"}
+                 "fleet_doctor"}
     for root in roots:
         try:
             root = Path(root)

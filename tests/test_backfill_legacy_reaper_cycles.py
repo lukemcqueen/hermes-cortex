@@ -17,7 +17,7 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _SCRIPT = _REPO / "ops" / "scripts" / "manage" / "backfill-legacy-reaper-cycles.py"
-_DOCTOR_CHECKS = _REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py"
+_DOCTOR_CHECKS = _REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py"
 _MCP = _REPO / "mcp-servers" / "loop-gov-mcp.py"
 
 _LEGACY_NOTE = "auto-resolved by governance MCP - task has no live lock (abandoned/crashed session)"

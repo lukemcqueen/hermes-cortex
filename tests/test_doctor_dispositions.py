@@ -36,14 +36,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-PKG = REPO / "ops" / "scripts" / "manage" / "cortex_doctor"
+PKG = REPO / "ops" / "scripts" / "manage" / "fleet_doctor"
 
-# The doctor is a package (`cortex_doctor`) whose modules use relative imports, so the test loads
+# The doctor is a package (`fleet_doctor`) whose modules use relative imports, so the test loads
 # the REAL modules through the package rather than by file path: a by-path load would break
 # `from .config import CORTEX_HOME` and prove nothing about what runs.
 sys.path.insert(0, str(PKG.parent))
-from cortex_doctor import dispositions as disp_pkg  # noqa: E402
-from cortex_doctor import results as results_pkg  # noqa: E402
+from fleet_doctor import dispositions as disp_pkg  # noqa: E402
+from fleet_doctor import results as results_pkg  # noqa: E402
 
 _F: list[str] = []
 

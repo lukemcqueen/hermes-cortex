@@ -146,7 +146,7 @@ def test_the_expected_map_agrees_with_the_doctors():
     key-only check let the doctor pass a bare filename while this module assumed the
     `mcp-servers/` prefix, which is how the unrunnable fix string shipped."""
     import re as _re
-    cfg = (REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "config.py").read_text()
+    cfg = (REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "config.py").read_text()
     block = _re.search(r"EXPECTED_MCP_SERVERS\s*=\s*\{(.*?)\}", cfg, _re.DOTALL)
     assert block, "the doctor's EXPECTED_MCP_SERVERS was not found — update this test"
     doctor_map = dict(_re.findall(r'"([a-z][a-z0-9-]*)":\s*"([^"]*)"', block.group(1)))
@@ -165,7 +165,7 @@ def test_the_doctor_reports_an_unavailable_audit_instead_of_skipping_it():
     path; if that fails it has to SAY so. (Static assertion: the loaded module's globals make
     exercising that branch in-process impractical, so the guarantee is pinned at the source and
     exercised live in the evidence capture.)"""
-    src = (REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py").read_text()
+    src = (REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py").read_text()
     i = src.index("mcp_wiring_for_doctor")
     block = src[i:i + 1200]
     assert "except Exception as _mw_err" in block, block[:300]

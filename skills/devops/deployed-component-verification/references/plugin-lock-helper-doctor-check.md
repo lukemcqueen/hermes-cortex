@@ -14,7 +14,7 @@ The doctor had no check for this helper — it checked the *symptom*
 
 ## Implementation
 
-Added `_check_plugin_lock_helper()` to `cortex_doctor/checks.py` and
+Added `_check_plugin_lock_helper()` to `fleet_doctor/checks.py` and
 called it from `check_governance()` right after
 `_check_enforcer_immutability()`.
 
@@ -71,7 +71,7 @@ def _check_plugin_lock_helper(res):
 
 ### Invocation Point
 
-Inserted at `cortex_doctor/checks.py` in `check_governance()`:
+Inserted at `fleet_doctor/checks.py` in `check_governance()`:
 
 ```python
 # ── Immutability (chattr +i) checks ──
@@ -92,8 +92,8 @@ warning path in the same commit.
 
 ### Related Files
 
-- `cortex_doctor/checks.py` — `_check_plugin_lock_helper()` function
-- `cortex_doctor/checks.py` — `check_governance()` invocation
+- `fleet_doctor/checks.py` — `_check_plugin_lock_helper()` function
+- `fleet_doctor/checks.py` — `check_governance()` invocation
 - `cortex-update.sh` — deploy warning (line 1154)
 - `ops/install/deploy/nginx/hermes-plugin-lock` — the helper script
 

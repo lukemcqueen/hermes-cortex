@@ -97,7 +97,7 @@ def main():
     compact = "--quiet" in args
     list_dispositions = "--dispositions" in args
     want_disposition = _flag_value("--disposition")
-    # FAIL-SOFT read (see cortex_doctor.dispositions): an unreadable store reports everything as
+    # FAIL-SOFT read (see fleet_doctor.dispositions): an unreadable store reports everything as
     # undisposed, which is the visible direction, and must never stop a doctor run.
     res.dispositions = dispositions.load()
 

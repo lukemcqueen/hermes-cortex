@@ -44,10 +44,10 @@ class _Result:
 
 
 def _checks():
-    """Import the REPO's ``cortex_doctor.checks`` deterministically.
+    """Import the REPO's ``fleet_doctor.checks`` deterministically.
 
     A plain ``import_module`` is not enough: another suite on the same run can leave a
-    ``cortex_doctor`` package cached from the DEPLOYED tree (which lacks a check not yet
+    ``fleet_doctor`` package cached from the DEPLOYED tree (which lacks a check not yet
     deployed), and the tests then fail with "module has no attribute ..." - a verdict
     that depends on WHO invoked them. Drop the cached package and put the repo's manage
     dir first, so this test measures the source it ships with.
@@ -56,9 +56,9 @@ def _checks():
     while manage in sys.path:
         sys.path.remove(manage)
     sys.path.insert(0, manage)
-    for name in [n for n in sys.modules if n == "cortex_doctor" or n.startswith("cortex_doctor.")]:
+    for name in [n for n in sys.modules if n == "fleet_doctor" or n.startswith("fleet_doctor.")]:
         del sys.modules[name]
-    return importlib.import_module("cortex_doctor.checks")
+    return importlib.import_module("fleet_doctor.checks")
 
 
 def _host(tmp_path, jobs, notepad_rows=None):

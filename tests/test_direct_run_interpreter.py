@@ -54,7 +54,7 @@ def _imports(path: Path) -> set[str]:
 
 def _local_files(mod: str, shell: Path) -> list[Path]:
     """Files that DEFINE `mod` locally. A module shipped beside the script is not third-party —
-    and this is not a technicality: `cortex-doctor.py` imports `cortex_doctor`, which lives next
+    and this is not a technicality: `cortex-doctor.py` imports `fleet_doctor`, which lives next
     to it. Treating local packages as third-party would flag every entry script in the repo.
 
     Three shapes count as local, because the repo uses all three: `<mod>.py`, a package with
@@ -79,7 +79,7 @@ def _local_files(mod: str, shell: Path) -> list[Path]:
 def _unresolved_third_party(entry: Path, shell: Path, cap: int = 60) -> set[str]:
     """Modules the entry file ultimately needs that are NEITHER stdlib NOR defined locally.
 
-    Local modules are EXPANDED rather than trusted: `cortex-doctor.py` imports the cortex_doctor
+    Local modules are EXPANDED rather than trusted: `cortex-doctor.py` imports the fleet_doctor
     package, and it is the package's own imports that decide which interpreter can run it. A
     check that reads only the entry file would call a yaml-importing program stdlib-only.
     """

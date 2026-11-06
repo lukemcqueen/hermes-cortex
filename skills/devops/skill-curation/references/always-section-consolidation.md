@@ -24,7 +24,7 @@ demanded by the TDD co-gate for production-code writes).
 2. `plugins/governance-enforcer/__init__.py`: `_REQUIRED_SKILLS` set,
    `_PATH_CTX_HINTS` (deploy/install → survey-before-action), the block-message
    numbered list (lines ~1690-1710), README "required skills" section
-3. `ops/scripts/manage/cortex_doctor/checks.py`: `check_skills` `required` list
+3. `ops/scripts/manage/fleet_doctor/checks.py`: `check_skills` `required` list
 4. Docs: AGENTS.md RULE-1, CONTRIBUTING.md table, design docs
    (skills-session-manager-v2, task-workflow AC-10), ownership maps,
    supporting-skill-pattern, repo-health-review checklist

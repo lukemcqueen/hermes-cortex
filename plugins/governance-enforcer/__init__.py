@@ -484,7 +484,7 @@ _prev_action: dict = {}
 # ── Adversarial commit gate ───────────────────────────
 # Before git commit/push of critical-system changes, require
 # adversarial-verifier skill. Same 💡/⛔/✅ pattern as domain gate.
-# MUST stay in sync with ops/scripts/cortex_doctor/ paths.
+# MUST stay in sync with ops/scripts/fleet_doctor/ paths.
 _ADVERSARIAL_COMMIT_PATTERNS = [
     r"\bgit\s+commit\b",
     r"\bgit\s+push\b",
@@ -492,7 +492,7 @@ _ADVERSARIAL_COMMIT_PATTERNS = [
 # Paths whose changes REQUIRE adversarial verification before commit/push.
 # Broadened 2026-08-04: any ops/scripts/ change (not just manage/doctor),
 # the verifier itself (quality/), all plugins, skills, hooks, mcp-servers.
-# MUST stay in sync with ops/scripts/cortex_doctor/ paths and the
+# MUST stay in sync with ops/scripts/fleet_doctor/ paths and the
 # pre-commit hook's ADV_A4_PREFIXES list.
 _ADVERSARIAL_CRITICAL_PATHS = [
     "tests/",

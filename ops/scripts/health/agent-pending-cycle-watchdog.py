@@ -3,14 +3,14 @@
 
 O5-S1 (HC gaps party 2026-08-21, roadmap F-008): scheduled PENDING-cycle
 watchdog assigned to the loop-governance seam. Mirrors the on-demand logic
-in cortex_doctor/checks.py (single source of truth for the leak rules) so a
+in fleet_doctor/checks.py (single source of truth for the leak rules) so a
 governance leak is caught every 6h even when no commit/doctor run happens.
 
 Watchdog pattern (state-transition gate):
   Empty stdout  → silent (no leaks, or unchanged since last alert)
   Text output   → delivered to user (new/changed leak found or auto-resolved)
 
-Rules (identical to cortex_doctor/checks.py PENDING-cycles check):
+Rules (identical to fleet_doctor/checks.py PENDING-cycles check):
   1. A PENDING cycle whose task_id has NO active .governance-*.json lock is a
      LEAK — begin_change was called but feedback_accept never ran.
   2. A PENDING cycle whose task_id holds a live lock is the CURRENT task —

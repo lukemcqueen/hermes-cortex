@@ -19,14 +19,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("mw", REPO / "ops/scripts/manage/mcp_wiring.py")
 assert _spec is not None and _spec.loader is not None
 mw = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mw)
 _spec2 = importlib.util.spec_from_file_location(
-    "dc", REPO / "ops/scripts/manage/cortex_doctor/config.py")
+    "dc", REPO / "ops/scripts/manage/fleet_doctor/config.py")
 assert _spec2 is not None and _spec2.loader is not None
 dc = importlib.util.module_from_spec(_spec2)
 _spec2.loader.exec_module(dc)

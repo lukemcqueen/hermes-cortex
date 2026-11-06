@@ -20,15 +20,15 @@ from pathlib import Path
 import pytest
 
 MODULE = (Path(__file__).resolve().parents[1] / "ops" / "scripts" / "manage"
-          / "cortex_doctor" / "jev.py")
-SPEC = importlib.util.spec_from_file_location("cortex_doctor_jev_under_test", MODULE)
+          / "fleet_doctor" / "jev.py")
+SPEC = importlib.util.spec_from_file_location("fleet_doctor_jev_under_test", MODULE)
 assert SPEC is not None and SPEC.loader is not None, f"cannot load {MODULE}"
 jev = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(jev)
 
 
 class Collector:
-    """Minimal stand-in for cortex_doctor.results.Results."""
+    """Minimal stand-in for fleet_doctor.results.Results."""
 
     def __init__(self):
         self.rows = []

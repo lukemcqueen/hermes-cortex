@@ -22,7 +22,7 @@ manual restore. First reported by Joseph (non-orchestrator) with evidence.
    the post-merge hook runs `bash cortex-update.sh` with no flags → full mode)
    overwrites real memory with the 1283-byte template.
 
-3. **The doctor check was inverted.** `cortex_doctor/checks.py`
+3. **The doctor check was inverted.** `fleet_doctor/checks.py`
    `check_deploy_checksums` Category 1 (line ~3107) parses EVERY `register `
    line in cortex-update.sh and content-compares deployed vs repo source:
    - Clobbered (blank) → matches seed → doctor ✅ PASSES (broken state = healthy)
@@ -69,7 +69,7 @@ That wrong path claim is exactly why the topology is confusing.
 
 3. **Scope (Luke correction mid-session: "We shouldn't touch the hermes one")**:
    fix stays in the steadfaste-fleet repo (`ops/scripts/cortex-update.sh` +
-   `cortex_doctor/checks.py` + docs). Do NOT write to `~/.hermes/memories/`
+   `fleet_doctor/checks.py` + docs). Do NOT write to `~/.hermes/memories/`
    (Hermes owns that file) and do NOT patch `~/.hermes/hermes-agent` upstream
    code. Upstream preference unchanged: local workaround + environment
    protection, no upstream PR unless Luke asks.

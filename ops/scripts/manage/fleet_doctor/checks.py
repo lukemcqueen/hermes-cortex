@@ -608,7 +608,7 @@ def _score_cycle_consumers(search_roots=None):
           continue
       except OSError:
         continue
-      if any(part in ("__pycache__", ".git", "cortex_doctor") for part in path.parts):
+      if any(part in ("__pycache__", ".git", "fleet_doctor") for part in path.parts):
         continue
       if path.name.startswith("test_"):
         continue
@@ -1380,7 +1380,7 @@ def _check_manifest_drift(res):
     # Prefer the deployed copy so the doctor checks the runtime artifact,
     # not just the repo source; fall back to the repo.
     _manifest_candidates = [
-        Path(__file__).resolve().parent / "cron_manifest.py",           # scripts/cortex_doctor/
+        Path(__file__).resolve().parent / "cron_manifest.py",           # scripts/fleet_doctor/
         Path(__file__).resolve().parent.parent / "manage" / "cron_manifest.py",  # scripts/manage/
         CORTEX_REPO / "ops" / "scripts" / "manage" / "cron_manifest.py",
     ]
@@ -2205,7 +2205,7 @@ def _check_self_stale(res):
   try:
     # This script's deployed path vs repo source path
     deployed = Path(__file__).resolve()
-    repo_source = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "checks.py"
+    repo_source = CORTEX_REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "checks.py"
 
     if not repo_source.is_file():
       res.add("Doctor self", "SKIP", "Cannot find repo source to compare versions")
@@ -6104,7 +6104,7 @@ def check_review_provenance(res) -> None:
             "COULD NOT VERIFY — review-provenance-check.py is not deployed on this host",
             "Deploy it (cortex-update.sh registers it) so review artifacts are checked")
     return
-  repo = Path(__file__).resolve().parents[4]     # ops/scripts/manage/cortex_doctor -> repo root
+  repo = Path(__file__).resolve().parents[4]     # ops/scripts/manage/fleet_doctor -> repo root
   try:
     proc = subprocess.run([sys.executable, str(script), "--repo", str(repo)],
                           capture_output=True, text=True, timeout=60)

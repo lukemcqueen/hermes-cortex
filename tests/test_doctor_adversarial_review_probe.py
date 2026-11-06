@@ -24,8 +24,8 @@ MANAGE = REPO_ROOT / "ops" / "scripts" / "manage"
 
 def _load_package():
     sys.path.insert(0, str(MANAGE))
-    import cortex_doctor.checks as checks
-    import cortex_doctor.results as results
+    import fleet_doctor.checks as checks
+    import fleet_doctor.results as results
     return checks, results
 
 

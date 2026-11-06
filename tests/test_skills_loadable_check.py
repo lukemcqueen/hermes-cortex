@@ -1,4 +1,4 @@
-"""Tests for the skills-loadability doctor check (cortex_doctor.checks).
+"""Tests for the skills-loadability doctor check (fleet_doctor.checks).
 
 The check exists because a SKILL.md that fails the Agent-Skills rules is DROPPED
 from every coding agent's skill index without an error anyone reads (measured
@@ -23,8 +23,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops" / "scripts" / "manage"))
 
-from cortex_doctor import checks  # noqa: E402
-from cortex_doctor.results import Results  # noqa: E402
+from fleet_doctor import checks  # noqa: E402
+from fleet_doctor.results import Results  # noqa: E402
 
 GOOD = """---
 name: good-skill

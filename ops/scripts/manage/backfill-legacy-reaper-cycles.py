@@ -35,7 +35,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-# Must match cortex_doctor/checks.py and mcp-servers/loop-gov-mcp.py — tests assert it.
+# Must match fleet_doctor/checks.py and mcp-servers/loop-gov-mcp.py — tests assert it.
 ORPHAN_REAPER_TAG = "[orphan-reaper]"
 
 DEFAULT_DB = Path.home() / ".steadfaste-fleet" / "data" / "loop-governance.db"

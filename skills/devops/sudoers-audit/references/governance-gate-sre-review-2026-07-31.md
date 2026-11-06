@@ -65,7 +65,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
   agent-governance-auditor) has ZERO direct writes to enforcement paths; the auditor is read-only
   and excludes `.hermes*` dirs.
 - Only callers of `hermes-plugin-lock` in the whole repo: cortex-update.sh, pre-commit-score
-  (DOGFOOD), cortex_doctor/checks.py, and docs/skills. Blast radius = exactly the intended surface.
+  (DOGFOOD), fleet_doctor/checks.py, and docs/skills. Blast radius = exactly the intended surface.
 - `agent-steadfaste-fleet-sync.sh` pulls the repo but does NOT run cortex-update (no gate impact).
 
 ## QA test matrix required before shipping

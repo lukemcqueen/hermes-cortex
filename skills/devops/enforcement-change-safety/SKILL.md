@@ -456,7 +456,7 @@ macOS `ls -lO` on a symlink reports the LINK's own empty flag field. A check
 that probes the symlink path reports "flag missing" on fully-protected files —
 a false positive that fires daily until fixed. Every immutability probe must
 `realpath()`/`resolve()` first and route through the shared cross-platform
-probe (`cortex_doctor/immutability.py`: `lsattr 'i'` on Linux, `ls -lO 'uchg'
+probe (`fleet_doctor/immutability.py`: `lsattr 'i'` on Linux, `ls -lO 'uchg'
 on macOS) — never shell to `lsattr` directly (absent on macOS), and never
 treat probe failure as "not immutable" (raise → caller WARNs; P12). When a
 peer reports "your auditor says X is unprotected", first compare the exact

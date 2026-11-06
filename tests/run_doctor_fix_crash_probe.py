@@ -22,7 +22,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location(
-    "dc_probe", REPO / "ops/scripts/manage/cortex_doctor/config.py")
+    "dc_probe", REPO / "ops/scripts/manage/fleet_doctor/config.py")
 assert _spec is not None and _spec.loader is not None
 dc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(dc)

@@ -43,7 +43,7 @@ Cross-reference changed paths against `docs/orchestrator-only-paths.txt`:
 ```
 ops/scripts/          ops/install/          plugins/
 mcp-servers/          skills/               .steadfaste-fleet/hooks/
-cortex_doctor/        tests/                profiles/
+fleet_doctor/        tests/                profiles/
 docs/templates/       AGENTS.md
 ```
 

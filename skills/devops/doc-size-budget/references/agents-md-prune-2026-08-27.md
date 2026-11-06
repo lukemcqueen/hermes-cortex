@@ -51,7 +51,7 @@ push. If already committed, run `cortex-dogfood.sh --force`
 ```bash
 python3 -c "
 import sys; sys.path.insert(0, 'ops/scripts/manage')
-from cortex_doctor.checks import _extract_agents_markers
+from fleet_doctor.checks import _extract_agents_markers
 from pathlib import Path
 m = _extract_agents_markers(Path('AGENTS.md'))
 print(len(m), sorted(m))"        # 32 markers, all contract markers present

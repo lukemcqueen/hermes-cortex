@@ -32,7 +32,7 @@ Transcript produced by `docs/evidence/doctor-ddl-leak/probe-doctor-apply-schema.
 
 | Fact | Measured |
 |---|---|
-| The doctor runs `--apply-schema` as a **health check** | `~/.steadfaste-fleet/scripts/cortex_doctor/checks.py:5357`: `ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"], …)`. The doctor runs on every `agent-message-handler` tick (~5 min). |
+| The doctor runs `--apply-schema` as a **health check** | `~/.steadfaste-fleet/scripts/fleet_doctor/checks.py:5357`: `ver_out = run_bg([sys.executable, str(task_script), "--apply-schema"], …)`. The doctor runs on every `agent-message-handler` tick (~5 min). |
 | `cmd_apply_schema` resolves `migrate.py` by candidate list | `ops/scripts/manage/task-db.py:1563-1569` |
 | Candidate 1 is **`Path(os.environ.get("CORTEX_REPO", ""))/…`** | With `CORTEX_REPO` unset (measured: `CORTEX_REPO env = None`) that expression is the **relative** path `ops/services/tasks/migrate.py`. The probe reported `1. exists=True` only because its **cwd** was the repo. So the resolved migration authority depends on the *caller's working directory* — a second defect in the same function, independent of the repo-vs-deployed question. |
 | Candidate 2 is the repo working tree (home prefix shown as `$HOME`, normalized for PII hygiene per commit 93029175) | `exists=True  $HOME/steadfaste-fleet/ops/services/tasks/migrate.py` — picked whenever candidate 1 misses (the doctor's own cwd). |

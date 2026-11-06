@@ -12,10 +12,10 @@ import sys
 import importlib.util
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parents[1] / "ops/scripts/manage/cortex_doctor"
-spec = importlib.util.spec_from_file_location("cortex_doctor_mcp_names_test", BASE / "mcp_names.py")
+BASE = Path(__file__).resolve().parents[1] / "ops/scripts/manage/fleet_doctor"
+spec = importlib.util.spec_from_file_location("fleet_doctor_mcp_names_test", BASE / "mcp_names.py")
 mod = importlib.util.module_from_spec(spec)
-sys.modules["cortex_doctor_mcp_names_test"] = mod
+sys.modules["fleet_doctor_mcp_names_test"] = mod
 spec.loader.exec_module(mod)
 
 PROBE = "loop-gov-mcp.py"

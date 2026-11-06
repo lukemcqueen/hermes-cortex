@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_DOCTOR_CONFIG = _REPO / "ops" / "scripts" / "manage" / "cortex_doctor" / "config.py"
+_DOCTOR_CONFIG = _REPO / "ops" / "scripts" / "manage" / "fleet_doctor" / "config.py"
 _MODELS = _REPO / "ops" / "scripts" / "fleet_lib" / "models.py"
 _BIBLE = _REPO / "ops" / "scripts" / "agent-daily-bible-reading.py"
 

@@ -124,7 +124,7 @@ New in this session (2026-07-23):
 - **Systemd linger** — verifies Linux user services survive reboot
 - **Skills disk presence** — verifies every listed skill exists on disk
 
-The doctor itself was modularized into `cortex_doctor/` package (8 modules).
+The doctor itself was modularized into `fleet_doctor/` package (8 modules).
 Monolith at `cortex-doctor.py` is now a 34-line shim. To add a new check:
 create a new function in `checks.py` and add it to the `all_checks` list in `cli.py`.
 
@@ -172,7 +172,7 @@ Check agent-type coverage in docs:
 
 ### Pass 8b: Cross-Script Deploy/Install/Doctor Consistency Audit
 
-**Purpose:** Verify that the three core lifecycle scripts — `install.sh`, `cortex-update.sh`, and `cortex_doctor/` — agree on agent-type branching. If they diverge, agents get false-positive doctor failures, wrong cron expectations, or orphan deploy artifacts.
+**Purpose:** Verify that the three core lifecycle scripts — `install.sh`, `cortex-update.sh`, and `fleet_doctor/` — agree on agent-type branching. If they diverge, agents get false-positive doctor failures, wrong cron expectations, or orphan deploy artifacts.
 
 **Run when:** User asks to audit agent-type branching, fix doctor false positives on non-orch agents, or verify deploy/install/doctor pipeline consistency. Also run before adding a new agent type.
 
@@ -188,7 +188,7 @@ grep -n 'CORTEX_PROFILE' ops/install/install.sh | head -5
 grep -n 'agent.type\|agent_type\|--agent-type' ops/install/install.sh | head -5
 
 # Which model does the doctor use?
-grep -n 'is_orch\|IS_ORCH\|hostname\|agent.type' ops/scripts/manage/cortex_doctor/config.py
+grep -n 'is_orch\|IS_ORCH\|hostname\|agent.type' ops/scripts/manage/fleet_doctor/config.py
 ```
 
 **Gap to detect:** A capability model (CORTEX_PROFILE) cannot distinguish between an orchestrator (needs bus server + dashboard + nginx) and a server-agent (needs bus client + crons, NOT dashboard/nginx). When both map to `server`, orchestrator-only services get deployed to server-agents and produce doctor false positives.
@@ -215,7 +215,7 @@ grep -B3 -A3 'deploy_system_scripts' ops/scripts/cortex-update.sh
 The doctor's `config.py` defines `EXTERNAL_SERVICES` — endpoints it checks for health. If this list is hardcoded with Dashboard, Langfuse, and Agent Bus, it will FAIL on every non-orch agent:
 
 ```bash
-grep -A10 'EXTERNAL_SERVICES' ops/scripts/manage/cortex_doctor/config.py
+grep -A10 'EXTERNAL_SERVICES' ops/scripts/manage/fleet_doctor/config.py
 ```
 
 **Check:** Is there agent-type awareness? Does the doctor skip Dashboard/Langfuse checks on server-agents that don't host them? Also check `check_nginx()` — does it run unconditionally?
@@ -238,13 +238,13 @@ grep -n 'local-' ops/scripts/install-crons.sh | head -5
 **Check path 1:** Does the doctor's `parse_expected_crons()` correctly exclude orch crons from the universal expected list?
 
 ```bash
-grep -A15 'parse_expected_crons' ops/scripts/manage/cortex_doctor/config.py
+grep -A15 'parse_expected_crons' ops/scripts/manage/fleet_doctor/config.py
 ```
 
 **Check path 2:** Does `check_crons()` correctly identify orchestrator hosts and only FAIL on missing orch crons for those hosts?
 
 ```bash
-grep -A15 'orch_crons_list' ops/scripts/manage/cortex_doctor/checks.py
+grep -A15 'orch_crons_list' ops/scripts/manage/fleet_doctor/checks.py
 ```
 
 **Check path 3:** Does `check_crons()` check the `IS_ORCHESTRATOR` env var (like cortex-update.sh does), or only hostname? Hostname-only is brittle — won't match fresh installs or custom hostnames.
@@ -272,7 +272,7 @@ grep 'IS_DEV\|agent.dev\|dev.minimal\|skip.*dev' ops/scripts/cortex-update.sh
 
 The same hostname/orch-detection logic should appear in:
 1. `cortex-update.sh` (lines ~1412-1438) — `IS_ORCHESTRATOR` env var + hostname fallback
-2. `cortex_doctor/checks.py` (lines ~407-421) — hostname only
+2. `fleet_doctor/checks.py` (lines ~407-421) — hostname only
 3. `install-orch-crons.sh` (lines ~29-39) — `IS_ORCHESTRATOR` env var + hostname fallback
 
 **Gap:** If the doctor doesn't read `IS_ORCHESTRATOR` from `.env`, it will fail to detect orchestrator hosts not named moses/esther. Scripts 1 and 3 agree; script 2 may be out of sync.
@@ -282,7 +282,7 @@ The same hostname/orch-detection logic should appear in:
 After checking all 5 dimensions, produce a table showing which files branch on what:
 
 ```markdown
-| Dimension | install.sh | cortex-update.sh | cortex_doctor/ |
+| Dimension | install.sh | cortex-update.sh | fleet_doctor/ |
 |-----------|-----------|-----------------|----------------|
 | Service install guard | CORTEX_PROFILE=server | none (unconditional deploy) | none (hardcoded EXTERNAL_SERVICES) |
 | Nginx deploy guard | CORTEX_PROFILE=server | CORTEX_SKIP_NGINX (optional) | none (always checks) |

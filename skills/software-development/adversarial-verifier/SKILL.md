@@ -351,7 +351,7 @@ Run the gate on every changed script file:
 ```bash
 python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file ops/scripts/health/my-changed-script.py --level A2 --gate
 # A4 for anything under plugins/, hooks/, mcp-servers/, ops/scripts/manage/,
-# ops/scripts/cortex_doctor/, ops/scripts/quality/, tests/, and the
+# ops/scripts/fleet_doctor/, ops/scripts/quality/, tests/, and the
 # enforcement scripts themselves (pre-commit-score, cortex-update.sh)
 ```
 

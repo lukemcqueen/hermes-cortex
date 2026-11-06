@@ -61,7 +61,7 @@ for d in ops/install ops/install/deploy ops/scripts/install ops/scripts/health \
   [ -d "$d" ] && grep -rni '<old-name>' "$d" 2>/dev/null
 done
 # also cortex-update.sh register/unregister blocks and
-# cortex_doctor/checks.py (its remediation hints still name old units)
+# fleet_doctor/checks.py (its remediation hints still name old units)
 ```
 
 Classify each match:

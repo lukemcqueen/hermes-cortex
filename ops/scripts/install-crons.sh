@@ -1021,7 +1021,7 @@ create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "true"
 
 # PENDING-cycle watchdog (O5-S1) — governance leak detection every 6h
-# (no_agent: mirrors cortex_doctor/checks.py PENDING rules; silent when clean)
+# (no_agent: mirrors fleet_doctor/checks.py PENDING rules; silent when clean)
 create_cron "agent-pending-cycle-watchdog" "0 */6 * * *" \
   "agent-pending-cycle-watchdog.py" \
   "" \
@@ -1032,7 +1032,7 @@ create_cron "agent-pending-cycle-watchdog" "0 */6 * * *" \
   "true"
 
 # Deploy drift-audit (O5-S2) — deployed-vs-repo drift detection daily 07:00
-# (no_agent: mirrors cortex_doctor/checks.py deploy-content + stale-deploy
+# (no_agent: mirrors fleet_doctor/checks.py deploy-content + stale-deploy
 #  rules; silent when clean/unchanged — StateTracker-gated)
 create_cron "agent-deploy-drift-audit" "0 7 * * *" \
   "agent-deploy-drift-audit.py" \

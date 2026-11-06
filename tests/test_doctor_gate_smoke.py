@@ -3,9 +3,9 @@
 
 2026-08-24 blunder: the deployed adversarial-verify.py silently lost its
 TOON check because its lib path resolved to a non-existent dir and the
-except:pass swallowed the import error. The doctor had NO visibility —
-checksums passed (deploy header only), tests passed (repo layout), the
-gate was dead in production.
+`except: pass` next to it swallowed the import error. The doctor had NO
+visibility — checksums passed (deploy header only), tests passed (repo
+layout), the gate was dead in production.
 
 The smoke check must FAIL when the deployed verifier cannot resolve its
 lib module, so this class of repo-works/deployed-broken can never ship
@@ -22,10 +22,10 @@ MANAGE = REPO_ROOT / "ops" / "scripts" / "manage"
 
 
 def _load_package():
-    """Load the cortex_doctor package via its parent dir (like the CLI)."""
+    """Load the fleet_doctor package via its parent dir (like the CLI)."""
     sys.path.insert(0, str(MANAGE))
-    import cortex_doctor.checks as checks
-    import cortex_doctor.results as results
+    import fleet_doctor.checks as checks
+    import fleet_doctor.results as results
     return checks, results
 
 

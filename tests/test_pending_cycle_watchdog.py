@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hermetic fault-injection suite for agent-pending-cycle-watchdog (O5-S1).
 
-The watchdog mirrors cortex_doctor/checks.py's PENDING-cycle rules on a
+The watchdog mirrors fleet_doctor/checks.py's PENDING-cycle rules on a
 schedule (every 6h, no_agent). This test proves the four behaviours the
 doctor check only exercises on-demand:
 

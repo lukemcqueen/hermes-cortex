@@ -87,7 +87,7 @@ bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh          # deploys the brid
 - **Installers** — `create_cron()` in `install-crons.sh` and
   `install-orch-crons.sh` returns early for a bridge-owned job, so an install
   run can never recreate one and hand the bridge a second owner.
-- **Doctor** — `_bridge_owned_jobs()` in `cortex_doctor/checks.py` excludes
+- **Doctor** — `_bridge_owned_jobs()` in `fleet_doctor/checks.py` excludes
   bridge-owned names from the expected-cron comparison, the orphan scan and
   the extra-cron scan. Without it, every migrated job reports as `missing`
   (FAIL) the moment its Hermes row is removed.

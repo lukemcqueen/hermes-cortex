@@ -109,7 +109,7 @@ print("      its absence means it did not.")
 
 PROBE_CHECKS = (
     "import sys; sys.path.insert(0, " + repr(str(REPO / "ops/scripts/manage")) + ")\n"
-    "from cortex_doctor.checks import check_paused_cron_reasons, check_orphan_cycle_resolution\n"
+    "from fleet_doctor.checks import check_paused_cron_reasons, check_orphan_cycle_resolution\n"
     "class R:\n"
     "    def __init__(self): self.rows = []\n"
     "    def add(self, name, status, detail='', fix=''):\n"
@@ -232,8 +232,8 @@ def main() -> int:
     # 7. The adversarial gate, one invocation per changed file, each with its own rc.
     for rel, level in [
         ("mcp-servers/loop-gov-mcp.py", "A4"),
-        ("ops/scripts/manage/cortex_doctor/checks.py", "A4"),
-        ("ops/scripts/manage/cortex_doctor/cli.py", "A4"),
+        ("ops/scripts/manage/fleet_doctor/checks.py", "A4"),
+        ("ops/scripts/manage/fleet_doctor/cli.py", "A4"),
         ("ops/scripts/health/agent-cron-failure-watchdog.py", "A2"),
         ("ops/scripts/install/install-orch-crons.sh", "A2"),
         ("tests/test_receipt_repo_identity.py", "A2"),

@@ -38,7 +38,7 @@ class _Result:
 
 
 def _checks():
-    """Import the REPO's ``cortex_doctor.checks`` deterministically.
+    """Import the REPO's ``fleet_doctor.checks`` deterministically.
 
     Same isolation as test_doctor_paused_cron_reasons: a plain import_module can
     return a package cached from the DEPLOYED tree, so drop the cached package
@@ -48,9 +48,9 @@ def _checks():
     while manage in sys.path:
         sys.path.remove(manage)
     sys.path.insert(0, manage)
-    for name in [n for n in sys.modules if n == "cortex_doctor" or n.startswith("cortex_doctor.")]:
+    for name in [n for n in sys.modules if n == "fleet_doctor" or n.startswith("fleet_doctor.")]:
         del sys.modules[name]
-    return importlib.import_module("cortex_doctor.checks")
+    return importlib.import_module("fleet_doctor.checks")
 
 
 def _host(tmp_path):

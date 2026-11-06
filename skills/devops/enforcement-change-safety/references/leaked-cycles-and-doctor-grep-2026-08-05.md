@@ -70,7 +70,7 @@ synthetic fixture without it passes the broken pattern.
 ## 3. Gate scoping (Luke corrections, 2026-08-05)
 
 The pre-push doctor gate I first shipped ran on EVERY push in EVERY repo
-(original code had a `DOCTOR_RELEVANT` case match on cortex_doctor/* paths,
+(original code had a `DOCTOR_RELEVANT` case match on fleet_doctor/* paths,
 which doc-only pushes bypassed). Luke's two corrections:
 
 1. "This is ONLY FOR STEADFASTE-FLEET updates... does not apply to non-hermes
@@ -94,7 +94,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -f "$CORTEX_DO
 
 Verified scope matrix (bash harness with _detect_orch stubbed to return 1):
 - project repo + test files → ALLOWED (the Titus fix)
-- cortex repo + tests/, core/governance/tests/, cortex_doctor/ → BLOCKED
+- cortex repo + tests/, core/governance/tests/, fleet_doctor/ → BLOCKED
 - cortex repo + regular code → ALLOWED
 
 ## 4. Orchestrator-only array over-block (commit 95997d0c)

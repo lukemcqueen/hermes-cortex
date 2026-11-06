@@ -111,7 +111,7 @@ guarantees make a leftover unlocked state self-correcting:
 2. **Relock after inactivity.** `agent-remediate-apply.py` (no_agent, every
    10 min) self-heals at the top of every cycle, probing
    `hermes-plugin-lock status` FIRST so the already-locked case costs one
-   `lsattr` and no sudo. `cortex_doctor --fix` relocks on a failing
+   `lsattr` and no sudo. `fleet_doctor --fix` relocks on a failing
    `Immutable:` check as well.
 
 Consequences for an agent who finds a missing `i` flag: it is a **symptom, not a

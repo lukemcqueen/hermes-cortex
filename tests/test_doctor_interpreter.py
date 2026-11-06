@@ -22,25 +22,35 @@ import pytest
 WRAPPER = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 
 
+_PULLED_BY_IMPORT: dict = {}
+
+
 @pytest.fixture(scope="module")
 def doctor():
     """Load the wrapper as a module. It must be INERT on import (tested below)."""
-    spec = importlib.util.spec_from_file_location("cortex_doctor_wrapper", WRAPPER)
+    spec = importlib.util.spec_from_file_location("fleet_doctor_wrapper", WRAPPER)
     mod = importlib.util.module_from_spec(spec)
+    _before = set(sys.modules)
     spec.loader.exec_module(mod)
+    # Record exactly which fleet_doctor modules THIS import pulled in. The old
+    # proxy (`not in sys.modules`) was order-dependent: any earlier test in the
+    # same process importing the package (e.g. the stale-loop-gov checks) made
+    # it fail spuriously. What inertness means is "this import added none".
+    _PULLED_BY_IMPORT["added"] = {k for k in set(sys.modules) - _before
+                                  if k.startswith("fleet_doctor")}
     return mod
 
 
 def test_module_import_is_inert(doctor):
     """Importing the wrapper must not import the package or re-exec.
 
-    The heavy `from cortex_doctor.cli import main` sits inside the __main__ guard
+    The heavy `from fleet_doctor.cli import main` sits inside the __main__ guard
     precisely so this holds: a module-level import would pull the whole package in
     under whatever interpreter did the importing — the very thing being fixed —
     and would make this file untestable.
     """
-    assert "cortex_doctor.cli" not in sys.modules
-    assert doctor.__name__ == "cortex_doctor_wrapper"
+    assert _PULLED_BY_IMPORT["added"] == set(), _PULLED_BY_IMPORT["added"]
+    assert doctor.__name__ == "fleet_doctor_wrapper"
 
 
 def test_can_import_here_both_ways(doctor):

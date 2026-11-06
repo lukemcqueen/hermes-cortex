@@ -17,7 +17,7 @@ plugins/
 mcp-servers/
 skills/
 .steadfaste-fleet/hooks/
-cortex_doctor/
+fleet_doctor/
 tests/
 profiles/
 docs/templates/

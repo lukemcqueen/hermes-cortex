@@ -449,7 +449,7 @@ done
 # catch that at push time is to verify the full deployed state.
 # Cost ~10s.
 # (2026-08-05: dogfood surfaced 7b false-positive AFTER doc-only
-# pushes because the gate only fired on cortex_doctor/* changes —
+# pushes because the gate only fired on fleet_doctor/* changes —
 # closed.)
 # ⚠️  SCOPE (Luke corrections 2026-08-05): this gate fires ONLY when
 # (a) the push is in the steadfaste-fleet repo AND (b) the host is an

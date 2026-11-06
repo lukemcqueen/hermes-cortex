@@ -21,9 +21,9 @@ Non-orchestrator agents must have ZERO direct update/unlock capability.
 | 1 | `cortex-update.sh` — `deploy_governance_plugin()` (~1310), hooks install (~1334), `register()` | Yes | ✅ Sanctioned path — KEEP. Must pass `CORTEX_UPDATE=1` through sudo |
 | 2 | `ops/scripts/pre-commit-score` lines 73–88 DOGFOOD self-heal: `sudo hermes-plugin-lock unlock; cp -f repo deployed; lock` | Yes | ⚠️ **SECOND CHANNEL** — convert to a BLOCK that instructs running `cortex-update.sh` (auto-deploying the enforcer on commit bypasses the sanctioned path entirely) |
 | 3 | `ops/install/deploy/nginx/hermes-plugin-lock` — `unlock`/`update` subcommands | Yes | ⚠️ **Direct write channel** — gate on `--cortex-update` token OR `--orchestrator` token (bound to invoking Unix account moses|esther, never env); `lock`/`status` stay open |
-| 4 | `ops/scripts/cortex_doctor/checks.py` ~1617–1624 remediation hints: `cp pre-commit-score → hooks/pre-commit` | Instructs agents to | ⚠️ Bypass instruction — re-point to `cortex-update.sh` |
+| 4 | `ops/scripts/fleet_doctor/checks.py` ~1617–1624 remediation hints: `cp pre-commit-score → hooks/pre-commit` | Instructs agents to | ⚠️ Bypass instruction — re-point to `cortex-update.sh` |
 | 5 | `ops/install/install.sh` — one-time bootstrap (root, fresh install) | Yes | ✅ Legitimate exemption (bootstrap) |
-| 6 | `ops/scripts/manage/cortex_doctor/fix.py` ~251 — `sudo chattr +i` only | Lock direction only | ✅ Safe (never unlocks) |
+| 6 | `ops/scripts/manage/fleet_doctor/fix.py` ~251 — `sudo chattr +i` only | Lock direction only | ✅ Safe (never unlocks) |
 | 7 | `ops/scripts/manage/agent-governance-auditor.py` — suggests `sudo chattr +i` | Lock direction only | ✅ Safe |
 
 ## Critical platform details

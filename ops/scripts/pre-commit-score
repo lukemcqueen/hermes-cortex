@@ -1316,7 +1316,7 @@ ORCHESTRATOR_ONLY_PATHS=(
   "^ops/scripts/pre-push-pull$"
   "^ops/scripts/install/"
   "^ops/scripts/cortex-update\.sh$"
-  "^ops/scripts/manage/cortex_doctor/"
+  "^ops/scripts/manage/fleet_doctor/"
   "^skills/"
   "^tests/"
   "^core/governance/tests/"
@@ -1349,7 +1349,7 @@ if [[ -n "$BLOCKED" ]]; then
     echo "    Non-orchestrator agents may NOT modify these paths:"
     echo "      docs/templates/  profiles/  AGENTS.md"
     echo "      pre-commit-score  install/  cortex-update.sh"
-    echo "      cortex_doctor/  skills/  tests/"
+    echo "      fleet_doctor/  skills/  tests/"
     echo "    Commit this change from an orchestrator agent (moses or esther)."
     echo ""
     exit 1
@@ -1429,7 +1429,7 @@ ADV_SCANNED=0
 # change-checklist skill's Phase 1.5 A4 list. Root-level enforcement
 # scripts are named explicitly because they live directly in ops/scripts/
 # (no subdirectory prefix to match).
-ADV_A4_PREFIXES="plugins/|hooks/|mcp-servers/|ops/scripts/manage/|ops/scripts/cortex_doctor/|ops/scripts/quality/|tests/|ops/scripts/pre-commit-score|ops/scripts/cortex-update.sh|ops/scripts/change-validate.sh|ops/scripts/secret-leak-detector.sh"
+ADV_A4_PREFIXES="plugins/|hooks/|mcp-servers/|ops/scripts/manage/|ops/scripts/fleet_doctor/|ops/scripts/quality/|tests/|ops/scripts/pre-commit-score|ops/scripts/cortex-update.sh|ops/scripts/change-validate.sh|ops/scripts/secret-leak-detector.sh"
 while IFS= read -r adv_file; do
   ADV_SCANNED=$((ADV_SCANNED + 1))
   ADV_LEVEL="A2"
