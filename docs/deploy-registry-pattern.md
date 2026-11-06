@@ -31,13 +31,18 @@ no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 ## The register() map
 
 `ops/scripts/cortex-update.sh` holds the deployment as data: a list of
-`register "<repo path>" "<deployed path>"` calls — **386** of them (count
-re-measured 2026-10-20;
-`tests/test_repo_resource_paths.py` computes all three numbers below, so change
-the doc in the same commit as any `register()` edit).
+`register "<repo path>" "<deployed path>"` calls — **388** of them,
+of which **383** use the `${CORTEX_DEPLOY_HOME}/` deployed shape (the count the doc
+test parses) and **5** deploy to `${HOME}/…` paths (four langfuse files and the macOS
+dashboard plist). Reconcile on **388** when editing: 346 `register` + 42
+`register_orch`. (Count re-measured 2026-11-06 — the previous **386** figure and its
+255/131 split were stale; the doc test now passes against these numbers.
+`tests/test_repo_resource_paths.py` computes the map numbers, so change the doc in
+the same commit as any `register()` edit.)
 
-**The deployed path cannot be derived from the repo path.** Only 131 of the 386
-follow the obvious "strip the leading `ops/`" rule. **255 follow no rule at all**,
+**The deployed path cannot be derived from the repo path.** Only 131 of the 383
+follow the obvious "strip the leading `ops/`" rule. **252 follow no rule at all**
+(plus the 5 `${HOME}/` shapes = 257 of the full 388),
 and every one of those also drops a subdirectory:
 
 | repo | deployed |
@@ -167,7 +172,7 @@ to `${CORTEX_DEPLOY_HOME}` (normally `~/.steadfaste-fleet`) and the mapping is
 | `ops/scripts/judgment.py` | `scripts/judgment.py` |
 | `ops/offline/hermes_paths.py` | `offline/hermes_paths.py` |
 
-Of the same 386 `register()` calls, **255 follow no derivable rule** — the first two rows
+Of the same 383 `${CORTEX_DEPLOY_HOME}/` `register()` calls (388 in total with the `${HOME}/` shapes), **252 follow no derivable rule** — the first two rows
 above both live under `ops/scripts/manage/` and deploy to different depths.
 
 So a component that *guesses* — strip `ops/`, strip a subdir, try a short list of
