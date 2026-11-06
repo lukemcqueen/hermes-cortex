@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """fleet-bus-processor.py — Companion script for bus message processing.
 
-Runs every 10m as a no_agent watchdog. Checks the Agent Bus for
-new broadcast messages via the bus library (lib.fleet_bus).
+Designed to run as a 10m no_agent watchdog (the schedule is
+host/bridge-configured — the fleet cron manifest does not install this
+script; do not assume a cron exists unless one is configured). Checks the
+Agent Bus for new broadcast messages via the bus library
+(lib.fleet_bus, a sibling module — an already-deployed fleet package).
 Silent when nothing new.
 
 Uses bus_list_queues() to peek at queue depths (non-consuming),
@@ -79,6 +82,7 @@ def get_broadcast_topics() -> list[str]:
 def main() -> int:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     seen = set()
+    corr_seen = set()
     if SEEN_FILE.exists():
         seen = {line.strip() for line in SEEN_FILE.read_text().splitlines() if line.strip()}
 
@@ -122,7 +126,10 @@ def main() -> int:
         }))
         return 0
 
-    # Peek at messages — read, inspect, archive (non-destructive)
+    # Read messages under a visibility timeout (vt=30 — unarchived messages
+    # return to the queue), classify, then ARCHIVE the processed ones
+    # (bus_archive moves them to the archive store; that is this script's
+    # intended action, not accidental consumption).
     unread_count = 0
     urgent_count = 0
     new_broadcasts = 0
@@ -158,11 +165,17 @@ def main() -> int:
                 new_broadcasts += 1
 
         messages_read.append(msg_id)
+        if corr:
+            corr_seen.add(corr)
         bus_archive(inbox_queue, msg_id)
 
-    # Record seen IDs
+    # Record seen IDs — msg_id AND correlation_id, so the dedup check
+    # (corr not in seen and msg_id not in seen) can actually match on the
+    # correlation id on later runs (legacy code persisted only msg_id,
+    # leaving the corr branch always-true).
     for mid in messages_read:
         seen.add(mid)
+    seen.update(corr_seen)
     SEEN_FILE.write_text("\n".join(sorted(seen)))
 
     has_work = new_broadcasts > 0 or urgent_count > 0

@@ -124,6 +124,22 @@ def test_malformed_body_is_audible_not_swallowed(env, capsys):
     assert "unparsed message body" in captured.err
 
 
+def test_correlation_id_is_persisted_for_dedup(env, capsys):
+    """A repeated correlation_id (new msg_id) must dedup on the SECOND run —
+    the fix that persists corr ids; legacy code only stored msg_ids."""
+    proc, stub, tmp_path = env
+    stub.queues = [{"name": "inbox_tester", "depth": 1}]
+    stub.reads = [{"msg_id": "m1", "correlation_id": "thread-1",
+                   "body": {"topic": "all", "priority": "normal"}}]
+    proc.main(); capsys.readouterr()
+    stub.queues = [{"name": "inbox_tester", "depth": 1}]
+    stub.reads = [{"msg_id": "m2", "correlation_id": "thread-1",
+                   "body": {"topic": "all", "priority": "normal"}}]
+    proc.main()
+    out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert out["new_broadcasts"] == 0, "same correlation id must dedup across runs"
+
+
 def test_default_topics_on_corrupt_registry(env, capsys, tmp_path):
     proc, stub, _ = env
     reg = tmp_path / ".hermes" / "state" / "agent-registry.json"

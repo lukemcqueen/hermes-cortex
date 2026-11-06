@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-cortex-bus-bridge-generate.py — generate systemd user timer units for simple
+fleet-bus-bridge-generate.py — generate systemd user timer units for simple
 no_agent cron jobs (component-hermes-separation S2a).
 
 Reads ~/.hermes/cron/jobs.json, and for each SIMPLE no_agent job (a pure
@@ -9,7 +9,7 @@ job that needs only a scheduler + a messenger, not the Hermes agent loop),
 writes a user-scope systemd pair:
 
     ~/.config/systemd/user/<name>.service
-                      ExecStart=.../cortex-bus-bridge-run.py --name <name> --script <script>
+                      ExecStart=.../fleet-bus-bridge-run.py --name <name> --script <script>
     ~/.config/systemd/user/<name>.timer
                       OnCalendar=<converted-from-cron-expr>
 
@@ -40,14 +40,17 @@ LIMITS (deliberate):
 - This GENERATES the units (+ writes them to ~/.config/systemd/user/); it does
   NOT auto-enable. The caller runs `systemctl --user daemon-reload` then
   `systemctl --user enable --now <name>.timer` per job, in the planned sequence.
-- Unit name prefix:  cortex-bridge-  (so `systemctl --user list-timers` groups
+- Unit name prefix:  cortex-bridge-  (KEPT: the live bridge units + their 53
+  timers carry this infra name; unit/service renames are P5-deferred by the
+  rename plan alongside cortex-bus.service. File/runner names are fleet-*;
+  the unit prefix follows in P5.)  — so `systemctl --user list-timers` groups
   the bridge together and they're unmistakably ours).
 
 Usage:
-    python3 cortex-bus-bridge-generate.py                # write all simple units
-    python3 cortex-bus-bridge-generate.py --dry-run      # print, don't write
-    python3 cortex-bus-bridge-generate.py --only <name>  # one job
-    python3 cortex-bus-bridge-generate.py --repair       # add KillMode=process
+    python3 fleet-bus-bridge-generate.py                # write all simple units
+    python3 fleet-bus-bridge-generate.py --dry-run      # print, don't write
+    python3 fleet-bus-bridge-generate.py --only <name>  # one job
+    python3 fleet-bus-bridge-generate.py --repair       # add KillMode=process
                                                          # to already-deployed
                                                          # bridge units
 
@@ -253,7 +256,7 @@ def unit_text(name: str, script: str, runner: str) -> tuple[str, str] | None:
     # schedule passed in via closure in main; this helper is schedule-free for
     # clarity — the caller injects OnCalendar.
     service = f"""[Unit]
-Description=Cortex bridge — {name} (no_agent cron, standalone runner)
+Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5  # bridge infra name kept until P5
 
 [Service]
 Type=oneshot
@@ -271,7 +274,7 @@ def repair_units() -> int:
 
     Never silent about a unit it could not read or write: unreadable/unwritable
     units are counted and named, and the run exits non-zero, so a partial repair
-    cannot be mistaken for a complete one (adversarial finding ADV-0-1).
+    cannot be mistaken for a complete one (adversarial finding a prior adversarial finding (2026-10 bridge repair review)).
     """
     units = sorted(_UNITS.glob(f"{_PREFIX}*.service")) if _UNITS.is_dir() else []
     repaired, ok, failed = 0, 0, []
@@ -331,7 +334,7 @@ def main() -> int:
     jobs = data if isinstance(data, list) else data.get("jobs", [])
 
     repo_root = Path(__file__).resolve().parent.parent.parent  # ops/scripts → repo
-    runner_path = repo_root / "ops" / "scripts" / "cortex-bus-bridge-run.py"
+    runner_path = repo_root / "ops" / "scripts" / "fleet-bus-bridge-run.py"
 
     written = 0
     skipped = 0
@@ -356,7 +359,7 @@ def main() -> int:
         timer_path = _UNITS / f"{unit}.timer"
 
         service_text = f"""[Unit]
-Description=Cortex bridge — {name} (no_agent cron, standalone runner)
+Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5  # bridge infra name kept until P5
 
 [Service]
 Type=oneshot

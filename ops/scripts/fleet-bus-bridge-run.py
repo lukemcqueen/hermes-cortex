@@ -99,11 +99,12 @@ def _deliver(text: str, job: str, deliver: str = "") -> None:
         sys.path.insert(0, str(_SCRIPTS_DIR))
         from lib.telegram_notify import notify  # ops/scripts/lib on path
         notify(text, subject=f"cron:{job}")
-    except ImportError:
-        from lib.telegram_notify import notify  # type: ignore
-        notify(text, subject=f"cron:{job}")
     except Exception:
         # Delivery failure must not fail the unit (timer health > delivery).
+        # One handler for ALL delivery failures — an ImportError fallback that
+        # re-imports the same module would raise the SAME ImportError from a
+        # scope nothing catches (and could never succeed where the first
+        # import failed), so there is deliberately no second import.
         import traceback
         print(f"[bridge] delivery failed for {job}:", file=sys.stderr)
         traceback.print_exc()

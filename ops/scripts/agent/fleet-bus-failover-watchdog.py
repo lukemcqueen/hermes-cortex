@@ -10,8 +10,11 @@ ROLE BEHAVIOR
   IDLE       Moses healthy → silent.
   DEGRADED   1-2 consecutive failed checks → warn ONCE on first failure.
   FAILOVER   3+ consecutive failures AND elapsed >= FAILOVER_MIN_DOWN_MINUTES
-             → ACTIVATE: swap Esther's .env primary/fallback,
-               write .failover-active marker, notify fleet, report.
+             → ACTIVATE: swap Esther's .env primary/fallback, write the
+               .failover-active marker (MARKER_FILE.write_text in the
+               activate branch), notify fleet (notify_fleet), report.
+               Provenance anchors: marker ~line 311, notify ~line 315,
+               restore/unlink ~line 338, restore notify ~line 343.
   RECOVERED  Moses healthy 3 consecutive checks while failover active
              → RESTORE: swap config back, remove marker, notify fleet, report.
   Executes for real by default (FAILOVER_DRY_RUN=0) — that is the point of
