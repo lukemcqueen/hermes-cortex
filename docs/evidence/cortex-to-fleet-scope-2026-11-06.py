@@ -12,6 +12,23 @@ os.chdir(REPO)
 
 EXCLUDE_DIRS = ("docs/older/", "docs/evidence/", "tests/artifacts/", "docs/reviews/")
 
+# The documents that DESCRIBE this change mention the very tokens being counted, so
+# including them makes every figure grow each time the plan is edited — a count that
+# changes under the reader's feet. They are excluded from the token counts and from
+# the path inventory; the exclusion is printed so a "0 residuals" claim cannot read
+# as coverage of everything.
+SELF_EXCLUDES = (
+    "docs/plans/cortex-to-fleet-rename-plan.md",
+    "docs/evidence/cortex-to-fleet-scope-2026-11-06.py",
+    "docs/evidence/cortex-to-fleet-scope-2026-11-06.txt",
+    "docs/evidence/cortex-to-fleet-worktree-2026-11-06.sh",
+    "docs/evidence/cortex-to-fleet-worktree-2026-11-06.txt",
+)
+
+
+def excluded(f: str) -> bool:
+    return f.startswith(EXCLUDE_DIRS) or f in SELF_EXCLUDES
+
 FAMILIES = [
     ("cortex- (hyphen)",       re.compile(r"cortex-")),
     ("cortex_ (underscore)",   re.compile(r"cortex_")),
@@ -52,7 +69,7 @@ def main() -> int:
             if n:
                 hits[f] = n
         total = sum(hits.values())
-        inscope = sum(v for k, v in hits.items() if not k.startswith(EXCLUDE_DIRS))
+        inscope = sum(v for k, v in hits.items() if not excluded(k))
         print(f"{label:26s} {total:8d} {len(hits):7d} {inscope:9d}")
 
     print("\n## 2. In-scope carriers, top 5 by hit count")
@@ -63,14 +80,19 @@ def main() -> int:
         if p.suffix == ".pyc" or not p.is_file():
             continue
         hits[f] = len(rx.findall(p.read_text(errors="replace")))
-    inscope_hits = {k: v for k, v in hits.items() if not k.startswith(EXCLUDE_DIRS)}
+    inscope_hits = {k: v for k, v in hits.items() if not excluded(k)}
     for f, n in collections.Counter(inscope_hits).most_common(5):
         print(f"  {n:5d}  {f}")
 
     print("\n## 3. Tracked paths containing 'cortex' (excluding mycortex)")
     named = [f for f in files if "cortex" in f.lower() and "mycortex" not in f.lower()]
-    records = [f for f in named if f.startswith(EXCLUDE_DIRS)]
+    records = [f for f in named if excluded(f)]
     print(f"  total = {len(named)}   records(excluded) = {len(records)}   live = {len(named) - len(records)}")
+    print("  excluded (records + the documents describing this change):")
+    for d in EXCLUDE_DIRS:
+        print(f"    dir  {d}")
+    for d in SELF_EXCLUDES:
+        print(f"    self {d}")
 
     print("\n## 4. register() map — exact count in cortex-update.sh")
     upd = REPO / "ops/scripts/cortex-update.sh"
@@ -86,7 +108,7 @@ def main() -> int:
     names = collections.Counter()
     for f in files:
         p = REPO / f
-        if p.suffix == ".pyc" or not p.is_file():
+        if p.suffix == ".pyc" or not p.is_file() or excluded(f):
             continue
         try:
             for m in re.findall(r"CORTEX_[A-Z0-9_]+", p.read_text(errors="replace")):
@@ -103,6 +125,46 @@ def main() -> int:
     my = sh("git", "grep", "-c", "mycortex")
     n_files = len([l for l in my.splitlines() if l.strip()])
     print(f"  files containing 'mycortex' = {n_files}")
+
+    print("\n## 7. CORTEX_ delta — family counter vs identifier-token counter")
+    print("  The two counts quoted in the plan are NOT the same measurement. Both come")
+    print("  from THIS run; a replacement driven by the family counter rewrites prose")
+    print("  wildcards too, and a residue grep driven by the identifier counter misses them.")
+    fam = ident = 0
+    delta_next = collections.Counter()
+    sites = []
+    for f in files:
+        p = REPO / f
+        if p.suffix == ".pyc" or not p.is_file():
+            continue
+        try:
+            txt = p.read_text(errors="replace")
+        except Exception:
+            continue
+        if not excluded(f):
+            fam += len(re.findall(r"CORTEX_", txt))
+            ident += len(re.findall(r"CORTEX_[A-Z0-9_]+", txt))
+        for m in re.finditer(r"CORTEX_", txt):
+            nxt = txt[m.end():m.end() + 1]
+            if not re.match(r"[A-Z0-9_]", nxt or ""):
+                delta_next[nxt] += 1
+                sites.append((f, txt.count("\n", 0, m.start()) + 1))
+    print(f"  family  r'CORTEX_'            = {fam}")
+    print(f"  ident   r'CORTEX_[A-Z0-9_]+'  = {ident}")
+    print(f"  delta                         = {fam - ident}")
+    print("  both counters EXCLUDE the files listed in §3, so the pair is stable across")
+    print("  edits to this plan (it mentions CORTEX_* itself and would otherwise inflate")
+    print("  its own numbers on every rewrite).")
+    print("  char following each trailing occurrence (all files, incl. excluded):")
+    for ch, n in delta_next.most_common():
+        print(f"    {n:4d}  {ch!r}")
+    print(f"  sites (file:line) — first 6 of {len(sites)}:")
+    for f, ln in sites[:6]:
+        print(f"    {f}:{ln}")
+    print("  NOTE: a replacement driven by the FAMILY counter rewrites prose wildcard")
+    print("  mentions too; a residue grep driven by the IDENTIFIER counter will not see")
+    print("  them. Use the family counter for the sweep and the identifier counter for")
+    print("  the env-var inventory, and never mix the two in one claim.")
 
     return 0
 

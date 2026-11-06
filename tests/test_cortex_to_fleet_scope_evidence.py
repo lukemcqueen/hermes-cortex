@@ -115,3 +115,22 @@ def test_register_map_count_is_distinguished_from_token_count():
     assert len(block) == 2, "register() section absent"
     assert re.search(r"leading-anchored register .+ calls = \d+", block[1])
     assert re.search(r"all occurrences of the token 'register' = \d+", block[1])
+
+
+def test_cortex_delta_section_reconciles_the_two_counts():
+    """§4.2 quotes a family count AND an identifier count; the delta must be derivable."""
+    res = _run()
+    assert res.returncode == 0, f"collector rc={res.returncode}: {res.stderr[:400]}"
+    block = res.stdout.split("## 7. CORTEX_ delta", 1)
+    assert len(block) == 2, "CORTEX_ delta section absent — the two counts cannot be reconciled"
+    body = block[1]
+
+    fam = re.search(r"family\s+r'CORTEX_'\s+=\s+(\d+)", body)
+    ident = re.search(r"ident\s+r'CORTEX_\[A-Z0-9_\]\+'\s+=\s+(\d+)", body)
+    delta = re.search(r"delta\s+=\s+(\d+)", body)
+    assert fam and ident and delta, "delta section did not report all three figures"
+
+    f, i, d = int(fam.group(1)), int(ident.group(1)), int(delta.group(1))
+    assert f >= i, f"family count {f} must be >= identifier count {i}"
+    assert d == f - i, f"reported delta {d} != family({f}) - ident({i})"
+    assert d > 0, "delta must be positive — the plan's whole point is that the two differ"

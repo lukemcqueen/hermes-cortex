@@ -23,28 +23,35 @@ schema, roles and CLI. Out of scope (§3.2).
 
 ## 2. Measured scope
 
-Computed 2026-11-06 over `git ls-files` (3,511 tracked files), compiled caches skipped.
+Computed 2026-11-06 over `git ls-files` (3,517 tracked files), compiled caches skipped.
 
 > **Evidence (committed in this cycle, re-runnable):**
 > `docs/evidence/cortex-to-fleet-scope-2026-11-06.py` + `.txt` — emits §2, §4.2 and §9.2 verbatim.
 > `docs/evidence/cortex-to-fleet-worktree-2026-11-06.sh` + `.txt` — emits §4.7 and §4.8 verbatim.
-> Both are READ-ONLY and are run from the repo root; every number below comes from those runs.
-> Each `.txt` is the captured stdout of its sibling script, recorded at `HEAD = 36670678` with
-> `origin/main` at the same sha.
+> Both are READ-ONLY and are run from the repo root. Each `.txt` is the captured stdout of its
+> sibling script, recorded at `HEAD = 36670678` with `origin/main` at the same sha.
+>
+> **Every figure in this document is from that one run.** Two columns are reported because they
+> answer different questions: `total` counts every tracked text file, `in-scope` excludes the
+> *records* (`docs/older/`, `docs/evidence/`, `tests/artifacts/`, `docs/reviews/`) **and the
+> documents that describe this change** — this plan and its four evidence files mention the very
+> tokens being counted, so including them would make each figure grow every time the plan is
+> rewritten. The plan quotes **in-scope** unless it says otherwise, and the exclusion list is
+> printed in the evidence §3.
 
-| token family | total hits | files | **in-scope** hits |
+| token family | total (all files) | files | **in-scope** |
 |---|---:|---:|---:|
-| `cortex-` (hyphen) | 6,449 | 1,017 | 3,898 |
-| `cortex_` (underscore) | 2,552 | 579 | 2,070 |
-| `CORTEX_` (env / const) | 3,366 | 489 | 3,141 |
-| `Cortex` (title case) | 413 | 172 | 276 |
-| `\bcortex\b` (bare word) | 4,025 | 659 | 908 |
-| **in-scope total** | | | **≈ 10,293** |
+| `cortex-` (hyphen) | 6,578 | 1,022 | 3,902 |
+| `cortex_` (underscore) | 2,586 | 582 | 2,072 |
+| `CORTEX_` (env / const) | 3,417 | 492 | 3,146 |
+| `Cortex` (title case) | 420 | 174 | 276 |
+| `\bcortex\b` (bare word) | 4,056 | 662 | 909 |
+| **in-scope total** | | | **10,305** |
 
-Tracked paths whose name contains `cortex` (excluding `mycortex`): **192**, of which **32** are
-records → **160 live paths** to rename.
+Tracked paths whose name contains `cortex` (excluding `mycortex`): **198**, of which **37** are
+excluded → **161 live paths** to rename.
 
-Bare-`cortex` is concentrated in record directories; the in-scope bare-word count is only 908.
+Bare-`cortex` is concentrated in record directories; the in-scope bare-word count is only 909.
 
 ### 2.1 Densest in-scope carriers (measured)
 
@@ -57,7 +64,8 @@ Bare-`cortex` is concentrated in record directories; the in-scope bare-word coun
 ```
 
 `ops/scripts/cortex-update.sh` holds **346** `register "<repo>" "<deployed>"` map entries — the
-single densest file and the governance-critical one (§4.1). See §9.2 for the count reconciliation.
+single densest file and the governance-critical one (§4.1). See §9 item 2 for the count
+reconciliation.
 
 
 ---
@@ -76,7 +84,7 @@ table is derived from it verbatim.
 | Scripts / modules | `cortex-doctor.py`, `cortex-health.sh`, `cortex-dogfood.sh`, `cortex-context.py`, `cortex-sandbox.py`, `cortex-agent-manager.py`, `cortex-bus-bridge-*.py`, `cortex-bus-mcp.py`, `cortex-context-mcp.py`, `cortex-sandbox-mcp.py`, `cortex-bus-processor.py`, `cortex-bus-remediate.sh`, `cortex-bus-failover-watchdog.py`, `cortex-profile.sh`, `fix-cortex-venv.py`, `setup-cortex-bus.sh`, `install-cortex-update-cron.sh`, `cortex-update-mutex.py`, `cortex-setup-langfuse.sh` | same with `fleet-` / `fleet_` |
 | Config / unit templates | `ops/install/deploy/config/cortex-config.yaml`, `ops/install/deploy/cortex-bus.service`, `hermes-cortex.env.example`, `docs/templates/cortex-gateway.service`, `docs/templates/com.hermes.cortex-gateway.plist`, `com.hermes.cortex-dashboard.plist`, `ops/services/dashboard/com.hermes.cortex-dashboard.plist` | `fleet-*` |
 | Pi-harness extensions | `cortex-context.ts`, `cortex-governance.ts` | `fleet-context.ts`, `fleet-governance.ts` |
-| Env vars | `CORTEX_*` — **~150 distinct names**, 3,366 hits | `FLEET_*` |
+| Env vars | `CORTEX_*` — **139 distinct names**, 3,146 in-scope occurrences (3,417 all-files) | `FLEET_*` |
 | systemd units | `cortex-bridge-*` (~90 service + timer + `.wants`), `cortex-bus.service`, `cortex-gateway.service`, `cortex-gateway-<agent>.service` | `fleet-bridge-*`, `fleet-bus`, `fleet-gateway` |
 | Cron names (`~/.hermes/cron/jobs.json`) | `cortex-bus-workday`, `cortex-bus-evening`, `cortex-bus-overnight` | `fleet-bus-workday`, `fleet-bus-evening`, `fleet-bus-overnight` |
 | Skill load keys | `cortex-bus`, `cortex-bus-automation`, `cortex-bus-inbox`, `cortex-bus-messaging`, `cortex-bus-polling`, `cortex-preflight`, `cortex-deployment-sync` | `fleet-bus*`, `fleet-preflight`, `fleet-deployment-sync` |
@@ -158,15 +166,30 @@ deploy-reload comments (142, 829, 3280, 3312–3319).
 
 ### 4.2 🔴 Env vars live outside the repo
 
-**139** distinct `CORTEX_*` names, **3,356** occurrences. The **values** live in files a repo sweep
-cannot touch: `~/.steadfaste-fleet/.env`, `~/.steadfaste-fleet/agent.env`, systemd `Environment=` /
-`EnvironmentFile=`, nginx site configs (`CORTEX_NGINX_PORT_PREFIX`, `CORTEX_DOMAIN`), the Pi-harness
-manifests, and every peer host's own `.env`. Top carriers (measured):
+**139 distinct** `CORTEX_*` identifier names, **3,133** occurrences (in-scope). Two counters exist
+and they are **deliberately different measurements — never mix them in one claim**. Both are
+reported in the evidence §7 from the same run:
+
+| counter | regex | in-scope | what it is for |
+|---|---|---:|---|
+| family | `CORTEX_` | 3,146 | **drives the sweep** — catches prose wildcard mentions too |
+| identifier | `CORTEX_[A-Z0-9_]+` | 3,133 | **drives the env-var inventory** — real names only |
+
+The **13-token delta** is `CORTEX_` followed by a character that cannot continue an identifier —
+measured, every one is a **prose wildcard mention** written `` `CORTEX_*` `` in docs
+(`docs/DOCS-INDEX.md:79`, `docs/env-vars.md:3`, …), not an env var name. This matters in both
+directions: a replacement driven by the family counter rewrites prose wildcards too, and a residue
+grep driven by the identifier counter will never see them.
+
+The **values** live in files a repo sweep cannot touch: `~/.steadfaste-fleet/.env`,
+`~/.steadfaste-fleet/agent.env`, systemd `Environment=` / `EnvironmentFile=`, nginx site configs
+(`CORTEX_NGINX_PORT_PREFIX`, `CORTEX_DOMAIN`), the Pi-harness manifests, and every peer host's own
+`.env`. Top carriers (measured, same run):
 
 ```
-717 CORTEX_DEPLOY_HOME      479 CORTEX_REPO          250 CORTEX_HOME
-193 CORTEX_BUS_URL          132 CORTEX_SESSION_REPO  126 CORTEX_BUS_TOKEN
- 97 CORTEX_BASIC_AUTH        88 CORTEX_BUS_FALLBACK_URL
+674 CORTEX_DEPLOY_HOME      450 CORTEX_REPO          236 CORTEX_HOME
+180 CORTEX_BUS_URL          121 CORTEX_BUS_TOKEN     111 CORTEX_SESSION_REPO
+ 93 CORTEX_BASIC_AUTH        88 CORTEX_OS
 ```
 
 A repo-only rename of these produces a **silent** fall-through to defaults (`CORTEX_DEPLOY_HOME`
@@ -309,9 +332,10 @@ The phase that must not break the deploy chain.
    (the `(hermes-cortex|steadfaste-fleet)` dual-accept pattern), in its own commit, deployed and
    **verified by exercising both the old and the new deploy invocation**.
 2. `git mv ops/scripts/cortex-update.sh ops/scripts/fleet-update.sh`; keep a `cortex-update.sh`
-   **forwarding shim** for one release; update all 353 `register()` deployed-path targets and every
-   caller (`cortex-dogfood.sh:23`, `pre-push-pull`, `install-crons.sh`,
-   `install-cortex-update-cron.sh`, the bridge generator, the doctor's expected lists).
+   **forwarding shim** for one release; update all **346** `register()` deployed-path targets (§9
+   item 2 — reconcile the base count first) and every caller (`cortex-dogfood.sh:23`,
+   `pre-push-pull`, `install-crons.sh`, `install-cortex-update-cron.sh`, the bridge generator, the
+   doctor's expected lists).
 3. Sweep the remaining script/module filenames from §3.1.
 
 **Exit:** `bash -n` all; the deploy runs **from the new name** on a host (RC=0, doctor 0 fail);
@@ -374,7 +398,7 @@ the migration is proven idempotent by running it twice.
 ## 6. Strategy — staged (recommended) vs big-bang
 
 **Recommended: the staged plan above.** Three of the §4 contracts — the sanctioned deploy regex,
-~150 env vars living in host files, hand-installed systemd units — fail *silently* and *per host*.
+139 env vars living in host files, hand-installed systemd units — fail *silently* and *per host*.
 A single-commit sweep cannot be verified on one host and shipped; it has to be correct on four-plus
 hosts simultaneously with no intermediate observable state. Staging buys one observable checkpoint
 per contract, and the compat shims make rollback a `git revert` rather than a per-host rewrite.
@@ -384,9 +408,9 @@ the swept token was mostly paths under one home directory, with a transition sym
 misses. Here there is no symlink to absorb a missed `CORTEX_*` read or a missed unit name; the
 failure mode is a silently wrong default.
 
-**Rejected — names only, keep `CORTEX_*`.** The env vars are 3,141 in-scope hits and the loudest
+**Rejected — names only, keep `CORTEX_*`.** The env vars are 3,146 in-scope hits and the loudest
 brand straggler, but also the most expensive and least valuable item (§4.2). If proportionality
-wins, P4 becomes optional and the token set shrinks to ≈ 7,150. **This is §10 Q3.**
+wins, P4 becomes optional and the token set shrinks to 7,159. **This is §10 Q3.**
 
 ---
 
@@ -452,7 +476,7 @@ wins, P4 becomes optional and the token set shrinks to ≈ 7,150. **This is §10
   applies, the boundary changes. Needs the history from Moses before P0 closes.
 - **Q2.** Does the dashboard unit join this rename, or stay `hermes-cortex-dashboard` per the
   2026-11-04 follow-ups? §3.1 and §3.3 currently contradict each other on this one artifact.
-- **Q3.** Scope: full sweep (≈ 10,293 hits including `CORTEX_*`), or names-only (≈ 7,150, env vars
+- **Q3.** Scope: full sweep (10,305 in-scope hits including `CORTEX_*`), or names-only (≈ 7,159, env vars
   deferred to their own release)? §6.
 - **Q4.** Fold the four `hermes-cortex*` skills in now, or leave them to a third sweep? Their
   `name:` is a load key and a separate gate-rewiring job.
@@ -464,7 +488,7 @@ wins, P4 becomes optional and the token set shrinks to ≈ 7,150. **This is §10
 | Option | Why rejected |
 |---|---|
 | Big-bang single sweep | No symlink absorbs a missed `CORTEX_*` read or unit name; failures are silent and per-host (§6) |
-| Names-only, keep `CORTEX_*` | Leaves 3,141 of ≈ 10,293 hits — kept as §10 Q3, not dismissed |
+| Names-only, keep `CORTEX_*` | Leaves 3,146 of 10,305 in-scope hits — kept as §10 Q3, not dismissed |
 | Leave `cortex` as-is | It is the last framework brand straggler; the 2026-11-04 rename explicitly deferred it as "a SECOND, larger sweep with its own runtime-contract risks". This is that sweep |
 | Rename the DB / role to match | `mycortex` is a different product with live data; out of scope (§3.2) |
 

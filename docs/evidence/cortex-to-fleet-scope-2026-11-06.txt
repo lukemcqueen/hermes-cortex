@@ -1,15 +1,15 @@
 ========================================================================
 REPO=$HOME/steadfaste-fleet
-cmd: git ls-files | wc -l   ->  tracked files = 3511
+cmd: git ls-files | wc -l   ->  tracked files = 3517
 ========================================================================
 
 ## 1. Token families (tracked text files, .pyc skipped)
 family                        total   files  in-scope
-cortex- (hyphen)               6449    1017      3898
-cortex_ (underscore)           2552     579      2070
-CORTEX_ (env/const)            3366     489      3141
-Cortex (titlecase)              413     172       276
-\bcortex\b (bare)              4025     659       908
+cortex- (hyphen)               6588    1023      3902
+cortex_ (underscore)           2588     583      2072
+CORTEX_ (env/const)            3430     493      3146
+Cortex (titlecase)              421     175       276
+\bcortex\b (bare)              4058     663       909
 
 ## 2. In-scope carriers, top 5 by hit count
     817  ops/scripts/cortex-update.sh
@@ -19,7 +19,17 @@ Cortex (titlecase)              413     172       276
      94  tests/test_skills_ownership.py
 
 ## 3. Tracked paths containing 'cortex' (excluding mycortex)
-  total = 192   records(excluded) = 32   live = 160
+  total = 198   records(excluded) = 37   live = 161
+  excluded (records + the documents describing this change):
+    dir  docs/older/
+    dir  docs/evidence/
+    dir  tests/artifacts/
+    dir  docs/reviews/
+    self docs/plans/cortex-to-fleet-rename-plan.md
+    self docs/evidence/cortex-to-fleet-scope-2026-11-06.py
+    self docs/evidence/cortex-to-fleet-scope-2026-11-06.txt
+    self docs/evidence/cortex-to-fleet-worktree-2026-11-06.sh
+    self docs/evidence/cortex-to-fleet-worktree-2026-11-06.txt
 
 ## 4. register() map — exact count in cortex-update.sh
   cmd: grep -cE '^[[:space:]]*register[[:space:]]+"' ops/scripts/cortex-update.sh
@@ -29,15 +39,46 @@ Cortex (titlecase)              413     172       276
 
 ## 5. CORTEX_* env var names — distinct count + top carriers
   distinct CORTEX_* names = 139
-  total occurrences       = 3356
-      717  CORTEX_DEPLOY_HOME
-      479  CORTEX_REPO
-      250  CORTEX_HOME
-      193  CORTEX_BUS_URL
-      132  CORTEX_SESSION_REPO
-      126  CORTEX_BUS_TOKEN
-       97  CORTEX_BASIC_AUTH
-       88  CORTEX_BUS_FALLBACK_URL
+  total occurrences       = 3133
+      674  CORTEX_DEPLOY_HOME
+      450  CORTEX_REPO
+      236  CORTEX_HOME
+      180  CORTEX_BUS_URL
+      121  CORTEX_BUS_TOKEN
+      111  CORTEX_SESSION_REPO
+       93  CORTEX_BASIC_AUTH
+       88  CORTEX_OS
 
 ## 6. mycortex post-condition (must be unchanged by the sweep)
-  files containing 'mycortex' = 427
+  files containing 'mycortex' = 431
+
+## 7. CORTEX_ delta — family counter vs identifier-token counter
+  The two counts quoted in the plan are NOT the same measurement. Both come
+  from THIS run; a replacement driven by the family counter rewrites prose
+  wildcards too, and a residue grep driven by the identifier counter misses them.
+  family  r'CORTEX_'            = 3146
+  ident   r'CORTEX_[A-Z0-9_]+'  = 3133
+  delta                         = 13
+  both counters EXCLUDE the files listed in §3, so the pair is stable across
+  edits to this plan (it mentions CORTEX_* itself and would otherwise inflate
+  its own numbers on every rewrite).
+  char following each trailing occurrence (all files, incl. excluded):
+      27  '*'
+       7  ' '
+       5  '['
+       5  '`'
+       4  '"'
+       3  "'"
+       1  '|'
+       1  '\\'
+  sites (file:line) — first 6 of 53:
+    docs/DOCS-INDEX.md:79
+    docs/env-vars.md:3
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:35
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:35
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:76
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:107
+  NOTE: a replacement driven by the FAMILY counter rewrites prose wildcard
+  mentions too; a residue grep driven by the IDENTIFIER counter will not see
+  them. Use the family counter for the sweep and the identifier counter for
+  the env-var inventory, and never mix the two in one claim.
