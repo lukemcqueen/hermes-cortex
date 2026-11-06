@@ -102,7 +102,7 @@ table is derived from it verbatim.
 | systemd units | `cortex-bridge-*` (~90 service + timer + `.wants`), `cortex-bus.service`, `cortex-gateway.service`, `cortex-gateway-<agent>.service`, `hermes-cortex-dashboard.service` (Q2) | `fleet-bridge-*`, `fleet-bus`, `fleet-gateway`, `fleet-dashboard` |
 | Cron names (`~/.hermes/cron/jobs.json`) | `cortex-bus-workday`, `cortex-bus-evening`, `cortex-bus-overnight` | `fleet-bus-workday`, `fleet-bus-evening`, `fleet-bus-overnight` |
 | Skill load keys | `cortex-bus`, `cortex-bus-automation`, `cortex-bus-inbox`, `cortex-bus-messaging`, `cortex-bus-polling`, `cortex-preflight`, `cortex-deployment-sync` | `fleet-bus*`, `fleet-preflight`, `fleet-deployment-sync` |
-| Live docs | `docs/design/cortex-gateway.md`, `cortex-gateway-parity.md`, `cortex-memory-session-mcp.md`; `docs/runbooks/cortex-env-migration.md` | `fleet-*` |
+| Live docs (paths) | `docs/design/cortex-gateway.md`, `cortex-gateway-parity.md`, `cortex-memory-session-mcp.md`; `docs/runbooks/cortex-env-migration.md` | `fleet-*` — **renamed in P3** (resolved 2026-11-06: these paths are referenced from 22 files incl. code, tests and a golden fixture, so they co-commit with the script-name sweep; **P1 does prose only, not these path renames**) |
 | Prose | `Cortex` / `cortex` where it names the framework | `Fleet` / `fleet` |
 
 ### 3.2 KEEP — `mycortex` is a different product
@@ -353,10 +353,12 @@ that is *observed*, not asserted.
 **Exit:** index clean; residue count 0; boundary doc committed; the four decisions recorded and
 greppable; the register-count base settled and recorded.
 
-### P1 — Non-runtime prose and live doc paths
-README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, `docs/` prose, and the live design/runbook/template
-*filenames* from §3.1. No runtime contract — this is the shakedown of the replacement engine and
-its mangle scan before anything load-bearing is touched.
+### P1 — Non-runtime prose (token sweep only) — resolved 2026-11-06
+README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md and `docs/` prose where `cortex`/`Cortex` names the
+framework — with the §3.2/§3.4 guards and the record/self-exclusions applied. **No file renames in
+P1.** Live doc *path* renames (the `cortex-gateway.md` family) co-commit with P3 because they are
+referenced from code, tests and a golden fixture — see §3.1. This is the shakedown of the
+replacement engine and its mangle scan before anything load-bearing is touched.
 
 **Exit:** residue grep 0 in scope; `docs/DOCS-INDEX.md` links resolve; `pre-commit-doc-audit.sh`
 passes.
