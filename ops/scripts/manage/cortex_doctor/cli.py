@@ -62,6 +62,7 @@ from .checks import (
     check_stale_loop_gov_daemon,
     check_task_id_hygiene,
     check_harness_registry,
+    check_harness_doc_conflicts,
 )
 from .fix import apply_fixes
 from .bus_alert import dispatch_bus_alerts
@@ -119,6 +120,7 @@ def main():
         check_nginx_dir_purity,
         check_governance,
         check_harness_registry,
+        check_harness_doc_conflicts,
         check_local_hooksPath_overrides,
         check_install,
         check_install_sh_refs,
