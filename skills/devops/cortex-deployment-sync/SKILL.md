@@ -279,6 +279,61 @@ GIT_EDITOR="true" git rebase --continue
 
 After pulls, local `main` typically carries `auto: block N suspect IPs [pipeline]` commits ahead of origin. This is normal — the threat-pipeline pushes its own commits. During "pull latest" do NOT push them. The doctor's `⚠️ Repo sync` warning reflects this; it's benign.
 
+## Pitfall 26: A RENAME leaves the old deployed files behind as `Stale deploy` orphans
+
+When a CLI/script is renamed, the deploy map gains a `register()` for the NEW name
+and drops the old one — but `cortex-update.sh` only deploys what is registered; it
+does NOT remove a previously-deployed file whose `register()` line is gone unless the
+`clean_stale_deploys()` pass recognises it. The result is the doctor reporting both
+the new tool ✅ AND `⚠️  Stale deploy: scripts/<old-name>.py`, permanently, on every
+doctor run. Nothing is broken — the new tool works — but the warning is real and the
+file is dead weight that confuses the next reader into thinking the old tool exists.
+
+**Measured case (2026-11-06):** the `hc` CLI was renamed to `fleet` in commit
+`aa2de1ee` (`ops/scripts/hc/hc.py` → `ops/scripts/fleet/fleet.py`). The deploy map
+registered `ops/scripts/fleet/fleet.py` + `harness.py` (and a `bin/hc`
+transition-compat ALIAS), so `scripts/fleet.py` + `scripts/fleet-harness.py` deployed
+correctly. But the OLD `scripts/hc.py` and `scripts/hc-harness.py` stayed on disk
+forever, flagged `⚠️  Stale deploy: scripts/hc.py` / `scripts/hc-harness.py`.
+
+**Diagnose it — distinguish a true rename-orphan from a still-live file:**
+
+```bash
+# 1. Is the file still produced by the repo? (SOURCE header names its repo path)
+head -3 ~/.steadfaste-fleet/scripts/<old>.py       # a SOURCE: header with a GONE repo path = orphan
+
+# 2. Is its repo source still tracked at that path?
+git -C ~/steadfaste-fleet ls-files 'ops/scripts/<old>/<old>.py'   # empty = the source moved/vanished
+
+# 3. Is the OLD name still registered anywhere in the deploy map?
+grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # 0 = not registered = orphan
+
+# 4. Does anything LIVE still call the old name, or exec it?
+grep -rln '<old>\.py' ~/.steadfaste-fleet/scripts/ ~/.hermes/skills/ ~/steadfaste-fleet/skills/ \
+  | grep -vE '/<old>\.py$'      # hits are docs/comments only => safe
+```
+
+**A transition-compat ALIAS is NOT the stale file — keep the alias, remove the .py.**
+In the `hc`→`fleet` case `scripts/hc` (no `.py`) is a small bash alias that
+`exec`s `scripts/fleet`; it is REGISTERED (`register "ops/scripts/fleet/bin/hc"`)
+and must stay so old invocations keep working. The orphans are the `.py` files the
+alias does not use. Confirm the alias execs the new name (`grep exec scripts/hc`)
+before deleting the old `.py` beside it.
+
+**Remove it** (the doctor's own `Remove: rm …` line is the sanctioned action):
+
+```bash
+rm -f ~/.steadfaste-fleet/scripts/<old>.py ~/.steadfaste-fleet/scripts/<old>-harness.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet | grep 'Stale deploy'  # must be empty
+```
+
+Do NOT `--disposition "Stale deploy: …"` a rename-orphan — a disposition is for a
+file that legitimately stays (installed by a kit, host-owned); a renamed tool's old
+copy is genuinely dead and dispositioning it just hides the debt. **Fix the sweep, not
+the instance:** if you renamed one script, grep the deploy map for sibling renames in
+the same sweep (`git log --oneline --diff-filter=R -20`), because each rename leaves
+its own orphan.
+
 ## Pitfall 12: A host BEHIND origin is silent, and the drift audit certifies it clean
 
 The opposite direction is NOT benign and nothing shouts about it. A host tens of

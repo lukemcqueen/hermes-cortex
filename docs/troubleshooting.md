@@ -938,6 +938,36 @@ yours against the reference:
 diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
 ```
 
+### Doctor reports `Stale deploy: scripts/<old>.py` after a rename
+
+**Symptom:** `cortex-doctor.py` warns `⚠️  Stale deploy: scripts/<old>.py` (e.g.
+`scripts/hc.py`, `scripts/hc-harness.py`) forever, even though the new tool works.
+
+**Root cause:** the tool was RENAMED (measured: `hc` → `fleet`, commit `aa2de1ee`;
+`ops/scripts/hc/hc.py` → `ops/scripts/fleet/fleet.py`). The deploy map registered the
+new paths, so `scripts/fleet.py` + `scripts/fleet-harness.py` deploy fine — but the
+OLD deployed copies are no longer registered and `cortex-update.sh` never removes them.
+A `bin/hc` transition-compat ALIAS stays registered and keeps working; only the old
+`.py` files are dead.
+
+**Confirm it is a rename-orphan, not a live file:**
+
+```bash
+head -3 ~/.steadfaste-fleet/scripts/<old>.py          # SOURCE: header points at a GONE repo path
+git -C ~/steadfaste-fleet ls-files 'ops/scripts/<old>/<old>.py'   # empty = source moved/vanished
+grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # 0 = not registered
+```
+
+**Fix:** delete the orphaned deployed copies (keep the no-`.py` alias):
+
+```bash
+rm -f ~/.steadfaste-fleet/scripts/<old>.py ~/.steadfaste-fleet/scripts/<old>-harness.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet | grep 'Stale deploy'  # empty
+```
+
+See the `cortex-deployment-sync` skill, **Pitfall 26**, for the full diagnosis
+(including how to spot sibling orphans from the same rename sweep).
+
 ## 🍎 macOS-Specific Cortex Update Issues
 
 Issues that appear when running `pull latest` + `cortex-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). **Titus is the fleet's only macOS host** (`LAM2`, the developer machine), so this section is his — every other host is Linux. These are distinct from the Linux service-layer differences — they break the update **script itself**.

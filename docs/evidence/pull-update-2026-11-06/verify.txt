@@ -1,0 +1,94 @@
+# Pull latest + update + stale review — 2026-11-06 (KST)
+
+Provenance: generated during the `pull-latest-and-update` governance cycle.
+Revisions are recorded below; re-run the commands to reproduce.
+
+## Pull
+
+```
+$ git pull --ff-only origin main
+Already up to date.
+```
+
+- `git ls-files -u | wc -l` -> `0` (no unmerged paths)
+- Stale `.git/MERGE_HEAD` cleared: the merge it referenced was ALREADY committed
+  (`28663994` is parent 2 of `b749894e`), and the working tree was clean. The
+  marker was a leftover from the 04:34 cron merge; removing it restored `git pull`.
+
+## Update (deploy)
+
+Two deploys ran this cycle. Final state (`state/last-update.txt`):
+
+```
+━━━ Cortex Update — 2026-11-06T00:49:06Z ━━━
+Host: moses
+Repo: 2315f5c6 (was 2315f5c6)
+Files: 368 updated, 0 removed
+Restarted: health_server dashboard
+```
+
+The first deploy was at `b749894e`; after esther's gate fix `2315f5c6`
+(governance-enforcer PII gate) landed, a second deploy synced it. The doctor's
+`Plugin content` / `Checksum: Governance plugin __init__.py` FAILs cleared.
+
+## Stale review — items found and resolved
+
+Doctor baseline was `FAILING (2 fail)`: plugin stale + systemd unit. All resolved:
+
+1. **SOUL-decouple orphans** — removed `soul-merge.py`, `soul-sync-all.sh`,
+   `template-diff-check.py` from the deployed tree (deleted from repo, no longer
+   in the register map; the doctor flagged `Stale deploy:`).
+2. **`hc` → `fleet` rename orphans** — removed deployed `hc.py` and
+   `hc-harness.py`. The `hc` CLI was renamed to `fleet` (commit `aa2de1ee`), the
+   new `fleet.py`/`fleet-harness.py` deploy fine, but the old `.py` copies were
+   never pruned. Kept the registered `scripts/hc` transition-compat ALIAS (it
+   execs `fleet`, not `hc.py`). Diagnosed + documented for other agents: skill
+   `cortex-deployment-sync` **Pitfall 26** and `docs/troubleshooting.md`
+   ("Doctor reports `Stale deploy` after a rename").
+3. **Redundant git hooks** — removed 5 `.git/hooks/*` symlinks
+   (pre-commit/pre-push/post-commit/post-merge/post-push) in `steadfaste-fleet`.
+   `core.hooksPath` = `~/.steadfaste-fleet/hooks` is active, so the repo-local
+   copies were ignored dead symlinks (`Redundant hook` / `Hook: … (.git)`).
+4. **Adversarial reviewer model pin** — `.env` had
+   `ADVERSARIAL_REVIEWER_MODEL="deepseek/deepseek-v4-pro"`; canonical per
+   `.env.example` is `deepseek/deepseek-v4-pro-0813`. Corrected (backup:
+   `.env.bak-20261106-adversarial-model`).
+5. **Systemd stale unit** — `xdg-desktop-portal-gtk.service` was in failed
+   (start-limit-hit) state. This is a DESKTOP (GNOME/GTK) portal, not HC
+   infrastructure; partner `xdg-desktop-portal.service` is healthy. Not removed
+   (Do No Harm). Cleared the flap with `systemctl --user reset-failed`; recorded
+   the check as deferred (owner moses).
+
+## Doctor (final)
+
+```
+⚠️  Overall: WARNING  (496 pass · 8 warn · 0 fail · 4 info)  · 2 undisposed
+```
+
+`0 fail`. Remaining 2 undisposed = `Repo clean` (the doc changes to be committed)
+and `Repo sync` (pipeline auto-commits ahead of origin — benign). Remaining 8
+warns are all `[deferred/deliberate]` dispositions already on record
+(AGENTS/CLAUDE/USER audit, script-run evidence, skills loadable, loop-gov daemon).
+
+## Follow-up findings — NOT resolved in this cycle (need a decision)
+
+1. **135 deployed-only skill reference files** — `check-skill-drift-parity.py`
+   reports 135 files (references/templates/scripts under repo-owned skill dirs)
+   exist in the deployed tree but were never committed to the repo
+   (131 never-committed, 4 dropped-from-repo). Many are mode `0600` (locally
+   authored). `reconcile-stranded-skills.py` reports `stranded: 0` because it
+   handles SKILL.md content supersets, not brand-new deployed-only files. This is
+   the reverse of "stale" — it is content that should be copied BACK, and which
+   of the 135 are fleet-worthy vs Hermes-owned needs a per-file decision, not a
+   blind commit. The parity artifact I left at the committed revision (PASS/0)
+   for this cycle; regenerating it records the finding.
+2. **`hc` alias is mode 0644 (non-executable)** — the repo commits
+   `ops/scripts/fleet/bin/hc` as `100644`, so the deployed `scripts/hc` alias is
+   not directly runnable (`Permission denied`). The `fleet` launcher itself works.
+   Fix = commit a mode bump to `100755` (small, separate change).
+
+## Note on this cycle's diff
+
+Maintenance cycle (pull + deploy + stale removal): the mirror of this file plus
+the docs/troubleshooting + cortex-deployment-sync skill updates are the only
+repo changes committed.
