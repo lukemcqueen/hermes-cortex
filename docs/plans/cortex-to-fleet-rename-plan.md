@@ -103,7 +103,7 @@ table is derived from it verbatim.
 | systemd units | `cortex-bridge-*` (~90 service + timer + `.wants`), `cortex-bus.service`, `cortex-gateway.service`, `cortex-gateway-<agent>.service`, `hermes-cortex-dashboard.service` (Q2) | `fleet-bridge-*`, `fleet-bus`, `fleet-gateway`, `fleet-dashboard` |
 | Cron names (`~/.hermes/cron/jobs.json`) | `cortex-bus-workday`, `cortex-bus-evening`, `cortex-bus-overnight` | `fleet-bus-workday`, `fleet-bus-evening`, `fleet-bus-overnight` |
 | Skill load keys | `cortex-bus`, `cortex-bus-automation`, `cortex-bus-inbox`, `cortex-bus-messaging`, `cortex-bus-polling`, `cortex-preflight`, `cortex-deployment-sync` | `fleet-bus*`, `fleet-preflight`, `fleet-deployment-sync` |
-| Live docs (paths) | `docs/design/cortex-gateway.md`, `cortex-gateway-parity.md`, `cortex-memory-session-mcp.md`; `docs/runbooks/cortex-env-migration.md` | `fleet-*` — **renamed in P3** (resolved 2026-11-06: these paths are referenced from 22 files incl. code, tests and a golden fixture, so they co-commit with the script-name sweep; **P1 does prose only, not these path renames**) |
+| Live docs (paths) | `docs/design/cortex-gateway.md`, `cortex-gateway-parity.md`, `cortex-memory-session-mcp.md`; `docs/runbooks/cortex-env-migration.md` | `fleet-*` — **renamed in P3** (resolved 2026-11-06: these paths are referenced from 22 files incl. code, tests and a golden fixture, so they co-commit with the script-name sweep) |
 | Prose | `Cortex` / `cortex` where it names the framework | `Fleet` / `fleet` |
 
 ### 3.2 KEEP — `mycortex` is a different product
@@ -376,15 +376,32 @@ that is *observed*, not asserted.
 **Exit:** index clean; residue count 0; boundary doc committed; the four decisions recorded and
 greppable; the register-count base settled and recorded.
 
-### P1 — Non-runtime prose (token sweep only) — resolved 2026-11-06
-README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md and `docs/` prose where `cortex`/`Cortex` names the
-framework — with the §3.2/§3.4 guards and the record/self-exclusions applied. **No file renames in
-P1.** Live doc *path* renames (the `cortex-gateway.md` family) co-commit with P3 because they are
-referenced from code, tests and a golden fixture — see §3.1. This is the shakedown of the
-replacement engine and its mangle scan before anything load-bearing is touched.
+### P1 — FOLDED (resolved 2026-11-06): prose changes ride with their artifacts, not ahead of them
 
-**Exit:** residue grep 0 in scope; `docs/DOCS-INDEX.md` links resolve; `pre-commit-doc-audit.sh`
-passes.
+**P1 as a standalone "prose first" phase is unsound for this repo's actual token distribution, and
+is removed.** The survey before the sweep measured it: the brand word was already swept in the
+2026-11-04 `hermes-cortex` → `steadfaste-fleet` rename, so the residual bare `cortex` is **not**
+brand prose — it is the *prefix of artifact names*. A context sample of every bare `\bcortex\b`
+(Cortex) in the top-level `.md` + `docs/` returns almost nothing that is not `cortex-bus`,
+`cortex-update`, `cortex-doctor`, `cortex_bus`, `mycortex`, or `hermes-cortex`. What is genuinely
+non-artifact prose is a handful of strings:
+
+- `Scope cortex-only gates …` — scoping prose.
+- `CORTEX CORE` / `CORTEX OPERATIONS` / `CORTEX RUNTIME ADAPTER` — section headers.
+- `Cortex-Session:` — a governance **protocol trailer literal** (a gate-keyed string, same class as
+  the §4.5 skill names; it rides with the governance rename, never the prose sweep).
+
+Sweeping these "prose" mentions ahead of the artifacts they describe would rewrite docs and
+messages to reference `fleet-update.sh`, `fleet-doctor.py`, `fleet_bus` **before those exist**
+— the printed-path-dangles class the `rename-sweep` and `documentation-auditing` skills both warn
+about. So every prose mention now changes **atomically with the artifact it names**, inside P2
+(package renames) and P3 (file renames + their references), under the §3.2 guard and with the P2/P3
+forwarding shims in place. The handful of genuine brand strings above is swept in P3 alongside the
+files it describes; the `Cortex-Session:` trailer is a deliberate §3.4-class literal handled only
+if/when the governance rename touches it.
+
+**Exit (no longer a phase):** P2 and P3 assert that `git grep` finds no remaining bare brand
+`cortex` outside the §3.2/§3.3 keeps, at their own exits.
 
 ### P2 — Python packages, deepest dependency first
 `cortex_lib` → `fleet_lib` (including the `cortex_lib/paths.py` parent-walk bootstrap, which is
@@ -547,8 +564,9 @@ default, and it is exactly what got reverted.
 
 ## 8. Rollback
 
-- **P1, P6** — `git revert`; no runtime state.
-- **P2, P3** — the compat shims mean both names resolve, so a revert is safe in either direction.
+- **P6** — `git revert`; no runtime state. (P1 has no rollback — it is folded into P2/P3.)
+- **P2, P3** — the compat shims mean both names resolve, so a revert is safe in either direction;
+  the prose references sweep with their artifacts, so reverting the artifacts reverts the prose.
 - **P4** — the dual-read fallback means a reverted host keeps working on `CORTEX_*`. This is the
   only phase where a rollback must not precede a host config repoint.
 - **P5** — old unit files stay on disk (disabled, not deleted) for one release; re-enable to roll back.
