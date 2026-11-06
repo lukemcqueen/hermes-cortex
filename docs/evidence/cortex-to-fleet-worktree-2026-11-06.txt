@@ -1,0 +1,76 @@
+REPO=$HOME/steadfaste-fleet
+HEAD=3667067875d828b7797a6f1c4838409395cc809d
+origin/main=3667067875d828b7797a6f1c4838409395cc809d
+captured=2026-11-06T07:53:38Z
+
+=== 1. working tree (git status --short) ===
+D  ops/scripts/hc-plan-review-check.py
+D  ops/scripts/hc-reflexion-check.py
+D  plugins/hc-lean-index/__init__.py
+D  plugins/hc-lean-index/plugin.yaml
+?? docs/evidence/cortex-to-fleet-scope-2026-11-06.py
+?? docs/evidence/cortex-to-fleet-worktree-2026-11-06.sh
+?? docs/plans/cortex-to-fleet-rename-plan.md
+
+=== 2. staged deletions: names WITHOUT and WITH --no-renames ===
+--- git diff --cached --name-only (rename-collapsed) ---
+ops/scripts/hc-plan-review-check.py
+ops/scripts/hc-reflexion-check.py
+plugins/hc-lean-index/__init__.py
+plugins/hc-lean-index/plugin.yaml
+--- git diff --cached --name-only --no-renames ---
+ops/scripts/hc-plan-review-check.py
+ops/scripts/hc-reflexion-check.py
+plugins/hc-lean-index/__init__.py
+plugins/hc-lean-index/plugin.yaml
+--- staged diffstat ---
+ plugins/hc-lean-index/__init__.py   |  88 ---------
+ plugins/hc-lean-index/plugin.yaml   |  11 --
+ 4 files changed, 670 deletions(-)
+
+=== 3. do the hc- originals still exist in HEAD? ===
+  IN HEAD      ops/scripts/hc-plan-review-check.py
+  IN HEAD      ops/scripts/hc-reflexion-check.py
+  IN HEAD      plugins/hc-lean-index/__init__.py
+  IN HEAD      plugins/hc-lean-index/plugin.yaml
+
+=== 4. residue directories (prior 2026-11-04 attempt) ===
+--- core/fleet_bus ---
+    total 16
+    drwxrwxr-x 4 esther esther 4096 Nov  4 10:04 .
+    drwxrwxr-x 5 esther esther 4096 Nov  4 10:04 ..
+    drwxrwxr-x 2 esther esther 4096 Nov  4 09:38 __pycache__
+    drwxrwxr-x 3 esther esther 4096 Nov  4 10:04 workflow
+    tracked files under it: 0
+    untracked file count:   0
+--- ops/scripts/manage/fleet_doctor ---
+    total 20
+    drwxrwxr-x 3 esther esther  4096 Nov  4 10:04 .
+    drwxrwxr-x 5 esther esther 12288 Nov  5 10:46 ..
+    drwxrwxr-x 2 esther esther  4096 Nov  3 20:25 __pycache__
+    tracked files under it: 0
+    untracked file count:   0
+--- ops/scripts/fleet ---
+    total 124
+    drwxrwxr-x  4 esther esther  4096 Nov  4 18:34 .
+    drwxrwxr-x 19 esther esther  4096 Nov  6 16:38 ..
+    drwxrwxr-x  2 esther esther  4096 Nov  4 17:47 bin
+    -rw-rw-r--  1 esther esther   619 Nov  4 18:07 .env.example
+    -rwxrwxr-x  1 esther esther 63871 Nov  4 18:34 fleet.py
+    -rw-rw-r--  1 esther esther     6 Jul 16 11:12 .gitignore
+    -rw-rw-r--  1 esther esther 21632 Nov  4 17:53 harness.py
+    -rw-rw-r--  1 esther esther 10083 Nov  4 10:04 local-orch-fleet-command-verifier.py
+    drwxrwxr-x  2 esther esther  4096 Nov  4 18:34 __pycache__
+    tracked files under it: 7
+    untracked file count:   0
+
+=== 5. was fleet-update.sh ever a committed source? ===
+git log --all -- ops/scripts/fleet-update.sh  ->  0 commit(s)
+git log --all -- ops/scripts/cortex-update.sh ->  471 commit(s)
+
+=== 6. provenance of the staged deletions ===
+current branch: main
+staged deletions are uncommitted; last commit on this branch:
+  36670678 2026-11-06 16:38:42 +0900 esther-agent fix(deploy): G1/G2 from Titus Pi eval — MCP --orch must not abort deploy; doctor runs under fleet venv
+orphaned PENDING cycles in the local governance DB (may block push):
+   (14235, 'cortex-to-fleet-rename-plan', '20261106_164916_8094139b')

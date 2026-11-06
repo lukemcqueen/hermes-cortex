@@ -233,4 +233,4 @@ repo; this public repo carries only framework docs (PRDs, design, reference).
 | `docs/reviews/` | Per-run review artifacts — daily soul-refinement candidate principles (operator-owned proposals, e.g. `soul-refinement-2026-10-11.md`) and gate evidence |
 | `docs/prd/` | Product requirements (PRD-001…006) |
 | `docs/design/` | Design documents |
-| `steadfaste-fleet-private/docs/plans/` | Implementation plans — **private repo only** (moved out 2026-08-24; no plans directory exists in this repo) |
+| `docs/plans/` | Implementation plans and plan-review material (e.g. `cortex-to-fleet-rename-plan.md`, `non-hermes-session-id-scoping-plan.md`). **Corrected 2026-11-06:** the earlier text here claimed plans were "private repo only" and that "no plans directory exists in this repo" — both were false; `docs/plans/` exists in this repo and is indexed here. Long-form implementation plans MAY additionally live in the private repo |
