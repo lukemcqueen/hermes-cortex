@@ -2,9 +2,6 @@
 r"""
 fleet-bus-bridge-generate.py — generate systemd user timer units for simple
 no_agent cron jobs (component-hermes-separation S2a).
-P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-generate.py
-via git mv (token-swap content only); provenance: git log --follow --
-ops/scripts/fleet-bus-bridge-generate.py.
 
 Reads ~/.hermes/cron/jobs.json, and for each SIMPLE no_agent job (a pure
 script job with no context_from/continuity chaining and no model pin — i.e. a
