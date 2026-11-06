@@ -235,6 +235,15 @@ This pattern appears in summary sections where a counter is only incremented con
 
 When using `trap ... EXIT` with `set -euo pipefail`, a function called inside the trap exit handler that fails can cause cascading exits during already-running cleanup. Prefer `trap ... ERR` over relying on return codes.
 
+### A backgrounded command may run under the login shell — zsh has no `mapfile`
+
+A command sent to a background runner is executed by the user's LOGIN shell (zsh on a
+default macOS/Linux desktop), not by bash: `mapfile`, `declare -A`, `readarray` and other
+bash-isms fail with `zsh:1: command not found: mapfile` and exit 127, even though the same
+compound runs perfectly in the interactive bash terminal. The failure looks like the
+script's own — it is the runner's shell. Wrap multi-step background work in an explicit
+`#!/usr/bin/env bash` script and run `bash <wrapper>`, or keep the command POSIX-only.
+
 ### Quoting — always double-quote variable expansions
 
 ```bash

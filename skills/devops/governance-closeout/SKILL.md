@@ -1306,3 +1306,8 @@ as `.txt` mean the ignored `.log` was the wrong filename, not a missing ignore r
   and add seconds of latency between the two, which can push the work out of a narrow
   window by itself. (Compare the window as EPOCH seconds, never `git log --since=` —
   see `concurrent-session-isolation`.)
+
+See `references/close-loop-grind.md` for the full mechanics of driving a large
+push range through the `end_change` blob-close wave loop to a minted receipt:
+budgeting the ~90-wave grind, the documentary-straggler refusals, why a
+subagent cannot grind it, and refreshing re-review material every round.

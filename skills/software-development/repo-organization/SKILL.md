@@ -261,3 +261,12 @@ When migrating an existing install to this standard:
 5. **Clean .gitignore:** Add generated files (`.cron-version`, `*.db`, `IMPROVEMENTS.md`)
 6. **Update AGENTS.md:** Keep it under 20K by trimming verbose sections
 7. **Test install:** `bash install.sh --check` must pass, `pytest` must pass
+
+## 9. Governed Plan Review
+
+When the operator directs "review this plan with pro" (Luke's standing rule for
+design/reorg/governance changes), drive the governed adversarial reviewer, not a
+chat call. See `references/pro-review-grounding.md` for the full loop: writing a
+self-contained material file, pinning every factual claim to a reproducible
+command, and grounding `unverified-claim`/`fabrication` findings to a CLEAN
+verdict.
