@@ -7,7 +7,7 @@
 --  where a session is — done / pending / blockers / decisions — cheap enough
 --  to restore from in a cold start and precise enough to resume from.
 --
---  Design: docs/design/cortex-memory-session-mcp.md
+--  Design: docs/design/fleet-memory-session-mcp.md
 --
 --  The session row itself is reused, never duplicated: a checkpoint hangs off
 --  `sessions.id`. session_key stays `harness:repo:branch` so identity is

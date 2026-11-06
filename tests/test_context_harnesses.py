@@ -22,11 +22,11 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 TOOLS_PY = REPO / "ops/services/mycortex-mem/context_tools.py"
-CLI_PY = REPO / "ops/scripts/cortex-context.py"
-MCP_PY = REPO / "mcp-servers/cortex-context-mcp.py"
+CLI_PY = REPO / "ops/scripts/fleet-context.py"
+MCP_PY = REPO / "mcp-servers/fleet-context-mcp.py"
 HARNESS_DIR = REPO / "ops/install/harnesses"
 REGISTRY = HARNESS_DIR / "registry.yaml"
-PI_EXT = HARNESS_DIR / "pi/extensions/cortex-context.ts"
+PI_EXT = HARNESS_DIR / "pi/extensions/fleet-context.ts"
 
 
 def _load(path: Path, name: str):
@@ -144,14 +144,14 @@ def test_pi_extension_registers_NO_tools(tools):
     code = "\n".join(ln for ln in src.splitlines()
                      if not ln.lstrip().startswith(("*", "//", "/*")))
     assert "registerTool" not in code, (
-        "the extension must NOT register tools — they arrive from the cortex-context "
+        "the extension must NOT register tools — they arrive from the fleet-context "
         "MCP server, so a second definition here is the duplicate surface")
     assert "pi.on(" in code, "the lifecycle hooks must stay — that is the whole point"
 
 
 def test_pi_extension_uses_the_shared_cli_not_its_own_logic():
     src = PI_EXT.read_text()
-    assert "cortex-context.py" in src, "extension must call the shared CLI"
+    assert "fleet-context.py" in src, "extension must call the shared CLI"
     # A second implementation of the semantics is the defect this guards against.
     assert "psql" not in src and "mycortex_mem" not in src
 
@@ -227,13 +227,13 @@ def test_pi_context_tools_are_registered_as_the_shared_MCP_server():
     """The tool surface is a CONFIG entry pointing at the SHARED server.
 
     Not a shim, and not a Pi-specific implementation: the same
-    cortex-context-mcp.py Claude Code and Codex use, whose schemas are derived
+    fleet-context-mcp.py Claude Code and Codex use, whose schemas are derived
     from the contract. The registry and the installer must agree, or a host
     follows one and silently lacks the other.
     """
     installer = (REPO / "ops/scripts/install/install-pi-mcp.sh").read_text()
-    assert "cortex-context" in installer, "pi must register the cortex-context MCP server"
-    assert "cortex-context-mcp.py" in installer, "…and it must be the deployed shared server"
+    assert "fleet-context" in installer, "pi must register the fleet-context MCP server"
+    assert "fleet-context-mcp.py" in installer, "…and it must be the deployed shared server"
     # The registered server must be the contract-derived one, not a reimplementation.
     mcp_src = MCP_PY.read_text()
     assert "context_tools.py" in mcp_src
@@ -306,7 +306,7 @@ def _leaky_variant(tmp_path: Path) -> Path:
     leaky = source.replace(
         capture,
         "    if (stderr) process.stderr.write(String(stderr));\n", 1)
-    (workdir / "extensions" / "cortex-context.ts").write_text(leaky)
+    (workdir / "extensions" / "fleet-context.ts").write_text(leaky)
     return workdir
 
 
@@ -488,7 +488,7 @@ def test_every_access_layer_funnels_through_one_dispatch():
     never a new implementation.
     """
     layers = {
-        "mcp server": (REPO / "mcp-servers/cortex-context-mcp.py").read_text(),
+        "mcp server": (REPO / "mcp-servers/fleet-context-mcp.py").read_text(),
         "cli": CLI_PY.read_text(),
         "plugin": (REPO / "plugins/mycortex-mem/__init__.py").read_text(),
     }

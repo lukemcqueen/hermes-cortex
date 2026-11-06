@@ -9,7 +9,7 @@ so it is skipped unless explicitly requested:
 
 What it asserts (the two markers the green claims rest on):
   1. `ops/scripts/fleet-update.sh` exits 0 AND its doctor summary reports **0 fail**;
-  2. `ops/scripts/cortex-dogfood.sh` exits 0 AND prints `DOGFOOD PASSED`.
+  2. `ops/scripts/fleet-dogfood.sh` exits 0 AND prints `DOGFOOD PASSED`.
 
 A later reviewer re-executes one command and sees the same verdict; a hand-edited
 transcript cannot pass this.
@@ -25,7 +25,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 DEPLOY = REPO / "ops" / "scripts" / "fleet-update.sh"
-DOGFOOD = REPO / "ops" / "scripts" / "cortex-dogfood.sh"
+DOGFOOD = REPO / "ops" / "scripts" / "fleet-dogfood.sh"
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("HERMES_RUN_DEPLOY_TEST") != "1",

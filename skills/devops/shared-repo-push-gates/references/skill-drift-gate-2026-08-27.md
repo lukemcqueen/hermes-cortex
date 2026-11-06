@@ -28,7 +28,7 @@ cp ~/.steadfaste-fleet/skills/devops/<skill>/SKILL.md skills/devops/<skill>/SKIL
 git add skills/devops/<skill>/SKILL.md
 git commit -m "docs(skills): sync deployed lessons to repo source"
 # then dogfood (deploy) before push:
-bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force
+bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force
 git push origin main
 ```
 
@@ -37,7 +37,7 @@ git push origin main
 2026-08-27: patched `deploy-load-verification` and `shared-repo-push-gates`
 mid-session with the mem-plugin registration-order lesson and the
 PENDING-cycle/deploy-sync gate lessons. The AGENTS.md prune commit's
-cortex-update run surfaced the drift; both skills were cp'd back and pushed
+fleet-update run surfaced the drift; both skills were cp'd back and pushed
 in `5258cceb`.
 
 ## Habit

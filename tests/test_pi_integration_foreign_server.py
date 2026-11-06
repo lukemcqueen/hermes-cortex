@@ -61,7 +61,7 @@ def _host(home: Path, *, foreign_script_missing: bool = False) -> Path:
     (dep / "tools" / "loop-governance").mkdir(parents=True, exist_ok=True)
     (dep / "scripts").mkdir(parents=True, exist_ok=True)
     (dep / "harnesses" / "pi" / "extensions").mkdir(parents=True, exist_ok=True)
-    (dep / "harnesses" / "pi" / "extensions" / "cortex-context.ts").write_text("// ext\n")
+    (dep / "harnesses" / "pi" / "extensions" / "fleet-context.ts").write_text("// ext\n")
     (dep / "tools" / "loop-governance" / "loop-gov-mcp.py").write_text("# gate\n")
     (dep / "agent.env").write_text("AGENT_NAME=testagent\n")
 
@@ -72,7 +72,7 @@ def _host(home: Path, *, foreign_script_missing: bool = False) -> Path:
                         "--version) echo 1.0.0;; esac\n")
     launcher.chmod(0o755)
     (agent / "settings.json").write_text(json.dumps({
-        "extensions": [str(dep / "harnesses" / "pi" / "extensions" / "cortex-context.ts")],
+        "extensions": [str(dep / "harnesses" / "pi" / "extensions" / "fleet-context.ts")],
         "skills": [str(agent / "cortex-skills")],
         # Web search: audit-pi-integration.sh check 6 requires the pi-web-access DECLARATION,
         # the INSTALLED package, and a KEYLESS route (pi-web-access landed 2026-10-15). This
@@ -93,8 +93,8 @@ def _host(home: Path, *, foreign_script_missing: bool = False) -> Path:
     for name, script in (("loop-governance", dep / "tools" / "loop-governance" / "loop-gov-mcp.py"),
                          ("tasks", dep / "scripts" / "task-mcp.py"),
                          ("executor", dep / "scripts" / "executor-mcp.py"),
-                         ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py"),
-                         ("cortex-context", dep / "scripts" / "cortex-context-mcp.py")):
+                         ("agent-bus", dep / "scripts" / "fleet-bus-mcp.py"),
+                         ("fleet-context", dep / "scripts" / "fleet-context-mcp.py")):
         script.write_text("# mcp server\n")
         entries[name] = {"command": sys.executable, "args": [str(script)],
                          "env": {"AGENT_NAME": "testagent"}}
@@ -170,7 +170,7 @@ def test_the_installer_leaves_a_foreign_entry_alone() -> None:
         _check("add rc=0", add.returncode == 0, (add.stdout + add.stderr)[-300:])
         _check("add registered the five cortex servers",
                all(s in added for s in ("loop-governance", "tasks", "executor",
-                                        "agent-bus", "cortex-context")), str(added))
+                                        "agent-bus", "fleet-context")), str(added))
         _check("remove rc=0", rm.returncode == 0, (rm.stdout + rm.stderr)[-300:])
         _check("the foreign entry survives --remove (and the cortex set does not)",
                remaining == ["deepseek", "user-owned"], str(remaining))

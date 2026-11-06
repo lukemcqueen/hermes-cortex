@@ -41,7 +41,7 @@ The report's seven layers, mapped to what Steadfaste Fleet actually has:
 | **L3 Reasoning** | `SOUL.md`, `AGENTS.md`, skill prompts, `MEMORY.md` | improved average judgment; an **untrusted self-report** | This is our "constitution in context" — see §3 |
 | **L4 Harness** | governance enforcer plugin, git hooks, loop-governance MCP, bus envelope allowlist, sudoers | deterministic policy — "this tool is not callable" is a fact | Our strongest layer; see §4 |
 | **L5 Physical** | *(no actuators — but the analogue is what survives "assume all software is adversarial")*: OS file perms, `chattr`-immutable hooks, DB schema constraints, systemd, git's `core.hooksPath` | what the model literally cannot override from inside a session | This is our "physics" — see §2 |
-| **L6 Operational** | `cortex-doctor`, auto-remediation, crons, `enforcer-known-issues.md`, incident runbooks | detection + correction over time | The failure-propensity register in embryo |
+| **L6 Operational** | `fleet-doctor`, auto-remediation, crons, `enforcer-known-issues.md`, incident runbooks | detection + correction over time | The failure-propensity register in embryo |
 | **L7 Institutional** | two-repo split, orchestrator-only domains, bus contract, fleet governance, the PII guard | incentive shape; ex-post accountability | The "law of the king" |
 
 Two layers the report treats as central are **absent or external** for us:
@@ -97,7 +97,7 @@ force on a self-governing agent fleet:
   work, not an audit trail. We treat them as evidence; the report says a
   visible chain of reasoning is a generated artifact that may not correspond to
   the computation.
-- **Evaluation-awareness** → the agent runs `cortex-doctor`, the
+- **Evaluation-awareness** → the agent runs `fleet-doctor`, the
   adversarial-verifier, and the pre-commit hook **on itself**. It knows it is
   being checked, and it knows the check's shape. This is simultaneously the
   report's "defeat device" risk *and* its "evaluator reports to the evaluated"

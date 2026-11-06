@@ -377,11 +377,11 @@ register "ops/scripts/install/check-system.sh"             "${CORTEX_DEPLOY_HOME
 register "ops/scripts/manage/agent-memory-to-brain-sync.py"    "${CORTEX_DEPLOY_HOME}/scripts/agent-memory-to-brain-sync.py"
 register "ops/scripts/install/bootstrap-brain.sh"         "${CORTEX_DEPLOY_HOME}/scripts/bootstrap-brain.sh"
 register "ops/scripts/health/check-memory-budget.sh"     "${CORTEX_DEPLOY_HOME}/scripts/check-memory-budget.sh"
-register "ops/scripts/install/cortex-profile.sh"          "${CORTEX_DEPLOY_HOME}/scripts/cortex-profile.sh"
+register "ops/scripts/install/fleet-profile.sh"          "${CORTEX_DEPLOY_HOME}/scripts/fleet-profile.sh"
 register "ops/scripts/install/seed-project-brain.sh"      "${CORTEX_DEPLOY_HOME}/scripts/seed-project-brain.sh"
 register "ops/scripts/install/install-gateway-cron-timeout.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-cron-timeout.sh"
 register "ops/scripts/install/install-gateway-timezone.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-gateway-timezone.sh"
-register "ops/scripts/manage/cortex-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-health.sh"
+register "ops/scripts/manage/fleet-health.sh"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-health.sh"
 register "ops/scripts/manage/consolidate-env.sh"         "${CORTEX_DEPLOY_HOME}/scripts/consolidate-env.sh"
 register "ops/scripts/manage/gen-skills-manifest.py"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.py"
 register "ops/scripts/manage/gen-skills-manifest.sh"      "${CORTEX_DEPLOY_HOME}/scripts/gen-skills-manifest.sh"
@@ -418,7 +418,7 @@ register "ops/scripts/manage/verify-orch-skill-lifecycle.sh"      "${CORTEX_DEPL
 register "ops/scripts/manage/test-verify-orch-skill-lifecycle.sh" "${CORTEX_DEPLOY_HOME}/scripts/test-verify-orch-skill-lifecycle.sh"
 # The venv repairer + the declared dependency set it reads: a host must be able to fix its
 # own ~/.steadfaste-fleet/venv without anyone reading the source to work out what belongs there.
-register "ops/scripts/manage/fix-cortex-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+register "ops/scripts/manage/fix-fleet-venv.py"          "${CORTEX_DEPLOY_HOME}/scripts/fix-fleet-venv.py"
 # Skills ownership + publication (cycle 13491). Cortex OWNS the skill library and the fleet
 # is moving off the Hermes agent, so the deploy tree must be the REAL one and the harness
 # path a pointer to it; the agent-visible view is then published at the cross-client standard
@@ -431,8 +431,8 @@ register "ops/scripts/manage/mcp_wiring.py"               "${CORTEX_DEPLOY_HOME}
 register "ops/install/requirements.txt"                   "${CORTEX_DEPLOY_HOME}/install/requirements.txt"
 register "mcp-servers/task-mcp.py"                      "${CORTEX_DEPLOY_HOME}/scripts/task-mcp.py"
 register "mcp-servers/executor-mcp.py"                  "${CORTEX_DEPLOY_HOME}/scripts/executor-mcp.py"
-register "mcp-servers/cortex-sandbox-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/cortex-sandbox-mcp.py"
-register "ops/scripts/sandbox/cortex-sandbox.py"        "${CORTEX_DEPLOY_HOME}/scripts/sandbox/cortex-sandbox.py"
+register "mcp-servers/fleet-sandbox-mcp.py"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-sandbox-mcp.py"
+register "ops/scripts/sandbox/fleet-sandbox.py"        "${CORTEX_DEPLOY_HOME}/scripts/sandbox/fleet-sandbox.py"
 register "ops/services/tasks/migrate.py"                "${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"
 register "ops/services/tasks/schema/v001__tasks.sql"    "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v001__tasks.sql"
 register "ops/services/tasks/schema/v002__doctor-probe-source.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v002__doctor-probe-source.sql"
@@ -476,7 +476,7 @@ register_orch "ops/scripts/manage/learning-ledger.py" "${CORTEX_DEPLOY_HOME}/scr
 # learning-collect.py — collector write path, deployed to ALL agents (any of
 # the 8 capture routes on any host can record a learning via HTTP).
 register "ops/scripts/manage/learning-collect.py"  "${CORTEX_DEPLOY_HOME}/scripts/learning-collect.py"
-register_orch "ops/scripts/install/cortex-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/cortex-setup-langfuse.sh"
+register_orch "ops/scripts/install/fleet-setup-langfuse.sh"   "${CORTEX_DEPLOY_HOME}/scripts/fleet-setup-langfuse.sh"
 register "ops/scripts/setup-fleet-langfuse.sh"         "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-langfuse.sh"
 register "ops/scripts/fleet-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts/fleet-update.sh"
 # ONE-RELEASE forwarding shim for fleet-update.sh (P3): legacy cortex-update.sh
@@ -486,7 +486,7 @@ register "ops/scripts/cortex-update.sh"           "${CORTEX_DEPLOY_HOME}/scripts
 register "ops/scripts/install/install-ollama.sh"          "${CORTEX_DEPLOY_HOME}/scripts/install-ollama.sh"
 register "ops/scripts/install/install-nginx.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-nginx.sh"
 register "ops/scripts/install/install-fail2ban.sh"         "${CORTEX_DEPLOY_HOME}/scripts/install-fail2ban.sh"
-register "ops/scripts/install/install-cortex-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-cortex-update-cron.sh"
+register "ops/scripts/install/install-fleet-update-cron.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-fleet-update-cron.sh"
 register "ops/scripts/install-crons.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-crons.sh"
 register_orch "ops/scripts/orch-bus/orch-bus-confirmation-poller.py"     "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-confirmation-poller.py"
 register_orch "ops/scripts/orch-bus/orch-bus-confirmation-alert.sh" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-confirmation-alert.sh"
@@ -502,7 +502,7 @@ register "ops/scripts/install/install-profile-reader-role.sh" "${CORTEX_DEPLOY_H
 register "ops/scripts/install/install-score-hook.sh"       "${CORTEX_DEPLOY_HOME}/scripts/install-score-hook.sh"
 register "ops/scripts/install/install-claude-governance.sh" "${CORTEX_DEPLOY_HOME}/scripts/install-claude-governance.sh"
 register "ops/scripts/install/install-pi-mcp.sh"           "${CORTEX_DEPLOY_HOME}/scripts/install-pi-mcp.sh"
-register "ops/scripts/cortex-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/cortex-dogfood.sh"
+register "ops/scripts/fleet-dogfood.sh" "${CORTEX_DEPLOY_HOME}/scripts/fleet-dogfood.sh"
 register "ops/scripts/pre-commit-score"            "${CORTEX_DEPLOY_HOME}/scripts/pre-commit-score"
 # The reflexion gate's verifier — answers "did this session load skill X?" from
 # HC's own session/memory store instead of the Hermes conversation DB, so the gate
@@ -548,6 +548,7 @@ register "ops/scripts/health/check-external-services.sh"   "${CORTEX_DEPLOY_HOME
 register "ops/scripts/agent-secret-leak-watchdog.py"            "${CORTEX_DEPLOY_HOME}/scripts/agent-secret-leak-watchdog.py"
 register "ops/scripts/agent-security-posture-check.sh"                "${CORTEX_DEPLOY_HOME}/scripts/agent-security-posture-check.sh"
 register "ops/scripts/manage/cortex-doctor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py"
+register "ops/scripts/manage/fleet-doctor.py"          "${CORTEX_DEPLOY_HOME}/scripts/fleet-doctor.py"
 register "ops/scripts/manage/fleet-git-reset.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-git-reset.py"
 register "ops/scripts/manage/fleet-set-origin.sh"     "${CORTEX_DEPLOY_HOME}/scripts/fleet-set-origin.sh"
 register "ops/scripts/manage/migrate-home-dirs.sh"    "${CORTEX_DEPLOY_HOME}/scripts/migrate-home-dirs.sh"
@@ -576,7 +577,7 @@ register "ops/scripts/manage/fleet_doctor/results.py" "${CORTEX_DEPLOY_HOME}/scr
 # pending-with-an-assignee (unclaimable AND unwatched).
 register "ops/scripts/manage/fleet_doctor/task_integrity.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_doctor/task_integrity.py"
 
-register "ops/scripts/manage/cortex-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-agent-manager.py"
+register "ops/scripts/manage/fleet-agent-manager.py"  "${CORTEX_DEPLOY_HOME}/scripts/fleet-agent-manager.py"
 
 register "ops/scripts/fleet/fleet.py"                "${CORTEX_DEPLOY_HOME}/scripts/fleet.py"
 register "ops/scripts/fleet/harness.py"              "${CORTEX_DEPLOY_HOME}/scripts/fleet-harness.py"
@@ -609,7 +610,7 @@ register "ops/scripts/lib/ensure-pytest.sh"               "${CORTEX_DEPLOY_HOME}
 # The shared launcher guard: every wrapper that execs the fleet venv sources it, so a
 # missing interpreter/payload is named instead of surfacing as bash's generic exec error.
 register "ops/scripts/lib/require-fleet-venv.sh"          "${CORTEX_DEPLOY_HOME}/scripts/lib/require-fleet-venv.sh"
-register "ops/scripts/lib/cortex-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py"
+register "ops/scripts/lib/fleet-update-mutex.py"         "${CORTEX_DEPLOY_HOME}/scripts/lib/fleet-update-mutex.py"
 # Registers the stalled-rebase fail-safe for deploy. Its job: a `git pull --rebase` interrupted
 # by a conflict leaves the repo STOPPED MID-REBASE, refusing every commit and push on the host
 # until someone cleans it up by hand; that helper aborts the stopped rebase so the failure is
@@ -646,7 +647,7 @@ register_orch "ops/scripts/orch-daily-regression-gate.sh"   "${CORTEX_DEPLOY_HOM
 
 # Failover watchdog — detect bus outage, per-role behavior. Deployed to ALL
 # agents (workers detect + alert; orchestrators run full failover).
-register "ops/scripts/agent/cortex-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-failover-watchdog.py"
+register "ops/scripts/agent/fleet-bus-failover-watchdog.py"  "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-failover-watchdog.py"
 
 # Post-commit notification + installer
 register "ops/scripts/manage/post-commit-notify.sh"          "${CORTEX_DEPLOY_HOME}/scripts/post-commit-notify.sh"
@@ -665,7 +666,7 @@ register "ops/scripts/project-run-scripts/scripts/check-alembic-heads.py"       
 register "ops/scripts/manage/orch-skill-evaluate.sh"         "${CORTEX_DEPLOY_HOME}/scripts/orch-skill-evaluate.sh"
 
 # Moses bus remediation
-register "ops/scripts/bus/cortex-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-remediate.sh"
+register "ops/scripts/bus/fleet-bus-remediate.sh"  "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-remediate.sh"
 register_orch "ops/scripts/bus/bus-inbox-survey.sh"  "${CORTEX_DEPLOY_HOME}/scripts/bus-inbox-survey.sh"
 
 # Auto-remediation scripts
@@ -750,8 +751,8 @@ register "ops/scripts/manage/send-skill-report.py"       "${CORTEX_DEPLOY_HOME}/
 
 # Inbox MCP tools
 # Inbox→bus renamed scripts (source files moved to ops/scripts/bus/)
-register "ops/scripts/bus/cortex-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-processor.py"
-register_orch "ops/scripts/install/setup-cortex-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-cortex-bus.sh"
+register "ops/scripts/bus/fleet-bus-processor.py"        "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-processor.py"
+register_orch "ops/scripts/install/setup-fleet-bus.sh"       "${CORTEX_DEPLOY_HOME}/scripts/setup-fleet-bus.sh"
 
 # Bus monitoring tools (fleet-wide)
 register_orch "ops/scripts/orch-bus/orch-bus-depth-watchdog.sh"  "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-depth-watchdog.sh"
@@ -844,7 +845,7 @@ register_orch "ops/scripts/orch-bus/orch-bus-mcp.py"           "${CORTEX_DEPLOY_
 # MCP servers and the bus was unusable there (Titus, worker-4, hit exactly this and
 # had to copy the file by hand — a manual workaround, not a fix).
 # Guard: tests/test_mcp_servers_deployed.py fails if this becomes orch-only again.
-register "mcp-servers/cortex-bus-mcp.py"                    "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-mcp.py"
+register "mcp-servers/fleet-bus-mcp.py"                    "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-mcp.py"
 register_orch "ops/scripts/orch-bus/orch-bus-readiness-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-readiness-check.py"
 register_orch "ops/scripts/orch-bus/orch-bus-git-auth-check.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-bus-git-auth-check.py"
 register_orch "ops/scripts/orch-bus/orch-clean-health-queue.py" "${CORTEX_DEPLOY_HOME}/scripts/orch-clean-health-queue.py"
@@ -882,8 +883,8 @@ register "ops/scripts/fleet_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts
 register "ops/scripts/fleet_lib/session_repo.py"  "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/session_repo.py"
 register "ops/scripts/cortex_lib/__init__.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"   # shim
 register "ops/scripts/cortex_lib/paths.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"      # shim
-register "ops/scripts/cortex-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-run.py"
-register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-generate.py"
+register "ops/scripts/fleet-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-bridge-run.py"
+register "ops/scripts/fleet-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet-bus-bridge-generate.py"
 # cortex-gateway — the decoupled gateway package (CR1 transport + CR2 backend seam)
 register "ops/scripts/fleet_gateway/__init__.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/__init__.py"
 # ONE-release shim for fleet_gateway (cortex->fleet, P2): the live gateway unit
@@ -928,8 +929,8 @@ register "ops/scripts/fleet_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HO
 #   python3 ~/.steadfaste-fleet/scripts/fleet_gateway/slash_parity_evidence.py
 register "ops/scripts/fleet_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/slash_parity_evidence.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
-register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
-register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"
+register "docs/templates/fleet-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/fleet-gateway.service"
+register "docs/templates/com.hermes.fleet-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.fleet-gateway.plist"
 register "ops/scripts/fleet_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/tools.py"
 register "ops/scripts/fleet_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/models.py"
 
@@ -953,13 +954,13 @@ register "ops/services/mycortex-mem/schema/v002__sessions.sql" "${CORTEX_DEPLOY_
 # about any other host.
 register "ops/services/mycortex-mem/schema/v003__tool_events.sql" "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/schema/v003__tool_events.sql"
 # S2c — the MCP surface any harness can reach, and the harness-side trigger.
-register "mcp-servers/cortex-context-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/cortex-context-mcp.py"
+register "mcp-servers/fleet-context-mcp.py"               "${CORTEX_DEPLOY_HOME}/scripts/fleet-context-mcp.py"
 register "ops/scripts/session-autocheckpoint.py"           "${CORTEX_DEPLOY_HOME}/scripts/session-autocheckpoint.py"
 # S2c — ONE tool implementation, shared by the MCP server and the CLI, so a
 # harness picks an access layer and never its own semantics.
 register "ops/services/mycortex-mem/context_tools.py"      "${CORTEX_DEPLOY_HOME}/services/mycortex-mem/context_tools.py"
 # S2c — the CLI access layer (Pi, and anything that shells out).
-register "ops/scripts/cortex-context.py"                   "${CORTEX_DEPLOY_HOME}/scripts/cortex-context.py"
+register "ops/scripts/fleet-context.py"                   "${CORTEX_DEPLOY_HOME}/scripts/fleet-context.py"
 # The generic governance CLI — the interactive ritual for a harness with no MCP
 # client. Unregistered = the repo has it and no host does; a new script is not
 # deployed by existing.
@@ -968,14 +969,14 @@ register "ops/scripts/loop-gov.py"                         "${CORTEX_DEPLOY_HOME
 # registry entry, never hand-written prose per harness.
 register "ops/install/harnesses/registry.yaml"             "${CORTEX_DEPLOY_HOME}/harnesses/registry.yaml"
 register "ops/install/harnesses/generate-harnesses.py"     "${CORTEX_DEPLOY_HOME}/harnesses/generate-harnesses.py"
-register "ops/install/harnesses/pi/extensions/cortex-context.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-context.ts"
+register "ops/install/harnesses/pi/extensions/fleet-context.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/fleet-context.ts"
 # The pi NATIVE-WRITE gate (2026-10-14, titus): pi's own read/bash/edit/write never
 # cross the Hermes enforcer plugin, and the commit hook's lock check is scoped to
 # steadfaste-fleet only — so in a PROJECT repo a pi session had no lock gate at write
 # OR commit time. This extension blocks a write-capable native tool call when no
 # lock covers the session's repo, asking the SHARED predicate
 # (loop-gov.py check_repo_lock) rather than parsing lock files itself.
-register "ops/install/harnesses/pi/extensions/cortex-governance.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/cortex-governance.ts"
+register "ops/install/harnesses/pi/extensions/fleet-governance.ts" "${CORTEX_DEPLOY_HOME}/harnesses/pi/extensions/fleet-governance.ts"
 # The self-contained implementation guide for the Pi agent (hand-written).
 register "ops/install/harnesses/pi/IMPLEMENT.md"           "${CORTEX_DEPLOY_HOME}/harnesses/pi/IMPLEMENT.md"
 register "ops/install/harnesses/README.md"                 "${CORTEX_DEPLOY_HOME}/harnesses/README.md"
@@ -1088,7 +1089,7 @@ register    "ops/install/deploy/clickhouse-config.d/03-profile-defaults.xml" "${
 # Dashboard
 register_orch "ops/services/dashboard/server.py"               "${CORTEX_DEPLOY_HOME}/dashboard/server.py" "dashboard" "restart_dashboard"
 register_orch "ops/services/dashboard/static/index.html"        "${CORTEX_DEPLOY_HOME}/dashboard/static/index.html" "dashboard"
-register_orch "ops/services/dashboard/com.hermes.cortex-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" "dashboard"
+register_orch "ops/services/dashboard/com.hermes.fleet-dashboard.plist" "${HOME}/Library/LaunchAgents/com.hermes.fleet-dashboard.plist" "dashboard"
 
 # Agent Bus
 
@@ -1597,7 +1598,7 @@ update_symlinks() {
 
 # ── Skill Sync ───────────────────────────────────────────────
 # Returns 0 if the file is a truncated skill stub, 1 otherwise.
-# Mirrors cortex-doctor check_skill_stubs markers: literal
+# Mirrors fleet-doctor check_skill_stubs markers: literal
 # 'Full content (truncated)' (Jul-17 1KB import stubs) or an
 # '--- End skill ---' dump under 1500 bytes. BOTH markers require
 # the file to be SMALL (< 1500 bytes) — a full doc that merely
@@ -2533,7 +2534,7 @@ deploy_mycortex_plugin() {
 # replacement) and prompt-guard (LLM request middleware) plugins as
 # plain COPIES to ~/.hermes/plugins/. Sources of truth live in the
 # repo plugins/ dir — the deployed copies are deploy artifacts, and
-# cortex-doctor's Deploy sync check verifies repo↔deployed parity.
+# fleet-doctor's Deploy sync check verifies repo↔deployed parity.
 # Not immutable — they're user plugins, not enforcement.
 deploy_mem_plugins() {
   local plugins=("mycortex-mem" "prompt-guard")
@@ -3052,8 +3053,8 @@ main() {
     # the first run — not only after the helper has been deployed.
     local _mutex_py=""
     for _cand in \
-        "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py" \
-        "${REPO_DIR}/ops/scripts/lib/cortex-update-mutex.py"; do
+        "${CORTEX_DEPLOY_HOME}/scripts/lib/fleet-update-mutex.py" \
+        "${REPO_DIR}/ops/scripts/lib/fleet-update-mutex.py"; do
       if [[ -f "$_cand" ]]; then _mutex_py="$_cand"; break; fi
     done
     if [[ -n "$_mutex_py" ]] && [[ -x "${CORTEX_DEPLOY_HOME}/venv/bin/python3" ]]; then
@@ -3372,7 +3373,7 @@ main() {
   # its governance must not report a clean update.
   _fleet_venv_dir="${HOME}/.steadfaste-fleet/venv"
   _fleet_venv="${_fleet_venv_dir}/bin/python3"
-  _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-cortex-venv.py"
+  _venv_fixer="${CORTEX_DEPLOY_HOME}/scripts/fix-fleet-venv.py"
   # CREATE it when absent (2026-10-13): nothing in this repo created that venv, so a host
   # could sit broken indefinitely while every launcher that execs it died with a generic
   # "No such file or directory". Touches only the venv path, deletes nothing, idempotent.
@@ -3437,7 +3438,7 @@ main() {
         if hermes mcp add tasks --command "$mcp_venv" --args "$mcp_server" 2>/dev/null; then
           info "  ✓ tasks MCP registered (restart the gateway to load tools)"
         else
-          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py --fix"
+          warn "hermes mcp add tasks failed — run: python3 ${CORTEX_DEPLOY_HOME}/scripts/fleet-doctor.py --fix"
         fi
       fi
     fi
@@ -3983,9 +3984,9 @@ except: print('error')
   # which cannot import yaml/mcp, so its auto-run checks ran "WEAKER". Fall back
   # to bare python3 only when the venv is not resolvable.
   if [[ -n "${_fleet_venv:-}" && -x "${_fleet_venv:-}" ]]; then
-    "$_fleet_venv" "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+    "$_fleet_venv" "${CORTEX_DEPLOY_HOME}/scripts/fleet-doctor.py" --quiet 2>&1 | sed 's/^/  /'
   else
-    python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+    python3 "${CORTEX_DEPLOY_HOME}/scripts/fleet-doctor.py" --quiet 2>&1 | sed 's/^/  /'
   fi
   _doc_rc=${PIPESTATUS[0]}
   set -e

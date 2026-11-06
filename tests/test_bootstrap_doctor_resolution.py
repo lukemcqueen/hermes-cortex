@@ -1,4 +1,4 @@
-"""bootstrap.sh resolves its cortex-doctor interpreter through the shared arbiter.
+"""bootstrap.sh resolves its fleet-doctor interpreter through the shared arbiter.
 
 Two branches a FRESH host can hit, and neither shows up in an ordinary deploy — so they are pinned
 here rather than described in an evidence file:

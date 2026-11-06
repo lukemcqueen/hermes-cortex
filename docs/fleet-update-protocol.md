@@ -6,7 +6,7 @@ via the Agent Bus (PGMQ). Agents receive requests, execute work, report results.
 ## Message Flow
 
 ```
-Moses → Agent:  UPDATE_REQUEST  (cortex-update + doctor)
+Moses → Agent:  UPDATE_REQUEST  (fleet-update + doctor)
 Agent → Moses:  UPDATE_RESULT   (success/fail + doctor JSON + git SHA)
 Moses → Agent:  FIX_REQUEST    (targeted fix instruction)
 Agent → Moses:  FIX_RESULT    (fix applied? + evidence)
@@ -109,7 +109,7 @@ When an agent receives `UPDATE_REQUEST`, it:
 | `target_sha` | string | Git SHA to update to |
 | `target_version` | string | Expected VERSION after update |
 | `branch` | string | Branch to pull |
-| `mode` | `"force-all"` or `"delta"` | cortex-update mode |
+| `mode` | `"force-all"` or `"delta"` | fleet-update mode |
 | `run_doctor` | bool | Whether to run doctor after update |
 | `deadline_minutes` | int | Max minutes before Moses considers agent unresponsive |
 | `summary` | string | Human-readable summary of the change |
@@ -181,7 +181,7 @@ Sent when UPDATE_RESULT contains issues Moses can identify and fix.
  "body": {
   "issue": "AGENTS.md needs sync",
   "fix": "bash ~/steadfaste-fleet/ops/scripts/install/seed-project.sh --project=<repo> --components=AGENTS.md",
-  "verify": "python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --json",
+  "verify": "python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --json",
   "deadline_minutes": 10
  }
 }
@@ -364,5 +364,5 @@ The agent responds with `GIT_AUTH_RESULT` containing `{authenticated: true/false
 ## See Also
 
 - `agent-registry.json` — agent capability manifests (bus_mode, has_git, etc.)
-- `cortex-doctor.py --json` — structured doctor output consumed by this protocol
+- `fleet-doctor.py --json` — structured doctor output consumed by this protocol
 - `bus-message-tracker.py` — existing confirmation tracking infrastructure

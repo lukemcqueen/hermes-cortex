@@ -40,7 +40,7 @@ log ""
 # 2. Check registered script paths from fleet-update.sh MAP exist in repo
 log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
-  "$HOME/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+  "$HOME/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
   "$HOME/steadfaste-fleet/ops/scripts/health/agent-stale-ref-watchdog.sh"
   "$HOME/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py"
   "$HOME/steadfaste-fleet/ops/scripts/cron-failure-state.sh"

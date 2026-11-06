@@ -51,4 +51,4 @@ on_task:
     - name: ci-cd-pipeline
       why: GitHub Actions, caching, deployment patterns
     - name: cortex-deployment-sync
-      why: Pull-latest / cortex-update invocation sequence, immutable-file deploy, enforcer bypass forms
+      why: Pull-latest / fleet-update invocation sequence, immutable-file deploy, enforcer bypass forms

@@ -24,7 +24,7 @@ Before sending any command to a remote fleet agent, test the full cycle locally:
 
 ```bash
 # Send EXEC to self
-hc exec moses cortex-doctor.py --json
+hc exec moses fleet-doctor.py --json
 
 # Run handler manually
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
@@ -65,7 +65,7 @@ sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELEC
   "topic": "command",
   "subject": "EXEC",
   "correlation_id": "exec-<12-hex>",
-  "body": "{\"command\": \"cortex-doctor.py\", \"params\": [\"--json\"], \"timeout\": 30}"
+  "body": "{\"command\": \"fleet-doctor.py\", \"params\": [\"--json\"], \"timeout\": 30}"
 }
 ```
 
@@ -82,7 +82,7 @@ sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELEC
 
 ## How to Run On-Demand (Moses)
 ```bash
-hc exec moses cortex-doctor.py --json
+hc exec moses fleet-doctor.py --json
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
 

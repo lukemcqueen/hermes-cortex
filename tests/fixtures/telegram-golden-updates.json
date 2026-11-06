@@ -1,5 +1,5 @@
 {
-  "_comment": "Golden Telegram updates for the cortex-gateway parity matrix (docs/design/cortex-gateway-parity.md). Ids and dates are SYNTHETIC (real chat ids are personal identifiers; real unix timestamps read as phone numbers). 'expect' = envelope|null; 'gap' names behavior STILL missing after parity slice 1, asserted as today's behavior so implementing it FAILS this test and forces the matrix to be updated.",
+  "_comment": "Golden Telegram updates for the fleet-gateway parity matrix (docs/design/cortex-gateway-parity.md). Ids and dates are SYNTHETIC (real chat ids are personal identifiers; real unix timestamps read as phone numbers). 'expect' = envelope|null; 'gap' names behavior STILL missing after parity slice 1, asserted as today's behavior so implementing it FAILS this test and forces the matrix to be updated.",
   "cases": [
     {
       "name": "plain_text_private",

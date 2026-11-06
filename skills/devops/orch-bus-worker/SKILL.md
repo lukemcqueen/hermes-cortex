@@ -64,7 +64,7 @@ metadata:
    ```
    - Clean the bus of stale messages first (fleet-commands skill).
    - Only use scripts deployed on ALL agents (`agent-diagnostic.py`,
-     `cortex-doctor.py` via `fleet exec`, etc.) unless the target is known to
+     `fleet-doctor.py` via `fleet exec`, etc.) unless the target is known to
      have it.
 
 4. **Verify — never trust a send** (6-checkpoint rule, fleet-commands):

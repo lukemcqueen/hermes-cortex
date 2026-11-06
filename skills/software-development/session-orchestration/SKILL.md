@@ -186,7 +186,7 @@ wave-orchestrate.py advance --session <id>
 
 ### Steps
 1. Verify all specs/acceptance criteria are met
-2. Check: done checklist (cortex-doctor --quiet)
+2. Check: done checklist (fleet-doctor --quiet)
 3. Commit and push
 4. Deploy (fleet-update.sh)
 5. **Run outerloop evidence → verdict cycle**

@@ -29,7 +29,7 @@ consumer's execution budget:
 Fleet `UPDATE_REQUEST` dispatch: 5 hosts consumed the request and the updates
 LANDED (verified via direct probes: repo + deploy sync at the target SHA), but
 **0/5 returned UPDATE_RESULTs**. Root cause: the handler ran
-pull+cortex-update+doctor synchronously (~390s worst case) inside a cron tick
+pull+fleet-update+doctor synchronously (~390s worst case) inside a cron tick
 budgeted at ~300s. The tick was killed mid-processing — after the early-archive
 — so the request was never re-processed and the receipt was silently lost.
 "Consumed but no result" looked like a bus failure; it was an execution-budget

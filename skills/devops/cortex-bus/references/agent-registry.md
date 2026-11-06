@@ -228,10 +228,10 @@ against JSON Schema before sending and after receiving. See `ops/scripts/lib/han
 Usage:
 ```bash
 # Default: validates result against EXEC_RESULT schema
-fleet exec esther cortex-doctor.py --json
+fleet exec esther fleet-doctor.py --json
 
 # Custom schema validation on output
-fleet exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT
+fleet exec kustos fleet-doctor.py --json --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation
 fleet exec moses -- df -h / --output-schema RAW

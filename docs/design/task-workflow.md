@@ -17,7 +17,7 @@
 ## 1. Why this exists
 
 The todo system was `bus.todos` on the `bus` schema — **orchestrator-only by
-accident**: `setup-cortex-bus.sh` is `register_orch`, so workers (Gisu, Joseph,
+accident**: `setup-fleet-bus.sh` is `register_orch`, so workers (Gisu, Joseph,
 Kustos, Titus) never got the `bus` schema and had **no todos at all**
 (F-01…F-03). Worse, `todo-db.py` silently no-op'd for months: stdin-mode psql
 returns rc=0 on SQL failure, so every `add` printed ✅ while rows vanished
@@ -186,7 +186,7 @@ missing schema, so warn-not-fail can't silently strand a worker).
 | B-4 | **status × column dual lifecycle, no invariant** (Architect S3, Domain S-3, Product S1, QA) | 🔴 BLOCKING | `status` canonical; `column` dormant nullable display field, CHECK-enforced coherence; single write path `task_upsert` derives column from status when not provided; **no kanban flags in v1 tool surface** |
 | B-5 | **Migration unguarded**: "drop bus artifacts" could mean `DROP SCHEMA bus CASCADE` (kills live PGMQ on orchestrators); no backup, no column mapping, no rollback (SRE SS-2, QA S-2, Security 4.4.7) | 🔴 BLOCKING | Guarded migration script (§6): `pg_dump -t bus.todos` backup, single transaction, **table-scoped** `DROP TABLE IF EXISTS bus.todos` + `DROP FUNCTION` (never DROP SCHEMA), explicit column mapping, count+checksum parity, idempotency guard, doctor "zero bus.* todo refs" check |
 | B-6 | **Schema listing omitted `content`** (Domain S-1) and dropped `session_id` (QA S-3); `completed_at` missing (Domain M-1) | 🟠 REQUIRED | Restored in §3: `content TEXT NOT NULL`, `session_id TEXT`, `completed_at TIMESTAMPTZ` |
-| B-7 | **MCP-on-all-agents lifecycle**: config.yaml edit ≠ hot reload; gateways need restart; `~` in args not expanded; doctor must not WARN workers for legit todos config (SRE SS-3, Architect, QA 4c) | 🟠 REQUIRED | Deploy runbook in §7: cortex-update → fleet-wide gateway restart → doctor verifies tools loaded; absolute path in args (mirror loop-gov wiring); doctor distinguishes `todos` MCP (expected everywhere) from `agent-bus` (orchestrator-only) |
+| B-7 | **MCP-on-all-agents lifecycle**: config.yaml edit ≠ hot reload; gateways need restart; `~` in args not expanded; doctor must not WARN workers for legit todos config (SRE SS-3, Architect, QA 4c) | 🟠 REQUIRED | Deploy runbook in §7: fleet-update → fleet-wide gateway restart → doctor verifies tools loaded; absolute path in args (mirror loop-gov wiring); doctor distinguishes `todos` MCP (expected everywhere) from `agent-bus` (orchestrator-only) |
 | B-8 | **Zero test artifacts in the implement plan**; flagship claim untestable (QA S-1); A4 gate will block the file anyway (QA S-4) | 🟠 REQUIRED | Test plan §8: hermetic schema test, CLI unit tests (injection regressions), Darwin-branch unit test, MCP JSON-RPC handshake, dream-bridge fixture test, doctor write-probe |
 | B-9 | **Schema not version-gated**; warn-not-fail apply contradicts the fail-loudly mycortex precedent (SRE SS-2, SS-4) | 🟡 MUST FIX | Version-gated `v001__tasks.sql` + `tasks.schema_version`; doctor hard-FAIL on missing schema |
 | B-10 | **project enum stale at design time** (`client-works` exists), client names in public CHECK = PII leak (Domain M-3, Architect); `target` free-form (cisnet02 vs cisnet-02); `target='fleet'` sentinel pollutes host column; repo-name collision across clients; `source` enum incomplete; `repo=NULL` restore semantics undefined; `fleet+brain` void combo (Domain 4.2, M-4/M-5/M-6/M-7) | 🟡 MUST FIX | `project` TEXT + private app-layer registry; `target` validated against canonical host list; `target='fleet'` banned (fleet-wide = scope=fleet, target NULL); repo stored as label resolved once (never re-derived at restore); `source` enum extended (`governance`,`inbox`); `repo IS NULL AND scope='personal'` = global personal, always restored; fleet+brain blocked by app rule |
@@ -371,7 +371,7 @@ JSON-RPC `initialize` + `tools/list` handshake per host type.
 | L1 integration | Migration test: seed `bus.todos` rows on scratch DB → run migration → count+checksum parity → scoped drop → `\dt bus.*` clean → re-run no-op | Migration guardrails actually work |
 | L2 fleet | `tests/test-task-fleet.sh` — ssh-invoked on all 6 hosts: schema apply ×2, CRUD roundtrip (env-override scratch DB), `pending` shape, save-end; Linux docker-exec + macOS direct psql; orch vs worker config.yaml static check + JSON-RPC `tools/list` handshake. **SHIPPED 2026-08-06 — local battery 9/9 green, hermetic (scratch DB + TASK_DB_ROLE/NAME overrides; PROFILE pinned to the reader role so RLS admits the probe).** | Every host type works; MCP actually loads |
 | L2 doctor | `check_task_db` strengthened: **write-probe** — seed `source='doctor-probe'` row, read it back, delete it, assert roundtrip (catches the F-04 class "valid JSON but dead table"); platform-aware remediation hints (macOS vs Linux) | Doctor catches silent no-op, not just JSON shape |
-| L3 dogfood | cortex-update → gateway restart → doctor green → dream-bridge cron run → session restore → fleet all-clear | House cycle |
+| L3 dogfood | fleet-update → gateway restart → doctor green → dream-bridge cron run → session restore → fleet all-clear | House cycle |
 
 ---
 
@@ -442,4 +442,4 @@ DECLARED, not columned: `created_by` IS the tenant-scoped identity (profile).
 
 *Implementation order: schema + migrate runner → task-db.py rewrite → migration
 script → task-mcp.py + config wiring → bridge rename/tagging → doctor + tests →
-skills/docs → deploy (cortex-update + gateway restart) → dogfood → push.*
+skills/docs → deploy (fleet-update + gateway restart) → dogfood → push.*

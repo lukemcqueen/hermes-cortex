@@ -190,7 +190,7 @@ def main() -> int:
     emit("")
 
     # 1. The doctor after the deploy: the new check, and 0 warn / 0 fail.
-    block("doctor --quiet", ["python3", str(REPO / "ops/scripts/manage/cortex-doctor.py"), "--quiet"],
+    block("doctor --quiet", ["python3", str(REPO / "ops/scripts/manage/fleet-doctor.py"), "--quiet"],
           keep=r"Paused crons|Orphan-cycle|Overall|⚠️|❌|ℹ️")
 
     # 2. The new check and its neighbour, called directly.

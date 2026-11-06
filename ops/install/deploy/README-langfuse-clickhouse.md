@@ -2,7 +2,7 @@
 
 > **Location:** `deploy/docker-compose.langfuse.yml`
 > **Config files:** `deploy/clickhouse-config.d/`
-> **Setup script:** `ops/scripts/install/cortex-setup-langfuse.sh`
+> **Setup script:** `ops/scripts/install/fleet-setup-langfuse.sh`
 
 This directory deploys [Langfuse v3](https://langfuse.com) with ClickHouse, PostgreSQL,
 Redis, and MinIO for local LLM observability (tracing, scoring, cost tracking).
@@ -127,7 +127,7 @@ Create `~/langfuse/.env` with all required secrets:
 
 ```bash
 # Run the automated installer (recommended)
-bash ops/scripts/install/cortex-setup-langfuse.sh --start
+bash ops/scripts/install/fleet-setup-langfuse.sh --start
 ```
 
 Or generate manually:
@@ -187,7 +187,7 @@ After the stack is running, create a Langfuse API key pair for Hermes:
 
 ```bash
 # Via the setup script
-bash ops/scripts/install/cortex-setup-langfuse.sh
+bash ops/scripts/install/fleet-setup-langfuse.sh
 
 # Or manually via Postgres (after enabling pgcrypto):
 docker exec langfuse-postgres-1 psql -U postgres -d postgres -c "
@@ -736,6 +736,6 @@ docker exec langfuse-clickhouse-1 clickhouse-client \
 # Expected: < 200 MiB after truncation
 
 # Doctor check
-cortex-doctor.py --quiet | grep 'ClickHouse'
+fleet-doctor.py --quiet | grep 'ClickHouse'
 # Expected: PASS
 ```

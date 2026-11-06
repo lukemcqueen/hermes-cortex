@@ -121,7 +121,7 @@ reason that file exists.
   Precedence is args -> CORTEX_SESSION_* env -> git"), consumed by
   `ops/services/mycortex-mem/context_tools.py` and
   `ops/scripts/session-autocheckpoint.py`, and pinned per chat by the
-  cortex-gateway `command` backend for Pi:
+  fleet-gateway `command` backend for Pi:
   `ops/scripts/cortex_gateway/agents.py` ("Declaring
   env: {\"CORTEX_SESSION_KEY\": \"{session_id}\"} makes each chat its own"),
   `ops/scripts/gateway-pi.example.yaml`.

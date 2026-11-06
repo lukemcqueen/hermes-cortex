@@ -139,7 +139,7 @@ def main() -> None:
     print("\n2. Capability table — routine allowlist auto-approves")
     routine_ops = [
         "precommit-repo-HEAD/update",
-        "cortex-doctor.py --once",
+        "fleet-doctor.py --once",
         "sustainability-briefing-2026",
         "orch-bus-worker-run",
         "agent-cron-status.py --list",

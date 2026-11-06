@@ -50,12 +50,12 @@ Sequence that bit us:
    "a per-cron model switch in the manifest is never reverted by a
    re-install").
 4. Fix: patch `cron-manifest.yaml` (14 entries → deepseek-v4-flash-free /
-   opencode-free), re-apply live pins, re-run cortex-update, verify pins
+   opencode-free), re-apply live pins, re-run fleet-update, verify pins
    survived. The 7 non-manifest jobs (local-*, job-opportunity-scanner,
    orch-task-*) kept live pins without manifest changes.
 
 **Rule: manifest = durable source of truth for repo-managed crons. Live
-pins are provisional until they survive a cortex-update.**
+pins are provisional until they survive a fleet-update.**
 
 ## Where each knob lives
 
@@ -134,5 +134,5 @@ EOF
 - Foreign unstaged changes (another session's in-flight work) block
   `git pull --rebase`. Use `git -c rebase.autoStash=true pull --rebase` —
   autostash preserves the peer's working tree; never stash/clean/commit their
-  files. The pre-push dogfood gate may still demand `cortex-dogfood.sh
+  files. The pre-push dogfood gate may still demand `fleet-dogfood.sh
   --force`; satisfy it, don't bypass.

@@ -27,7 +27,7 @@ Script runs
   ```bash
   register "ops/scripts/my-script.py" "${HERMES_HOME}/scripts/my-script.py"
   ```
-3. Deploy via cortex-update:
+3. Deploy via fleet-update:
   ```bash
   bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
   ```

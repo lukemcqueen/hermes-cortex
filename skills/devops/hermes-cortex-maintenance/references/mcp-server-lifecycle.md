@@ -33,9 +33,9 @@ manual cleanup needed. `hermes mcp configure` toggles tool selection;
 ## Survey before removing — entries are often already dead
 
 - `git ls-files | grep mcp-servers` in `~/steadfaste-fleet` — the repo tracks
-  only the *live* servers (cortex-bus-mcp.py, loop-gov-mcp.py, task-mcp.py).
+  only the *live* servers (fleet-bus-mcp.py, loop-gov-mcp.py, task-mcp.py).
   Disabled entries frequently point at scripts that no longer exist
-  (`inbox-mcp.py` was replaced by `cortex-bus-mcp.py`; an `a2a-bridge` entry
+  (`inbox-mcp.py` was replaced by `fleet-bus-mcp.py`; an `a2a-bridge` entry
   pointed at a file git never tracked). Removing dead entries is pure config
   cruft cleanup — zero runtime change.
 
@@ -45,7 +45,7 @@ manual cleanup needed. `hermes mcp configure` toggles tool selection;
   Before deleting: `grep -rn "<name>" ~/.hermes/config.yaml ~/steadfaste-fleet` —
   if nothing references it, `rm` it.
 - Verify: `hermes mcp list` shows the expected set, then
-  `python3 ops/scripts/manage/cortex-doctor.py --quiet` — all `MCP server`
+  `python3 ops/scripts/manage/fleet-doctor.py --quiet` — all `MCP server`
   checks stay ✅ (they validate enabled servers; removing dead entries never
   regresses them).
 

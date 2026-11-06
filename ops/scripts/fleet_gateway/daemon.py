@@ -148,7 +148,7 @@ class _TypingKeeper(threading.Thread):
     """
 
     def __init__(self, gateway, interval_s: float = 4.0):
-        super().__init__(daemon=True, name="cortex-gateway-typing")
+        super().__init__(daemon=True, name="fleet-gateway-typing")
         self.gateway = gateway
         self.interval_s = interval_s
         self._stop = threading.Event()
@@ -1203,7 +1203,7 @@ def _build_backends(cfg: dict) -> dict:
     names = cfg.get("backends", [DEFAULT_BACKEND_AGENT])
     if names and not secret:
         raise SystemExit(
-            "cortex-gateway: GATEWAY_SECRET is not set. Every inbound "
+            "fleet-gateway: GATEWAY_SECRET is not set. Every inbound "
             "envelope is HMAC-signed so agents can verify it came from the "
             "gateway; an empty key makes those signatures forgeable by "
             "anyone. Set GATEWAY_SECRET (e.g. `openssl rand -hex 32`) in the "
@@ -1265,14 +1265,14 @@ def build_gateway(config_path: Path) -> Gateway:
     allowed = _parse_allowed_users(os.environ.get("TELEGRAM_ALLOWED_USERS", ""))
     if not allowed:
         raise SystemExit(
-            "cortex-gateway: TELEGRAM_ALLOWED_USERS is unset or empty — "
+            "fleet-gateway: TELEGRAM_ALLOWED_USERS is unset or empty — "
             "without an allowlist any Telegram user who finds the bot could "
             "talk to the agent. Set it to the allowed chat/user ids "
             "(comma-separated); this is the same var Hermes uses.")
     home = os.environ.get("TELEGRAM_HOME_CHANNEL", "").strip()
     if not home:
         raise SystemExit(
-            "cortex-gateway: TELEGRAM_HOME_CHANNEL is unset — it is the "
+            "fleet-gateway: TELEGRAM_HOME_CHANNEL is unset — it is the "
             "default delivery target for agent-initiated messages (the same "
             "var Hermes uses).")
 
@@ -1330,7 +1330,7 @@ def build_gateway(config_path: Path) -> Gateway:
 
 def main() -> int:
     import argparse
-    ap = argparse.ArgumentParser(description="cortex-gateway daemon")
+    ap = argparse.ArgumentParser(description="fleet-gateway daemon")
     ap.add_argument("--config", default="gateway.yaml")
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--outbound-only", action="store_true")

@@ -1,5 +1,5 @@
 """
-Checks — all health check functions for cortex-doctor.
+Checks — all health check functions for fleet-doctor.
 
 Each check_* function accepts a Results object and appends results.
 """
@@ -359,7 +359,7 @@ def check_adversarial_review(res: "Results") -> None:
             f"(exit {_se.code}) — usually the 'mcp' package is missing from "
             "this interpreter; review helpers unverifiable here",
             "Run the doctor with the cortex venv python "
-            "(~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py) "
+            "(~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py) "
             "so the MCP SDK imports and the gate can be verified")
   except Exception as _e:
     res.add("Self-adversarial review gate", "FAIL",
@@ -408,7 +408,7 @@ def check_stale_loop_gov_daemon(res: "Results") -> None:
     """Warn when the running loop-governance MCP daemon serves a STALE module.
 
     The daemon loads loop-gov-mcp.py ONCE at startup and keeps running that code
-    until a real restart — so a deploy that replaces the module (cortex-update
+    until a real restart — so a deploy that replaces the module (fleet-update
     registers mcp-servers/loop-gov-mcp.py -> ~/.steadfaste-fleet/tools/...) leaves the
     daemon serving the OLD logic from the file that is now newer on disk. Measured
     symptom (Titus/pi, 2026-10-14, recurring): feedback_accept writes MOVE_ON and
@@ -1650,7 +1650,7 @@ def check_scripts(res):
 
 def check_cron_runtime_scripts(res):
   """Cron runtime path integrity: ~/.hermes/scripts must resolve to the SAME
-  tree as ~/.steadfaste-fleet/scripts (cortex-update deploy target).
+  tree as ~/.steadfaste-fleet/scripts (fleet-update deploy target).
 
   The cron scheduler resolves every no_agent job's script against
   HERMES_HOME/scripts (cron/scheduler.py enforces containment there). If
@@ -3343,7 +3343,7 @@ def check_governance(res):
       _ok = False
     res.add("Fleet python", "PASS" if _ok else "WARN",
             f"{declared_py} {'imports yaml + mcp' if _ok else 'cannot import yaml/mcp'}",
-            "" if _ok else f"Repair: {CORTEX_HOME}/scripts/fix-cortex-venv.py")
+            "" if _ok else f"Repair: {CORTEX_HOME}/scripts/fix-fleet-venv.py")
 
   # ── Pre-commit hook ──
   expected_hook_path = hooks_dir / "pre-commit"
@@ -4024,7 +4024,7 @@ def check_local_hooksPath_overrides(res):
 
     # Pinned-repo exemption: pin_repos_with_own_hooks() points core.hooksPath
     # at a repo's OWN .git/hooks to preserve deploy-bare-repo hooks, and
-    # cortex-update refreshes the cortex hook files there (2026-08-05).
+    # fleet-update refreshes the cortex hook files there (2026-08-05).
     # If the hooks dir carries a cortex-managed hook, this is a legitimate
     # pin — freshness is verified by check_pinned_hooks_fresh (7c), so 7b
     # must NOT flag it. Only overrides pointing at dirs with NO cortex hooks
@@ -4101,7 +4101,7 @@ def check_pinned_hooks_fresh(res):
     if not global_hooks:
         return  # global hooksPath unset — the 7b check covers that
 
-    # Crawl for repos (same bases/exclusions as cortex-update pin crawl)
+    # Crawl for repos (same bases/exclusions as fleet-update pin crawl)
     try:
         raw = subprocess.run(
             ["find", "/home", "/opt", "/srv", "/var/www", "/var/repo", "/Users",
@@ -4546,7 +4546,7 @@ def check_deploy_checksums(res):
   # ── Category 1: Parse register() entries from fleet-update.sh ──
   # NOTE (2026-08-05): MEMORY.md/USER.md are intentionally NOT registered —
   # they are Hermes-owned user memory (~/.hermes/memories/). Deploying them
-  # made every cortex-update overwrite personalized memory with the seed
+  # made every fleet-update overwrite personalized memory with the seed
   # template, and this sweep then FAILed on the healthy personalized state
   # ("Run fleet-update.sh to resync" = the destructive action). Never
   # re-add memory files to the register map.
@@ -4843,8 +4843,8 @@ def check_skills_loadable(res):
             f"YAML-parse and length rules were NOT applied",
             "Run the doctor with an interpreter that can import the declared set: "
             "~/.steadfaste-fleet/venv/bin/python3 "
-            "~/.steadfaste-fleet/scripts/cortex-doctor.py — or repair the fleet venv with "
-            "python3 ops/scripts/manage/fix-cortex-venv.py")
+            "~/.steadfaste-fleet/scripts/fleet-doctor.py — or repair the fleet venv with "
+            "python3 ops/scripts/manage/fix-fleet-venv.py")
     for rel, defects in bad[:10]:
         res.add("Skills loadable", "FAIL", f"{rel} — " + "; ".join(defects),
             "Fix the frontmatter so every Agent-Skills loader accepts the file. "
@@ -4853,7 +4853,7 @@ def check_skills_loadable(res):
     if len(bad) > 10:
         res.add(f"Skills loadable ({len(bad)} total)", "FAIL",
             f"{len(bad) - 10} more repo SKILL.md files a loader would refuse",
-            "Re-run this check after fixing: python3 ops/scripts/manage/cortex-doctor.py")
+            "Re-run this check after fixing: python3 ops/scripts/manage/fleet-doctor.py")
     if not bad and repo_rel and yaml_mod is not None:
         res.add("Skills loadable", "PASS",
             f"all {len(repo_rel)} repo skills pass the Agent-Skills loader rules")
@@ -4968,7 +4968,7 @@ def check_skill_stubs(res):
     state/skill-contents/idx_N.txt caches (always full — only delivery was
     cut). Run the fleet recovery: deploy agent-skill-stub-audit.py, EXEC it
     with --send on each source agent, then restore the returned content into
-    skills/ and re-run cortex-update.
+    skills/ and re-run fleet-update.
     """
     SKILLS_DIR = CORTEX_REPO / "skills"
     if not SKILLS_DIR.is_dir():
@@ -5293,7 +5293,7 @@ def check_skill_drift(res):
 
         if dep_mtime > repo_mtime + 60:  # 1-minute tolerance for filesystem jitter
             direction = "deployed-newer"
-            hint = f"Deployed copy is newer than repo source ({skill_md}). Commit the repo source before cortex-update overwrites it."
+            hint = f"Deployed copy is newer than repo source ({skill_md}). Commit the repo source before fleet-update overwrites it."
         elif repo_mtime > dep_mtime + 60:
             direction = "repo-newer"
             hint = f"Repo source has changed but deployed copy is stale ({repo_md}). Run fleet-update.sh."
@@ -5322,7 +5322,7 @@ def check_skill_drift(res):
             "Resolve each drift entry above — recovery is its OWN governed change "
             "(see reconcile-stranded-skills.py), not part of the update cycle. If you are NOT "
             "fixing it now, record the decision, or the check is reported as UNDISPOSED: "
-            "cortex-doctor.py --disposition \"Skill drift\" --as deferred --owner <you> "
+            "fleet-doctor.py --disposition \"Skill drift\" --as deferred --owner <you> "
             "--reason \"<why>\"")
 
 
@@ -5730,12 +5730,12 @@ def check_bus_grant_expiry(res: "Results") -> None:
 
 
 def check_fleet_gateway(res: "Results") -> None:
-    """cortex-gateway: the deployed daemon imports hermetically (no Hermes on
+    """fleet-gateway: the deployed daemon imports hermetically (no Hermes on
     the path) and its config + systemd unit carry no hermes-gateway dependency.
     Serving without the incumbent harness is the whole point of the gateway."""
     scripts = HOME / ".steadfaste-fleet" / "scripts"
     if not (scripts / "fleet_gateway").is_dir():
-        res.add("cortex-gateway", "SKIP", "package not deployed")
+        res.add("fleet-gateway", "SKIP", "package not deployed")
         return
     probe = ("import sys; sys.path.insert(0, %r); "
              "from fleet_gateway.daemon import build_gateway; "
@@ -5745,10 +5745,10 @@ def check_fleet_gateway(res: "Results") -> None:
         p = subprocess.run([sys.executable, "-I", "-c", probe],
                            capture_output=True, text=True, timeout=30)
     except Exception as exc:  # pragma: no cover - environment failure
-        res.add("cortex-gateway", "WARN", f"import probe failed to run: {exc}")
+        res.add("fleet-gateway", "WARN", f"import probe failed to run: {exc}")
         return
     if p.returncode != 0:
-        res.add("cortex-gateway", "FAIL",
+        res.add("fleet-gateway", "FAIL",
                 f"daemon does not import hermetically: {p.stderr.strip()[-200:]}",
                 "run fleet-update.sh")
         return
@@ -5756,20 +5756,20 @@ def check_fleet_gateway(res: "Results") -> None:
     if cfg.is_file():
         try:
             if not json.loads(cfg.read_text()).get("bots"):
-                res.add("cortex-gateway", "WARN", "gateway.yaml has no bots")
+                res.add("fleet-gateway", "WARN", "gateway.yaml has no bots")
                 return
         except Exception as exc:
-            res.add("cortex-gateway", "FAIL", f"gateway.yaml invalid: {exc}")
+            res.add("fleet-gateway", "FAIL", f"gateway.yaml invalid: {exc}")
             return
-    unit = HOME / ".config" / "systemd" / "user" / "cortex-gateway.service"
+    unit = HOME / ".config" / "systemd" / "user" / "fleet-gateway.service"
     if unit.is_file():
         directives = [ln for ln in unit.read_text().splitlines()
                       if ln.strip() and not ln.lstrip().startswith("#")]
         if any("hermes-gateway" in ln for ln in directives):
-            res.add("cortex-gateway", "FAIL",
+            res.add("fleet-gateway", "FAIL",
                     "unit depends on hermes-gateway.service (breaks independence)")
             return
-    res.add("cortex-gateway", "PASS",
+    res.add("fleet-gateway", "PASS",
             "daemon imports hermetically; config + unit independent of hermes-gateway")
 
 

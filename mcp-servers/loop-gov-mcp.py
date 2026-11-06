@@ -219,7 +219,7 @@ except (ImportError, TypeError) as _sdk_err:  # pragma: no cover — no SDK, or 
             f"[mcp-server] Interpreter: {sys.executable}\n"
             f"[mcp-server] Fix: run this with an interpreter that has mcp>=2.0 "
             f"(ops/install/requirements.txt), e.g. ~/.steadfaste-fleet/venv/bin/python3 — or "
-            f"repair that venv with ops/scripts/manage/fix-cortex-venv.py",
+            f"repair that venv with ops/scripts/manage/fix-fleet-venv.py",
             file=sys.stderr,
         )
 
@@ -566,7 +566,7 @@ def _injected_session_id(args: dict | None) -> str:
 # ── Session identity a NON-Hermes harness supplies through the ENVIRONMENT ──
 # Order matters: the first non-empty value wins. Both names are SURVEYED from the
 # fleet, never invented — CORTEX_SESSION_KEY is the documented per-session key
-# (docs/runbooks/context-integration.md; the cortex-gateway `command` backend
+# (docs/runbooks/context-integration.md; the fleet-gateway `command` backend
 # pins it per chat in ops/scripts/fleet_gateway/agents.py), and PI_SESSION_ID is
 # Pi's own "Current session ID" (its packaged docs/environment-variables.md).
 # One MCP child serves ONE session, which is why an env value is a correct

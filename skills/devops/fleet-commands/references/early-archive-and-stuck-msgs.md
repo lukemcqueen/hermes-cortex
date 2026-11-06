@@ -16,7 +16,7 @@ the agent at VT intervals (~30s) but never an `archive` action.
 curl -s -u user:pass CORTEX_BUS_URL/api/pgmq/queues/inbox_<agent>
 ```
 Look for `processing_count > 0`. This is now built into the doctor's bus E2E
-check — run `cortex-doctor.py --quiet` and check for "Bus stuck msgs".
+check — run `fleet-doctor.py --quiet` and check for "Bus stuck msgs".
 
 ## The Fix: Early Archive
 

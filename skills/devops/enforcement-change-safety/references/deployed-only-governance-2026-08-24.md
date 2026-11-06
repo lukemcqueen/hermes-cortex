@@ -56,7 +56,7 @@ The Hermes core lifecycle guard statically scans referenced script
 CONTENT for lifecycle commands — fleet-update.sh's macOS `launchctl`
 text (dead on Linux) trips it, blocking `bash ops/scripts/fleet-update.sh`
 from inside the gateway. The working sanctioned path:
-`bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` — its
+`bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force` — its
 `"$UPDATE"` variable indirection defeats the static scan, and it runs
 deploy + doctor + verify in one step. Diagnose with the guard's own
 function before assuming a bypass:
@@ -82,7 +82,7 @@ git fetch origin
 git reset --hard origin/main
 git reflog expire --expire=now --all && git gc --prune=now
 git branch | grep -E "pii-scrub|pr/[0-9]" | xargs -r git branch -D
-bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force
+bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force
 ```
 
 Pre-built tool: `fleet-git-reset.py` (`--check` dry-run, `--reset`

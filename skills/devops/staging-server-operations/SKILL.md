@@ -32,7 +32,7 @@ don't silently skip it.
 cd ~/steadfaste-fleet
 git pull --ff-only origin main
 bash ops/scripts/fleet-update.sh
-python3 ops/scripts/manage/cortex-doctor.py --quiet
+python3 ops/scripts/manage/fleet-doctor.py --quiet
 ```
 
 ### 2. Docker volume management

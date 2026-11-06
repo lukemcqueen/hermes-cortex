@@ -5,7 +5,7 @@
 # WHY VERSION-AWARE. The integration has TWO routes and the correct checks differ:
 #
 #   MCP route    Pi >= 0.99 — an MCP client. Five cortex servers (review,
-#                tasks, executor, agent-bus, cortex-context) via ~/.pi/agent/mcp.json.
+#                tasks, executor, agent-bus, fleet-context) via ~/.pi/agent/mcp.json.
 #   HOOKS route  Pi <  0.99 (the shipped 0.87.1 has NO MCP client) — governance and
 #                the cortex tools arrive through the git hooks + ops/scripts/loop-gov.py.
 #
@@ -76,10 +76,10 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
   else
     # ONE source of truth for the required set: this loop and the PASS line both
     # read REQUIRED, so a server can never be required without being reported. The
-    # old "4 servers configured" line outlived cortex-context's 2026-10-03
+    # old "4 servers configured" line outlived fleet-context's 2026-10-03
     # deployment precisely because the set was written out twice — a loop that
     # checked four names and a sentence that claimed four of them.
-    REQUIRED="review tasks executor agent-bus cortex-context"
+    REQUIRED="review tasks executor agent-bus fleet-context"
     missing=""
     for s in $REQUIRED; do
       grep -q "\"$s\"" "$MCP_JSON" || missing="$missing $s"
@@ -89,8 +89,8 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
     else
       srv_missing=""
       for f in "$DEPLOY/tools/loop-governance/loop-gov-mcp.py" "$DEPLOY/scripts/task-mcp.py" \
-               "$DEPLOY/scripts/executor-mcp.py" "$DEPLOY/scripts/cortex-bus-mcp.py" \
-               "$DEPLOY/scripts/cortex-context-mcp.py"; do
+               "$DEPLOY/scripts/executor-mcp.py" "$DEPLOY/scripts/fleet-bus-mcp.py" \
+               "$DEPLOY/scripts/fleet-context-mcp.py"; do
         [[ -f "$f" ]] || srv_missing="$srv_missing $(basename "$f")"
       done
       if [[ -n "$srv_missing" ]]; then
@@ -169,7 +169,7 @@ PY
           # The audit prints only what it MEASURED. It cannot count another server's
           # tools (that needs a live MCP session), so it asserts no number: the old
           # "4 servers / 46 tools" line was a hardcoded claim that stayed stale for
-          # weeks — tasks exposes 14, not 13, and cortex-context's 12 were missing
+          # weeks — tasks exposes 14, not 13, and fleet-context's 12 were missing
           # from it entirely. Live counts belong in a transcript, beside the command
           # that produced them, not in an assertion this script cannot check.
           _line 1 PASS "live check (agent, in a Pi session): 'pi mcp list' → every cortex server should report 'connected' (no tool count is asserted here: this audit cannot measure one)"
@@ -275,14 +275,14 @@ fi
 
 # ── Layer 3: session/memory extension ──
 EXT_OK=0
-for c in "$DEPLOY/harnesses/pi/extensions/cortex-context.ts" \
-         "${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/install/harnesses/pi/extensions/cortex-context.ts"; do
+for c in "$DEPLOY/harnesses/pi/extensions/fleet-context.ts" \
+         "${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/install/harnesses/pi/extensions/fleet-context.ts"; do
   [[ -f "$c" ]] && EXT_OK=1 && break
 done
 if [[ "$EXT_OK" == "1" ]]; then
-  _line 3 PASS "cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)"
+  _line 3 PASS "fleet-context extension present (native mem_*/session_* tools are visible to the agent itself)"
 else
-  _failed 3 "cortex-context.ts not found (deployed or repo) — run fleet-update.sh"
+  _failed 3 "fleet-context.ts not found (deployed or repo) — run fleet-update.sh"
 fi
 
 # ── Layer 4: governance wiring ──

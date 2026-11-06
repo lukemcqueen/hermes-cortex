@@ -247,11 +247,11 @@ so the boundary is explicit, and drop engineering-preference stubs (e.g. a
 **Propagation is NOT uniform — pair each non-auto-syncing surface with a doctor
 WARN so agents are told to reconcile.** AGENTS.md is PER-REPO — the fleet
 template seeds each repo via `seed-project.sh`, and there is NO auto-sync to a
-global `~/.hermes/AGENTS.md` (removed 2026-11-04). `cortex-update` auto-syncs
+global `~/.hermes/AGENTS.md` (removed 2026-11-04). `fleet-update` auto-syncs
 SOUL.md (soul-merge/soul-sync) and skills; it does NOT touch CLAUDE.md copies
 already installed in dev repos, and it NEVER touches USER.md
 (`~/.hermes/memories/`, Hermes-owned, deliberately unregistered so a deploy
-cannot clobber a personalized copy). So "agents pull + cortex-update get the
+cannot clobber a personalized copy). So "agents pull + fleet-update get the
 new value" is only true for two surfaces — the others silently keep the old
 content unless a check flags them. For each non-auto-syncing surface add
 a doctor check that WARNs (never auto-overwrites — both are user/project-owned),

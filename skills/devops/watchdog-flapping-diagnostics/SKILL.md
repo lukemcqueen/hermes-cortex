@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-A health or failover watchdog (e.g. `cortex-bus-failover-watchdog.py` workers, a
+A health or failover watchdog (e.g. `fleet-bus-failover-watchdog.py` workers, a
 fleet-health probe, a push-metrics health check) flips between "unreachable" and
 "reachable again" on a repeated, fixed cadence. Examples that fire this skill:
 - An alert+recovery pair delivered back-to-back, recurring every :00/:30 of the hour
@@ -113,7 +113,7 @@ non-200/401/403 as **down**, so one throttled probe = false "unreachable".
   active) — those prove it is IN the config, not that it is LOADED.
 - **Compare /etc/nginx against the repo nginx template FIRST**
   (`ops/install/deploy/nginx/` for a cortex install). A drifted/stale deploy can
-  carry tighter limits than the source, and a routine `cortex-update --force` will
+  carry tighter limits than the source, and a routine `fleet-update --force` will
   NOT refresh it unless the nginx deploy step actually runs. Diff deployed vs repo
   before assuming the running limits are intentional.
 - This is a crown-jewel security config: edit the repo template, deploy through the

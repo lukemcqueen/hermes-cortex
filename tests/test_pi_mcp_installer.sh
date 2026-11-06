@@ -68,7 +68,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["autoEnableCodemode"] is True, "existing key lost"
 assert d["mcpServers"]["user-own-server"]["command"] == "uvx", "user server clobbered"
-for n in ("loop-governance", "tasks", "executor", "agent-bus", "cortex-context"):
+for n in ("loop-governance", "tasks", "executor", "agent-bus", "fleet-context"):
     assert n in d["mcpServers"], f"{n} missing"
 s = d["mcpServers"]["loop-governance"]
 assert s["env"]["AGENT_NAME"] == "tituspi", f"AGENT_NAME not derived: {s.get('env')}"
@@ -91,7 +91,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert "user-own-server" in d["mcpServers"], "remove took the user's server"
 assert "loop-governance" not in d["mcpServers"], "governance server survived remove"
-assert "cortex-context" not in d["mcpServers"], "cortex-context survived remove"
+assert "fleet-context" not in d["mcpServers"], "fleet-context survived remove"
 assert d["autoEnableCodemode"] is True, "remove dropped an unrelated key"
 EOF
 check "--remove strips cortex only, keeps user's own" "$([ $? -eq 0 ] && echo 1 || echo 0)"
@@ -130,8 +130,8 @@ echo "C. nothing can import mcp -> refuse loudly, leave the config untouched"
 # interpreter error itself.
 HOME_C="$TD/home_c"; mkdir -p "$HOME_C/.pi/agent" "$HOME_C/.steadfaste-fleet/scripts" \
   "$HOME_C/.steadfaste-fleet/tools/loop-governance"
-for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/cortex-bus-mcp.py \
-         scripts/cortex-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
+for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/fleet-bus-mcp.py \
+         scripts/fleet-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
   printf '# mcp server\n' > "$HOME_C/.steadfaste-fleet/$f"
 done
 BIN_C="$TD/bin_c"; mkdir -p "$BIN_C"
@@ -160,8 +160,8 @@ echo "D. a malformed mcp.json is refused in one sentence, never a traceback"
 HOME_D="$TD/home_d"; mkdir -p "$HOME_D/.pi/agent" "$HOME_D/.steadfaste-fleet/scripts" \
   "$HOME_D/.steadfaste-fleet/tools/loop-governance"
 printf 'AGENT_NAME=tituspi\n' > "$HOME_D/.steadfaste-fleet/agent.env"
-for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/cortex-bus-mcp.py \
-         scripts/cortex-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
+for f in scripts/task-mcp.py scripts/executor-mcp.py scripts/fleet-bus-mcp.py \
+         scripts/fleet-context-mcp.py tools/loop-governance/loop-gov-mcp.py; do
   printf '# mcp server\n' > "$HOME_D/.steadfaste-fleet/$f"
 done
 PJD="$HOME_D/.pi/agent/mcp.json"

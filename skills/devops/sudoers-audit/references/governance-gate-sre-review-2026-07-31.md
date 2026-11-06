@@ -10,8 +10,8 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
   (`lock` and `status` stay open). Callers must use `sudo CORTEX_UPDATE=1 hermes-plugin-lock unlock`
   because sudoers has env_reset.
 - `fleet-update.sh` exports `CORTEX_UPDATE=1` and passes it explicitly through sudo.
-- Pre-commit DOGFOOD (auto-deploy enforcer on drift) to become a BLOCK instructing cortex-update.
-- Doctor remediation hints to be re-pointed to cortex-update.
+- Pre-commit DOGFOOD (auto-deploy enforcer on drift) to become a BLOCK instructing fleet-update.
+- Doctor remediation hints to be re-pointed to fleet-update.
 
 ## Findings (severity-ranked, all live-verified)
 
@@ -41,7 +41,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
    from the repo), and (b) fleet-update.sh does not require a governance lock — the committing
    agent already holds one. It BECOMES a deadlock if the sanctioned channel is broken (finding 1).
    The blocked agent must also reload the 8 always-skills and re-`begin_change()` after the update
-   (cortex-update's purge loop deletes its active `.governance-*.json` lock and re-deploying the
+   (fleet-update's purge loop deletes its active `.governance-*.json` lock and re-deploying the
    enforcer invalidates `.skills-loaded`) — document this in the BLOCK message.
 
 5. **P1 — ship the gate and the DOGFOOD→BLOCK conversion in the same commit:** with the gate live
@@ -66,7 +66,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
   and excludes `.hermes*` dirs.
 - Only callers of `hermes-plugin-lock` in the whole repo: fleet-update.sh, pre-commit-score
   (DOGFOOD), fleet_doctor/checks.py, and docs/skills. Blast radius = exactly the intended surface.
-- `agent-steadfaste-fleet-sync.sh` pulls the repo but does NOT run cortex-update (no gate impact).
+- `agent-steadfaste-fleet-sync.sh` pulls the repo but does NOT run fleet-update (no gate impact).
 
 ## QA test matrix required before shipping
 

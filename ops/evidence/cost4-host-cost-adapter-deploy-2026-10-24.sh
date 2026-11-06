@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [cost/4] deployed-path check — run AFTER cortex-dogfood.sh has deployed.
+# [cost/4] deployed-path check — run AFTER fleet-dogfood.sh has deployed.
 #
 #   bash ops/evidence/cost4-host-cost-adapter-deploy-2026-10-24.sh
 #

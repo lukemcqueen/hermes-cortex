@@ -3,7 +3,7 @@
 
 The deployed skills tree is the one agents actually read; the repo is what the
 fleet receives. When a lesson is written into a deployed skill and never copied
-back, it is stranded on one host and the next cortex-update would have
+back, it is stranded on one host and the next fleet-update would have
 overwritten it (the deploy's drift guardrail skips such files, so they simply
 never propagate). The doctor reports this as a WARN; this check makes it a
 non-zero exit so the condition can be gated.

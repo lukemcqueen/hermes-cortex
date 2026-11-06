@@ -123,7 +123,7 @@ rm -f /tmp/_ol_test.json
 ### Step 6: Run Doctor
 
 ```bash
-cortex-doctor.py --quiet
+fleet-doctor.py --quiet
 ```
 
 Exit must be 0. Any FAIL introduced by your change must be fixed before
@@ -161,7 +161,7 @@ For each step, you should be able to say:
 - Schema validation printed "All schemas valid"
 - `adversarial-verify` found 0 critical/high findings
 - `outerloop` full cycle completed without errors
-- `cortex-doctor --quiet` exited 0
+- `fleet-doctor --quiet` exited 0
 - `bash -n` and `py_compile` produced no errors
 
 ## Real Example (2026-07-23)

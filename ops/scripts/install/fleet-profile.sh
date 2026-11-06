@@ -5,14 +5,14 @@
 #  Hermes profile, and mycortex source.
 #
 #  Usage:
-#    bash scripts/cortex-profile.sh <project-name> [project-path]
+#    bash scripts/fleet-profile.sh <project-name> [project-path]
 #
 #  If project-path is omitted, defaults to ~/Developer/AI/<project-name>.
 #  Override with DEV_DIR env var for custom project locations.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PROJECT_NAME="${1:?Usage: bash ops/scripts/install/cortex-profile.sh <name> [path]}"
+PROJECT_NAME="${1:?Usage: bash ops/scripts/install/fleet-profile.sh <name> [path]}"
 PROJECT_PATH="${2:-${DEV_DIR:-${HOME}/Developer/AI}/${PROJECT_NAME}}"
 BRAIN_BASE="${HOME}/brain"
 HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"

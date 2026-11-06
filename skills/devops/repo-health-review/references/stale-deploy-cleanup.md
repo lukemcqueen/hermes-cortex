@@ -13,7 +13,7 @@ orphan. Over time these accumulate — 34 orphans were found in one scan
 ### Via Doctor (recommended)
 
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep -E "Stale deploy|Deploy source missing"
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py 2>&1 | grep -E "Stale deploy|Deploy source missing"
 ```
 
 The doctor's `check_stale_deploys()` function:

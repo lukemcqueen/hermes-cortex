@@ -15,7 +15,7 @@ independent *in theory*. In practice, **the directory structure differs**
 between repo and deployed layouts, so the same string pattern resolves
 to different directories.
 
-### Concrete example: cortex-doctor.py
+### Concrete example: fleet-doctor.py
 
 | Location | `os.path.dirname(__file__)` | Has `hermes_paths.py`? |
 |----------|----------------------------|------------------------|
@@ -89,10 +89,10 @@ After the fix, test from BOTH paths:
 
 ```bash
 # Deployed (production) path
-python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py --quiet
+python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py --quiet
 
 # Repo (development) path
-cd ~/steadfaste-fleet && python3 ops/scripts/manage/cortex-doctor.py --quiet
+cd ~/steadfaste-fleet && python3 ops/scripts/manage/fleet-doctor.py --quiet
 ```
 
 Both should produce identical results for the affected test.

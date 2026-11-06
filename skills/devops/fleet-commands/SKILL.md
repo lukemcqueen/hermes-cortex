@@ -81,7 +81,7 @@ was accepted (`msg_id 9c1366ec`).
 > (ROLLBACK_REQUEST is the only subject that actually checks out a SHA).
 
 > **UPDATE_REQUEST processing is now DETACHED (2026-08-18).** The fleet
-> handler no longer runs pull+cortex-update+doctor synchronously inside its
+> handler no longer runs pull+fleet-update+doctor synchronously inside its
 > cron tick: on slow hosts the combined runtime (~390s worst case) exceeded
 > the tick budget, the handler was killed mid-processing after the
 > early-archive, and UPDATE_RESULTs were silently lost (fleet dispatch for
@@ -94,7 +94,7 @@ was accepted (`msg_id 9c1366ec`).
 > slow hosts. When verifying a dispatch: poll `bus.archives` for
 > `UPDATE_RESULT` (subject filter), and if a host consumed the request but
 > no result appears within ~10 min, probe it directly with
-> `fleet exec <agent> cortex-doctor.py --quiet` (the EXEC path is unaffected)
+> `fleet exec <agent> fleet-doctor.py --quiet` (the EXEC path is unaffected)
 > — the update may have completed with only the receipt lost.
 | `ROLLBACK_REQUEST` | Git checkout previous SHA | `ROLLBACK_RESULT` | `target_sha`, `reason` |
 | `GIT_AUTH_CHECK` | Verify git can `ls-remote` | `GIT_AUTH_RESULT` | `expected_url` |
@@ -105,12 +105,12 @@ was accepted (`msg_id 9c1366ec`).
 For EXEC commands, `fleet exec` handles the full lifecycle:
 
 ```bash
-fleet exec esther cortex-doctor.py --json
-fleet exec joseph cortex-doctor.py --quiet
-fleet exec gisu cortex-doctor.py --quiet
+fleet exec esther fleet-doctor.py --json
+fleet exec joseph fleet-doctor.py --quiet
+fleet exec gisu fleet-doctor.py --quiet
 ```
 
-⚠️ **`fleet exec <agent> -- <raw-command>` does NOT work — the `--` separator is NOT supported.** The EXEC handler only runs scripts that exist in `~/.steadfaste-fleet/scripts/` on the target; a `--` "raw command" attempt returns `Script not found: --` (exit -1). Verified 2026-08-11: `fleet exec titus -- "python3 -c ..."` failed exactly this way. Use `--output-schema RAW` (which skips RESULT validation) with a real deployed script — the RAW schema is about validation, not about raw shell execution. To run an arbitrary probe on a fleet agent, ship it as a script in the repo + register it in fleet-update.sh, or use an existing deployed probe (`cortex-doctor.py`, `agent-diagnostic.py`).
+⚠️ **`fleet exec <agent> -- <raw-command>` does NOT work — the `--` separator is NOT supported.** The EXEC handler only runs scripts that exist in `~/.steadfaste-fleet/scripts/` on the target; a `--` "raw command" attempt returns `Script not found: --` (exit -1). Verified 2026-08-11: `fleet exec titus -- "python3 -c ..."` failed exactly this way. Use `--output-schema RAW` (which skips RESULT validation) with a real deployed script — the RAW schema is about validation, not about raw shell execution. To run an arbitrary probe on a fleet agent, ship it as a script in the repo + register it in fleet-update.sh, or use an existing deployed probe (`fleet-doctor.py`, `agent-diagnostic.py`).
 
 It generates a `correlation_id`, sends the EXEC, then polls `inbox_moses` every 15s for up to 5min waiting for `EXEC_RESULT`.
 
@@ -122,13 +122,13 @@ Use `--output-schema` to change the expected result schema:
 
 ```bash
 # Default: validates result against EXEC_RESULT schema
-fleet exec kustos cortex-doctor.py --json
+fleet exec kustos fleet-doctor.py --json
 
 # Custom output schema: validates against WAVE_RESULT
 fleet exec esther setup-push-metrics-cron.sh --output-schema WAVE_RESULT
 
 # RAW mode: skip result validation (use a deployed script — `--` raw commands don't work)
-fleet exec moses cortex-doctor.py --output-schema RAW
+fleet exec moses fleet-doctor.py --output-schema RAW
 ```
 
 Available schemas: `EXEC`, `EXEC_RESULT`, `WAVE_RESULT`, `UPDATE_REQUEST`,
@@ -247,7 +247,7 @@ Standard command subjects (human-readable, no automated response):
 | Subject | Purpose |
 |---------|---------|
 | `COMMAND:health-check` | Full system health — CPU/memory/disk/services |
-| `COMMAND:doctor-report` | Run cortex-doctor.py, report failures |
+| `COMMAND:doctor-report` | Run fleet-doctor.py, report failures |
 | `COMMAND:disk-check` | Disk usage — report partitions above 85% |
 | `COMMAND:ping-test` | Test ping — acknowledge receipt |
 | `COMMAND:update-repo` | Pull latest, deploy, verify |
@@ -487,7 +487,7 @@ Look for `EXEC_RESULT` or `UPDATE_RESULT` with matching correlation_id.
 - The handler may crash before `send_bus_result()` (check for Telegram ❌ notification from agent)
 
 **Timeline (Esther, 2026-07-23):**
-- 12:05 UTC — UPDATE_REQUEST sent, read at 12:05, processed (cortex-update failed on her machine)
+- 12:05 UTC — UPDATE_REQUEST sent, read at 12:05, processed (fleet-update failed on her machine)
 - 12:06 UTC — EXEC echo sent, read at ~12:08, exit=-1 (script not found)
 - 12:11 UTC — EXEC agent-diagnostic.py sent, result pending
 - Key finding: bus transport works (read+archive), handler processes, script execution depends on whether target script exists on that agent
@@ -515,7 +515,7 @@ Missing any one checkpoint means the test is incomplete. The user will notice.
 
 **Testing technique: run handler manually while fleet exec polls** — when testing on your own machine, you don't need to wait for the 5-min cron tick. Send the EXEC via `fleet exec` in background mode, then immediately run the handler manually:
 ```bash
-fleet exec moses cortex-doctor.py --json
+fleet exec moses fleet-doctor.py --json
 # In another terminal or shell:
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
@@ -544,7 +544,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 ## Pitfalls
 
 - **Reads succeed while sends fail — `_bus_post` Bearer→Basic cascade was gated `not fallback` (FIXED 2026-08-30, commit `0302c267`).** When the primary bus was unreachable and the fallback proxy required Basic auth (nginx validates Basic, ignores Bearer), `bus_send`/`fleet send` failed with 401 while `bus_list_queues`/`fleet status` still worked (`_bus_get` had no gate). The backup orchestrator could read the fleet bus but never dispatch — exactly the failover path it exists for. Regression test: `test_bus_post_fallback_retries_basic_auth` (tests/test_bus_outbox.py). Symptom to recognize: `fleet status` says "Bus ok" but `fleet send` returns `Fallback bus also failed: HTTP Error 401`. Both `_bus_post` and `_bus_get` now retry Basic on primary AND fallback.
-- **UPDATE_REQUEST on a host with a stale/off-main repo silently succeeds without deploying (2026-08-21).** A host whose repo is (a) on a non-main branch (doctor `Repo branch` WARN — e.g. a leftover `titus/*` PR branch) or (b) pulling from a stale origin (`Repo sync` PASS with origin/main pinned at an old SHA) will report `UPDATE_RESULT success=true` with `git_sha_before == git_sha_after` — the handler's `git pull origin main` doesn't move a divergent branch, and cortex-update deploys whatever the working tree already has. **Check the target's doctor state BEFORE dispatching:** `fleet exec <agent> cortex-doctor.py --quiet` and read `Repo branch` / `Repo sync` / `Deploy sync`. If the target won't move, don't trust a same-SHA UPDATE_RESULT.
+- **UPDATE_REQUEST on a host with a stale/off-main repo silently succeeds without deploying (2026-08-21).** A host whose repo is (a) on a non-main branch (doctor `Repo branch` WARN — e.g. a leftover `titus/*` PR branch) or (b) pulling from a stale origin (`Repo sync` PASS with origin/main pinned at an old SHA) will report `UPDATE_RESULT success=true` with `git_sha_before == git_sha_after` — the handler's `git pull origin main` doesn't move a divergent branch, and fleet-update deploys whatever the working tree already has. **Check the target's doctor state BEFORE dispatching:** `fleet exec <agent> fleet-doctor.py --quiet` and read `Repo branch` / `Repo sync` / `Deploy sync`. If the target won't move, don't trust a same-SHA UPDATE_RESULT.
 - **Stale-host remediation: CLASSIFY with `git-main-sync.sh --check` before dispatching, and do NOT assume it is out of bus reach.** The deployed `git-main-sync.sh` supports a report-only mode — `fleet exec <agent> git-main-sync.sh --check --output-schema RAW` prints branch + `behind/ahead` and changes nothing. That is the cheapest way to tell the three cases apart, and the fix differs per case:
   - **behind > 0, ahead == 0** → pure fast-forward. Run `fleet exec <agent> git-main-sync.sh` (no `--check`); the repo's post-merge hook auto-runs `fleet-update.sh` in the same pass, so a stale DEPLOYED tree is repaired without a separate UPDATE_REQUEST. Verified end-to-end: a host 53 commits behind went to `0 behind, 0 ahead` and its deploy-drift audit went from 31 items to exit 0 silent. The tool exits 1 and leaves the tree untouched on any error.
   - **ahead > 0 (divergent)** → a pull is a MERGE, not a fast-forward, and those local commits may be work in progress. Do NOT pull; escalate to the operator with the exact commands.
@@ -557,7 +557,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
   - Incorrect: send → ask the user "want me to poll?" → waste a round-trip
   - The user's reaction to this question in session 2026-07-21 was a single word: *"Seriously?"* — meaning the answer was so obvious the question should never have formed.
 
-- **Re-running a collector/sync tool can DESTROY the recovery source — trace read-vs-write before dispatching.** When recovering data via a fleet tool (collect-agent-skills.sh, sync scripts), verify what the tool READS vs WRITES before running it on agents. The 2026-08-02 skill-stub recovery: re-running the old-style collector on agents would have overwritten the full-content `state/skill-contents` cache (the ONLY surviving full copies of 131 truncated skill imports) with stub content, because it regenerates its cache from the deployed (now-stubbed) files. cortex-update does NOT touch `state/skill-contents` (cache survives UPDATE_REQUEST), but the collector cron WOULD rewrite it. See `references/2026-08-02-skill-stub-recovery.md` for the hazard, the stub-guard fix, the read-only audit tool pattern, and the recovery sequence.
+- **Re-running a collector/sync tool can DESTROY the recovery source — trace read-vs-write before dispatching.** When recovering data via a fleet tool (collect-agent-skills.sh, sync scripts), verify what the tool READS vs WRITES before running it on agents. The 2026-08-02 skill-stub recovery: re-running the old-style collector on agents would have overwritten the full-content `state/skill-contents` cache (the ONLY surviving full copies of 131 truncated skill imports) with stub content, because it regenerates its cache from the deployed (now-stubbed) files. fleet-update does NOT touch `state/skill-contents` (cache survives UPDATE_REQUEST), but the collector cron WOULD rewrite it. See `references/2026-08-02-skill-stub-recovery.md` for the hazard, the stub-guard fix, the read-only audit tool pattern, and the recovery sequence.
 
 - **Answer the pointed verification question, then act — don't re-prove.** When the user asks "is the collection script correct?" they want the direct answer: trace the read/write paths, check the skip-logic target, state the hazard in one pass, then fix. Repeated rounds of re-proving (bus archives, git history, extra tests) after the problem is acknowledged draw a "just fix it, I don't need more proof" correction. One targeted verification of the hazard, then the fix.
 
@@ -592,16 +592,16 @@ After they report back, fix the identified issue (corrupt state file, handler cr
 
 - **Early archive must be before any processing** — the handler's `poll_once()` archives the message immediately after `read_inbox()` returns, before JSON parsing, notification, idempotency checks, or dispatch. If the handler crashes between the read and the archive, the message stays `processing` and loops on VT expiry. This was the root cause of Esther's stuck EXEC messages. Fix committed in `c7231c3`: moved `archive_message()` to right after `msg_id`/`correlation_id` extraction, before any logic that could crash.
 
-- **Visibility timeout (VT) does NOT bound processing time — the subprocess timeout does.** The handler reads with `vt=120` and archives immediately after reading (early archive, `c7231c3`), so the VT only covers the read→archive window — it can never re-expose a message mid-processing. What actually bounds `fleet-update.sh` is the subprocess `timeout=` in `run_cortex_update()`: it was `120` (commit `feb8ef1` era, when cortex-update+doctor took ~96s) but the 08-10 fleet dispatch false-flagged titus/moses with `cortex-update TIMEOUT after 120s` — the doctor's Task Lifecycle v2 checks pushed update+doctor past 120s on slower hosts. Raised to `300` (2026-08-11, matching `orch-bus-fleet-dispatch --timeout 300` default). When debugging stuck `processing` messages, check `timeout_at` vs current time — but remember a stuck message means the handler *crashed* (see poll_once exception pitfall), not that the VT expired mid-update.
-- **fleet-update.sh exit=1 with empty stderr = soft success** — `fleet-update.sh` uses `set -euo pipefail` and `needs_update()` returns 1 for files already up to date (hashes match). This return code propagates as the script's exit code even though the update completed successfully. Fix (commit `821cdfd`): `run_cortex_update()` treats exit=1 as success when stderr is empty. If you see `UPDATE_RESULT success=false` with error `"cortex-update failed: "` (empty detail), check the handler cron log — the script likely completed normally.
+- **Visibility timeout (VT) does NOT bound processing time — the subprocess timeout does.** The handler reads with `vt=120` and archives immediately after reading (early archive, `c7231c3`), so the VT only covers the read→archive window — it can never re-expose a message mid-processing. What actually bounds `fleet-update.sh` is the subprocess `timeout=` in `run_cortex_update()`: it was `120` (commit `feb8ef1` era, when fleet-update+doctor took ~96s) but the 08-10 fleet dispatch false-flagged titus/moses with `fleet-update TIMEOUT after 120s` — the doctor's Task Lifecycle v2 checks pushed update+doctor past 120s on slower hosts. Raised to `300` (2026-08-11, matching `orch-bus-fleet-dispatch --timeout 300` default). When debugging stuck `processing` messages, check `timeout_at` vs current time — but remember a stuck message means the handler *crashed* (see poll_once exception pitfall), not that the VT expired mid-update.
+- **fleet-update.sh exit=1 with empty stderr = soft success** — `fleet-update.sh` uses `set -euo pipefail` and `needs_update()` returns 1 for files already up to date (hashes match). This return code propagates as the script's exit code even though the update completed successfully. Fix (commit `821cdfd`): `run_cortex_update()` treats exit=1 as success when stderr is empty. If you see `UPDATE_RESULT success=false` with error `"fleet-update failed: "` (empty detail), check the handler cron log — the script likely completed normally.
 
-- **The SAME rule is a trap in the other direction: one WARNING on stderr at exit=1 is reported as a fleet-wide `cortex-update failed`.** The success test is `rc == 0 or (rc == 1 and not stderr)`, and the error field takes the FIRST 200 chars of stderr — so any byte a script writes to stderr converts a completed update into `❌ FAILED`, with the script's own diagnostic quoted as the reason. A dispatch in which every host failed with `cost keys NOT dropped: ruamel.yaml missing in this interpreter` had in fact completed on every host.
+- **The SAME rule is a trap in the other direction: one WARNING on stderr at exit=1 is reported as a fleet-wide `fleet-update failed`.** The success test is `rc == 0 or (rc == 1 and not stderr)`, and the error field takes the FIRST 200 chars of stderr — so any byte a script writes to stderr converts a completed update into `❌ FAILED`, with the script's own diagnostic quoted as the reason. A dispatch in which every host failed with `cost keys NOT dropped: ruamel.yaml missing in this interpreter` had in fact completed on every host.
   - **Triage: read the DETAIL TEXT before touching the subject.** A detail that is a WARNING (`could not X, skipping`, `no interpreter to do Y`) rather than an error means the script is over-verbose on a path where it had nothing to do. Fix THAT — decide "is there anything to do?" with a cheap check on the file and return silently when there is not, resolving the dependency by capability for the case that needs it. Do NOT loosen the caller's success rule: it exists because stderr usually does mean a problem, and widening it changes every host's failure detection to treat a real error as success.
   - **Authoring rule for anything a fleet handler calls:** never write to stderr on a healthy, nothing-to-do path. A `warn` is an operator FYI; under this caller it is a fleet outage.
 
 - **`fleet exec` polls only 300s but a fleet agent's handler ticks every 5 min — results can land AFTER the poll gives up (2026-08-11).** The round-trip worked (probe was read/processed), but `fleet exec` reported "Timed out waiting for EXEC_RESULT" because the result arrived at ~5:05 while the poll window closed at 5:00. **Decoupled pattern that always wins:** use `fleet send <agent> EXEC '<json>' --self-tested` with a correlation_id, then poll `bus.archives` for `EXEC_RESULT` after ~5.5 min (see the archive queries above). Also: archiving your own stuck probe messages is fine — the handler already read them into `processing` (early-archive), so the result still comes back; don't resend the same probe, just wait and check archives.
 
-- **UPDATE_REQUEST partial-pull: git moves but the update "fails" — check git_sha_after, not success flag (2026-08-11).** Titus's update reported `success: false, error: "cortex-update failed: TIMEOUT after 120s"` but `git_sha_before: 9f110a8b → git_sha_after: 9d292bfe` — the pull succeeded and the file sync ran; the timeout killed the tail (doctor/registration). The handler timeout fix itself was IN the pulled commits, so the retry with the same target_sha completed the deploy. **Rule:** on UPDATE_RESULT, always compare `git_sha_before` vs `git_sha_after` vs requested `target_sha`. If `git_sha_after == target_sha`, the pull landed — resend the UPDATE_REQUEST (dedup gate may refuse an identical pending one; archive the stale pending first) rather than assuming the deploy failed outright.
+- **UPDATE_REQUEST partial-pull: git moves but the update "fails" — check git_sha_after, not success flag (2026-08-11).** Titus's update reported `success: false, error: "fleet-update failed: TIMEOUT after 120s"` but `git_sha_before: 9f110a8b → git_sha_after: 9d292bfe` — the pull succeeded and the file sync ran; the timeout killed the tail (doctor/registration). The handler timeout fix itself was IN the pulled commits, so the retry with the same target_sha completed the deploy. **Rule:** on UPDATE_RESULT, always compare `git_sha_before` vs `git_sha_after` vs requested `target_sha`. If `git_sha_after == target_sha`, the pull landed — resend the UPDATE_REQUEST (dedup gate may refuse an identical pending one; archive the stale pending first) rather than assuming the deploy failed outright.
 
 - **Always check BOTH live queue AND archives for responses** — EXEC_RESULT/UPDATE_RESULTs land in `inbox_moses` but your own handler may consume and archive them within 5 minutes (the `*_RESULT` handler archives silently, commit `4188d70`). If you only query `bus.messages` (live queue) and see nothing, the result may already be in `bus.archives`. Always query both before concluding a result didn't arrive:
   ```bash

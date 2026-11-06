@@ -61,7 +61,7 @@ else
     st=$(systemctl --user is-active "$s" 2>/dev/null)
     ck "$s active (got $st)" "[ '$st' = 'active' ]"
   done
-  ck "cortex-gateway.service unit-clean" "[ -f '${HOME}/.config/systemd/user/cortex-gateway.service' ]"
+  ck "fleet-gateway.service unit-clean" "[ -f '${HOME}/.config/systemd/user/fleet-gateway.service' ]"
   n=$(systemctl --user list-timers --no-legend 2>/dev/null | grep -c 'cortex-bridge' || true)
   ck "cortex-bridge timers scheduled (got $n)" "[ '$n' -ge 15 ]"
 fi

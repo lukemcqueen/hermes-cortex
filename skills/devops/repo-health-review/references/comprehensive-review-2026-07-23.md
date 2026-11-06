@@ -48,6 +48,6 @@ Files registered for deployment that no longer exist on disk:
 - offline_code_index_cron.sh renamed to hyphen convention
 - PRD-005 v1 archived (superseded by v2)
 - runtime symlink removed
-- cortex-doctor.py --quick mode added (with proper refactor, not wrapper)
+- fleet-doctor.py --quick mode added (with proper refactor, not wrapper)
 - run-evals.py standalone auto-fallback added
 - PRD-002 marked SUPERSEDED with absorbtion trail

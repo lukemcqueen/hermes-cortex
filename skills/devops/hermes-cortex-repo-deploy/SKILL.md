@@ -53,7 +53,7 @@ obvious:
   (their content survives; say so explicitly when you report it). Getting back requires a
   cycle that ENDS at the new tip and returns CLEAN from a real review — the receipt is
   written at close.
-- **`cortex-dogfood.sh --force` cannot produce a receipt.** It only passes `--force-all` to
+- **`fleet-dogfood.sh --force` cannot produce a receipt.** It only passes `--force-all` to
   the deploy (a full re-deploy); it runs no review. There is no sanctioned way to re-review
   a CLOSED cycle either — `record-review.py` is the raw sink the reviewer writes to, and the
   review-queue sweep never touches overrides. Never manufacture a receipt and never use an
@@ -405,7 +405,7 @@ so the scheduler's last_status reflects the new prompt.
 
 ## Never edit the repo while YOUR OWN ship is running
 
-`fleet-update.sh` → `cortex-dogfood.sh` → `git push` can run for several minutes. Editing
+`fleet-update.sh` → `fleet-dogfood.sh` → `git push` can run for several minutes. Editing
 files in that window — even "just a small fix" — races the ship: it commits (`git add -A`
 seizes your half-written edit), then its `pull --rebase`/push meets a tree that changed
 under it and fails with `error: Please commit or stash them.` or a non-fast-forward. The
@@ -504,18 +504,18 @@ clobber-check → commit → deploy → doctor → push → FLEET_NOTICE.
    `bash ops/scripts/secret-leak-detector.sh`. Copy LICENSE and
    `references/` along with the skill, using `cp` — byte-identical is the
    verification; a hand-typed rewrite can silently drift.
-3. **Clobber check before deploying.** cortex-update's delta engine pushes
+3. **Clobber check before deploying.** fleet-update's delta engine pushes
    the REPO copy over the deployed skill, so any lesson that exists only in
    `~/.hermes/skills/` — including ones other sessions added the same day,
    to skills you are not publishing — is erased by the publish deploy. Diff
    every recently-changed skill deployed vs repo and sync deployed → repo
-   first. cortex-update's `⚠ SKILL DRIFT: deployed copy is newer than repo
+   first. fleet-update's `⚠ SKILL DRIFT: deployed copy is newer than repo
    source` entries name them; each is content to copy in, never `--force`
    past.
 4. **Commit → deploy → doctor → push.** Pull with `--autostash`; expect the
    fleet push race (rebase onto new origin/main, retry). After a race-rebase
    your commit gets a new sha, so Deploy sync FAILs again — run
-   `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`, push, then
+   `bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force`, push, then
    verify `git ls-remote origin main` == HEAD.
 5. **Verify the deployed tree** — `diff -r ~/steadfaste-fleet/skills/<name>
    ~/.hermes/skills/<name>` identical — then broadcast FLEET_NOTICE per the

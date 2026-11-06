@@ -50,13 +50,13 @@ save" is not a mechanism.
 ```bash
 cd <pi-project>
 mkdir -p extensions
-cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
+cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/fleet-context.ts extensions/
 ```
 
 Launch with the extension and an explicit tool allowlist:
 
 ```bash
-pi -e extensions/cortex-context.ts \
+pi -e extensions/fleet-context.ts \
    --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
 ```
 
@@ -90,7 +90,7 @@ through `sg docker`, which does not exist on macOS.
 **a. The store answers at all** (before blaming your code):
 
 ```bash
-cortex-context mem_context '{}'      # JSON with "card": [...]
+fleet-context mem_context '{}'      # JSON with "card": [...]
 ```
 
 `memory unavailable — … not an error` means the store is unreachable: fix that
@@ -104,7 +104,7 @@ debug the harness while the store is down.
 1. End a turn with a distinctive marker (a decision like `proof-<timestamp>`).
 2. From a shell:
    ```bash
-   cortex-context session_restore '{}' | grep proof-
+   fleet-context session_restore '{}' | grep proof-
    ```
    Missing ⇒ your hook is not firing. The extension's routine markers go to the
    cortex log (`~/.steadfaste-fleet/logs/pi-context.log`), not the visible stream — see §4.
@@ -246,7 +246,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh --check
 Project scope (one repo, explicit flags) is the other half of the same pattern:
 
 ```bash
-pi -e extensions/cortex-context.ts --skill <curated-skills-dir> --tools …
+pi -e extensions/fleet-context.ts --skill <curated-skills-dir> --tools …
 ```
 
 Two rules, learned from Hermes:
@@ -272,11 +272,11 @@ per-harness way in.**
 
   ```bash
   bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh
-  pi mcp list          # loop-governance, tasks, executor, agent-bus, cortex-context
+  pi mcp list          # loop-governance, tasks, executor, agent-bus, fleet-context
   ```
 
   That is the governance set Claude Code gets from
-  `install-claude-governance.sh`, plus `cortex-context` — not a Pi-specific
+  `install-claude-governance.sh`, plus `fleet-context` — not a Pi-specific
   governance implementation.
 
   **Host-local add-ons are NOT part of that set.** Some hosts also register a server
@@ -318,7 +318,7 @@ commit is refused no matter how well the agent behaved.
 Tell the orchestrator, in this order:
 
 1. Which layer you wired (CLI + extension) and the **exact** `pi` command.
-2. `cortex-context mem_context '{}'` output (or the failure message).
+2. `fleet-context mem_context '{}'` output (or the failure message).
 3. The checkpoint you proved, quoted from `session_restore` — not a claim that
    it works.
 4. Any `CORTEX_*` stderr line that is not what you expected.

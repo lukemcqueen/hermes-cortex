@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# setup-cortex-bus.sh — Full Bus pipeline setup
+# setup-fleet-bus.sh — Full Bus pipeline setup
 #
 # Run ONCE on any machine to create the complete Agent Bus
 # monitoring pipeline:
@@ -8,9 +8,9 @@
 #  2. cortex-bus (LLM-driven, every 30m) — reads + acts
 #
 # Usage:
-#  bash setup-cortex-bus.sh       # auto-detect agent
-#  bash setup-cortex-bus.sh --agent titus
-#  bash setup-cortex-bus.sh --dry-run
+#  bash setup-fleet-bus.sh       # auto-detect agent
+#  bash setup-fleet-bus.sh --agent titus
+#  bash setup-fleet-bus.sh --dry-run
 #
 # Requires:
 #  - Hermes CLI (hermes cron create)

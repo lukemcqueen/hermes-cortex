@@ -1,8 +1,8 @@
-# 2026-07-24: cortex-update exit code handling & UPDATE_REQUEST round-trip fixes
+# 2026-07-24: fleet-update exit code handling & UPDATE_REQUEST round-trip fixes
 
 ## Problem
 
-UPDATE_REQUEST to Moses (self-test) returned `success=false` with error `"cortex-update failed: "` (empty detail). The update script appeared to complete normally (files deployed, services restarted, stale cleanup ran) but exit code was 1.
+UPDATE_REQUEST to Moses (self-test) returned `success=false` with error `"fleet-update failed: "` (empty detail). The update script appeared to complete normally (files deployed, services restarted, stale cleanup ran) but exit code was 1.
 
 ## Root Cause
 
@@ -19,7 +19,7 @@ Commit `821cdfd`: `run_cortex_update()` now treats exit=1 as success when stderr
 
 ## Also Fixed This Session
 
-1. **VT 30 → 120** (commit `feb8ef1`): `bus_read(vt=120)` — handler's visibility timeout was 30s but cortex-update takes 43s. VT expired mid-update, message went back to pending, handler lost lock.
+1. **VT 30 → 120** (commit `feb8ef1`): `bus_read(vt=120)` — handler's visibility timeout was 30s but fleet-update takes 43s. VT expired mid-update, message went back to pending, handler lost lock.
 
 2. **Drain 1 → 25 per tick** (commit `9946158`): Handler processed only 1 message per 5-minute cron tick. Learning Reports ahead of UPDATE_REQUEST in FIFO queue caused 15+ min delay. Now drains up to 25 per tick.
 
@@ -32,7 +32,7 @@ Commit `821cdfd`: `run_cortex_update()` now treats exit=1 as success when stderr
 ```
 15:40:21  — Handler read UPDATE_REQUEST, early archive
 15:40:22  — Running fleet-update.sh
-15:41:06  — cortex-update done: exit=1 ✓ (treated as success)
+15:41:06  — fleet-update done: exit=1 ✓ (treated as success)
 15:41:08  — UPDATE_RESULT sent to inbox_moses
 15:41:10  — UPDATE_RESULT archived by handler (silent *_RESULT handler)
 ```
@@ -44,7 +44,7 @@ Total: ~49 seconds from read to result delivery.
 When debugging UPDATE_REQUEST:
 
 1. **Check handler cron logs**: `~/.hermes/cron/output/<handler-job-id>/<latest>.md`
-   - Shows cortex-update stdout, exit code, and SUCCESS/WARN labels
+   - Shows fleet-update stdout, exit code, and SUCCESS/WARN labels
    - The `✓`/`✗` after `exit=N` is the handler's own assessment, not the script's exit code
 
 2. **Check both live queue AND archives**: Results may be consumed within 5 minutes

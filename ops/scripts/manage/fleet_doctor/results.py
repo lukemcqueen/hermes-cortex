@@ -1,5 +1,5 @@
 """
-Result tracking for cortex-doctor.
+Result tracking for fleet-doctor.
 
 Collects check results, computes pass/warn/fail/info counts,
 and prints formatted output (human-readable or JSON).
@@ -149,7 +149,7 @@ class Results:
                 print(f"       · {c['name']}")
                 if c.get("fix"):
                     print(f"         fix: {c['fix']}")
-                print(f"         or:  cortex-doctor.py --disposition \"{c['name']}\" --as deferred "
+                print(f"         or:  fleet-doctor.py --disposition \"{c['name']}\" --as deferred "
                       f"--owner <you> --reason \"<why>\"")
             if len(und) > 12:
                 print(f"       … and {len(und) - 12} more")

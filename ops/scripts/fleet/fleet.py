@@ -17,7 +17,7 @@ moses and esther hosts. No docker exec, no local-Postgres assumption.
   fleet watch             watch ALL inbox queues (default)
   fleet watch moses       watch only moses' inbox (non-destructive)
   fleet kill <agent>    send KILL signal to a fleet agent (emergency stop)
-  fleet doctor            run cortex-doctor
+  fleet doctor            run fleet-doctor
   fleet harness <cmd>     wire a coding agent (Pi, Claude Code, Codex) to the cortex
                        context store — list | show | install | verify | add
   fleet dashboard         open bus dashboard in browser
@@ -960,15 +960,15 @@ def cmd_bus(cfg: dict, args: list):
 
 
 def cmd_doctor(cfg: dict, args: list):
-    """Run cortex-doctor."""
+    """Run fleet-doctor."""
     for path in [
-        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "cortex-doctor.py",
-        Path.home() / ".steadfaste-fleet" / "scripts" / "cortex-doctor.py",
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "manage" / "fleet-doctor.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "fleet-doctor.py",
     ]:
         if path.exists():
             subprocess.run([sys.executable, str(path), "--quiet"])
             return
-    print("❌ cortex-doctor.py not found")
+    print("❌ fleet-doctor.py not found")
 
 
 def cmd_dashboard(cfg: dict, args: list):
@@ -1094,10 +1094,10 @@ def cmd_exec(cfg: dict, args: list):
         print("       fleet exec <agent> <command> [--timeout <seconds>]")
         print()
         print("Examples:")
-        print("  fleet exec esther cortex-doctor.py --json")
-        print("  fleet exec gisu cortex-doctor.py --quiet")
+        print("  fleet exec esther fleet-doctor.py --json")
+        print("  fleet exec gisu fleet-doctor.py --quiet")
         print("  fleet exec joseph -- df -h /")
-        print("  fleet exec kustos cortex-doctor.py --json --output-schema WAVE_RESULT")
+        print("  fleet exec kustos fleet-doctor.py --json --output-schema WAVE_RESULT")
         print("  fleet exec kustos install-provider-timeouts.sh --timeout 300")
         print()
         print(f"Available schemas: EXEC, EXEC_RESULT, WAVE_RESULT, UPDATE_REQUEST, UPDATE_RESULT")
@@ -1472,7 +1472,7 @@ def cmd_help(cfg: dict, args: list):
     print("  fleet bus --all          — include archived activity")
     print("  fleet watch              — watch ALL inbox queues (default)")
     print("  fleet watch moses        — watch only moses' inbox")
-    print("  fleet doctor             — run cortex-doctor")
+    print("  fleet doctor             — run fleet-doctor")
     print("  fleet harness <cmd>      — wire a coding agent to the cortex context store")
     print("                          (list | show | install | verify | add)")
     print("  fleet pi <cmd>           — Pi's cortex wiring on THIS host, user scope")

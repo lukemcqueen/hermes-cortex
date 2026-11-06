@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A queue-driven update must be VISIBLE to the operator.
 
-Luke 2026-10-02: an UPDATE_REQUEST from the queue ran cortex-update silently —
+Luke 2026-10-02: an UPDATE_REQUEST from the queue ran fleet-update silently —
 the requester got an UPDATE_RESULT, the human watching the fleet got nothing.
 
 Hermetic: the update, the doctor and the notifier are stubbed, so this pins the
@@ -80,7 +80,7 @@ def test_notification():
     h.process_update_request(msg, "corr-2")
     text = captured[0][1] if captured else ""
     _check("a failed update is reported as FAILED", "❌ FAILED" in text)
-    _check("the failure reason is surfaced", "cortex-update failed" in text, text[:200])
+    _check("the failure reason is surfaced", "fleet-update failed" in text, text[:200])
 
 
 if __name__ == "__main__":

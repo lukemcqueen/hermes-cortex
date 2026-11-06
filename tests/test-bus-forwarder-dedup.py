@@ -81,7 +81,7 @@ def build_body(corr: str, subject: str = "EXEC") -> dict:
     return {
         "from": "esther", "to": "gisu", "topic": "command",
         "subject": subject, "correlation_id": corr,
-        "body": json.dumps({"command": "cortex-doctor.py", "params": ["--quiet"], "timeout": 120}),
+        "body": json.dumps({"command": "fleet-doctor.py", "params": ["--quiet"], "timeout": 120}),
     }
 
 

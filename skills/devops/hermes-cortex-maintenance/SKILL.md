@@ -31,7 +31,7 @@ standalone maintenance cron jobs.
 
 ```bash
 # Install via cortex update cron script
-bash ~/steadfaste-fleet/ops/scripts/install/install-cortex-update-cron.sh
+bash ~/steadfaste-fleet/ops/scripts/install/install-fleet-update-cron.sh
 ```
 
 Verify it's scheduled:
@@ -149,7 +149,7 @@ mixing them makes the reconciliation unreviewable.
 copied frontmatter for a non-empty `description` FIRST: a skill whose deployed copy lost its
 description becomes UNLOADABLE, and every session silently stops seeing it. Refuse the copy rather
 than land that.
-- Then deploy (`cortex-dogfood.sh --force`) and confirm the doctor's skill-drift line is ✅.
+- Then deploy (`fleet-dogfood.sh --force`) and confirm the doctor's skill-drift line is ✅.
 
 ## Recovery Techniques
 

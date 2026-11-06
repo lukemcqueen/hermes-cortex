@@ -195,7 +195,7 @@ offline_knowledge query "symptoms of malaria"
 |--------|---------|
 | `ops/install/install.sh` | **Main installer** |
 | `ops/scripts/fleet-update.sh` | Deploy scripts from repo — run after every `git pull` |
-| `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
+| `ops/scripts/manage/fleet-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks |
 | `ops/scripts/install-crons.sh` | Install/remove agent cron jobs |
 | `ops/scripts/manage/agent-nginx-threat-pipeline.sh` | Daily nginx log scan + auto-ban repeat attackers |

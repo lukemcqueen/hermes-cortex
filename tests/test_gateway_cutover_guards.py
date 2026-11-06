@@ -113,7 +113,7 @@ def test_guard_refuses_an_unreadable_or_empty_config():
 def test_both_shipped_units_carry_the_guard_as_ExecStartPre():
     """The guard is only a guard if a unit RUNS it — a script nobody calls is the
     comment again, in a different file."""
-    units = [_REPO / "docs" / "templates" / "cortex-gateway.service",
+    units = [_REPO / "docs" / "templates" / "fleet-gateway.service",
              Path.home() / ".config" / "systemd" / "user"
              / "cortex-gateway-esther0001.service"]
     for unit in units:

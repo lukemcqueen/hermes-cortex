@@ -13,11 +13,11 @@
 #  install-pi-mcp.sh uses for the MCP servers applies to the rest:
 #
 #    ~/.pi/agent/settings.json
-#      "extensions": [<cortex-context.ts>]   the enforcement hook
+#      "extensions": [<fleet-context.ts>]   the enforcement hook
 #      "skills":     [<cortex-skills dir>]   the curated always-set
 #
 #  What each half buys:
-#    * extensions — cortex-context.ts owns the LIFECYCLE triggers
+#    * extensions — fleet-context.ts owns the LIFECYCLE triggers
 #      (turn_end checkpoint, before_agent_start restore) AND records
 #      skill loads as gate evidence. The pre-commit reflexion gate asks
 #      HC's store "did this session load skill X?"; with no writer a
@@ -99,7 +99,7 @@ fi
 # when this host has not deployed yet (the warning below names the fix).
 #
 # TWO extensions, and they do different jobs:
-#   cortex-context.ts    — the LIFECYCLE triggers (checkpoint/restore/evidence)
+#   fleet-context.ts    — the LIFECYCLE triggers (checkpoint/restore/evidence)
 #   cortex-governance.ts — the WRITE GATE for pi's NATIVE tools. Hermes enforces
 #                          at the tool level via its enforcer plugin; pi's
 #                          read/bash/edit/write never cross that plugin, so
@@ -114,7 +114,7 @@ resolve_ext() {
   done
   return 1
 }
-EXTENSION="$(resolve_ext cortex-context.ts || true)"
+EXTENSION="$(resolve_ext fleet-context.ts || true)"
 GOVERNANCE_EXTENSION="$(resolve_ext cortex-governance.ts || true)"
 
 # The skills manifest is the ONE source of the always-set.
@@ -145,7 +145,7 @@ fi
 
 if [[ "$MODE" != "remove" && ( -z "$EXTENSION" || -z "$GOVERNANCE_EXTENSION" ) ]]; then
   echo "install-pi-integration: a cortex extension was not found (deployed or repo)." >&2
-  echo "  cortex-context.ts    : ${EXTENSION:-MISSING}" >&2
+  echo "  fleet-context.ts    : ${EXTENSION:-MISSING}" >&2
   echo "  cortex-governance.ts : ${GOVERNANCE_EXTENSION:-MISSING}" >&2
   echo "  Both are required — the second is what gates pi's native write tools," >&2
   echo "  and registering only one would look wired while leaving writes open." >&2
@@ -247,7 +247,7 @@ def tree_count(root):
 # strip/replace path and the check all read it, so a new extension cannot be
 # added to one and forgotten in another (the pre-2026-10-14 bug: the check
 # asserted one filename, so a second extension looked wired and was not).
-OURS = ("cortex-context.ts", "cortex-governance.ts")
+OURS = ("fleet-context.ts", "cortex-governance.ts")
 
 # The pi package that gives the agent web_search/fetch_content. Matched by
 # NAME, not by the pinned spec, so bumping the pin does not leave the old

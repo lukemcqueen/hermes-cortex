@@ -49,7 +49,7 @@ begin_change(task_id="push-<change>",
              description="Hold the lock the push gate requires; no content change")
 
 # 3. Deploy, then push, then verify from ORIGIN (never from your own branch).
-bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force     # deploy is the LAST step; nothing committed after it
+bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force     # deploy is the LAST step; nothing committed after it
 git push origin main
 git fetch origin --quiet
 git log --oneline -1 origin/main                            # shows your commit
@@ -70,8 +70,8 @@ python3 ops/scripts/manage/verify-landed.py --repo . --base <previous tip>
 ## Pitfalls
 
 - **Your OWN open cycle is what the doctor reports as a failure, and that collides with the carrier-cycle
-recipe above.** While any cycle is PENDING, `cortex-doctor` prints `❌ PENDING cycles` and its overall
-line FAILS, so `cortex-dogfood.sh` ends "DOGFOOD FAILED" even though the deploy it performs has already
+recipe above.** While any cycle is PENDING, `fleet-doctor` prints `❌ PENDING cycles` and its overall
+line FAILS, so `fleet-dogfood.sh` ends "DOGFOOD FAILED" even though the deploy it performs has already
 run, and the pre-push hook refuses with "Push blocked: doctor reports 1 failure". A clean doctor and a
 held lock are therefore mutually exclusive: sequence it so the lock is GONE before the push, and let the
 receipt carry the push (the enforcer's push-receipt carve-out authorises a lock-free push when a CLEAN

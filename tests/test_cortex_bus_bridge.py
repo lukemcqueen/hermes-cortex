@@ -1,4 +1,4 @@
-"""cortex-bus-bridge tests — S2a systemd-timer bridge for no_agent cron jobs.
+"""fleet-bus-bridge tests — S2a systemd-timer bridge for no_agent cron jobs.
 
 component-hermes-separation scope 2, slice S2a. Proves the bridge:
   - the RUNNER (cortex-bus-bridge-run.py) runs a job's script standalone and

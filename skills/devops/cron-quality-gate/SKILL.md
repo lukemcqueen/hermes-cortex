@@ -151,5 +151,5 @@ python3 ~/.steadfaste-fleet/scripts/agent-cron-quality-watchdog.py; echo "exit=$
 ```
 Exit 0 + no alerts = clean. To refresh the scheduler's health record after a fix, run the cron via the scheduler (`cronjob action='run' job_id=<watchdog-id>`), then run the doctor:
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet
 ```

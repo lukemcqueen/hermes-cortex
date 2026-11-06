@@ -29,11 +29,11 @@ behavioral_principles:
  - Bus on 8903, health-vector on 8905. Never conflate them. The bus ExecStart must use the Hermes venv python (has uvicorn), not /usr/bin/python3.
  - Name the bus service file cortex-bus.service, not cortex-bus.service. The doctor checks for exactly cortex-bus.service.
  - Verify bus setup at three layers: (1) systemctl is-active cortex-bus.service, (2) curl :8903/health returns backend pgmq, (3) nginx upstream cortex_bus_backend matches :8903. A running process on a port is not enough.
- - After cortex-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
+ - After fleet-update , check ~/.hermes/scripts/ for symlinks that point outside the scripts dir. Cron's no_agent runtime rejects symlinks. Replace with real `cp` copies.
  - no_agent cron scripts don't inherit Hermes env vars. If a script needs CORTEX_BUS_TOKEN or CORTEX_BUS_URL, ensure they're set in `~/steadfaste-fleet/.env` — the ONE canonical cortex env (there is no deploy-dir `.env`; `~/.hermes/.env` is Hermes-owned and never merged).
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
- - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
+ - After fleet-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
  - When running fleet-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/steadfaste-fleet first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
 trigger: User asks to install, set up, deploy, or bootstrap Hermes Cortex, or mentions 'cortex setup', 'install cortex', 'hermes-cortex components'. The cron health report shows an agent as 🔴 unreachable — the fix is often missing health server + agent registry on that machine.
 ---
@@ -509,7 +509,7 @@ ModuleNotFoundError: No module named 'hermes_tz'
 
 **Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `fleet-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.steadfaste-fleet/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.steadfaste-fleet/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
 
-After `cortex-update `, check for this pattern and sync siblings:
+After `fleet-update `, check for this pattern and sync siblings:
 
 ```bash
 # Find handlers that reference sibling subprocess calls via resolve().parent
@@ -588,7 +588,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-orch-crons.sh
 Changing an LLM cron's model has TWO layers of truth; editing only the live pin is reverted:
 
 1. **Live pin** — per-job `model`/`provider` in `~/.hermes/cron/jobs.json`, set with `hermes cron edit <id> --model X --provider Y` (CLI only — the MCP cronjob tool has NO model/provider params). Takes effect next tick.
-2. **Durable source** — `ops/install/cron-manifest.yaml`. `pin_cron_model()` (in install-crons.sh / install-orch-crons.sh) reads the manifest entry and it WINS over `$LLM_CRON_MODEL`/`$LLM_CRON_PROVIDER` env — and over your live edit — on the next cortex-update drift-edit. **A live-only repin is reverted by the next `fleet-update.sh`** (observed 2026-08-31: 14/21 LLM crons reverted after the first deploy of a repin).
+2. **Durable source** — `ops/install/cron-manifest.yaml`. `pin_cron_model()` (in install-crons.sh / install-orch-crons.sh) reads the manifest entry and it WINS over `$LLM_CRON_MODEL`/`$LLM_CRON_PROVIDER` env — and over your live edit — on the next fleet-update drift-edit. **A live-only repin is reverted by the next `fleet-update.sh`** (observed 2026-08-31: 14/21 LLM crons reverted after the first deploy of a repin).
 
 **Correct order:** (1) patch the manifest entry → (2) repin live via `hermes cron edit` → (3) run `fleet-update.sh` → (4) verify pins survived in jobs.json.
 
@@ -690,7 +690,7 @@ See `references/health-endpoint-formats.md`
 
 ## Related
 
-- Setting up individual project profiles: `cortex-profile.sh <project-name> [path]`
+- Setting up individual project profiles: `fleet-profile.sh <project-name> [path]`
 - mycortex design + multi-tenancy: `docs/design/mycortex-DESIGN.md`, `docs/design/mycortex-multi-tenancy.md` in the repo
 - Loop governance: `references/first-time-bootstrap.md` (first-run DB seed, cache build, hooksPath config)
 - Nginx proxy patterns: `references/nginx-proxy-patterns.md` (port convention, SSL, port conflict fix)

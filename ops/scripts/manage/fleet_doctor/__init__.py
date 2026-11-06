@@ -1,7 +1,7 @@
 """
 fleet_doctor — Steadfaste Fleet installation health check package.
 
-Split from the monolithic cortex-doctor.py (2177 lines) into modular
+Split from the monolithic fleet-doctor.py (2177 lines) into modular
 components:
 
 - config:   Paths, constants, dynamic registries

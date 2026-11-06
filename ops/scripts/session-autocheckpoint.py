@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """session-autocheckpoint.py — the HARNESS side of the session split (S2c).
 
-The design splits session state in two (docs/design/cortex-memory-session-mcp.md):
+The design splits session state in two (docs/design/fleet-memory-session-mcp.md):
 
-    store + search   → the MCP server (cortex-context-mcp.py), shared
+    store + search   → the MCP server (fleet-context-mcp.py), shared
     WHEN a checkpoint is written → THE HARNESS, this script
 
 Why it exists: MCP is tool-call shaped and has no lifecycle. If the only way a

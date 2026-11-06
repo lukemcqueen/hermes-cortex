@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CR9 — cortex-gateway uses the SAME Telegram env vars Hermes uses.
+"""CR9 — fleet-gateway uses the SAME Telegram env vars Hermes uses.
 
 TELEGRAM_BOT_TOKEN (the bot), TELEGRAM_ALLOWED_USERS (sender allowlist),
 TELEGRAM_HOME_CHANNEL (default delivery target) — no invented names. The

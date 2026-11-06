@@ -19,14 +19,14 @@ The harness owns **when** a checkpoint is written. Never make the model responsi
 ## Install
 
 ```bash
-hermes mcp add cortex-context \
+hermes mcp add fleet-context \
     --command ~/.steadfaste-fleet/venv/bin/python3 \
-    --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
+    --args ~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py
 ```
 
 ## Verify (do not report a wiring you have not exercised)
 
-1. hermes mcp list | grep cortex-context
+1. hermes mcp list | grep fleet-context
 2. Call mcp__cortex_context__mem_context; the peer card must come back.
 
 ## Session identity
@@ -48,8 +48,8 @@ export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
 
 ## Shared pieces (identical for every harness — never fork them)
 
-- CLI: `~/.steadfaste-fleet/scripts/cortex-context.py`
-- MCP server: `~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py`
+- CLI: `~/.steadfaste-fleet/scripts/fleet-context.py`
+- MCP server: `~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py`
 - Trigger: `~/.steadfaste-fleet/scripts/session-autocheckpoint.py`
 - One implementation: `ops/services/mycortex-mem/context_tools.py`
 

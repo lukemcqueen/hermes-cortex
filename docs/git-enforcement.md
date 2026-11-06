@@ -90,7 +90,7 @@ bash ops/scripts/install/install-score-hook.sh --check
 bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
-The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `fleet-update.sh` creates symlinks from `~/.steadfaste-fleet/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
+The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `fleet-update.sh` creates symlinks from `~/.steadfaste-fleet/hooks/` to those scripts. This means git pull + fleet-update keeps hooks current without manual re-install.
 
 ---
 
@@ -256,13 +256,13 @@ The cycle is now in the DB with `task_id = precommit-steadfaste-fleet-main/fix-n
 
 ### Installation
 
-#### One-liner (via cortex-update)
+#### One-liner (via fleet-update)
 
-If you already have `cortex-update` installed, the hook is deployed automatically
+If you already have `fleet-update` installed, the hook is deployed automatically
 on every update. To force immediate installation:
 
 ```bash
-cortex-update
+fleet-update
 ```
 
 This:

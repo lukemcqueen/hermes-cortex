@@ -44,7 +44,7 @@
 - [ ] Read all PRDs — check if features are actually built
 - [ ] Check for PRD v1 vs v2 (supersession)
 - [ ] Check `run-evals.py` standalone-execution gap (hermes_tools dependency)
-- [ ] Cross-reference `cortex-doctor.py` vs `cortex-health.sh` — are they redundant?
+- [ ] Cross-reference `fleet-doctor.py` vs `fleet-health.sh` — are they redundant?
 - [ ] Check learning/knowledge pipeline scripts for consolidation opportunity
 
 ## Report
@@ -57,6 +57,6 @@
 - [ ] Clean up temp files (test artifacts, temp dirs created during review)
 - [ ] If files moved: update `fleet-update.sh` register/unregister
 - [ ] If files renamed: update all cross-references
-- [ ] Run doctor: `cortex-doctor.py --quiet` — 0 failures
+- [ ] Run doctor: `fleet-doctor.py --quiet` — 0 failures
 - [ ] `git add -A`
 - [ ] Verify adversarial gate didn't block false positives (bypass with `SKIP_ADVERSARIAL=1` for file moves)

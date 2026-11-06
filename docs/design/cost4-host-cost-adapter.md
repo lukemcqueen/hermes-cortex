@@ -46,7 +46,7 @@ cost baseline, taking 2 of 6 hosts measured to 6 of 6.
 "patch the existing tool". This one already reads both cost truths, is already
 deployed on all six hosts, and already runs on all six every 5 minutes — so the
 adapter is a **mode on it**, not a new file. Adding a new script would need its own
-deploy-map entry, its own registration, and a `cortex-update` on every worker before
+deploy-map entry, its own registration, and a `fleet-update` on every worker before
 the first measurement could be taken.
 
 ### 3.2 Change to `ops/scripts/manage/cron-cost-metrics.py`
@@ -152,7 +152,7 @@ Test 7 is the regression guard for the universal producer: `agent-push-metrics.s
 
 | Option | Why not |
 |---|---|
-| New `host-cost-aggregate.py` script | The generator already covers the need and is already on all six hosts; a new file costs a deploy-map entry, a cortex-update on every worker, and a second code path that rots. `survey-before-action` §2. |
+| New `host-cost-aggregate.py` script | The generator already covers the need and is already on all six hosts; a new file costs a deploy-map entry, a fleet-update on every worker, and a second code path that rots. `survey-before-action` §2. |
 | Dispatch the slice as `TASK_REQUEST` again | Measured: `handle_task` executes nothing (`commands.py:659`). That is what produced the 10-22 "consumed with no closure". |
 | Read the other five hosts' audit logs from this host | The slice's own premise: each host can only read its own log, and hardcoding another host's layout is what it forbids. Also fails on portability. |
 | Write the handed-out state/plan into the task row to make the dispatch visible | The orchestrator write surface does not exist (`task-db.py update` exposes only `--status/--reason`), and raw SQL bypasses the single write path — explicitly forbidden by the fix direction recorded in task `9fb2ddb6`. Tracked there, not here. |

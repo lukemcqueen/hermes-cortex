@@ -35,7 +35,7 @@ to keep the root agent guidelines focused on general Steadfaste Fleet usage.
    guarantees python3 (venv or system), not jq.
 3. **`install.sh --check`** verifies: python3, git, ollama, docker, `~/.local/bin`
    in PATH.
-4. **The doctor** verifies required runtime tools exist — run `cortex-doctor`
+4. **The doctor** verifies required runtime tools exist — run `fleet-doctor`
    after setup or when a script fails with `command not found`.
 
 ---

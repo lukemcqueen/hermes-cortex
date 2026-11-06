@@ -116,7 +116,7 @@ identity model — do not split them into two services or two schemas.
 | Surface | Reach |
 |---|---|
 | Hermes harness | `plugins/mycortex-mem/` — the plugin adapter |
-| Any other harness (pi, etc.) | `mcp-servers/cortex-context-mcp.py` — one thin MCP adapter over the shared impl in `ops/services/mycortex-mem/`, registered per harness (pi reads `mcpServers` from `~/.pi/agent/mcp.json`) |
+| Any other harness (pi, etc.) | `mcp-servers/fleet-context-mcp.py` — one thin MCP adapter over the shared impl in `ops/services/mycortex-mem/`, registered per harness (pi reads `mcpServers` from `~/.pi/agent/mcp.json`) |
 | Checkpoint TIMING | the harness EXTENSION (`turn_end` → `session_checkpoint`), never the model — the session that most needs a checkpoint is the one that got killed, and a killed session cannot call a tool |
 
 Facts that cost time to find: the checkpoint table is **`checkpoints`**, not
@@ -135,7 +135,7 @@ Drive the harness's OWN registered command under that harness's sandbox — neve
 hand-rolled invocation, and never only the unhardened path:
 
 1. Read the command out of the harness config (not from memory), e.g.
-   `~/.pi/agent/mcp.json` → `mcpServers['cortex-context']`.
+   `~/.pi/agent/mcp.json` → `mcpServers['fleet-context']`.
 2. Spawn exactly that under the hardening the service runs with:
    `setpriv --no-new-privs -- <command> <args>` (keeps the real group list, unlike
    `systemd-run`).

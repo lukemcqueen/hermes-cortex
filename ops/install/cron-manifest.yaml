@@ -818,10 +818,10 @@ crons:
   no_agent: false
   model: ''
   provider: ''
-- name: cortex-bus-failover-watchdog
+- name: fleet-bus-failover-watchdog
   scope: universal
   schedule: '*/5 * * * *'
-  script: cortex-bus-failover-watchdog.py
+  script: fleet-bus-failover-watchdog.py
   prompt: ''
   skill: ''
   deliver: telegram:{{HOME_CHANNEL}}

@@ -28,7 +28,7 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | File | Changes | Lines touched |
 |------|---------|---------------|
 | `remediation-sensor.py` | `"src" / "scripts"` → `"ops" / "scripts"`; git status path; add_issue detail string | 37, 96, 98 |
-| `cortex-doctor.py` | `"src" / "mcp-servers"` → `"ops" / "services"`; `"src" / "scripts"` → `"ops" / "scripts"` (3 occurrences) | 59, 145, 1171, 1195 |
+| `fleet-doctor.py` | `"src" / "mcp-servers"` → `"ops" / "services"`; `"src" / "scripts"` → `"ops" / "scripts"` (3 occurrences) | 59, 145, 1171, 1195 |
 | `hermes_paths.py` | Docstrings: `src/offline/` → `ops/offline/`, `src/web-cache/` → `ops/web-cache/`, `src/mcp-servers/` → `ops/services/`; inline comment | 6, 23, 29 |
 | `generate-agent-card.py` | Docstring: `src/a2a/agent-card.json` → `ops/services/a2a/agent-card.json` | 5 |
 
@@ -48,7 +48,7 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `seed-project.sh` | `${REPO_DIR}/ops/scripts/install/merge-agents-md.py` | `${REPO_DIR}/ops/scripts/install/merge-agents-md.py` |
 | `seed-project.sh` | `${REPO_DIR}/ops/scripts/pre-commit-score` | `${REPO_DIR}/ops/scripts/pre-commit-score` |
 | `nginx-security-scanner.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` |
-| `cortex-profile.sh` | `Usage: bash ops/scripts/cortex-profile.sh` | `Usage: bash ops/scripts/cortex-profile.sh` |
+| `fleet-profile.sh` | `Usage: bash ops/scripts/fleet-profile.sh` | `Usage: bash ops/scripts/fleet-profile.sh` |
 | `fleet-update.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` |
 
 ### `deploy/nginx/` → `ops/install/deploy/nginx/`
@@ -67,7 +67,7 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `fleet-update.sh` | `local src_dir="${REPO_DIR}/deploy/nginx"` | `local src_dir="${REPO_DIR}/ops/install/deploy/nginx"` |
 | `change-validate.sh` | `deploy/nginx/hermes-services.conf` | `ops/install/deploy/nginx/hermes-services.conf` |
 | `fleet-update.sh` | `register "deploy/docker-compose.langfuse.yml"` | `register "ops/install/deploy/docker-compose.langfuse.yml"` |
-| `cortex-setup-langfuse.sh` | `${SCRIPT_DIR}/../../deploy/docker-compose.langfuse.yml` | `${SCRIPT_DIR}/../../ops/install/deploy/docker-compose.langfuse.yml` |
+| `fleet-setup-langfuse.sh` | `${SCRIPT_DIR}/../../deploy/docker-compose.langfuse.yml` | `${SCRIPT_DIR}/../../ops/install/deploy/docker-compose.langfuse.yml` |
 | `fleet-update.sh` | `deploy/hermes-services.env`, `deploy/nginx/hermes-services.env` | `ops/install/deploy/hermes-services.env`, `ops/install/deploy/nginx/hermes-services.env` |
 
 ### `skills/` → `runtime/skills/`

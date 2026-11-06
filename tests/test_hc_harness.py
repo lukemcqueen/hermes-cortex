@@ -63,13 +63,13 @@ def test_lists_registry_harnesses():
 def test_install_pi_copies_the_extension_into_the_project(tmp_path):
     r = run("install", "pi", "--dir", str(tmp_path))
     assert r.returncode == 0, r.stderr
-    assert (tmp_path / "extensions" / "cortex-context.ts").is_file()
+    assert (tmp_path / "extensions" / "fleet-context.ts").is_file()
 
 
 def _extension_registered() -> set[str]:
     """Tools the Pi extension actually registers (same parse the drift guard uses)."""
     import re
-    src = (REPO / "ops/install/harnesses/pi/extensions/cortex-context.ts").read_text()
+    src = (REPO / "ops/install/harnesses/pi/extensions/fleet-context.ts").read_text()
     return set(re.findall(r'tool\(\s*"([a-z_]+)"', src))
 
 
@@ -121,7 +121,7 @@ def test_the_gate_tools_are_reachable_from_a_pi_session(tmp_path):
     pi = next(h for h in reg["harnesses"] if h["name"] == "pi")
     assert pi["layer"] == "mcp", f"pi moved off the MCP layer without moving this test: {pi['layer']}"
     server = reg.get("defaults", {}).get("mcp_server", "")
-    assert "cortex-context-mcp.py" in server, (
+    assert "fleet-context-mcp.py" in server, (
         f"the registry's MCP server must serve the gate tools; got {server!r}")
 
 
@@ -194,7 +194,7 @@ def test_verify_named_harness_reports_each_declared_artifact():
     """
     r = run("verify", "pi")
     assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
-    assert "cortex-context.ts" in r.stdout, r.stdout
+    assert "fleet-context.ts" in r.stdout, r.stdout
     assert "cortex-governance.ts" in r.stdout, r.stdout
 
 
@@ -210,7 +210,7 @@ def _registry_fixture(tmp_path: Path, *, drop: str | None = None) -> Path:
     shutil.copy2(REPO / "ops/install/harnesses/registry.yaml", regdir / "registry.yaml")
     gen = regdir / "generate-harnesses.py"
     gen.write_text("import sys\nprint('generate-harnesses: OK — fixture')\n")
-    for name in ("cortex-context.ts", "cortex-governance.ts"):
+    for name in ("fleet-context.ts", "cortex-governance.ts"):
         if name == drop:
             continue
         (regdir / "pi" / "extensions" / name).write_text("// ext\n")

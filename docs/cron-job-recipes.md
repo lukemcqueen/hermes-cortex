@@ -1080,7 +1080,7 @@ no stream delta) for `HERMES_CRON_TIMEOUT` seconds — the classic symptom is
 `TimeoutError: Cron job '<name>' idle for Ns (limit 600s)` from a hung
 non-streaming API response. The limit is gateway-process env, **not**
 per-job (no config.yaml key, no jobs.json field). The fleet applies 600s via
-`install-gateway-cron-timeout.sh` on every cortex-update (systemd drop-in on
+`install-gateway-cron-timeout.sh` on every fleet-update (systemd drop-in on
 Linux, `~/.hermes/.env` on macOS); it activates on the next gateway restart.
 ⚠️ The 08-04 fleet experiment (30s probe, then 300s) broke the evening LLM
 crons (agent-fixer/cortex-bus/agent-inbox/soul-refinement): heavy
@@ -1096,7 +1096,7 @@ to clear its error status.
 class behind 'idle for Ns' is deepseek's non-streaming endpoint silently
 hanging (>10 min, no response/error/deltas). The watchdog kills at 600s, and
 the fallback chain never engages because a silent hang raises no exception.
-`install-provider-timeouts.sh` (fleet, every cortex-update) sets
+`install-provider-timeouts.sh` (fleet, every fleet-update) sets
 `providers.deepseek.request_timeout_seconds: 300` and
 `stale_timeout_seconds: 300` in `~/.hermes/config.yaml`, converting the hang
 into a ReadTimeout at 5 min — before the watchdog — so retry/fallback

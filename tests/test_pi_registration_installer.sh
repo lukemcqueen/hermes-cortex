@@ -10,7 +10,7 @@
 #  the user owns.
 #
 #  Proves:
-#    1. `extensions` gets the cortex-context.ts path (the lifecycle
+#    1. `extensions` gets the fleet-context.ts path (the lifecycle
 #       hook that records gate evidence for the pre-commit reflexion
 #       gate — without it a Pi commit is refused).
 #    2. `skills` gets the PUBLISHED tree the fleet publishes, and a
@@ -56,11 +56,11 @@ export HOME="$TD/home"
 mkdir -p "$HOME/.pi/agent" "$HOME/.steadfaste-fleet/harnesses/pi/extensions" "$HOME/.agents/skills/workflow" "$HOME/.agents/skills/software-development"
 
 # A real deployed extension + a skills tree (only names matter here).
-# BOTH extensions: the installer requires cortex-context.ts AND
+# BOTH extensions: the installer requires fleet-context.ts AND
 # cortex-governance.ts (registering only one looks wired while leaving writes
 # open, so it refuses) — a fixture with one is a broken fixture, and it made
 # this suite fail for a reason unrelated to what it tests.
-touch "$HOME/.steadfaste-fleet/harnesses/pi/extensions/cortex-context.ts" \
+touch "$HOME/.steadfaste-fleet/harnesses/pi/extensions/fleet-context.ts" \
       "$HOME/.steadfaste-fleet/harnesses/pi/extensions/cortex-governance.ts"
 for s in task-start agent-flow reflexion-check change-checklist survey-before-action agent-contract test-driven-development; do
   if [[ "$s" == "task-start" ]]; then d="$HOME/.agents/skills/workflow/$s"; else d="$HOME/.agents/skills/software-development/$s"; fi
@@ -111,7 +111,7 @@ d = json.load(open(p))
 assert d["quiethStartup"] == "keepme", "unrelated key lost"
 exts = d["extensions"]
 assert "~/my-own-ext.ts" in exts, f"user extension lost: {exts}"
-assert any(e.endswith("harnesses/pi/extensions/cortex-context.ts") for e in exts), \
+assert any(e.endswith("harnesses/pi/extensions/fleet-context.ts") for e in exts), \
     f"cortex extension not registered: {exts}"
 skills = d["skills"]
 assert "~/my-own-skill" in skills, f"user skill lost: {skills}"
@@ -158,7 +158,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert "~/my-own-ext.ts" in d.get("extensions", []), "user extension removed by --remove"
 assert "~/my-own-skill" in d.get("skills", []), "user skill removed by --remove"
-assert not any(e.endswith("cortex-context.ts") or e.endswith("cortex-governance.ts")
+assert not any(e.endswith("fleet-context.ts") or e.endswith("cortex-governance.ts")
                for e in d.get("extensions", [])), f"cortex extension left: {d['extensions']}"
 assert not any(x.endswith("cortex-skills") for x in d.get("skills", [])), \
     f"retired farm left registered: {d['skills']}"
@@ -166,7 +166,7 @@ EOF
 check "--remove strips only ours, keeps user entries" "$([ $? -eq 0 ] && echo 1 || echo 0)"
 
 # ── web search (free providers) ──────────────────────────────────────────
-# The Pi agent served by cortex-gateway must be able to search the web for
+# The Pi agent served by fleet-gateway must be able to search the web for
 # FREE — no API key on this host. Two host-visible facts make that true, so
 # both are asserted: the pinned pi-web-access package declared in
 # settings.json, and a keyless routing config in web-search.json.

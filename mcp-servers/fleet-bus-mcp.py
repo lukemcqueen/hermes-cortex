@@ -63,7 +63,7 @@ if importlib.util.find_spec("mcp") is None:
 
 logging.basicConfig(level=logging.DEBUG, format="[mcp-server] %(levelname)s: %(message)s",
                     stream=sys.stderr, force=True)
-log = logging.getLogger("cortex-bus-mcp")
+log = logging.getLogger("fleet-bus-mcp")
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

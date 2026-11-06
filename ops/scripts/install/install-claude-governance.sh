@@ -30,7 +30,7 @@ PYTHON="${PYTHON:-$(command -v python3)}"
 LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
 TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
 EXECUTOR_MCP="${HOME}/.steadfaste-fleet/scripts/executor-mcp.py"
-BUS_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-bus-mcp.py"
+BUS_MCP="${HOME}/.steadfaste-fleet/scripts/fleet-bus-mcp.py"
 AGENT_NAME="${AGENT_NAME:-titusclaude}"
 # Python that has the `mcp` package: prefer the cortex venv, fall back to PATH.
 PY_CMD="${HOME}/.steadfaste-fleet/venv/bin/python3"
@@ -100,7 +100,7 @@ GOVERNANCE = {
                        ["~/.steadfaste-fleet/scripts/executor-mcp.py"],
                        {"AGENT_NAME": "{{AGENT_NAME}}"}),
     "agent-bus": server(py_cmd,
-                        ["~/.steadfaste-fleet/scripts/cortex-bus-mcp.py"],
+                        ["~/.steadfaste-fleet/scripts/fleet-bus-mcp.py"],
                         {"AGENT_NAME": "{{AGENT_NAME}}"}),
 }
 

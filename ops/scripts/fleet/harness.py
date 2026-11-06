@@ -105,12 +105,12 @@ def contract_tools_py() -> Path | None:
 
 
 def context_cli() -> Path | None:
-    """The shared CLI adapter (cortex-context.py): repo layout first, then deployed."""
+    """The shared CLI adapter (fleet-context.py): repo layout first, then deployed."""
     candidates = [
         Path(os.environ["CORTEX_CONTEXT_CLI"]) if os.environ.get("CORTEX_CONTEXT_CLI") else None,
-        HERE.parents[1] / "cortex-context.py",                                # repo: ops/scripts
-        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "cortex-context.py",
-        Path.home() / ".steadfaste-fleet" / "scripts" / "cortex-context.py",
+        HERE.parents[1] / "fleet-context.py",                                # repo: ops/scripts
+        Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "fleet-context.py",
+        Path.home() / ".steadfaste-fleet" / "scripts" / "fleet-context.py",
     ]
     for p in candidates:
         if p and p.is_file():

@@ -1,9 +1,9 @@
 # Optional add-on: Telegram gateway for Pi (fleet / steadfaste)
 
-**Audience:** an agent setting up a Pi backend on the cortex-gateway daemon,
+**Audience:** an agent setting up a Pi backend on the fleet-gateway daemon,
 answering a Telegram bot distinct from the Hermes bot. This is the macOS
 (launchd) walkthrough; Linux/systemd uses the same `gateway.yaml` and env vars
-with `docs/templates/cortex-gateway.service` instead.
+with `docs/templates/fleet-gateway.service` instead.
 
 Kept in its own file on purpose: `../pi/IMPLEMENT.md` §7 covers the adapter
 contract; this doc covers the **host-specific wiring** (bot token, env, plist,
@@ -141,7 +141,7 @@ advances until the process exits.
 
 ## 4. Launchd plist (`com.steadfaste.gateway`)
 
-Copy and edit `docs/templates/com.hermes.cortex-gateway.plist`:
+Copy and edit `docs/templates/com.hermes.fleet-gateway.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -239,5 +239,5 @@ cd ~/.steadfaste-fleet/scripts && \
 
 - `IMPLEMENT.md` §7 — adapter contract (how the gateway drives pi)
 - `ADDON-deepseek-mcp.md` — optional adversarial-review MCP server
-- `docs/design/cortex-gateway.md` — architecture and build slices
-- `docs/templates/com.hermes.cortex-gateway.plist` — upstream template (check for drift)
+- `docs/design/fleet-gateway.md` — architecture and build slices
+- `docs/templates/com.hermes.fleet-gateway.plist` — upstream template (check for drift)

@@ -28,7 +28,7 @@ The old cron `orch-backlog-driver` is removed; the new one is scheduled at
 
 ## How to apply on a host
 
-A host converges by pulling origin and running cortex-update (deploys the renamed
+A host converges by pulling origin and running fleet-update (deploys the renamed
 skill + installer). On orchestrators (moses/esther), the live cron was already
 recreated; if a host shows the old name, `fleet-update.sh` recreates it from the
 installer's create block (the old paused job is removed by the uninstall array).

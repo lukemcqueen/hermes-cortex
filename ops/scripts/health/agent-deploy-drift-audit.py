@@ -5,7 +5,7 @@ O5-S2 (HC gaps party 2026-08-21, roadmap F-008): scheduled drift-audit
 assigned to the deployed-component-verification seam. Mirrors the on-demand
 logic in fleet_doctor/checks.py (check_stale_deploys() + deploy-content
 checks) so deployed-vs-repo drift is caught daily even when no commit,
-doctor run, or cortex-update deploy happens that day.
+doctor run, or fleet-update deploy happens that day.
 
 Checks (identical semantics to the doctor's checks):
   1. register() source missing in the repo          -> FAIL (config drift)

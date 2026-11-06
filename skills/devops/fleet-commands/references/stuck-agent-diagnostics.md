@@ -115,6 +115,6 @@ A specific pattern that causes `processing`→stuck on fleet agents:
 ## Prevention
 
 All fleet agents should:
-1. Have the latest `agent-message-handler.py` (deployed via cortex-update)
+1. Have the latest `agent-message-handler.py` (deployed via fleet-update)
 2. Have the handler cron registered in the scheduler
 3. Have `recover_timeouts` running every 5 min via `orch-bus-recover-timeouts`

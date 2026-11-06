@@ -45,5 +45,5 @@ And when I left AGENTS.md at WARN: *"Agents is important!"*
 
 - `self-improvement-pipeline` Tenet 2: "Doctor warnings are blocking failures — NOT optional"
 - `self-improvement-pipeline` Tenet 7: "Template is the single source of truth"
-- cortex-doctor.py: `check_soul_sync()` — FAIL on marker mismatch, FAIL on size >20K, WARN on size >15K
-- cortex-doctor.py: AGENTS.md sync is FAIL on missing or content mismatch
+- fleet-doctor.py: `check_soul_sync()` — FAIL on marker mismatch, FAIL on size >20K, WARN on size >15K
+- fleet-doctor.py: AGENTS.md sync is FAIL on missing or content mismatch

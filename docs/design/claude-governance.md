@@ -79,7 +79,7 @@ at the same governance servers:
     },
     "agent-bus": {
       "command": "~/.steadfaste-fleet/venv/bin/python3",
-      "args": ["~/.steadfaste-fleet/scripts/cortex-bus-mcp.py"],
+      "args": ["~/.steadfaste-fleet/scripts/fleet-bus-mcp.py"],
       "env": {"AGENT_NAME": "titusclaude"}
     }
   }

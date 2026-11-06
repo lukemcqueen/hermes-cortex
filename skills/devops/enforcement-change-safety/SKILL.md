@@ -363,7 +363,7 @@ When a gate greps doctor output, the FAIL-detection pattern has bitten twice
 - **Never bare-grep `❌` either.** The footer `🔧 REQUIRED ACTIONS — resolve
   each ⚠️ or ❌ above` *contains* ❌ mid-line → counted as a failure. The
   gate blocked its own push showing "1 failure" while printing zero detail.
-- **Correct pattern** (both pre-push gate and cortex-dogfood.sh):
+- **Correct pattern** (both pre-push gate and fleet-dogfood.sh):
   ```bash
   _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' \
     | grep -vcE 'Overall: FAILING' || true)
@@ -378,7 +378,7 @@ cycle (lock held) is INFO. The pre-push gate therefore must NOT exclude
 "PENDING cycles" lines — a push with leaked prior-task cycles is BLOCKED.
 That is the mechanism that makes "clear cycles during cleanup, not later"
 (Luke directive 2026-08-05) physical: you cannot ship while old cycles sit
-unscored. The same applies to `cortex-dogfood.sh` — its verify step counts
+unscored. The same applies to `fleet-dogfood.sh` — its verify step counts
 the same way.
 
 ## Rule 11: Scope Shared-Hook Gates — Cortex Repo + Orchestrator Host Only
@@ -399,7 +399,7 @@ to them must be doubly scoped or it will block innocent work in project repos:
    gates. Reuse `_detect_orch()` (hostname moses|esther AND home
    `/home/<hostname>`, env-independent — the SAME function pre-commit uses
    for its self-test; copy it, don't reinvent). Non-orch hosts never run the
-   doctor gate. `cortex-dogfood.sh` exits 1 with a clear message on
+   doctor gate. `fleet-dogfood.sh` exits 1 with a clear message on
    non-orch hosts.
 
 **Scoping is not only for NEW gates — audit the EXISTING ones.** A gate written
@@ -499,8 +499,8 @@ failure — empty string + skip, never `|| echo 0` + delete.**
 
 **Mandatory dogfood in the pre-push gate (Luke: "make this MANDATORY — I
 thought you did already"):** a push that touches ANY non-doc file in
-steadfaste-fleet runs the FULL dogfood cycle (pull → cortex-update → doctor →
-verify) BEFORE landing. The gate invokes `cortex-dogfood.sh --quiet` itself
+steadfaste-fleet runs the FULL dogfood cycle (pull → fleet-update → doctor →
+verify) BEFORE landing. The gate invokes `fleet-dogfood.sh --quiet` itself
 so the step cannot be forgotten:
 
 - **Scope (both Luke corrections 2026-08-05):** steadfaste-fleet repo ONLY
@@ -512,7 +512,7 @@ so the step cannot be forgotten:
 - **Own-task exemption:** the dogfood deploy purges the governance lock (the
   TZ bug's orphan behavior, even after the fix the deploy legitimately
   reloads the enforcer plugin), so the doctor sees THIS session's own cycle
-  as "leaked" (no lock). `cortex-dogfood.sh` captures the active task_id
+  as "leaked" (no lock). `fleet-dogfood.sh` captures the active task_id
   (`DOGFOOD_OWN_TASK`) BEFORE deploy and exempts exactly that task's cycle
   from the FAIL count — other leaked cycles still fail.
 - **Skill reloads are NOT lock-coupled:** the per-session skills marker
@@ -719,7 +719,7 @@ other conclude the system is broken. When touching either block message:
   pre-push gate checks the skill was loaded THIS session (per-session
   enforcement, Rule 14a) — a push after commit fails with "ADVERSARIAL
   VERIFICATION REQUIRED" until one `skill_view('adversarial-verifier')`.
-- **Order for enforcer changes: commit → dogfood (`cortex-dogfood.sh
+- **Order for enforcer changes: commit → dogfood (`fleet-dogfood.sh
   --force`) → push.** The push gate fails "Deploy sync / Plugin content"
   until deployed == repo, and only dogfood syncs the deploy. Docs-only
   changes skip dogfood, but an enforcer `.py` change never does.

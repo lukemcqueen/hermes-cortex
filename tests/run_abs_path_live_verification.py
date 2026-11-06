@@ -203,7 +203,7 @@ say()
 say("=" * 72)
 say("7. DOCTOR — skill drift count")
 say("=" * 72)
-doc = _run([sys.executable, "ops/scripts/manage/cortex-doctor.py"], timeout=900)
+doc = _run([sys.executable, "ops/scripts/manage/fleet-doctor.py"], timeout=900)
 for ln in doc.stdout.splitlines():
     if "drift" in ln.lower() and "Skill" in ln:
         say(_scrub(ln.strip()))

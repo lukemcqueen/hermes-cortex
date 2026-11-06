@@ -11,13 +11,13 @@
 #
 #  Fix: write ~/.pi/agent/mcp.json (user scope — Pi reads it in
 #  EVERY project) with the governance servers Claude Code gets from
-#  install-claude-governance.sh, PLUS cortex-context (registered here since
+#  install-claude-governance.sh, PLUS fleet-context (registered here since
 #  2026-10-03 — see the note below). Pi reads
 #  user servers from ~/.pi/agent/mcp.json and project servers from
 #  .pi/mcp.json (trusted project roots only); an entry there
 #  overrides a user-level entry with the same name.
 #
-#  cortex-context IS registered here (2026-10-03). The earlier note said
+#  fleet-context IS registered here (2026-10-03). The earlier note said
 #  Pi had no MCP client at the CONTEXT layer, so the memory/session tools
 #  came from the extension's own registerTool calls — and when Pi moved
 #  0.87.1 → 1.0.0 that hand-written tool surface broke SILENTLY (every call
@@ -67,8 +67,8 @@ PYTHON="${PYTHON:-$(command -v python3)}"
 LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
 TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
 EXECUTOR_MCP="${HOME}/.steadfaste-fleet/scripts/executor-mcp.py"
-BUS_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-bus-mcp.py"
-CONTEXT_MCP="${HOME}/.steadfaste-fleet/scripts/cortex-context-mcp.py"
+BUS_MCP="${HOME}/.steadfaste-fleet/scripts/fleet-bus-mcp.py"
+CONTEXT_MCP="${HOME}/.steadfaste-fleet/scripts/fleet-context-mcp.py"
 
 # Identity: the per-host agent name, so cycles are attributed to this host's
 # agent (see AGENTS.md rule 21 — identity is host-derived, never guessed).
@@ -349,7 +349,7 @@ try:
     data = json.load(open(sys.argv[1]))
 except Exception:
     sys.exit(0)   # unreadable or malformed: nothing to preserve, and not our failure
-for name in ("review", "tasks", "executor", "agent-bus", "cortex-context"):
+for name in ("review", "tasks", "executor", "agent-bus", "fleet-context"):
     cmd = ((data.get("mcpServers") or {}).get(name) or {}).get("command") or ""
     if cmd and os.access(cmd, os.X_OK) and subprocess.run(
             [cmd, "-c", "import mcp"], capture_output=True).returncode == 0:
@@ -448,7 +448,7 @@ GOVERNANCE = {
     # special here. NOTE: no CORTEX_SESSION_* in `env` on purpose — Pi merges
     # this block over its own environment, so a session key the GATEWAY pinned
     # on the pi process (per chat) still reaches this server.
-    "cortex-context": server(
+    "fleet-context": server(
         context_mcp,
         "Cortex context: mem_profile/search/context/conclude + "
         "session_checkpoint/restore/list/search/note/close."),

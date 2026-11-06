@@ -1,6 +1,6 @@
 # TZ Bug in Lock Purge + Mandatory Dogfood Gate (2026-08-05)
 
-## The TZ bug — why cortex-update deleted the live session lock every deploy
+## The TZ bug — why fleet-update deleted the live session lock every deploy
 
 **Symptom (Luke: "this lock issue is MISERABLE. there needs to be a real
 solution"):** after every `fleet-update.sh`, the next tool call returned
@@ -61,7 +61,7 @@ if [[ "$_REPO_TOP" == "$CORTEX_REPO_TOP" ]] && _detect_orch && [[ -n "$CHANGED_F
     esac
   done <<< "$CHANGED_FILES"
   if [[ "$_DOGFOOD_RELEVANT" -eq 1 ]]; then
-    bash "${HOME}/.steadfaste-fleet/scripts/cortex-dogfood.sh" --quiet ...
+    bash "${HOME}/.steadfaste-fleet/scripts/fleet-dogfood.sh" --quiet ...
     [[ $_DOGFOOD_RC -ne 0 ]] && exit 1    # block the push on dogfood FAIL
   fi
 fi
@@ -82,7 +82,7 @@ fi
 The dogfood deploy reloads the enforcer plugin (and historically purged the
 lock via the TZ bug), so after deploy the doctor sees THIS session's own
 cycle with no active lock → classifies it as "leaked" → dogfood FAILs on
-itself. Fix in `cortex-dogfood.sh`:
+itself. Fix in `fleet-dogfood.sh`:
 
 ```bash
 # Capture BEFORE deploy (deploy will purge/restart the lock state)

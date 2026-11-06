@@ -86,9 +86,9 @@ curl -s http://localhost:3000/api/public/health
 # → {"status":"OK","version":"3.200.0"}
 ```
 
-## Hermes Setup via cortex-setup-langfuse.sh
+## Hermes Setup via fleet-setup-langfuse.sh
 
-The repo's setup script at `ops/scripts/cortex-setup-langfuse.sh` automates:
+The repo's setup script at `ops/scripts/fleet-setup-langfuse.sh` automates:
 - Copying docker-compose.yml and config files
 - Generating all required secrets (.env)
 - Creating a Langfuse API key pair in Postgres
@@ -98,8 +98,8 @@ The repo's setup script at `ops/scripts/cortex-setup-langfuse.sh` automates:
 
 Usage:
 ```bash
-bash ops/scripts/cortex-setup-langfuse.sh            # generate + wire
-bash ops/scripts/cortex-setup-langfuse.sh --start    # generate + docker compose up
+bash ops/scripts/fleet-setup-langfuse.sh            # generate + wire
+bash ops/scripts/fleet-setup-langfuse.sh --start    # generate + docker compose up
 ```
 
 ## Only These Env Vars Matter

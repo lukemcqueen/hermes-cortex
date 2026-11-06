@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
 OUT="$HERE/EVIDENCE.md"
 PREFIX_COMMIT="${PREFIX_COMMIT:-48e85271}"   # the commit before the fix
-OLD_EXT_PATH="ops/install/harnesses/pi/extensions/cortex-context.ts"
+OLD_EXT_PATH="ops/install/harnesses/pi/extensions/fleet-context.ts"
 
 echo "→ wiring guard (fixed extension)"
 node_out="$(cd "$REPO" && node ops/install/harnesses/pi/verify-extension.mjs 2>&1)"; node_rc=$?
@@ -28,7 +28,7 @@ py_out="$(cd "$REPO" && python3 -m pytest tests/test_context_harnesses.py \
 echo "→ wiring guard (PRE-FIX extension — must FAIL)"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/extensions"
 cp "$HERE/verify-extension.mjs" "$tmp/"
-(cd "$REPO" && git show "${PREFIX_COMMIT}:${OLD_EXT_PATH}") > "$tmp/extensions/cortex-context.ts" 2>/dev/null
+(cd "$REPO" && git show "${PREFIX_COMMIT}:${OLD_EXT_PATH}") > "$tmp/extensions/fleet-context.ts" 2>/dev/null
 old_out="$(node "$tmp/verify-extension.mjs" 2>&1)"; old_rc=$?
 rm -rf "$tmp"
 
@@ -59,9 +59,9 @@ EVID_SHA="$(sha256sum "$HERE/run-evidence.sh" | cut -d' ' -f1)"
 # is shown with its id REDACTED — the shape (`hc-pi-<chat>`) is the evidence, the
 # specific id is not.
 PI_BIN="${PI_BIN:-$HOME/.pi/agent/bin/pi}"
-CTX_CLI="${HOME}/.steadfaste-fleet/scripts/cortex-context.py"
+CTX_CLI="${HOME}/.steadfaste-fleet/scripts/fleet-context.py"
 if [ -x "$PI_BIN" ]; then
-  mcp_out="$("$PI_BIN" mcp list 2>&1 | grep -A2 'cortex-context' || true)"
+  mcp_out="$("$PI_BIN" mcp list 2>&1 | grep -A2 'fleet-context' || true)"
 else
   mcp_out="(pi not installed here)"
 fi
@@ -70,7 +70,7 @@ if [ -f "$CTX_CLI" ]; then
     | grep -o 'hc-pi-[0-9]*' | sed -E 's/[0-9]+$/NNNNNNNNNN/' | sort -u | head -5 || true)"
   [ -n "$key_out" ] || key_out="(no hc-pi-* session keys recorded yet)"
 else
-  key_out="(cortex-context CLI not deployed here)"
+  key_out="(fleet-context CLI not deployed here)"
 fi
 
 {

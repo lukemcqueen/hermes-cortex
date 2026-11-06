@@ -152,7 +152,7 @@ def test_d_the_read_path_fails_soft() -> None:
 def test_e_the_rendering_says_so() -> None:
     print("E. the rendering names what nobody has decided")
     res = results_pkg.Results()
-    res.add("Skill drift", "WARN", "3 drifted", "Run: cortex-doctor.py")
+    res.add("Skill drift", "WARN", "3 drifted", "Run: fleet-doctor.py")
     res.add("Repo clean", "PASS", "clean")
     res.add("Some info", "INFO", "fyi")
     import io
@@ -164,7 +164,7 @@ def test_e_the_rendering_says_so() -> None:
     out = buf.getvalue()
     _check("the summary carries the undisposed count", "2 undisposed" in out, out[:400])
     _check("the block names the undisposed check", "Skill drift" in out)
-    _check("it carries that check's own fix hint", "Run: cortex-doctor.py" in out)
+    _check("it carries that check's own fix hint", "Run: fleet-doctor.py" in out)
     _check("it carries the exact record command", "--disposition \"Skill drift\"" in out)
     _check("INFO counts too (the operator asked for warnings AND info)", "Some info" in out)
     _check("a PASS check is not listed as undisposed", "Repo clean" not in out.split("UNDISPOSED")[1])
@@ -199,7 +199,7 @@ def test_g_end_to_end_through_the_cli() -> None:
         env = {**os.environ, "HERMES_CORTEX_HOME": td}
         # A record for a check that cannot exist must fail visibly (this runs the quick check set).
         r = subprocess.run([sys.executable, str(REPO / "ops" / "scripts" / "manage" /
-                                               "cortex-doctor.py"),
+                                               "fleet-doctor.py"),
                             "--quick", "--disposition", "No Such Check", "--as", "deferred",
                             "--owner", "tester", "--reason", "test"],
                            capture_output=True, text=True, env=env, cwd=str(REPO), timeout=900)
@@ -208,7 +208,7 @@ def test_g_end_to_end_through_the_cli() -> None:
         _check("nothing was written", not (Path(td) / "state" / "doctor-dispositions.json").exists())
         # Listing an empty store is a clean, quiet exit.
         r2 = subprocess.run([sys.executable, str(REPO / "ops" / "scripts" / "manage" /
-                                                "cortex-doctor.py"), "--dispositions"],
+                                                "fleet-doctor.py"), "--dispositions"],
                             capture_output=True, text=True, env=env, cwd=str(REPO), timeout=300)
         _check("listing an empty store exits 0", r2.returncode == 0, f"rc={r2.returncode}")
         _check("and says every check is undisposed", "UNDISPOSED" in r2.stdout, r2.stdout[-300:])

@@ -1,7 +1,7 @@
-# cortex-gateway ↔ hermes-gateway: functional parity matrix
+# fleet-gateway ↔ hermes-gateway: functional parity matrix
 
 **Question (Luke, 2026-10-02):** can Telegram move from `hermes-gateway` to
-`cortex-gateway` without losing functionality?
+`fleet-gateway` without losing functionality?
 
 **Directive (Luke, 2026-10-02): "build feature parity, and once we are confident, then
 cut over."** So this file is a *progress bar*, not a judgement: parity is built in
@@ -318,4 +318,4 @@ startup instead of silently serving a menu that stores an override nothing appli
 - Gateway suites (executed): **111 passed** (106 pre-existing + 5 new).
 - Incumbent: `hermes-agent/plugins/platforms/telegram/adapter.py`.
 - Target: `steadfaste-fleet/ops/scripts/fleet_gateway/{transport,daemon}.py`;
-  design `docs/design/cortex-gateway.md` (CR1–CR4 ✅, CR5 pi pending).
+  design `docs/design/fleet-gateway.md` (CR1–CR4 ✅, CR5 pi pending).

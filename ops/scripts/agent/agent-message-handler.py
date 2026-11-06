@@ -40,7 +40,7 @@ from pathlib import Path
 HOME = Path.home()
 CORTEX_REPO = HOME / "steadfaste-fleet"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
-DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
+DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "fleet-doctor.py"
 # Derive AGENT_NAME from env (set by cron/launchd) or .env (fleet setup)
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
 if not AGENT_NAME:
@@ -66,7 +66,7 @@ STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "agent-message-state.json"
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Agent labels file (created by cortex-agent-manager.py or manually)
+# Agent labels file (created by fleet-agent-manager.py or manually)
 LABELS_FILE = HOME / ".steadfaste-fleet" / "agent-labels.json"
 
 
@@ -251,7 +251,7 @@ def normalize_tracked_subject(subject: str) -> str:
     return subject
 
 # Detached UPDATE_REQUEST worker (2026-08-18): a synchronous
-# cortex-update+doctor (~390s worst case) exceeded the cron tick budget on
+# fleet-update+doctor (~390s worst case) exceeded the cron tick budget on
 # fleet hosts, killing the handler mid-processing after the early-archive and
 # silently losing UPDATE_RESULTs. The worker survives (start_new_session),
 # writes its result here, and the sweep (_send_pending_update_results) sends
@@ -567,22 +567,22 @@ def run_cortex_update() -> dict:
     # Log result for diagnostics
     stdout_tail = (r.stdout or "")[-200:].replace("\n", " ").strip()
     stderr_tail = (r.stderr or "")[-200:].replace("\n", " ").strip()
-    log(f"cortex-update done: exit={r.returncode} {'✓' if result['success'] else '✗'}")
+    log(f"fleet-update done: exit={r.returncode} {'✓' if result['success'] else '✗'}")
     if stdout_tail:
       log(f" stdout: {stdout_tail}")
     if stderr_tail:
       log(f" stderr: {stderr_tail}")
     return result
   except subprocess.TimeoutExpired:
-    log("cortex-update TIMEOUT after 300s")
+    log("fleet-update TIMEOUT after 300s")
     return {"success": False, "output": "", "stderr": "TIMEOUT after 300s", "exit_code": -1}
   except Exception as e:
-    log(f"cortex-update ERROR: {e}")
+    log(f"fleet-update ERROR: {e}")
     return {"success": False, "output": "", "stderr": str(e), "exit_code": -1}
 
 
 def run_doctor() -> dict:
-  """Run cortex-doctor.py --json and parse result."""
+  """Run fleet-doctor.py --json and parse result."""
   try:
     r = subprocess.run(
       [sys.executable, str(DOCTOR_PATH), "--json"],
@@ -720,7 +720,7 @@ def _spawn_update_worker(msg_body: dict, correlation_id: str) -> bool:
       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     # In-flight marker: the tick's health-doctor skips while any worker is
-    # running (cortex-update mid-deploy causes transient checksum FAILs that
+    # running (fleet-update mid-deploy causes transient checksum FAILs that
     # would otherwise fire a false health alert, observed 2026-08-18).
     try:
       (UPDATE_PENDING_DIR / f"{correlation_id}.running").write_text(str(time.time()))
@@ -816,7 +816,7 @@ def read_inbox(queue: str) -> dict | None:
     # VT only needs to cover the read→archive window — the handler archives
     # the message immediately after reading (early archive, c7231c3), so VT
     # expiry can never re-expose a message mid-processing. The subprocess
-    # timeout in run_cortex_update() (300s) is what bounds cortex-update
+    # timeout in run_cortex_update() (300s) is what bounds fleet-update
     # duration, not this VT.
     raw = bus_read(queue, vt=120)
     if raw and raw.get("msg_id"):
@@ -891,7 +891,7 @@ def process_update_request(msg_body: dict, correlation_id: str) -> dict:
     "duration_seconds": 0,
   }
   if not update_result["success"]:
-    result["errors"].append(f"cortex-update failed: {update_result.get('stderr', '')[:200]}")
+    result["errors"].append(f"fleet-update failed: {update_result.get('stderr', '')[:200]}")
   if not doctor.get("healthy", False) and run_doctor_flag:
     s = doctor.get("summary", {})
     result["errors"].append(f"Doctor: {s.get('warn', 0)} warn, {s.get('fail', 0)} fail")
@@ -1391,7 +1391,7 @@ def main():
         task_transition_by_correlation(correlation_id, "in_progress")
 
       # ── UPDATE_REQUEST: run in a DETACHED worker (2026-08-18) ──
-      # A synchronous cortex-update+doctor (~390s worst case) exceeded the
+      # A synchronous fleet-update+doctor (~390s worst case) exceeded the
       # cron tick budget on fleet hosts, killing the handler mid-processing
       # after the early-archive and silently losing UPDATE_RESULTs. The
       # worker survives and writes its result to UPDATE_PENDING_DIR; the
@@ -1771,7 +1771,7 @@ def main():
     # Skip this tick's health-doctor while an UPDATE worker is mid-deploy:
     # the transient mid-deploy checksum state would fire false FAILs
     # (observed 2026-08-18 — 9-fail alert while the detached worker ran
-    # cortex-update).
+    # fleet-update).
     if any(UPDATE_PENDING_DIR.glob("*.running")):
       log("⏳ UPDATE worker in flight — skipping this tick's health doctor")
       return

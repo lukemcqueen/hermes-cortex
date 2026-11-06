@@ -26,7 +26,7 @@ from typing import Any, Callable
 HOME = Path.home()
 CORTEX_REPO = HOME / "steadfaste-fleet"
 CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
-DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
+DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "fleet-doctor.py"
 SCRIPTS_DIR = HOME / ".steadfaste-fleet" / "scripts"
 COLLECTOR_SCRIPT = SCRIPTS_DIR / "agent-learning-collector.py"
 STATE_DIR = HOME / ".steadfaste-fleet" / "state"
@@ -204,15 +204,15 @@ def _run_cortex_update() -> dict:
             "exit_code": r.returncode,
         }
         tail = ((r.stdout or "")[-200:]).replace("\n", " ").strip()
-        log(f"cortex-update done: exit={r.returncode} {'✓' if result['success'] else '✗'}")
+        log(f"fleet-update done: exit={r.returncode} {'✓' if result['success'] else '✗'}")
         if tail:
             log(f"  {tail}")
         return result
     except subprocess.TimeoutExpired:
-        log("cortex-update TIMEOUT after 300s")
+        log("fleet-update TIMEOUT after 300s")
         return {"success": False, "output": "", "stderr": "TIMEOUT after 300s", "exit_code": -1}
     except Exception as e:
-        log(f"cortex-update ERROR: {e}")
+        log(f"fleet-update ERROR: {e}")
         return {"success": False, "output": "", "stderr": str(e), "exit_code": -1}
 
 
@@ -255,7 +255,7 @@ def handle_update(msg_body: dict, msg_raw: dict) -> dict:
         "duration_seconds": 0,
     }
     if not update_result["success"]:
-        result["errors"].append(f"cortex-update failed: {update_result.get('stderr', '')[:200]}")
+        result["errors"].append(f"fleet-update failed: {update_result.get('stderr', '')[:200]}")
     if not doctor.get("healthy", False) and run_doctor_flag:
         s = doctor.get("summary", {})
         result["errors"].append(f"Doctor: {s.get('warn', 0)} warn, {s.get('fail', 0)} fail")
@@ -594,7 +594,7 @@ def handle_status(msg_body: dict, msg_raw: dict) -> dict:
 
 # ── DOCTOR_REQUEST → DOCTOR_RESULT ──
 
-@command("DOCTOR_RESULT", "Run cortex-doctor.py and return structured pass/warn/fail")
+@command("DOCTOR_RESULT", "Run fleet-doctor.py and return structured pass/warn/fail")
 def handle_doctor(msg_body: dict, msg_raw: dict) -> dict:
     request = _parse_body(msg_body.get("body", {}))
     quiet = request.get("quiet", False)

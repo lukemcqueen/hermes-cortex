@@ -30,7 +30,7 @@ and two slowly-diverging opinions about what a session is.
 Therefore: **one MCP server, two tool families, one store, one identity model.**
 
 ```
-cortex-context-mcp.py
+fleet-context-mcp.py
 ├── mem_*      memory family   — what do I know?
 └── session_*  session family  — where am I?
         └── both over mycortex_mem (+ one new checkpoint table)
@@ -88,7 +88,7 @@ The corrected shape:
 ```
         ops/services/mycortex-mem/context_tools.py     ← ONE implementation
               │                          │
-   cortex-context-mcp.py          cortex-context.py  ← access layers
+   fleet-context-mcp.py          fleet-context.py  ← access layers
    (Hermes/Claude/Codex)          (Pi + anything shelling out)
 ```
 - **ADR-0005's principle** — *"ONE standard shim, generated per agent, never
@@ -193,9 +193,9 @@ Memory is an enhancement, never a hard dependency (fail-open).
 | Slice | What | Depends on |
 |---|---|---|
 | **S2c-a** | `store.py` (shared psql seam + SQL) + `v002__sessions.sql` | — |
-| **S2c-b** | `cortex-context-mcp.py`: memory (no-LLM) + session families | S2c-a |
+| **S2c-b** | `fleet-context-mcp.py`: memory (no-LLM) + session families | S2c-a |
 | **S2c-c** | `session-autocheckpoint.py` harness trigger + Pi consumption docs | S2c-b |
-| **S2c-d** | doctor check + `cortex-update` registration | S2c-b |
+| **S2c-d** | doctor check + `fleet-update` registration | S2c-b |
 | **S2c-e** | `mem_reasoning` (provider resolution) + embedding search | decided separately |
 
 ## Consumption — how Pi (or any harness) gets it
@@ -204,9 +204,9 @@ Two independent pieces, per the split:
 
 **1. The store + search — declare the MCP server once:**
 ```bash
-hermes mcp add cortex-context \
+hermes mcp add fleet-context \
     --command ~/.steadfaste-fleet/venv/bin/python3 \
-    --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
+    --args ~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py
 ```
 Same wiring as `tasks` / `loop-governance`. No Hermes gateway required — the
 server reads `.env` + Postgres directly.

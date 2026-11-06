@@ -1,6 +1,6 @@
-"""Tests for the doctor's interpreter resolution (ops/scripts/manage/cortex-doctor.py).
+"""Tests for the doctor's interpreter resolution (ops/scripts/manage/fleet-doctor.py).
 
-Why this exists: the doctor is documented as `python3 cortex-doctor.py`, and on a
+Why this exists: the doctor is documented as `python3 fleet-doctor.py`, and on a
 fleet host `python3` is whatever the agent's session has on PATH. Measured
 2026-10-22 on esther, that is the Hermes runtime venv, which cannot import yaml —
 so every yaml-dependent check ran weaker than it reported and nothing said so. The
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-WRAPPER = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "manage" / "cortex-doctor.py"
+WRAPPER = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "manage" / "fleet-doctor.py"
 
 
 _PULLED_BY_IMPORT: dict = {}
@@ -110,7 +110,7 @@ def test_reexec_uses_the_declared_interpreter_once(doctor, monkeypatch):
     assert len(calls) == 1, "exactly one re-exec"
     assert calls[0][0] == "/declared/python3"
     assert calls[0][1][0] == "/declared/python3"
-    assert calls[0][1][1].endswith("cortex-doctor.py")
+    assert calls[0][1][1].endswith("fleet-doctor.py")
     assert doctor.os.environ[doctor.REEXEC_FLAG] == "1", "the guard must be set BEFORE execv"
 
 

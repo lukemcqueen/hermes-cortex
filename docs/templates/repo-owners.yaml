@@ -1,6 +1,6 @@
 # Repository Owner Mapping
 # Maps development repo names to the agent who maintains them.
-# Used by cortex-doctor --bus-alert to route AGENTS.md reminders.
+# Used by fleet-doctor --bus-alert to route AGENTS.md reminders.
 #
 # Add entries for any dev repo where an agent should maintain an AGENTS.md.
 # Entries without a matching agent are silently skipped (no bus alert sent).

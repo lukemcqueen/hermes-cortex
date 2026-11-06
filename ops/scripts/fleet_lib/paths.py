@@ -56,7 +56,7 @@ def ensure_scripts_path() -> None:
 # repo and FAILS AFTER A DEPLOY, on a host, far from the edit. Every component
 # used to hand-roll its own guess — task-mcp tried four paths, loop-gov two (the
 # first of which, <deploy>/tools/ops/scripts/judgment.py, exists in NEITHER
-# layout), cortex-context-mcp two.
+# layout), fleet-context-mcp two.
 #
 # The fix is to stop guessing. fleet-update.sh already holds the mapping as data
 # (its register() map), so it WRITES it out as `deploy-manifest.tsv` and these

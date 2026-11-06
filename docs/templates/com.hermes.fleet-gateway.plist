@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Steadfaste Fleet — cortex-gateway Launchd Plist (macOS counterpart of
-  docs/templates/cortex-gateway.service, which is Linux/systemd only).
+  Steadfaste Fleet — fleet-gateway Launchd Plist (macOS counterpart of
+  docs/templates/fleet-gateway.service, which is Linux/systemd only).
 
   The decoupled messaging gateway daemon. Independent of com.hermes.gateway:
-  no dependency on the Hermes runtime (see docs/design/cortex-gateway.md).
+  no dependency on the Hermes runtime (see docs/design/fleet-gateway.md).
 
   launchd has no systemd-style EnvironmentFile, so the wrapper sources the ONE
   canonical cortex env (~/steadfaste-fleet/.env) before exec'ing the daemon. That
@@ -22,12 +22,12 @@
       of an unexplained exec failure.
 
   Setup:
-    1. cp this file to ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
-    2. launchctl load ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+    1. cp this file to ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist
+    2. launchctl load ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist
 
-  Check:  launchctl list com.hermes.cortex-gateway
-          tail -f ~/Library/Logs/com.hermes.cortex-gateway.log
-  Remove: launchctl unload ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+  Check:  launchctl list com.hermes.fleet-gateway
+          tail -f ~/Library/Logs/com.hermes.fleet-gateway.log
+  Remove: launchctl unload ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist
 
   ⚠️ Only ONE poller per bot token — stop com.hermes.gateway first, or the two
   will 409 against each other.
@@ -35,7 +35,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.hermes.cortex-gateway</string>
+    <string>com.hermes.fleet-gateway</string>
 
     <!-- Source the canonical env, check the pieces, then exec the daemon (no
          shell left running). The guard exits 78 with a named path if the venv
@@ -44,7 +44,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/steadfaste-fleet/.env"; set +a; . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py"; exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
+        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.fleet-gateway.log" 2>&amp;1; set -a; . "$HOME/steadfaste-fleet/.env"; set +a; . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py"; exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>

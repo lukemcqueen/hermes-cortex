@@ -111,7 +111,7 @@ SCRIPTS_CHANGED=0
 MAP_CHANGED=0
 if [[ "$IS_HC_REPO" -eq 1 ]]; then
   SCRIPTS_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/' 2>/dev/null || true)
-  MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/cortex-update\.sh$' 2>/dev/null || true)
+  MAP_CHANGED=$(echo "$STAGED" | grep -c '^ops/scripts/fleet-update\.sh$' 2>/dev/null || true)
 fi
 
 if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
@@ -131,7 +131,7 @@ if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
            && ! grep -qF "register_orch \"$path\"" ops/scripts/fleet-update.sh; then
             NEW_SCRIPTS+="$path"$'\n'
         fi
-    done < <(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\.sh$' || true)
+    done < <(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/fleet-update\.sh$' || true)
     if [[ -n "$NEW_SCRIPTS" ]]; then
         echo "⚠️  DOCS AUDIT: New scripts staged but fleet-update.sh MAP was not updated."
         echo "   → Register new scripts in ops/scripts/fleet-update.sh using register()"

@@ -30,7 +30,7 @@
 
   NOTE: this runs the HERMES runtime (hermes_agent.gateway.run) from the Hermes
   venv, the right interpreter for that module. The cortex equivalent, with no
-  Hermes dependency, is docs/templates/com.hermes.cortex-gateway.plist.
+  Hermes dependency, is docs/templates/com.hermes.fleet-gateway.plist.
 -->
 <plist version="1.0">
 <dict>

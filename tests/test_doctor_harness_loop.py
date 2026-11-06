@@ -42,7 +42,7 @@ if str(_REPO / "ops" / "scripts" / "manage") not in sys.path:
 from fleet_doctor import checks  # noqa: E402
 from fleet_doctor.results import Results  # noqa: E402
 
-DOCTOR = _REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
+DOCTOR = _REPO / "ops" / "scripts" / "manage" / "fleet-doctor.py"
 
 REGISTRY = """\
 version: 1
@@ -243,7 +243,7 @@ def _doctor_json(env_extra: dict | None = None) -> dict:
 
 
 def test_the_real_doctor_reports_one_line_per_declared_harness(tmp_path):
-    """End to end through cortex-doctor.py: the registry count and the verdict shape hold.
+    """End to end through fleet-doctor.py: the registry count and the verdict shape hold.
 
     This is the system path, not the function: the doctor's own CLI, its own registry
     resolution, and — for a harness that IS installed here — the real `fleet harness verify`

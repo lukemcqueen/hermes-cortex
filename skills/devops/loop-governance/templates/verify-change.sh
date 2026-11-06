@@ -70,10 +70,10 @@ fi
 # --- 3. the operational step, run for real (label it) ---------------------------------
 say
 say "== 3. the DEPLOY, and its own log =="
-DOG="$HOME/.steadfaste-fleet/scripts/cortex-dogfood.sh"
+DOG="$HOME/.steadfaste-fleet/scripts/fleet-dogfood.sh"
 if [ -x "$DOG" ]; then
   _log="$(bash "$DOG" --force 2>&1)"; _rc=$?
-  say "  cortex-dogfood --force rc=$_rc"
+  say "  fleet-dogfood --force rc=$_rc"
   printf '%s\n' "$_log" | grep -E "DOGFOOD PASSED|DOGFOOD FAILED|Overall:" | tail -2 | sed 's/^/  /'
   [ "$_rc" = 0 ] || bad "3 the deploy"
 else

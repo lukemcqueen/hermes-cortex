@@ -225,7 +225,7 @@ fix the CLI's psql invocation, then re-test with a real add/list.
 ### ⚠️ Verify against EVERY agent type, not just your host (2026-08-06)
 
 A schema that exists on the ORCHESTRATOR host may not exist on WORKERS. The
-`bus` schema is created by `setup-cortex-bus.sh` — a `register_orch`
+`bus` schema is created by `setup-fleet-bus.sh` — a `register_orch`
 (orchestrator-only) script. Workers (Gisu, Joseph, Kustos, Titus) run
 `mycortex-postgres` (the doctor checks the container on every host) but
 **never get the `bus` schema**. Building a "fleet-wide" feature on `bus.*`

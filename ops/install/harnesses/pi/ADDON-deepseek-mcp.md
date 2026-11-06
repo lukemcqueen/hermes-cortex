@@ -23,7 +23,7 @@ agent must be able to recognise as *not ours* rather than try to "repair" with
 
 The review tool is named **`review`**. It was `review_experimental_plan` — narrower than what
 it does, since it reviews a memo, a plan, or a results summary. The rename is **automated**, not
-a hand procedure: `cortex-doctor.py` reports `DeepSeek MCP tool name`, its auto-fix runs the
+a hand procedure: `fleet-doctor.py` reports `DeepSeek MCP tool name`, its auto-fix runs the
 manager below, and an agent can run the same two commands directly:
 
 ```bash

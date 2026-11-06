@@ -39,7 +39,7 @@ tasks:
 
   - id: doctor-clean
     description: "Cortex doctor reports zero failures (warns tolerated)"
-    input: "Run cortex-doctor.py --json and parse summary"
+    input: "Run fleet-doctor.py --json and parse summary"
     expected:
       - "summary.fail == 0"
     grading:

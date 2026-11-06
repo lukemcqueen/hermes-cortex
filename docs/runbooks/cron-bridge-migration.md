@@ -79,7 +79,7 @@ bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh          # deploys the bridg
    #    (timer active AND still present in Hermes jobs.json)
    # b) no job is owned by neither (silently stopped)
    # c) the doctor is healthy
-   python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
+   python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet
    ```
 
 ## Guards (why this is safe now)

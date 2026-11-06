@@ -70,7 +70,7 @@ def _find_py_files():
 
 def _find_sh_files():
     """Find .sh files in ops/scripts/."""
-    sourced_only = {"os-config.sh", "cortex-profile.sh", "service-writer.sh"}
+    sourced_only = {"os-config.sh", "fleet-profile.sh", "service-writer.sh"}
     files = []
     for d in SCRIPTS_DIRS:
         if d.exists():

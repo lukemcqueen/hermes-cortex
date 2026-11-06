@@ -38,7 +38,7 @@ except: pass
 
 ## Registry File
 
-`~/.cortex-projects.json` is created by `scripts/cortex-profile.sh` and contains:
+`~/.cortex-projects.json` is created by `scripts/fleet-profile.sh` and contains:
 
 ```json
 [
@@ -56,7 +56,7 @@ except: pass
 
 ```bash
 # One-time setup:
-bash scripts/cortex-profile.sh <project-name> <project-path>
+bash scripts/fleet-profile.sh <project-name> <project-path>
 
 # Registers in ~/.cortex-projects.json, creates Hermes profile,
 # creates non-federated brain source.

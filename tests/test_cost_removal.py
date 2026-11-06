@@ -11,7 +11,7 @@ the cost keys. Assertions:
      would miss);
   2. a second run is a no-op — zero artifacts removed, config byte-identical
      (idempotent, safe on the 3 hosts that never had it);
-  3. a host with nothing to remove still exits 0 (cortex-update keeps going).
+  3. a host with nothing to remove still exits 0 (fleet-update keeps going).
 
 Run: python3 -m pytest tests/test_cost_removal.py -v
 """
@@ -211,9 +211,9 @@ def test_converged_host_writes_NOTHING_to_stderr_even_with_a_yamlless_python3(tm
 
     A host that already dropped the cost keys has NOTHING for this step to do, so it must
     produce no stderr at all, whatever interpreter its PATH resolves. The queue-driven
-    updater treats exit=1 (cortex-update's soft "nothing to update" code) as success ONLY
+    updater treats exit=1 (fleet-update's soft "nothing to update" code) as success ONLY
     when stderr is empty (ops/scripts/agent/agent-message-handler.py l.519-522), so the
-    ruamel warning turned a completed update into "❌ cortex-update failed" on every host
+    ruamel warning turned a completed update into "❌ fleet-update failed" on every host
     whose python3 lacks ruamel — measured on a real fleet host, whose config carries no
     cost keys and whose PATH python3 is /usr/bin/python3.
     """

@@ -30,7 +30,7 @@ def _cron_ts(name: str) -> str:
 
 
 def _deploy_in_progress(max_age_s: int = 1800) -> bool:
-  """True while a cortex-update deploy holds the enforcement files unlocked.
+  """True while a fleet-update deploy holds the enforcement files unlocked.
 
   The deploy unlocks the enforcement files early and relocks them at the END of
   its run, so that tree is LEGITIMATELY writable for the whole deploy. Sampling

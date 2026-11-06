@@ -916,7 +916,7 @@ authorises the new tip, or `end_change` while the lock is still held) so the rec
 HEAD, then push. Batch the evidence commit INTO the reviewed range where the work allows, because the
 range's per-file material share shrinks with every added file.
 
-**DEPLOY BEFORE the close whenever the range touches a deploy-synced file.** The pre-push doctor compares DEPLOYED state with repo source and fails the push on drift (`Checksum: <file>`) until `cortex-dogfood.sh --force` has run — and that deploy is write-class, so it needs the very repo lock `end_change` RELEASES. Close first and the deploy is refused (`GOVERNANCE LOCK REQUIRED`), leaving a second, EMPTY cycle taken purely to hold a lock for a range already reviewed. So the order is:
+**DEPLOY BEFORE the close whenever the range touches a deploy-synced file.** The pre-push doctor compares DEPLOYED state with repo source and fails the push on drift (`Checksum: <file>`) until `fleet-dogfood.sh --force` has run — and that deploy is write-class, so it needs the very repo lock `end_change` RELEASES. Close first and the deploy is refused (`GOVERNANCE LOCK REQUIRED`), leaving a second, EMPTY cycle taken purely to hold a lock for a range already reviewed. So the order is:
 
 ```text
 commit → dogfood (lock still held) → end_change (CLEAN, receipt written) → push (receipt)

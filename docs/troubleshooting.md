@@ -851,7 +851,7 @@ ls ~/.steadfaste-fleet/state/.governance-*.json
   — but include `repo_path`: a lock minted with an explicit id and no repo_path
   records an empty repo, which is the unclosable-lock class.
 - Or set `CORTEX_SESSION_KEY` in the harness/MCP `env` block (the
-  cortex-gateway `command` backend already pins it per chat).
+  fleet-gateway `command` backend already pins it per chat).
 - Verify without an LLM turn: `python3 tests/test_harness_session_id_env.py`.
 
 ### Task queries show me nothing (`task_pending` returned `[]`)
@@ -940,7 +940,7 @@ diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
 
 ### Doctor reports `Stale deploy: scripts/<old>.py` after a rename
 
-**Symptom:** `cortex-doctor.py` warns `⚠️  Stale deploy: scripts/<old>.py` (e.g.
+**Symptom:** `fleet-doctor.py` warns `⚠️  Stale deploy: scripts/<old>.py` (e.g.
 `scripts/hc.py`, `scripts/hc-harness.py`) forever, even though the new tool works.
 
 **Root cause:** the tool was RENAMED (measured: `hc` → `fleet`, commit `aa2de1ee`;
@@ -962,7 +962,7 @@ grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/fleet-update.sh   # 0 = not r
 
 ```bash
 rm -f ~/.steadfaste-fleet/scripts/<old>.py ~/.steadfaste-fleet/scripts/<old>-harness.py
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet | grep 'Stale deploy'  # empty
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet | grep 'Stale deploy'  # empty
 ```
 
 See the `cortex-deployment-sync` skill, **Pitfall 26**, for the full diagnosis
@@ -993,7 +993,7 @@ fi
 _home="${_home:-$HOME}"
 ```
 
-**Status:** ✅ **Fixed in repo (2026-08-01)** — the `command -v getent` guard + `$HOME` fallback now ships in all 5 `fleet-update.sh` sites and `ops/scripts/install/os-config.sh`. Pull latest + run cortex-update to get it; no manual patch needed.
+**Status:** ✅ **Fixed in repo (2026-08-01)** — the `command -v getent` guard + `$HOME` fallback now ships in all 5 `fleet-update.sh` sites and `ops/scripts/install/os-config.sh`. Pull latest + run fleet-update to get it; no manual patch needed.
 
 ### 21. `sudo hermes-plugin-lock lock` hangs/fails on macOS
 
@@ -1038,7 +1038,7 @@ Or accept the `FAILED:` line; the home copy is the protected one.
 
 **Status:** ✅ **Now automatic (2026-08-01)** — `deploy_system_scripts()` chowns the Darwin system copy to the invoking user (`sudo chown "$(id -un)":staff`) on both the self-update and `sudo cp` paths. The manual chown below is no longer required on fresh deploys.
 
-### 23. After cortex-update, `begin_change`/write tools block: lock was purged
+### 23. After fleet-update, `begin_change`/write tools block: lock was purged
 
 **Symptom:** The update finishes, then your next `terminal`/`patch` call is refused with `GOVERNANCE LOCK REQUIRED`.
 
@@ -1232,7 +1232,7 @@ ls -l ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py    # 2. the payl
 
 ```bash
 python3 -m venv ~/.steadfaste-fleet/venv
-~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py   # declared set
+~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-fleet-venv.py   # declared set
 ```
 If the payload is missing instead, run `fleet-update.sh` (its register entry installs it).
 
@@ -1275,7 +1275,7 @@ ls -l ~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/tools/loop-govern
 |---|---|
 | the entry is missing | `hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
 | paths do NOT exist | deploy them: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`, then re-check |
-| the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py` |
+| the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-fleet-venv.py` |
 | command is the HERMES venv or a bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
 
 There is **no `hermes mcp update`** — `hermes mcp` offers `add`/`remove`/`list`/`test`/
@@ -1293,7 +1293,7 @@ bash's generic `No such file or directory`.
 ## A healthy fleet venv that "cannot import the declared set"
 
 **Symptom** (esther, 2026-10-13): a deploy ends with `✗ fleet venv cannot import the declared set`,
-and `fix-cortex-venv.py` reports requirements missing — while the venv imports them fine.
+and `fix-fleet-venv.py` reports requirements missing — while the venv imports them fine.
 
 **Cause: an inherited `PYTHONPATH`, not the venv.** The agent runtime exports a Python 3.14
 site-packages from a Hermes-managed install environment
@@ -1312,7 +1312,7 @@ env -u PYTHONPATH ~/.steadfaste-fleet/venv/bin/python3 -c "import mcp, fastapi; 
 If the first lists a `.hermes/installs/…` site-packages and the second prints `venv OK`, the venv
 is healthy and the ENVIRONMENT is at fault. Do not rebuild the venv on that evidence.
 
-**What the tooling does now:** `python-with-module.sh` and `fix-cortex-venv.py` strip
+**What the tooling does now:** `python-with-module.sh` and `fix-fleet-venv.py` strip
 `PYTHONPATH`/`PYTHONHOME` for both the probe and the payload, and print
 `ignoring inherited PYTHONPATH…`, so a caller's environment can no longer make a healthy venv look
 broken — or make a bare interpreter look capable. A venv's correctness must not depend on the
@@ -1403,7 +1403,7 @@ grep -c "Cron bootstrap: cannot parse" ~/.hermes/logs/*.log
 | 1.9.0 | 2026-10-13 | Added "The fleet venv: a launcher dies with 'line N: No such file or directory'" — bash's exec message means the interpreter is missing; three causes with three fixes; the shared guard `scripts/lib/require-fleet-venv.sh`; the deploy now creates+fills an absent venv |
 | 1.10.0 | 2026-10-13 | Added "An MCP server's tools are missing from the catalog" (kustos: `No loop-governance MCP tools`) — configured is not wired; `mcp_wiring.py` verifies the registered paths and the interpreter, the doctor reports `MCP wiring (<name>)`, and its server map no longer calls `agent-bus` by the wrong name |
 | 1.12.0 | 2026-10-28 | Added "The nightly dream writes no file — the knowledge brain is not a repo" (the brain is not a git repo, so the lock gate refused the dream's Phase 4 write-back as an impossible demand; `_is_sanctioned_brain_write()` now exempts file-tool writes inside `<home>/brain`, plus the `fix-cron-skills-toolset.py` repair for over-restrictive allowlists) and "The cron skills bootstrap dies on a runtime with no YAML library" (per-host runtime site-packages differ: the standalone agent runtime can ship neither PyYAML nor ruamel, so `_safe_load_yaml()` gained a dependency-free `always:` reader) |
-| 1.11.0 | 2026-10-13 | Added "A healthy fleet venv that 'cannot import the declared set'" — an inherited `PYTHONPATH` (a Hermes-managed 3.14 site-packages ahead of the venv's own) made a working venv read as broken, and made the resolver claim no interpreter on the host could import `mcp`; `python-with-module.sh` and `fix-cortex-venv.py` now probe and run with `PYTHONPATH`/`PYTHONHOME` stripped and say what they ignored |
+| 1.11.0 | 2026-10-13 | Added "A healthy fleet venv that 'cannot import the declared set'" — an inherited `PYTHONPATH` (a Hermes-managed 3.14 site-packages ahead of the venv's own) made a working venv read as broken, and made the resolver claim no interpreter on the host could import `mcp`; `python-with-module.sh` and `fix-fleet-venv.py` now probe and run with `PYTHONPATH`/`PYTHONHOME` stripped and say what they ignored |
 | 1.7.0 | 2026-07-13 | Added #23 (scoring-activity-watchdog DB path fix), corrected 17 stale `state/`→`data/` references across docs and core governance scripts, fixed MCP lock file sync to prevent enforcer gaps |
 | 1.5.0 | 2026-06-22 | Added #24 (Alembic migration fork troubleshooting, prevention protocol, diagnostics) |
 | 1.4.0 | 2026-06-10 | Rewrote #23 (Langfuse costs) — fixed schema from `langfuse.models` to `public.models`, corrected INSERT SQL for v3 schema, added opencode-zen/opencode-go provider subsection with deepseek-v4-flash-free pricing SQL |

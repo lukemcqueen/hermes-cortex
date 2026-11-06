@@ -15,7 +15,7 @@ Deployed hooks are **absolute symlinks** created at:
 **Do not place standalone hook files in this directory.** If a hook needs updating,
 edit the source script in `ops/scripts/` and run `fleet-update.sh` to redeploy.
 
-The doctor (`cortex-doctor`) verifies:
+The doctor (`fleet-doctor`) verifies:
 1. Deployed hooks exist
 2. Deployed hooks are valid symlinks pointing to existing targets
 3. Deployed hook content matches the repo source

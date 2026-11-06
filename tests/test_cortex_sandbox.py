@@ -1,5 +1,5 @@
 """
-Tests for cortex-sandbox.py — folder_access sandbox module.
+Tests for fleet-sandbox.py — folder_access sandbox module.
 
 Verifies: default config, specific config (single + multiple paths), path
 blocking, subfolder traversal, invalid config rejection, is_allowed, and
@@ -11,7 +11,7 @@ import importlib.util
 import tempfile
 from pathlib import Path
 
-_MODULE_PATH = Path(__file__).resolve().parent.parent / "ops" / "scripts" / "sandbox" / "cortex-sandbox.py"
+_MODULE_PATH = Path(__file__).resolve().parent.parent / "ops" / "scripts" / "sandbox" / "fleet-sandbox.py"
 _loader = importlib.machinery.SourceFileLoader("cortex_sandbox", str(_MODULE_PATH))
 _spec = importlib.util.spec_from_loader("cortex_sandbox", _loader)
 cs = importlib.util.module_from_spec(_spec)

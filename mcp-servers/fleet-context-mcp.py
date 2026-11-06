@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-cortex-context-mcp.py — MCP access layer for the cortex context store (S2c).
+fleet-context-mcp.py — MCP access layer for the cortex context store (S2c).
 
 Thin transport wrapper. The tool surface lives in
 `ops/services/mycortex-mem/context_tools.py` and is shared with the CLI
-(`ops/scripts/cortex-context.py`), because a harness picks an ACCESS LAYER —
+(`ops/scripts/fleet-context.py`), because a harness picks an ACCESS LAYER —
 it does not get its own semantics.
 
 Which harness uses which layer:
@@ -12,15 +12,15 @@ Which harness uses which layer:
     MCP  (this file, `hermes mcp add`)   Hermes, Claude Code, Codex — and Pi >= 0.99,
          which gained an MCP client and registers this server through
          install-pi-mcp.sh (2026-10-03)
-    CLI  (`cortex-context <tool> <json>`) Pi builds WITHOUT an MCP client, whose
+    CLI  (`fleet-context <tool> <json>`) Pi builds WITHOUT an MCP client, whose
          extension API is hooks + registerTool, not MCP
 
-Design: docs/design/cortex-memory-session-mcp.md
+Design: docs/design/fleet-memory-session-mcp.md
 
 Usage:
-    hermes mcp add cortex-context \
+    hermes mcp add fleet-context \
         --command ~/.steadfaste-fleet/venv/bin/python3 \
-        --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
+        --args ~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py
 
 Env (optional; set once per session):
     CORTEX_SESSION_HARNESS / _REPO / _BRANCH / _KEY
@@ -35,11 +35,11 @@ import traceback
 from pathlib import Path
 
 if importlib.util.find_spec("mcp") is None:
-    print("[cortex-context-mcp] ERROR: 'mcp' package not found. Install: pip install mcp "
+    print("[fleet-context-mcp] ERROR: 'mcp' package not found. Install: pip install mcp "
           "(or use the Hermes venv python).", file=sys.stderr)
     sys.exit(1)
 
-logging.basicConfig(level=logging.INFO, format="[cortex-context-mcp] %(levelname)s: %(message)s")
+logging.basicConfig(level=logging.INFO, format="[fleet-context-mcp] %(levelname)s: %(message)s")
 
 # ── fleet_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
 # fleet_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
@@ -69,14 +69,14 @@ _TOOLS_PY = resolve_repo_resource(_TOOLS_REL) if resolve_repo_resource else None
 if _TOOLS_PY is None:
     _tried = ([str(p) for p in repo_resource_candidates(_TOOLS_REL)]
               if repo_resource_candidates else ["<fleet_lib.paths unavailable>"])
-    print(f"[cortex-context-mcp] ERROR: {_TOOLS_REL} not found. Tried: "
+    print(f"[fleet-context-mcp] ERROR: {_TOOLS_REL} not found. Tried: "
           + ", ".join(_tried)
           + " — run fleet-update.sh, or point --args at the repo copy.",
           file=sys.stderr)
     sys.exit(1)
 _spec = importlib.util.spec_from_file_location("cortex_context_tools", _TOOLS_PY)
 if _spec is None or _spec.loader is None:
-    print(f"[cortex-context-mcp] ERROR: cannot load context_tools.py from {_TOOLS_PY}", file=sys.stderr)
+    print(f"[fleet-context-mcp] ERROR: cannot load context_tools.py from {_TOOLS_PY}", file=sys.stderr)
     sys.exit(1)
 tools = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(tools)
@@ -106,7 +106,7 @@ async def call_tool(ctx, params=None) -> CallToolResult:
     return _result(tools.dispatch(name, args))
 
 
-server = Server("cortex-context-mcp", on_list_tools=list_tools, on_call_tool=call_tool)
+server = Server("fleet-context-mcp", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 async def main() -> None:

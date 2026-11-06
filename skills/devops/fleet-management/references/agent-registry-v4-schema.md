@@ -32,8 +32,8 @@
 | `git.remote` | string | e.g. `origin` | Git remote name |
 | `git.default_branch` | string | e.g. `main` | Branch to pull |
 | `git.repo_path` | string | e.g. `~/steadfaste-fleet` | Path to repo clone |
-| `deploy.update_method` | string | e.g. `cortex-update` | Update script |
-| `deploy.doctor_path` | string | e.g. `~/.../cortex-doctor.py` | Doctor script path |
+| `deploy.update_method` | string | e.g. `fleet-update` | Update script |
+| `deploy.doctor_path` | string | e.g. `~/.../fleet-doctor.py` | Doctor script path |
 
 ## Fleet Concerns — Identity & Trust
 

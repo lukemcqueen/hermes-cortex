@@ -60,7 +60,7 @@ date) — investigate those warnings; do not assume the enforcer is current.
 5. **Triage the warnings — `0 fail` is the bar for the UPDATE, not a licence to ignore the rest.**
    The doctor prints `N undisposed` and names each warning/info nobody has decided about
    (`🧹 UNDISPOSED`). For each one: fix it, or record the decision in one command —
-   `cortex-doctor.py --disposition "<check name>" --as deferred|deliberate --owner <you> --reason "<why>"`.
+   `fleet-doctor.py --disposition "<check name>" --as deferred|deliberate --owner <you> --reason "<why>"`.
    Then say the counts in your report (`454 pass · 12 warn · 7 info · 3 undisposed`), not just
    "warnings are pre-existing".
    - **"Pre-existing" is not a disposition.** The tool decides what counts as known: a check with a
@@ -95,7 +95,7 @@ date) — investigate those warnings; do not assume the enforcer is current.
 
 A foreground `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh | tail -60`
 can be KILLED by the terminal tool's foreground timeout (300s) mid-deploy: a real
-cortex-update run lasts roughly 5–8 minutes (cron registration + several doctor
+fleet-update run lasts roughly 5–8 minutes (cron registration + several doctor
 passes), so it crosses the cap long before finishing. The process dies, the `| tail`
 swallows whatever the deploy had printed, and the state — did it finish? are the
 enforcement files re-locked? — is ambiguous. That is not a deploy bug and a clean
@@ -122,7 +122,7 @@ echo "EXIT=$?" >> ~/.hermes/cache/scratch/cortex-update-<stamp>.log
   killed by the timeout re-locks when it dies (fail-safe), but confirm by reading
   `lsattr`, not by assuming.
 
-## Pitfall 1: Governance files are immutable — cortex-update is the ONLY deploy path
+## Pitfall 1: Governance files are immutable — fleet-update is the ONLY deploy path
 
 Deployed governance files carry `chattr +i` (Linux) / `chflags uchg` (macOS):
 - `~/.hermes/plugins/governance-enforcer/__init__.py`
@@ -134,13 +134,13 @@ Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag surviv
 
 **Detect:**
 ```bash
-# cortex-update prints "FAILED: <path>" per immutable filelsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← immutable
+# fleet-update prints "FAILED: <path>" per immutable filelsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← immutable
 sudo -n hermes-plugin-lock unlock                          # clears the flags
 bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh          # deploy — the ONE sanctioned form
 # verify: diff deployed vs repo = empty, plugin enabled, immutable re-applied
 ```
 
-## Pitfall 8: The dogfood deadlock — run cortex-update FIRST, then begin_change
+## Pitfall 8: The dogfood deadlock — run fleet-update FIRST, then begin_change
 
 When the repo's enforcer is newer than the deployed one (Moses pushed), `begin_change` fails with **DOGFOOD REQUIRED** — and the DOGFOOD gate refuses to create a governance lock (it returns BEFORE lock creation). Under the fail-closed terminal policy, every command except the sanctioned one is write-class → blocked without a lock. **Fixed 2026-08-04:** the enforcer's `_is_sanctioned_cortex_update_command()` allows the EXACT deploy command through without a governance lock, so the designed order is:
 
@@ -220,16 +220,16 @@ restart requirements — same rule applies. The regex branches:
 ## Pitfall 13: A peer's deploy holds the mutex — stand down, don't fight it
 
 `fleet-update.sh` guards itself with a mutex and prints
-`cortex-update mutex held: another deploy is running (~/.steadfaste-fleet/state/cortex-update.lock)`
+`fleet-update mutex held: another deploy is running (~/.steadfaste-fleet/state/fleet-update.lock)`
 then exits non-zero, followed by `relock ran on a FAILED exit (rc=1) — enforcement files
 re-secured` (the fail-safe doing its job, not a second fault). The lock FILE's mtime is useless
 evidence — it can be days old while a live holder exists. Read the process tree instead:
 
 ```bash
-ps -eo pid,ppid,lstart,args | grep -E 'cortex-update|cortex-dogfood' | grep -v grep
+ps -eo pid,ppid,lstart,args | grep -E 'fleet-update|fleet-dogfood' | grep -v grep
 ```
 
-A `cortex-dogfood.sh --force` parent means a peer session is running pull → deploy → doctor →
+A `fleet-dogfood.sh --force` parent means a peer session is running pull → deploy → doctor →
 verify on the SAME tree: it deploys exactly what you would, so wait for it and read its log
 (its scratch dir, e.g. `~/.hermes/cache/scratch/<tag>/dogfood*.txt`) rather than queueing your own
 run.
@@ -251,7 +251,7 @@ HOOK was still running fleet-update.sh (5–8 min) in the same call — that is 
 pull on this repo is slow, and why a timed-out pull is not necessarily a failed one.
 Before re-pulling or diagnosing: `git log --oneline -1` (did HEAD advance to
 origin/main?), `git status -sb` (in sync?), `ps -eo pid,etime,args | grep
-cortex-update` (is the deploy still running?). If HEAD == origin/main and the deploy
+fleet-update` (is the deploy still running?). If HEAD == origin/main and the deploy
 finished (doctor Deploy sync ✅, changed deploy-map files byte-identical), the pull
 is DONE — a re-pull is harmless but pointless, and the run already deployed.
 
@@ -324,7 +324,7 @@ before deleting the old `.py` beside it.
 
 ```bash
 rm -f ~/.steadfaste-fleet/scripts/<old>.py ~/.steadfaste-fleet/scripts/<old>-harness.py
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet | grep 'Stale deploy'  # must be empty
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet | grep 'Stale deploy'  # must be empty
 ```
 
 Do NOT `--disposition "Stale deploy: …"` a rename-orphan — a disposition is for a
@@ -370,7 +370,7 @@ last UPDATE_REQUEST dispatched to it — so after a run of pushes the whole flee
 make a post-push fleet dispatch mandatory AND add a behind-origin signal to the drift
 audit — otherwise the audit keeps certifying stale hosts as clean.
 
-## Pitfall 4: cortex-update cleans stale governance locks
+## Pitfall 4: fleet-update cleans stale governance locks
 
 `fleet-update.sh` runs a stale-lock cleanup at the end — it removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`). A **fresh** session-scoped v2 lock survives a deploy (macOS: before 2026-08-10 the GNU-only `date -d` + `|| echo 0` fallback deleted EVERY lock on every deploy; now portable python3 + fail-safe skip). If your lock is gone after a deploy:
 1. Re-acquire: `begin_change()`
@@ -674,7 +674,7 @@ log, not a status.
   a raw `diff` is never the right check
 - `hermes plugins list | grep governance` → enabled
 - `lsattr` shows `i` re-applied after deploy
-- Doctor: no ❌ (warnings OK): `python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet`
+- Doctor: no ❌ (warnings OK): `python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet`
 - **Deploy ≠ load:** if the new enforcer still blocks writes after a clean deploy, that is a pending gateway restart (host-operator action) — see the ⚠ note above. Do not re-run the update to "fix" it.
 
 ### Distinguish "stale module" from "real defect" BEFORE looping on a restart
@@ -718,7 +718,7 @@ the comment *"overridable via config.yaml -> code_execution.*"*, and
 `config.yaml` ships `code_execution.timeout` explicitly. Raise it for a genuinely
 long single shot.
 
-**Why it keeps getting hit here:** one `cortex-dogfood.sh --force` costs roughly
+**Why it keeps getting hit here:** one `fleet-dogfood.sh --force` costs roughly
 **96-135s** on this host — it runs pull -> deploy -> doctor -> verify, with
 several doctor passes — and the pre-push gate runs its own checks on top. Put
 tests + deploy + push in the SAME cell and you cross 300s; the cell is killed and

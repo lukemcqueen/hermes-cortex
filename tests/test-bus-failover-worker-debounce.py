@@ -3,7 +3,7 @@
 false 'Moses unreachable -> reachable' flapping on worker hosts.
 
 Root cause (Oct 2026, Luke report): worker path of
-cortex-bus-failover-watchdog.py alerts on its FIRST failed probe
+fleet-bus-failover-watchdog.py alerts on its FIRST failed probe
 (consecutive_failures == 1) and recovers on the FIRST subsequent success
 (worker_was_down -> immediate recovery). A single transient network blip to
 Moses' health endpoint therefore emits a ⚠️ alert followed 5 min later by a
@@ -36,7 +36,7 @@ PASS = 0
 FAIL = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
+WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "fleet-bus-failover-watchdog.py"
 
 
 def ok(msg: str) -> None:

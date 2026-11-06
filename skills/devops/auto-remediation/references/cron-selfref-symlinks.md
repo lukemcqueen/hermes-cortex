@@ -42,7 +42,7 @@ These fail when:
 **Verification:**
   python3 -c "import sys; sys.path.insert(0, '~/.hermes/scripts'); from hermes_tz import format_timestamp; print('OK')"
 
-## cortex-doctor + grep = Safety Filter Block
+## fleet-doctor + grep = Safety Filter Block
 
-Running cortex-doctor.py | grep triggers the terminal safety filter.
+Running fleet-doctor.py | grep triggers the terminal safety filter.
 Run doctor raw without piping to grep, then scan the output visually.

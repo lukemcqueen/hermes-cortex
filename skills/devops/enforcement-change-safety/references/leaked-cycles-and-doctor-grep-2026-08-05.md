@@ -59,7 +59,7 @@ Second attempt: `grep '❌'` (any line containing ❌).
   doctor reports 1 failure" but the detail grep showed NOTHING — the smoking
   gun that the counted line was the footer, not a check.
 
-Working pattern (both pre-push-pull and cortex-dogfood.sh):
+Working pattern (both pre-push-pull and fleet-dogfood.sh):
 ```bash
 _DOCTOR_FAILS=$(echo "$DOCTOR_OUTPUT" | grep -E '^ *❌' | grep -vcE 'Overall: FAILING' || true)
 ```
@@ -136,7 +136,7 @@ exist on a host never matches — harmless dead entry.
 
 ## 6. Dogfood loop proved the fixes
 
-The permanent dogfood command (cortex-dogfood.sh: pull → deploy → doctor →
+The permanent dogfood command (fleet-dogfood.sh: pull → deploy → doctor →
 verify) + pre-push doctor gate caught each bug in this session:
 - blocked its own first push on un-deployed drift (3 checksum/hook-drift
   FAILs) — proving "deploy before push" matters

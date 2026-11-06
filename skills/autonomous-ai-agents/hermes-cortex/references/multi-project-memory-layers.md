@@ -45,8 +45,8 @@ templates in the hermes-cortex repo at `docs/templates/` using a
 
 ```bash
 sed "s|CORTEX_HOME|${CORTEX_HOME}|g" \
-  docs/templates/com.hermes.cortex-dashboard.plist \
-  > ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+  docs/templates/com.hermes.fleet-dashboard.plist \
+  > ~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist
 ```
 
 **Boot chain (startup order on login):**
@@ -74,7 +74,7 @@ curl -s http://localhost:11434/api/tags               # Ollama models
 
 | Template | Purpose |
 |----------|---------|
-| `docs/templates/com.hermes.cortex-dashboard.plist` | Dashboard with dedicated venv |
+| `docs/templates/com.hermes.fleet-dashboard.plist` | Dashboard with dedicated venv |
 | `docs/templates/com.docker.docker.plist` | Docker Desktop (--unattended) |
 | `docs/templates/gitignore.brain` | Brain source .gitignore |
 
@@ -87,11 +87,11 @@ python3 -m venv ~/.steadfaste-fleet/dashboard/venv
 
 # Install plist (replace CORTEX_HOME with actual path)
 sed "s|CORTEX_HOME|/Users/$(whoami)|g" \
-  docs/templates/com.hermes.cortex-dashboard.plist \
-  > ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+  docs/templates/com.hermes.fleet-dashboard.plist \
+  > ~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist
 
 # Load
-launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+launchctl load ~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist
 ```
 
 **Generic plist structure:**

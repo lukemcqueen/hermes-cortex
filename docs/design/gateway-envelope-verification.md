@@ -1,7 +1,7 @@
 # Gateway envelope verification — the consumer-side trust boundary
 
 > **Status:** design (CR7) — proposed, awaiting owner approval to build.
-> **Pairs with:** `cortex-gateway.md` (the signer) · `messaging-gateway.md` (ADR-0005) · `component-hermes-separation.md` (S2b).
+> **Pairs with:** `fleet-gateway.md` (the signer) · `messaging-gateway.md` (ADR-0005) · `component-hermes-separation.md` (S2b).
 > **Audience:** builder, orchestrator, owner.
 > **Extends:** `docs/older/steadfaste/coding_agent/codeharness-design-docs/docs/party/telegram-bus-visibility.md`
 
@@ -65,7 +65,7 @@ Both funnel through the same decision — no divergence:
 | Consumer class | Artifact | Change |
 |---|---|---|
 | Coding agents, **Pi**, **steadfaste-tui** | `agent-shim.py` `poll_inbox()` | verify before returning a message; on reject → archive to DLQ, return nothing |
-| **Hermes** agents | `cortex-bus-mcp.py` inbox read | verify before surfacing a `user_message`; on reject → surface an explicit rejected marker, never the body |
+| **Hermes** agents | `fleet-bus-mcp.py` inbox read | verify before surfacing a `user_message`; on reject → surface an explicit rejected marker, never the body |
 | Any harness, any language | `gateway-envelope-verify.py` (CLI) | `--envelope -` → exit 0 accept / 1 reject; the shell-out bridge |
 
 Why the shim is the right seam: ADR-0005 already establishes it as **ONE
@@ -115,7 +115,7 @@ loudly, not a silent downgrade — the same rule the signer now enforces
 | **CR7b** | Golden vectors + the normative recipe in this doc | `tests/vectors/gateway_envelope_v1.json` + a vector-driven test |
 | **CR7c** | `gateway-envelope-verify.py` CLI (shell-out bridge) | script + tests |
 | **CR7d** | Enforce in `agent-shim.py` `poll_inbox()` (covers coding agents, Pi, steadfaste-tui) | shim change + tests |
-| **CR7e** | Enforce in the Hermes inbox read path (`cortex-bus-mcp.py`) | MCP change + tests |
+| **CR7e** | Enforce in the Hermes inbox read path (`fleet-bus-mcp.py`) | MCP change + tests |
 
 CR7a–c are additive and safe to land first; CR7d–e change live consumers and
 should land behind the spec + vectors so any regression is caught by parity.

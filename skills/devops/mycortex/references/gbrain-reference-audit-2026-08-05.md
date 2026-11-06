@@ -42,7 +42,7 @@ remains.
 | `ops/scripts/hc/hc.py` | `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
 | `ops/scripts/orch-bus/orch-bus-recover-timeouts.sh`, `ops/scripts/hc/recover-bus-timeouts.sh` | same exec pattern |
 | `ops/scripts/manage/todo-db.py` | `GBRAIN_CONFIG=~/.gbrain/config.json`, url default `postgresql://gbrain:@127.0.0.1:15432/gbrain`, docker exec |
-| `ops/scripts/agent/cortex-agent-manager.py` | `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
+| `ops/scripts/agent/fleet-agent-manager.py` | `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
 | `ops/scripts/agent/install-worker.sh` | `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
 | `ops/scripts/agent/agent-diagnostic.py` | docker exec gbrain-postgres |
 | `ops/scripts/agent/commands.py` | `available_services: ["cortex-bus", "gbrain", ...]`, service list `gbrain-sync` |
@@ -59,7 +59,7 @@ remains.
 | `ops/offline/offline_knowledge.py` | `gbrain_search()` cascade: `bun gbrain query` — **live functional path** |
 | `ops/scripts/fleet-update.sh` | still `register()`s dead `gbrain-wrapper.sh`, `gbrain-doctor-summary.py`, `install-gbrain-sync.sh`; `update_gbrain_binary()` no-op stub |
 | `ops/install/install.sh` | installs gbrain binary (`bun install -g garrytan/gbrain`), `gbrain init --url`, gbrain sources/sync — **new hosts still get gbrain** |
-| `ops/scripts/install/bootstrap-brain.sh`, `seed-project-brain.sh`, `cortex-profile.sh` | `$GBRAIN_CMD` sources add/sync |
+| `ops/scripts/install/bootstrap-brain.sh`, `seed-project-brain.sh`, `fleet-profile.sh` | `$GBRAIN_CMD` sources add/sync |
 | `dashboard/server.py` | `_find_pid(["gbrain autopilot", ...])` |
 
 ## STALE references (leave — historical record)

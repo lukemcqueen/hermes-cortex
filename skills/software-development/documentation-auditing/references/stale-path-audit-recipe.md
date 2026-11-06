@@ -35,10 +35,10 @@ ls -la ~/steadfaste-fleet/deploy
 test -d ~/steadfaste-fleet/deploy && echo "EXISTS" || echo "GONE"
 
 # Check old path existence
-test -f ~/steadfaste-fleet/src/scripts/manage/cortex-doctor.py && echo "old path EXISTS" || echo "NOT FOUND"
+test -f ~/steadfaste-fleet/src/scripts/manage/fleet-doctor.py && echo "old path EXISTS" || echo "NOT FOUND"
 
 # Check canonical path existence
-test -f ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py && echo "canonical EXISTS" || echo "NOT FOUND"
+test -f ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py && echo "canonical EXISTS" || echo "NOT FOUND"
 
 # Check directory listing at canonical path
 ls ~/steadfaste-fleet/ops/install/deploy/nginx/ 2>&1

@@ -69,7 +69,7 @@ const PYTHON = process.env.CORTEX_GOVERNANCE_PYTHON ?? "python3";
 
 // ── diagnostics: the cortex log, NEVER pi's stderr ──────────────────────────
 // In pi the harness's stderr IS the prompt area, so a stray line scribbles over
-// what the user is typing. Same convention as cortex-context.ts / loop-gov-mcp.py:
+// what the user is typing. Same convention as fleet-context.ts / loop-gov-mcp.py:
 // bounded by rotation, and never able to break the gate.
 const LOG_PATH =
   process.env.CORTEX_GOVERNANCE_LOG ??
@@ -519,7 +519,7 @@ function unavailableMessage(repo: string, detail: string): string {
     "bug to route around — there is no agent-side override.",
     "",
     "Operator remedy (in order):",
-    "  1. python3 ~/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py --check",
+    "  1. python3 ~/steadfaste-fleet/ops/scripts/manage/fix-fleet-venv.py --check",
     "  2. bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh",
     "  3. confirm: python3 ~/.steadfaste-fleet/scripts/loop-gov.py --list",
     "  4. to remove the gate entirely (operator decision, and visible): drop",

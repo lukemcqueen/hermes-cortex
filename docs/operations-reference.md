@@ -38,7 +38,7 @@ or removed entirely after all agents are confirmed on the bus.
 | Layer | What it does | Who runs it |
 |-------|-------------|-------------|
 | **API backend** (Agent Bus :8905 + nginx) | Stores messages, serves the HTTP API | **Only Moses and Esther** (the gateway does this automatically) |
-| **MCP client** (`cortex-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-orchestrator.sh` / `lib.fleet_bus.bus_send` over HTTP instead |
+| **MCP client** (`fleet-bus-mcp.py` in Hermes config) | Provides `inbox_send`/`inbox_read`/`inbox_watch` tools to the agent | **Orchestrators only** (Moses, Esther) — the doctor enforces this (`ORCH_ONLY_MCP_SERVERS`); workers use `contact-orchestrator.sh` / `lib.fleet_bus.bus_send` over HTTP instead |
 
 The confusion is that "agent inbox" sounds like one thing. It's two (and was formerly known as the Agent Inbox):
 1. The **server** that holds the messages → only Moses & Esther
@@ -51,7 +51,7 @@ MOSES / ESTHER (bus servers)     ORCHESTRATORS ONLY (MCP client)        WORKERS 
 ─────────────────────────────      ─────────────────────────────────────  ───────────────────────────
 Hermes gateway (:8905)         ~/.hermes/config.yaml                  ~/steadfaste-fleet/.env
  ↳ built-in Agent Bus API        ↳ mcp_servers.cortex-bus               ↳ CORTEX_BUS_URL + CORTEX_BASIC_AUTH
- ↳ stores messages (PGMQ)        ↳ runs cortex-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.fleet_bus.bus_send
+ ↳ stores messages (PGMQ)        ↳ runs fleet-bus-mcp.py as subprocess  ↳ contact-orchestrator.sh / lib.fleet_bus.bus_send
                      ↳ reads ~/steadfaste-fleet/.env
 nginx proxy (:13004 / :14004)       ↳ calls remote Agent Bus via HTTP
  ↳ SSL + Basic Auth           ↳ exposes inbox_send/read/watch tools
@@ -134,7 +134,7 @@ If you are Moses or Esther (orchestrator):
  └─ You just need the nginx proxy setup
 
 If you are Gisu, Joseph, Kustos, or Titus (worker):
- └─ You DO NOT install the MCP client (cortex-bus-mcp.py). It is
+ └─ You DO NOT install the MCP client (fleet-bus-mcp.py). It is
     orchestrator-only — the doctor warns if you add it.
  └─ You DO have the HTTP client: ~/steadfaste-fleet/.env
     + contact-orchestrator.sh (or lib.fleet_bus). This is your ONLY bus access.
@@ -154,7 +154,7 @@ cd ~/steadfaste-fleet && git pull
 
 # 2. Ensure MCP client is in config.yaml
 grep -A4 "cortex-bus" ~/.hermes/config.yaml
-# Should show: command: python3, args: [cortex-bus-mcp.py], enabled: true
+# Should show: command: python3, args: [fleet-bus-mcp.py], enabled: true
 
 # 3. Create credentials file — YOUR OWN credentials
 nano ~/steadfaste-fleet/.env
@@ -272,7 +272,7 @@ Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). De
 > cd ~/steadfaste-fleet && git pull && bash ops/scripts/fleet-update.sh
 > systemctl --user restart hermes-agent-worker
 >```
-> Run `cortex-doctor` after to verify no warnings.
+> Run `fleet-doctor` after to verify no warnings.
 
 ---
 

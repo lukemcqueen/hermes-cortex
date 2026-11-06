@@ -83,7 +83,7 @@ that list the always-set.
 **skill-curation mechanics** (`references/always-section-consolidation.md`):
 survivor gets `aliases:`; move surviving `references/` to survivor; unpin before
 delete; delete with `absorbed_into`; regenerate manifest. **Marker-invalidation
-trap:** deleting deployed always-skills + cortex-update invalidate the running
+trap:** deleting deployed always-skills + fleet-update invalidate the running
 session's marker and the block message names OLD names until gateway reload;
 after content deploy, `skill_view` a fresh name to refresh (may need twice).
 

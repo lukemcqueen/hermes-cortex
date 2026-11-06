@@ -84,7 +84,7 @@ timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 # ── Stub-recovery cache (2026-08-02) ─────────────────────
 # If the deployed SKILL.md was overwritten by a truncated stub (the Jul-17
 # imports landed ~1KB stubs via the old 1000-char bus truncation, then
-# cortex-update synced them over the full copies), the previous run's
+# fleet-update synced them over the full copies), the previous run's
 # skill-contents cache is the ONLY surviving full source. Load it up front
 # so a stub read from disk never overwrites full content in the report.
 existing_full_cache = {}  # skill_name -> full content from previous run

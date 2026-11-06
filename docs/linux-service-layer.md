@@ -15,7 +15,7 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Unit | What it runs | Notes |
 |---|---|---|---|
-| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.steadfaste-fleet/gateway.yaml`; env from `%h/steadfaste-fleet/.env`. |
+| `fleet-gateway.service` | `fleet-gateway.service` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.steadfaste-fleet/gateway.yaml`; env from `%h/steadfaste-fleet/.env`. |
 | `health-vector.service` | `health-vector.service` | `ops/scripts/health/health-vector.py --serve 8905` | INTERNAL port **8905** — nginx's `health_backend` upstream expects it. Do not change it without patching the nginx upstream too. |
 
 ## Rules
@@ -52,16 +52,16 @@ in the gateway.
 ## Install / check / remove
 
 ```bash
-cp docs/templates/cortex-gateway.service ~/.config/systemd/user/
+cp docs/templates/fleet-gateway.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now cortex-gateway.service
-systemctl --user status cortex-gateway.service        # check
-journalctl --user -u cortex-gateway.service -f
-systemctl --user disable --now cortex-gateway.service # remove
+systemctl --user enable --now fleet-gateway.service
+systemctl --user status fleet-gateway.service        # check
+journalctl --user -u fleet-gateway.service -f
+systemctl --user disable --now fleet-gateway.service # remove
 ```
 
 ⚠️ **Only one poller per bot token.** Stop the incumbent (`systemctl --user stop
-hermes-gateway.service`) before starting `cortex-gateway.service`, or the two 409.
+hermes-gateway.service`) before starting `fleet-gateway.service`, or the two 409.
 
 ## Enforced, not documented-only
 

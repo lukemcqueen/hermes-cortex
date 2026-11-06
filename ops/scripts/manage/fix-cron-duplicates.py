@@ -407,7 +407,7 @@ def main():
     if fixed_dupes > 0 or fixed_arrays > 0:
         print(f"  Fixed: {fixed_dupes} duplicate(s) removed, {fixed_arrays} install array(s) aligned")
         print(f"  Next steps:")
-        print(f"    1. Run: python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet")
+        print(f"    1. Run: python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet")
         print(f"    2. Commit and push the install script changes")
         print(f"    3. On each agent, run this script again to verify")
     else:

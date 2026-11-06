@@ -50,7 +50,7 @@ if [[ "$CAP_OK" == "1" ]]; then
 else
   NOTRUN=$((NOTRUN+1))
   echo "  NOT RUN  healthy branch (no interpreter on this host imports mcp + certifi)"
-  echo "           fix: $REPO/ops/scripts/manage/fix-cortex-venv.py  (declared set now includes certifi)"
+  echo "           fix: $REPO/ops/scripts/manage/fix-fleet-venv.py  (declared set now includes certifi)"
 fi
 
 echo "B. missing ~/.pi/agent/mcp.json — refuse"

@@ -93,7 +93,7 @@ loads for a probe.
 | Surface | Already conforms | Gaps |
 |---|---|---|
 | Cron deliveries (`cron-format-standard`) | `Result:` verdict; `[SILENT]` empty state; cost footer (P5/P4) | No size hints/truncation; lists rarely carry totals |
-| `cortex-doctor` | Per-check statuses; remediation hints (P9); content-first (P8) | Prose-only; no `--toon`; detail not truncated with `--full` |
+| `fleet-doctor` | Per-check statuses; remediation hints (P9); content-first (P8) | Prose-only; no `--toon`; detail not truncated with `--full` |
 | `fleet` CLI | "No pending messages" (P5); REFUSED-with-next-steps (P9); refuses prompts (P6) | Emoji prose on stderr; usage-first home (P8); no TOON lists (P1/P2) |
 | MCP tool outputs | JSON protocol-correct | Verbose fields (P2); totals missing (P4); bare `[]` empties (P5) |
 | Bus bodies (PGMQ JSON) | Machine protocol — fine as-is | Previews are where P1–P5 apply |

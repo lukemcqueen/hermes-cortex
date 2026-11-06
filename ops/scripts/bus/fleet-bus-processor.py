@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cortex-bus-processor.py — Companion script for bus message processing.
+"""fleet-bus-processor.py — Companion script for bus message processing.
 
 Runs every 10m as a no_agent watchdog. Checks the Agent Bus for
 new broadcast messages via the bus library (lib.fleet_bus).

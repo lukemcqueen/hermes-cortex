@@ -124,7 +124,7 @@ stale expectation is the bug.
 is the source of truth, so a deploy overwrites the lesson): `skill-curation`
 rule 6.
 - **In-process plugin → standalone MCP server**: the design in
-`docs/design/cortex-memory-session-mcp.md` — same shape, the host-coupled
+`docs/design/fleet-memory-session-mcp.md` — same shape, the host-coupled
 registration is replaced by a process-independent surface.
 
 - **Hermes Agent → cortex/steadfaste (framework-level, in flight)**: the framework

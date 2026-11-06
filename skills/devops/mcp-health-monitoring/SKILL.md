@@ -146,7 +146,7 @@ incident are in `references/otel-skew-incident-2026-10-06.md`.
   loop-governance: `begin_change`, `end_change`, `check_lock`).
 - **Presence is not wiring — a name can match a FILENAME.** A "configured" check
   that looks for the server's NAME anywhere in `config.yaml` gives a false PASS:
-  the name also occurs in the args path (`cortex-bus` inside `cortex-bus-mcp.py`),
+  the name also occurs in the args path (`cortex-bus` inside `fleet-bus-mcp.py`),
   so a registration pointing at a missing venv, wrapper or script reads healthy
   while its tools never load. Audit by resolving the registered COMMAND and ARGS
   and checking those paths exist. Keep the expected-name map in ONE place (the

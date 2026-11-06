@@ -119,7 +119,7 @@ For each errored job, diagnose the failure:
 
 | Failure type | Auto-fix action |
 |---|---|
-| Script not found / missing path | Run `bash cron-auto-remediate.sh fix-missing` (copies from `$CORTEX_REPO/ops/scripts/` into `~/.steadfaste-fleet/scripts/`), then verify with `python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet` |
+| Script not found / missing path | Run `bash cron-auto-remediate.sh fix-missing` (copies from `$CORTEX_REPO/ops/scripts/` into `~/.steadfaste-fleet/scripts/`), then verify with `python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet` |
 | Git error (detached HEAD, merge conflict) | `cd "${CORTEX_REPO:-$HOME/steadfaste-fleet}" && git checkout main && git pull --ff-only` |
 | Permission denied | `chmod +x ~/.steadfaste-fleet/scripts/<script>` (or run `bash cron-auto-remediate.sh fix-perms` for all scripts at once) |
 | Python import error | Re-activate venv; reinstall deps; check Python version |

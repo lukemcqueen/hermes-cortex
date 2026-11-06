@@ -15,7 +15,7 @@ which is why four worker hosts still ran a pre-change cron-cost-metrics.py.
 
 These tests drive the REAL worker source (read out of the handler module) against
 a throwaway stub handler that reproduces the one property that matters: it
-imports a sibling module from its PARENT directory. No bus, no cortex-update, no
+imports a sibling module from its PARENT directory. No bus, no fleet-update, no
 live state — the stub's `UPDATE_PENDING_DIR` is a temp dir.
 """
 

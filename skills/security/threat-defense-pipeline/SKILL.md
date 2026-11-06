@@ -113,7 +113,7 @@ is the ONLY surface that protects a legit IP from the blocklist. Agents may
 READ it (the scanner skips allow-listed IPs) but never EDIT it — that's a
 human action. Templates are manually installed for the same reason.
 
-**Classifier tool:** `classify-blocked-ips.sh` (deployed by cortex-update)
+**Classifier tool:** `classify-blocked-ips.sh` (deployed by fleet-update)
 splits the list into STRONG (fail2ban-banned, keep) vs WEAK (volume-only,
 review) vs stale vs allow-listed. Run it on the host with the ban evidence
 (Joseph is primary discovery host):

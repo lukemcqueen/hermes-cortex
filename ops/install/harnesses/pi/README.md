@@ -2,7 +2,7 @@
 
 # pi — cortex context integration
 
-**Layer:** `mcp`  ·  **Status:** `shipped`  ·  **Surface:** `MCP (cortex-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")`
+**Layer:** `mcp`  ·  **Status:** `shipped`  ·  **Surface:** `MCP (fleet-context) + pi.on("tool_call" write gate | "turn_end" | "before_agent_start" | "session_before_compact")`
 
 This harness reads MCP servers from its own configuration, so its TOOL surface needs **no shim** — registration is a config entry. (MCP has no lifecycle, so a harness may still ship a small trigger artifact; see *Shipped artifact*.)
 
@@ -27,7 +27,7 @@ capability, or one of the two becomes a phantom.
 
 ## Shipped artifacts
 
-- `ops/install/harnesses/pi/extensions/cortex-context.ts`
+- `ops/install/harnesses/pi/extensions/fleet-context.ts`
 - `ops/install/harnesses/pi/extensions/cortex-governance.ts`
 
 ## Lifecycle triggers (the half MCP cannot provide)
@@ -46,7 +46,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh          # the TOO
 bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh  # the TRIGGERS + skills
 # PROJECT SCOPE — one repo, files copied in + a generated run line:
 fleet harness install pi --dir <your-pi-project>
-# (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/cortex-context.ts extensions/)
+# (equivalent, manual: mkdir -p extensions && cp <harnesses>/pi/extensions/fleet-context.ts extensions/)
 ```
 
 ## Run
@@ -57,9 +57,9 @@ pi   # tools come from ~/.pi/agent/mcp.json (install-pi-mcp.sh)
 
 ## Verify (do not report a wiring you have not exercised)
 
-1. pi mcp list shows cortex-context with the memory/session tools.
+1. pi mcp list shows fleet-context with the memory/session tools.
 2. In a Pi session call mem_context — the peer card must come back.
-3. Let a turn end with a decision, then: cortex-context session_restore "{}" | grep <marker>
+3. Let a turn end with a decision, then: fleet-context session_restore "{}" | grep <marker>
 4. Start a second session; the checkpoint must appear unasked (`CORTEX_RESUME` in `~/.steadfaste-fleet/logs/pi-context.log`).
 5. node ops/install/harnesses/pi/verify-governance-extension.mjs exits 0 — it EXECUTES the write gate and asserts both directions.
 6. In a Pi session, with no lock: writing a file is refused with GOVERNANCE LOCK REQUIRED; after begin_change it succeeds.
@@ -86,8 +86,8 @@ export CORTEX_CONTEXT_DEBUG=<value>   # 1 = echo routine markers to stderr while
 
 ## Shared pieces (identical for every harness — never fork them)
 
-- CLI: `~/.steadfaste-fleet/scripts/cortex-context.py`
-- MCP server: `~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py`
+- CLI: `~/.steadfaste-fleet/scripts/fleet-context.py`
+- MCP server: `~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py`
 - Trigger: `~/.steadfaste-fleet/scripts/session-autocheckpoint.py`
 - One implementation: `ops/services/mycortex-mem/context_tools.py`
 

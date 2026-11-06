@@ -919,7 +919,7 @@ exit 3
   dir-of-modules on `sys.path` with no `__init__.py`. (2) Fix every site rather than
   allowlisting: a guard with zero exemptions is worth more than one with a list.
 - **A failing run that pipes its output through `grep` fails SILENTLY.** A re-runnable evidence
-  script invoked `cortex-doctor.py 2>&1 | grep -i SOUL`: when the interpreter lacked `yaml` the
+  script invoked `fleet-doctor.py 2>&1 | grep -i SOUL`: when the interpreter lacked `yaml` the
   traceback was filtered away and the section printed EMPTY — which reads as "nothing to report",
   not as a failure. Prefer a resolved interpreter; and when a pipeline must filter, keep the exit
   status (`PIPESTATUS[0]`) or capture to a variable so a crash cannot masquerade as an empty
@@ -1094,8 +1094,8 @@ the repairer.** The declared set is `ops/install/requirements.txt` (measured fro
 imports; edit THAT to add a dependency, or the next host never learns about it):
 
 ```bash
-python3 ops/scripts/manage/fix-cortex-venv.py --check   # what is missing; changes NOTHING (rc=3)
-python3 ops/scripts/manage/fix-cortex-venv.py           # install only the missing, then verify
+python3 ops/scripts/manage/fix-fleet-venv.py --check   # what is missing; changes NOTHING (rc=3)
+python3 ops/scripts/manage/fix-fleet-venv.py           # install only the missing, then verify
 ```
 
 It decides by **importing** in the TARGET interpreter (a distribution name is not a module

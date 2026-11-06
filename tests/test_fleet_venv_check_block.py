@@ -61,7 +61,7 @@ def _stub_venv(home, rc):
 def _stub_fixer(deploy_home, rc=0):
     """A stub FIXER must be valid PYTHON — the block runs it as `<venv python> fixer.py`,
     so a bash stub fails to parse and the run defers for the wrong reason."""
-    fixer = Path(deploy_home) / "scripts" / "fix-cortex-venv.py"
+    fixer = Path(deploy_home) / "scripts" / "fix-fleet-venv.py"
     fixer.parent.mkdir(parents=True, exist_ok=True)
     fixer.write_text(f"import sys\nsys.exit({rc})\n")
     fixer.chmod(0o755)

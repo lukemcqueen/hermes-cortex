@@ -77,11 +77,11 @@ def test_a_dead_args_script_is_caught_too():
 
 
 def test_a_missing_server_is_a_FAIL_with_the_exact_add_command():
-    res = _load().audit(GOOD, {"cortex-context": "mcp-servers/cortex-context-mcp.py"},
+    res = _load().audit(GOOD, {"fleet-context": "mcp-servers/fleet-context-mcp.py"},
                         exists=lambda p: True)
     name, status, detail, fix = res[0]
     assert status == "FAIL" and "not configured" in detail
-    assert "hermes mcp add cortex-context" in fix, fix
+    assert "hermes mcp add fleet-context" in fix, fix
 
 
 def test_orchestrator_only_servers_are_judged_by_role():
@@ -127,8 +127,8 @@ def test_a_bare_command_is_resolved_on_PATH_not_as_a_path():
 
 
 def test_the_printed_fix_names_a_path_that_resolves():
-    """The doctor calls audit() with a BARE filename ("cortex-bus-mcp.py"), so the printed fix
-    used to render `~/steadfaste-fleet/cortex-bus-mcp.py` — a path that does not exist, i.e. advice
+    """The doctor calls audit() with a BARE filename ("fleet-bus-mcp.py"), so the printed fix
+    used to render `~/steadfaste-fleet/fleet-bus-mcp.py` — a path that does not exist, i.e. advice
     nobody can run. The fix must name the repo-relative script."""
     m = _load()
     cfg = ("mcp_servers:\n  tasks:\n    command: /opt/hermes-agent/venv/bin/python3\n"

@@ -11,7 +11,7 @@
      Install:     ~/.steadfaste-fleet/dashboard/venv/bin/pip install flask
 
   2. THE FLEET VENV (~/.steadfaste-fleet/venv) — for a host that already has it;
-     `fix-cortex-venv.py` fills it from the declared requirements.
+     `fix-fleet-venv.py` fills it from the declared requirements.
 
   PORTABLE (2026-10-13). This template used to say "Replace CORTEX_HOME with
   $HOME (literally, launchd expands it)" and then put $HOME straight into
@@ -23,8 +23,8 @@
 
   Option 2 used to point at the HERMES venv, the tree this fleet is moving off.
 
-  Copy to: ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
-  Load:    launchctl load ~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist
+  Copy to: ~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist
+  Load:    launchctl load ~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist
 -->
 <plist version="1.0">
 <dict>

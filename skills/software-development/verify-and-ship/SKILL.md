@@ -121,7 +121,7 @@ workflow change → AGENTS.md/SOUL.md.
   measurement. Never land a peer's in-flight edits.
 - Symptom proof — the specific error/alert/blocker is gone, not just "compiles".
 - Stale expected-lists cleaned (removed crons also removed from uninstall arrays).
-- Doctor clean — `cortex-doctor.py --quiet`; record its EXIT CODE and warning
+- Doctor clean — `fleet-doctor.py --quiet`; record its EXIT CODE and warning
   count, not just the ✅ lines. Warnings and info are not a licence to move on:
   fix or dispose (`--disposition ... --as deferred|deliberate`), BATCHED and
   LAST, after the push.

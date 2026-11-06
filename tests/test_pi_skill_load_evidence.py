@@ -14,7 +14,7 @@ files." He was right, and the fleet was wrong. Pi has no `skill_view`:
 
 Three defects followed, and fixing any ONE of them alone changes nothing:
 
-  1. the evidence writer (`ops/install/harnesses/pi/extensions/cortex-context.ts`)
+  1. the evidence writer (`ops/install/harnesses/pi/extensions/fleet-context.ts`)
      recorded only `toolName === "skill_view"` → unreachable on Pi, so NOTHING was
      ever recorded;
   2. the checker (`store.py::loaded_skill`) hard-coded `tool_name = 'skill_view'`
@@ -44,7 +44,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SERVER = Path(os.environ.get("CORTEX_LOOP_GOV_SERVER", REPO / "mcp-servers" / "loop-gov-mcp.py"))
 STORE_PATH = REPO / "ops" / "services" / "mycortex-mem" / "store.py"
-EXTENSION = REPO / "ops" / "install" / "harnesses" / "pi" / "extensions" / "cortex-context.ts"
+EXTENSION = REPO / "ops" / "install" / "harnesses" / "pi" / "extensions" / "fleet-context.ts"
 
 
 def _load(path: Path, name: str):

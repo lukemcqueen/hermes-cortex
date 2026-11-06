@@ -69,7 +69,7 @@ diff, exit 1 on deletions).
 ## Companion Trap — Cron Path ≠ Deploy Path
 
 Verifying a cleanup-commit fix surfaced a deeper deployment trap: the cron
-runner executes from `~/.hermes/scripts/`, but cortex-update deploys to
+runner executes from `~/.hermes/scripts/`, but fleet-update deploys to
 `~/.steadfaste-fleet/scripts/`. The symlink bridge is skipped when local-only
 files exist, so deployed fixes silently don't reach the running cron, and
 the doctor misses it (it checks the deploy dir, not the cron dir). Full

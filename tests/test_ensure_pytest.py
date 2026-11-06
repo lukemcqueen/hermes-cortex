@@ -54,7 +54,7 @@ def _tree(tmp: Path) -> Path:
         (tmp / rel).mkdir(parents=True, exist_ok=True)
     shutil.copy2(SCRIPT, tmp / "ops" / "scripts" / "lib" / "ensure-pytest.sh")
     (tmp / "ops" / "scripts" / "health" / "check-package-age.py").write_text(AGE_STUB)
-    (tmp / "ops" / "scripts" / "manage" / "fix-cortex-venv.py").write_text(REPAIR_STUB)
+    (tmp / "ops" / "scripts" / "manage" / "fix-fleet-venv.py").write_text(REPAIR_STUB)
     (tmp / "ops" / "install" / "requirements.txt").write_text("pytest>=7.0\n")
     return tmp
 

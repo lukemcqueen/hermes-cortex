@@ -49,7 +49,7 @@ so true floods are still shed instantly. Only the burst tolerance changed.
 
 ---
 
-## 2. Scanner: only true abusers (AUTO — deploys via cortex-update)
+## 2. Scanner: only true abusers (AUTO — deploys via fleet-update)
 
 **Problem:** the old scanner added ANY IP with ≥10 req/60min — no
 discrimination. One legit dashboard refresh = 15-30 requests = tripped it.
@@ -161,14 +161,14 @@ this public repo — PII rule). Guard mirrored into
 `agent-nginx-threat-pipeline.sh` (commit 8b8e8089). Without this, every
 transient fail2ban ban of a legit IP re-pollutes the source forever.
 
-**Fleet deploy:** UPDATE_REQUEST (pull + cortex-update) then
+**Fleet deploy:** UPDATE_REQUEST (pull + fleet-update) then
 EXEC deploy-blocked-ips.sh to joseph/kustos/gisu/moses — each host must pull
 the pruned source BEFORE regenerating its live conf, or it re-deploys the old
 19K list.
 
 ## Rollback
 
-- Scanner revert: restore old scanner from git, cortex-update.
+- Scanner revert: restore old scanner from git, fleet-update.
 - Burst changes: re-apply old values manually (templates are manual anyway).
 - The blocklist itself is never destroyed — cleanup only ever removes
   allow-listed or weak-evidence IPs, and fail2ban re-bans real threats.

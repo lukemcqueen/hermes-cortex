@@ -601,7 +601,7 @@ if $UNINSTALL; then
     "agent-system-alert-watchdog" \
     "agent-unannounced-probe" \
     "cortex-bus-evening" \
-    "cortex-bus-failover-watchdog" \
+    "fleet-bus-failover-watchdog" \
     "cortex-bus-overnight" \
     "cortex-bus-workday"; do
   
@@ -800,8 +800,8 @@ create_cron "agent-message-handler" "*/5 * * * *" \
 # when both buses down, recovery report. Workers: detect + alert only —
 # never swap config. Orchestrators get the full failover version via
 # install-orch-crons.sh (same script, role-detected).
-create_cron "cortex-bus-failover-watchdog" "*/5 * * * *" \
-  "cortex-bus-failover-watchdog.py" \
+create_cron "fleet-bus-failover-watchdog" "*/5 * * * *" \
+  "fleet-bus-failover-watchdog.py" \
   "" \
   "" \
   "" \

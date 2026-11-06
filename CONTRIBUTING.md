@@ -20,7 +20,7 @@
 - **Canonical skills** in `skills/` — organized by domain
 - **Documentation** in `docs/` — guides, templates, troubleshooting
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
-- **Service/agent infra** in `ops/services/` (cortex-bus, dashboard) and `mcp-servers/` (cortex-bus-mcp, loop-governance)
+- **Service/agent infra** in `ops/services/` (cortex-bus, dashboard) and `mcp-servers/` (fleet-bus-mcp, loop-governance)
 
 When you make an improvement here, every agent running `fleet-update.sh` gets it
 on their next pull. This is the force multiplier.
@@ -264,7 +264,7 @@ Examples:
 feat(scripts): add system-alert-watchdog for disk/CPU monitoring
 fix(crons): correct cron workdir escaping for $HOME
 docs(contributing): add CONTRIBUTING.md for agent contributions
-refactor(cortex-update): extract MAP registration into register()
+refactor(fleet-update): extract MAP registration into register()
 ```
 
 **Always commit through `git commit` in terminal** (the pre-commit hook runs
@@ -328,7 +328,7 @@ mcp__loop_governance__end_change(task_id="<your-task-id>")
 | Contribution | Where it goes | Agent benefit |
 |-------------|---------------|---------------|
 || **New canonical skill** | `skills/<category>/<name>/SKILL.md` | Every agent can load your workflow |
-| **New script** | `ops/scripts/<name>.py` + MAP in fleet-update.sh | Every agent gets the tool on `cortex-update` |
+| **New script** | `ops/scripts/<name>.py` + MAP in fleet-update.sh | Every agent gets the tool on `fleet-update` |
 | **Docs improvement** | `docs/<slug>.md` + DOCS-INDEX.md | Every agent can discover and read it |
 | **Bug fix** | Same location as the bug | Every agent stops hitting the same bug |
 | **Cron job** | Document in AGENTS.md or as install-crons.sh entry | Shared maintenance automation |

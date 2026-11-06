@@ -190,7 +190,7 @@ diagnostics belong in a log file, never on a stream a user is looking at.
 | MCP server stderr | `~/.hermes/logs/mcp-stderr.log` | Hermes-managed |
 
 In an **interactive harness stderr *is* the prompt area**, so a routine line scribbles
-over what the user is typing. The Pi `cortex-context` extension therefore writes its
+over what the user is typing. The Pi `fleet-context` extension therefore writes its
 routine markers (`CORTEX_RESUME`, `CORTEX_CHECKPOINT_EMPTY`, `CORTEX_TOOL_EVENT …
 recorded`) to the cortex log and keeps only failures (`CORTEX_FAIL`, `… FAILED`) on
 stderr. Knobs: `CORTEX_CONTEXT_LOG` (default `~/.steadfaste-fleet/logs/pi-context.log`),

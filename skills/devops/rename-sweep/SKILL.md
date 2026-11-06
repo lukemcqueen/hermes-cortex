@@ -169,7 +169,7 @@ of them.
 - Live-service tests fail on deploy-order lag: a running service still
   serves the old label until `fleet-update.sh` redeploys — verify against
   the repo, not the live service, then re-test after deploy.
-- `git grep -i <term>` == 0, doctor clean, deploy via cortex-update,
+- `git grep -i <term>` == 0, doctor clean, deploy via fleet-update,
   then push.
 
 ### 6. Land it fleet-wide — 0 residuals is NOT done
@@ -347,7 +347,7 @@ treat that as part of the deliverable, not a follow-up.
   gateway + dashboard units — hand-patch those, or the golden-path "0 old tokens"
   unit scan stays red.** After regenerating units with `CORTEX_DEPLOY_HOME`
   overridden to the new path, `grep -Rl '\.hermes-cortex' ~/.config/systemd/user`
-  still returns the `cortex-gateway.service` + `hermes-cortex-dashboard.service`
+  still returns the `fleet-gateway.service` + `hermes-cortex-dashboard.service`
   live units (plus the gateway's `default.target.wants` symlink), which the cron
   installer never writes. Rewrite their `ExecStart`/`WorkingDirectory`/log paths
   to the new deploy-home directly. Discrimination that matters: the verifier

@@ -52,7 +52,7 @@ and a merged skill serves better than two overlapping ones.
    host is often a runtime venv without PyYAML; it then falls back to a TEXT scan and reports a
    WARN naming the rules it skipped (name charset, YAML parse, duplicate keys). Read that warning
    before trusting a bare `Skills loadable ✅`: it is a weaker result, not a clean one. Repair the
-   interpreter (`fix-cortex-venv.py`) and re-run, or invoke the doctor under `CORTEX_PYTHON`/
+   interpreter (`fix-fleet-venv.py`) and re-run, or invoke the doctor under `CORTEX_PYTHON`/
    `~/.steadfaste-fleet/venv/bin/python3`, so the full rule set is actually applied.
    **But the durable fix lives in the CHECKER, not in the invocation.** Advice that says "invoke this
    under the right interpreter" depends on every caller remembering, and the caller that forgets is
@@ -100,7 +100,7 @@ and a merged skill serves better than two overlapping ones.
    that copy or — where the drift guardrail is in force — SKIPS it; either way
    the lesson reaches no other host, and the doctor reports it as skill drift
    (*"Deployed copy is newer than repo source"*). The doctor names it: *"Deployed copy is
-   newer than repo source. Commit the repo source before cortex-update
+   newer than repo source. Commit the repo source before fleet-update
    overwrites it."* After ANY skill edit, propagate the deployed skill back
    to the repo path (the whole dir, `references/` included) and commit it in
    the same run. Check for drifted pairs at the **start** of a pass too: drift

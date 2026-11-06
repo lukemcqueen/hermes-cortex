@@ -108,5 +108,5 @@ for label checks.
 | File | Action |
 |------|--------|
 | `ops/scripts/agent/agent-message-handler.py` | Add label check logic |
-| `ops/scripts/manage/cortex-agent-manager.py` | Already includes label subcommands |
+| `ops/scripts/manage/fleet-agent-manager.py` | Already includes label subcommands |
 | `docs/fleet-update-protocol.md` | Document `target_labels` and `target_agents` |

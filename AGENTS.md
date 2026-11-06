@@ -62,7 +62,7 @@ Every session: read the skills manifest at `~/.steadfaste-fleet/skills.yaml` —
 23. **Only our repo** — `~/steadfaste-fleet/` ours; `~/.hermes/` not-in-repo → don't touch; `~/.steadfaste-fleet/state/*` + `~/.hermes/config.yaml` → live config.
 24. **Sharing filter** — new/substantive only; already-in-Hermes/cortex ❌; PII-only ❌.
 25. **Self-test gate** — `fleet send` refuses without `--self-tested`; no bare `pass`.
-26. **Skill stub guard** — cortex-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator → cortex-update. Never hand-fix from memory.
+26. **Skill stub guard** — fleet-update refuses to overwrite a full skill with a repo stub; doctor FAILs on stubs. Recovery: `agent-skill-stub-audit.py --send` → bus `skill-stub-recovery` → orchestrator → fleet-update. Never hand-fix from memory.
 27. **Gateway restart for enforcer changes** — running gateway may hold the old in-memory enforcer; verify `Plugin content`; restart from a separate shell (NOT inside the gateway — blocked).
 28. **State it once, then move** — once a finding/plan is established, never re-derive it: reference it in one short clause and take the next action.
 29. **Claim/verify protocol (task model v3)** — workers `claim` a pending slice before working it (`task-db.py claim <id>`); never improvise on a slice with a plan — follow it; `unclaim` with the tool gap if blocked. `report <id>` with evidence → review; ONLY the orchestrator `verify`s (approve → completed, reject → in_progress). Never mark a slice completed without verified evidence.

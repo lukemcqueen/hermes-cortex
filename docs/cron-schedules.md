@@ -119,7 +119,7 @@
 | `agent-inbox-workday` | ~~`0 9-17 * * 1-5`~~ | ~~LLM~~ | ~~session-active-guard.py~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10 on most hosts** — duplicate of `cortex-bus-workday` (post-rename leftover). **Still active on `gisu` as of 2026-08-25** (communications role; `9 9-17 * * 1-5`, verified enabled+ok via agent-cron-status EXEC). Verify per-host before assuming removal. |
 | `agent-inbox-evening` | ~~`0 18,20,22 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10** — duplicate of `cortex-bus-evening` (post-rename leftover) |
 | `agent-inbox-overnight` | ~~`0 3 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-10** — duplicate of `cortex-bus-overnight` (post-rename leftover) |
-| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram |
+| `fleet-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `fleet-bus-failover-watchdog.py` | Telegram |
 | `agent-push-metrics` | `every 5m` | no_agent | `agent-push-metrics.sh` | local |
 | `agent-session-correction-scan` | `0 22 * * 0` | no_agent | `manage/agent-session-correction-scan.py` | local |
 | `agent-mycortex-retention` | `0 6 * * *` | no_agent | `agent-mycortex-retention.py` | origin |

@@ -194,7 +194,7 @@ find docs -name '*.md' -not -path 'docs/older/*' | wc -l
 find docs/older -name '*.md' | wc -l
 
 # 5. doctor clean after deploy
-python3 ops/scripts/manage/cortex-doctor.py 2>&1 | grep -iE 'Overall'
+python3 ops/scripts/manage/fleet-doctor.py 2>&1 | grep -iE 'Overall'
 ```
 
 Acceptance: `broken: 0`, duplicate count `0`, stale refs `0`, doctor `0 fail`.

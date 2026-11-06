@@ -86,7 +86,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh --fix-tools
 pi mcp list | grep deepseek        # expect the tool named `review`
 ```
 
-`cortex-doctor.py` reports `DeepSeek MCP tool name`, and its auto-fix runs `--fix-tools`.
+`fleet-doctor.py` reports `DeepSeek MCP tool name`, and its auto-fix runs `--fix-tools`.
 `install-pi-mcp.sh` is the ONE file that owns `~/.pi/agent/mcp.json`, so the rename lives
 there rather than in a bespoke script — one implementation owns the config, and the check
 cannot drift from what a re-install does. Design

@@ -54,7 +54,7 @@ def test_missing_interpreter_is_named_with_its_home_and_the_fix():
             "the message must name the exact path that is missing"
         assert f"HOME={home}" in r.stderr, "the message must print the HOME it resolved"
         assert "python3 -m venv" in r.stderr, "it must show how to create the venv"
-        assert "fix-cortex-venv.py" in r.stderr, "it must show how to fill it"
+        assert "fix-fleet-venv.py" in r.stderr, "it must show how to fill it"
         assert "No such file or directory" not in r.stderr, \
             "the whole point: bash's generic message must be replaced by a specific one"
         print("  A: absent interpreter -> named path, HOME, create+fill, rc=78 ✓")

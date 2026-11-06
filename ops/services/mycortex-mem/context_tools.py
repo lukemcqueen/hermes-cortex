@@ -3,15 +3,15 @@
 
 ONE implementation, several access layers:
 
-    mcp-servers/cortex-context-mcp.py   MCP  — Hermes, Claude Code, Codex
-    ops/scripts/cortex-context.py       CLI  — Pi (and anything that shells out)
+    mcp-servers/fleet-context-mcp.py   MCP  — Hermes, Claude Code, Codex
+    ops/scripts/fleet-context.py       CLI  — Pi (and anything that shells out)
 
 Why the extraction: the first cut of the MCP server owned the handlers, so a CLI
 would have had to re-implement them and the two would drift. The tool surface is
 a property of the STORE, not of MCP — a harness picks an access layer, it does
 not get its own semantics.
 
-Design: docs/design/cortex-memory-session-mcp.md
+Design: docs/design/fleet-memory-session-mcp.md
 
 Two families over one store (mycortex_mem) and one identity model:
     mem_*      memory   — what do I know?

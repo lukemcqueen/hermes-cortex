@@ -294,7 +294,7 @@ Before sending any command to a remote fleet agent, **test the full cycle on you
 
 ```bash
 # 1. Send EXEC to self
-fleet exec moses cortex-doctor.py --json
+fleet exec moses fleet-doctor.py --json
 
 # 2. Manually run the handler
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
@@ -408,7 +408,7 @@ removed from the expected list.
 
 Habit: after any change, run this before `end_change`:
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet
 ```
 
 If it exits non-zero, find the root cause and fix it. Do not pass `end_change`
@@ -438,9 +438,9 @@ has decided about (`🧹 UNDISPOSED`), so the tool — not the agent — says wh
 
 ```bash
 # fix it, or record WHY it is being left (one command; owner and reason are required)
-cortex-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
-cortex-doctor.py --as deliberate ...        # expected state is not the desired state
-cortex-doctor.py --dispositions             # what is currently decided, and by whom
+fleet-doctor.py --disposition "Skill drift" --as deferred --owner <you> --reason "<why>"
+fleet-doctor.py --as deliberate ...        # expected state is not the desired state
+fleet-doctor.py --dispositions             # what is currently decided, and by whom
 ```
 
 A disposition EXPIRES (30 days) and then the check is reported STALE and undisposed again, so
@@ -465,9 +465,9 @@ The user's response to the wrong version was: "Why don't you fix your warning?"
 The warning was fixable (reset watchdog state file), the fix took 90 seconds,
 and the doctor now shows 0 fail. The question was justified.
 
-Habit: after any `cortex-doctor.py --quiet` run, grep for warnings:
+Habit: after any `fleet-doctor.py --quiet` run, grep for warnings:
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | grep '⚠️'
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet 2>&1 | grep '⚠️'
 ```
 For each warning, apply the 3-question litmus test. If all yes, fix before
 reporting done.

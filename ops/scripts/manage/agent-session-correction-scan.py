@@ -135,7 +135,7 @@ CORRECTION_CATEGORIES: dict[str, list[str]] = {
         r"repo.*deployed|deployed.*repo",
         r"stale (bytecode|script|copy|version)",
         r"auto (replace|sync|reconcile) (old|differing)",
-        r"registered in cortex-update",
+        r"registered in fleet-update",
         r"forgot (to )?register",
         r"did you (deploy|push|commit)",
         r"not deployed",

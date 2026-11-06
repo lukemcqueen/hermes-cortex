@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cortex-dogfood.sh default-branch resolution.
+"""Tests for fleet-dogfood.sh default-branch resolution.
 
 Regression test (Luke 2026-08-24, hour-long incident): dogfood hardcoded
 `git pull --rebase origin main`, which after the PII history rewrite pulled
@@ -19,11 +19,11 @@ from pathlib import Path
 import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
-_DOGFOOD = (_REPO / "ops" / "scripts" / "cortex-dogfood.sh").read_text()
+_DOGFOOD = (_REPO / "ops" / "scripts" / "fleet-dogfood.sh").read_text()
 
 
 def _extract_default_branch_logic() -> str:
-    """Pull the default-branch RESOLUTION line out of cortex-dogfood.sh.
+    """Pull the default-branch RESOLUTION line out of fleet-dogfood.sh.
 
     Anchored on the assignment itself, not on what follows it: the original
     regex required the pull line to come immediately after the assignment, and
@@ -32,7 +32,7 @@ def _extract_default_branch_logic() -> str:
     resolution, so extract that and assert the pull CONSUMES it separately.
     """
     m = re.search(r"^  _DEFAULT_BRANCH=\$\(.*\)$", _DOGFOOD, re.M)
-    assert m, "default-branch resolution line not found in cortex-dogfood.sh"
+    assert m, "default-branch resolution line not found in fleet-dogfood.sh"
     return m.group(0)
 
 

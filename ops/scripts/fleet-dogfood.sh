@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  cortex-dogfood — permanent dogfood gate after commit/push
+#  fleet-dogfood — permanent dogfood gate after commit/push
 #
 #  Runs the full dogfood cycle: pull latest → deploy → doctor →
 #  verify clean. The dogfood directive (2026-08-04/05): a change is
@@ -9,10 +9,10 @@
 #  commit/push that touches shared code.
 #
 #  Usage:
-#    cortex-dogfood.sh            # full cycle (default)
-#    cortex-dogfood.sh --quiet    # doctor output compact
-#    cortex-dogfood.sh --doctor-only  # skip pull/deploy, just verify
-#    cortex-dogfood.sh --force    # cortex-update --force-all
+#    fleet-dogfood.sh            # full cycle (default)
+#    fleet-dogfood.sh --quiet    # doctor output compact
+#    fleet-dogfood.sh --doctor-only  # skip pull/deploy, just verify
+#    fleet-dogfood.sh --force    # fleet-update --force-all
 #
 #  Exit 0 = deployed state verified clean (doctor no FAIL).
 #  Exit 1 = something failed; fix before claiming done.
@@ -21,7 +21,7 @@ set -uo pipefail
 
 REPO="${HOME}/steadfaste-fleet"
 UPDATE="${REPO}/ops/scripts/fleet-update.sh"
-DOCTOR="${REPO}/ops/scripts/manage/cortex-doctor.py"
+DOCTOR="${REPO}/ops/scripts/manage/fleet-doctor.py"
 QUIET=""
 FORCE=""
 DOCTOR_ONLY=""
@@ -44,7 +44,7 @@ _detect_orch() {
 }
 
 if ! _detect_orch; then
-  echo "❌  cortex-dogfood: orchestrator-only (moses/esther hosts)."
+  echo "❌  fleet-dogfood: orchestrator-only (moses/esther hosts)."
   echo "    Dogfood verifies the deployed steadfaste-fleet state — a"
   echo "    non-orchestrator cannot run the full deploy/verify cycle."
   exit 1
@@ -61,7 +61,7 @@ done
 
 [[ -f "$DOCTOR" ]] || { echo "❌ doctor not found at $DOCTOR"; exit 1; }
 
-echo "━━━ cortex-dogfood ━━━"
+echo "━━━ fleet-dogfood ━━━"
 
 # Capture the current governance session's task_id BEFORE deploy: the
 # deploy step (fleet-update.sh) purges governance locks (known
@@ -112,7 +112,7 @@ if [[ -z "$DOCTOR_ONLY" ]]; then
   # from the reflog. The local work IS what this gate is about to verify, so do
   # not rebase over it: refuse when anything local exists, and abort a failed
   # rebase rather than walking away from it.
-  _pull_log="${TMPDIR:-/tmp}/cortex-dogfood-pull.log"
+  _pull_log="${TMPDIR:-/tmp}/fleet-dogfood-pull.log"
   (cd "$REPO" && {
       if [[ -n "$(git log --oneline "origin/${_DEFAULT_BRANCH}..HEAD" 2>/dev/null)" ]]; then
         echo "   (unpushed local commits present — skipping pull; local work is what we verify)"
@@ -167,7 +167,7 @@ fi
 if [[ "${_DOGFOOD_FAILS:-0}" -gt 0 ]]; then
   echo ""
   echo "❌  DOGFOOD FAILED — deployed state does not verify clean."
-  echo "    Fix the FAIL above, re-run cortex-dogfood.sh, then claim done."
+  echo "    Fix the FAIL above, re-run fleet-dogfood.sh, then claim done."
   echo ""
   exit 1
 fi

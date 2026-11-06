@@ -93,7 +93,7 @@ Required services (all should show a PID, not `-`):
 |-------|---------|-------|
 | `com.ollama.serve` | Ollama LLM server | `~/Library/LaunchAgents/com.ollama.serve.plist` |
 | `com.legacy-brain.sync-watch` | legacy auto-sync daemon | `~/Library/LaunchAgents/com.legacy-brain.sync-watch.plist` |
-| `com.hermes.cortex-dashboard` | Cortex companion dashboard | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` |
+| `com.hermes.cortex-dashboard` | Cortex companion dashboard | `~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist` |
 | `ai.hermes.gateway` | Hermes messaging gateway | `~/Library/LaunchAgents/ai.hermes.gateway.plist` |
 | `com.docker.docker` | Docker Desktop (triggers container restart) | `~/Library/LaunchAgents/com.docker.docker.plist` |
 

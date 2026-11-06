@@ -275,7 +275,7 @@ def test_a_lock_write_does_not_touch_the_governed_repo():
     inside a governed repo the name shadows the RUNTIME directory
     `~/.steadfaste-fleet`, so repo-local governance state was indistinguishable from
     legitimate state and made the repo a consumer of the deploy it is the source
-    of. cortex-doctor now FAILS when that directory is present for any reason.
+    of. fleet-doctor now FAILS when that directory is present for any reason.
 
     This test used to assert the marker WAS written, and pinned the only-owner rule
     for it. Both became stale when the marker was deliberately dropped; the
@@ -292,7 +292,7 @@ def test_a_lock_write_does_not_touch_the_governed_repo():
     mcp._write_lock(_lock_state("B"), {"session_id": "B"})
     assert not (repo / ".steadfaste-fleet").exists(), (
         "a lock write created repo-local governance state -- the name shadows the "
-        "runtime ~/.steadfaste-fleet directory, and cortex-doctor fails on its presence"
+        "runtime ~/.steadfaste-fleet directory, and fleet-doctor fails on its presence"
     )
 
     # Each session still holds its OWN lock, and a peer's release cannot touch it.

@@ -69,7 +69,7 @@ trusting this prose.
 
 ```bash
 # 1. the doctor's own check (FAILs on a missing/misplaced env, with the fix)
-python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py 2>&1 | grep -i "cortex env"
+python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py 2>&1 | grep -i "cortex env"
 
 # 2. the canonical env exists, is 600, and the deploy-dir .env symlink resolves to it
 ls -la ~/steadfaste-fleet/.env ~/.steadfaste-fleet/.env
@@ -101,7 +101,7 @@ The doctor reports:
    `fleet_doctor._env_file_value`); `VICTORIA_METRICS_URL` +
    `_FALLBACK_URL` were migrated into the canonical env.
 3. **macOS parity.** The gateway service has a launchd counterpart —
-   `docs/templates/com.hermes.cortex-gateway.plist` — because systemd does not
+   `docs/templates/com.hermes.fleet-gateway.plist` — because systemd does not
    exist on macOS and launchd has no `EnvironmentFile`; the plist wrapper
    sources the same canonical env before exec'ing the daemon.
 4. **Enforcement.** `check_cortex_env` in `fleet_doctor/checks.py` FAILs when

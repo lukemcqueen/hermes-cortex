@@ -1,4 +1,4 @@
-# cortex-gateway — the decoupled Hermes-cortex gateway
+# fleet-gateway — the decoupled Hermes-cortex gateway
 
 > **Status:** in build — CR1 ✅ CR2 ✅ CR3 ✅ CR4 ✅ (transport, backend seam, daemon + hermes backend, systemd unit + config + doctor) · CR5 pi ✅ (generic `command` kind — no gateway code change; live on @Esther0001Bot) · CR6 steadfaste pending.
 > **Pairs with:** `component-hermes-separation.md` (S2b) · `messaging-gateway.md` (ADR-0005, the in-process incumbent).
@@ -9,7 +9,7 @@
 `hermes-gateway.service` runs the agent loop **inside** the Hermes process
 (`python -m hermes_cli.main gateway run`). That is the migration **source**:
 an in-process gateway whose restart kills the agent loop, the cron scheduler
-(the O1-S3 lesson), and every platform session at once. cortex-gateway is the
+(the O1-S3 lesson), and every platform session at once. fleet-gateway is the
 **target**: a standalone daemon that owns the full **poll → dispatch → reply**
 loop with zero Hermes-agent import, so the agent backend is swappable and the
 gateway survives independently.
@@ -36,7 +36,7 @@ in a transport or a backend. The reply must round-trip through
 | CR1 | `fleet_gateway/transport.py` — transport extraction from msg-gateway.py (parity-proven) + `__init__.py` | ✅ |
 | CR2 | `fleet_gateway/backend.py` — BackendAdapter ABC + structural `__subclasshook__` | ✅ |
 | CR3 | `fleet_gateway/daemon.py` + `hermes_backend.py` — poll_bot + drain_outbound + dispatch/reply step; hermes (bus) adapter first | ✅ |
-| CR4 | `cortex-gateway.service` systemd user unit + `gateway.yaml.example` + deploy-map + doctor check; independence proof vs hermes-gateway.service (offline: no hermes dep; live cutover = S2d window) | ✅ |
+| CR4 | `fleet-gateway.service` systemd user unit + `gateway.yaml.example` + deploy-map + doctor check; independence proof vs hermes-gateway.service (offline: no hermes dep; live cutover = S2d window) | ✅ |
 | CR5 | pi backend adapter | ✅ — as a `command` SPEC, not an adapter: `ops/scripts/gateway-pi.example.yaml` (`kind: command`), live on @Esther0001Bot. The seam needed no code; the four reply-path defects it exposed (truncation, a wedged chat, a silent failed turn, no typing prompt) are fixed in the daemon/backend and tabled in `cortex-gateway-parity.md` |
 | CR6 | steadfaste backend adapter (blocked until steadfaste gateway is complete — Luke) | pending |
 

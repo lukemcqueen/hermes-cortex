@@ -20,7 +20,7 @@ not replacing`. Local-only scripts routinely block it: `remediation-sensor.py`,
 ## Why the Doctor Misses It
 
 The doctor's staleness checks compare repo vs `~/.steadfaste-fleet/scripts/`
-(which cortex-update keeps fresh), so it reports PASS. It does NOT compare
+(which fleet-update keeps fresh), so it reports PASS. It does NOT compare
 repo vs `~/.hermes/scripts/` — the directory the cron actually executes.
 
 ## Symptom

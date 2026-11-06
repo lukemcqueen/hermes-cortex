@@ -24,7 +24,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-FIXER = REPO / "ops" / "scripts" / "manage" / "fix-cortex-venv.py"
+FIXER = REPO / "ops" / "scripts" / "manage" / "fix-fleet-venv.py"
 VENV = Path.home() / ".steadfaste-fleet" / "venv"
 
 

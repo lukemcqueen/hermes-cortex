@@ -111,7 +111,7 @@ def _git(*args) -> str:
 
 
 def _doctor() -> str:
-    proc = subprocess.run([sys.executable, "ops/scripts/manage/cortex-doctor.py", "--quiet"],
+    proc = subprocess.run([sys.executable, "ops/scripts/manage/fleet-doctor.py", "--quiet"],
                           cwd=str(REPO), capture_output=True, text=True, timeout=900)
     body = proc.stdout + proc.stderr
     tail = [ln for ln in body.splitlines() if ln.strip()][-6:]
@@ -124,7 +124,7 @@ def main() -> int:
     ap.add_argument("--write-artifact", action="store_true",
                     help="write tests/artifacts/non-hermes-repo-identity-repro.txt")
     ap.add_argument("--include-doctor", action="store_true",
-                    help="append the cortex-doctor transcript to the artifact")
+                    help="append the fleet-doctor transcript to the artifact")
     args = ap.parse_args()
 
     # PINNED, not `HEAD~1`. A relative base is right only until the next commit lands: the fix
@@ -221,7 +221,7 @@ def main() -> int:
 
     if args.include_doctor:
         emit()
-        emit("Post-deploy doctor (this host, after `cortex-dogfood.sh --force`)")
+        emit("Post-deploy doctor (this host, after `fleet-dogfood.sh --force`)")
         emit("-" * 68)
         emit(_doctor())
 

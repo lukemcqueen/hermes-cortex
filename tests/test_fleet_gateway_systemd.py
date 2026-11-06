@@ -1,4 +1,4 @@
-"""CR4 — cortex-gateway systemd unit + config.
+"""CR4 — fleet-gateway systemd unit + config.
 
 The gateway's whole point is to serve WITHOUT the incumbent harness. These
 tests pin that: the unit carries no hermes-gateway dependency, the config
@@ -18,7 +18,7 @@ sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 import fleet_gateway.daemon  # noqa: E402,F401
 import fleet_gateway.hermes_backend  # noqa: E402,F401
 
-UNIT = _REPO / "docs" / "templates" / "cortex-gateway.service"
+UNIT = _REPO / "docs" / "templates" / "fleet-gateway.service"
 EXAMPLE = _REPO / "ops" / "scripts" / "gateway.yaml.example"
 
 

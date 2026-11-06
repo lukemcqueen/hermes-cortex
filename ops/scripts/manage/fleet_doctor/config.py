@@ -1,5 +1,5 @@
 """
-Config — paths, constants, and dynamic registries for cortex-doctor.
+Config — paths, constants, and dynamic registries for fleet-doctor.
 
 All path resolution, external service definitions, footprint manifests,
 and source-parsing logic lives here.
@@ -127,10 +127,10 @@ except (FileNotFoundError, OSError, IndexError):
 EXPECTED_MCP_SERVERS = {
     # "agent-bus" is the key the fleet actually REGISTERS (pi's install-pi-mcp.sh and this
     # host's config.yaml both use it). It was listed here as "cortex-bus" — which happens to
-    # appear in the args PATH (cortex-bus-mcp.py), so the name-in-config check passed for the
+    # appear in the args PATH (fleet-bus-mcp.py), so the name-in-config check passed for the
     # wrong reason and `--fix` would have added a SECOND, wrongly-named server for the same
     # script. 2026-10-13.
-    "agent-bus": "cortex-bus-mcp.py",
+    "agent-bus": "fleet-bus-mcp.py",
     # Two role-distinct registrations of the single loop-gov binary (Moses plan,
     # pro-reviewed 2026-10-29; Slice B): `review` (7 no-lock-authority tools,
     # --role review) and `loop-governance` (lock lifecycle + scoring + task
@@ -237,7 +237,7 @@ def parse_orch_crons():
     Source = create_cron calls, NOT the uninstall array. The uninstall array
     (``for job in \\`` block) tracks names for cleanup — including legacy
     crons with no create_cron entry — so it must never be used as the
-    expected-cron source. (Found 2026-08-03: cortex-bus-failover-watchdog was
+    expected-cron source. (Found 2026-08-03: fleet-bus-failover-watchdog was
     registered in BOTH install-crons.sh (universal) and the orch uninstall
     array, so workers — who exclude 'orch crons' — never saw it as expected
     and the doctor flagged it orphan/extra on every worker host.)

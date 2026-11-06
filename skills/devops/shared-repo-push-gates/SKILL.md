@@ -23,7 +23,7 @@ two sides adding rows — resolve to the UNION, then `GIT_EDITOR=true git rebase
 
 **The deploy-sync check runs before the push.** `Deploy sync ❌` with several `Checksum: <file>`
 lines means the deployed tree is behind the repo — typical after a rebase pulled in a peer's edits.
-The gate prints its own remedy (`bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`); run it,
+The gate prints its own remedy (`bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force`); run it,
 never hand-copy files into the deploy tree.
 
 **ORDER: close, then push BARE — do not open a cycle to "hold the lock" while you push.**
@@ -487,7 +487,7 @@ does not apply.
 4. **Orphaned PENDING cycles block push** (verified 2026-08-27, again 2026-09-02). The doctor
    FAILs on PENDING cycles from FINISHED tasks (no active lock) — e.g. a
    cycle created by `begin_change` in a session whose lock was later purged
-   by restart/cortex-update, OR a cycle created by a BACKGROUND/delegation
+   by restart/fleet-update, OR a cycle created by a BACKGROUND/delegation
    session (`bg_*` session id) that finished without scoring.
    - **A THIRD source is your OWN test suite: a test that calls the real `begin_change` /
      `feedback_accept` writes a row into the LIVE store.** Tests are run casually and
@@ -542,9 +542,9 @@ does not apply.
    committing a changed installer or deployable (install-crons.sh,
    install-orch-crons.sh, registered scripts). The fix is the same for
    every form: run `bash ops/scripts/fleet-update.sh` (deploy), then push.
-   Order is always commit → cortex-update → push. For the full dogfood
+   Order is always commit → fleet-update → push. For the full dogfood
    (pull → deploy → doctor → verify):
-   `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`.
+   `bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force`.
    (Its own pull step SKIPS itself when unpushed local commits exist — it prints
    `(unpushed local commits present — skipping pull; local work is what we verify)` — so the
    deploy+doctor run against YOUR tree with no peer merge; read that line rather than reporting a
@@ -573,7 +573,7 @@ does not apply.
      pull to a file: the doctor's overall line inside it is what tells you whether the gate will
      pass, and re-reading a 3-line summary beats a second 30-minute deploy.
    A mid-push deploy may itself report cost-tracking marker FAILs inside
-   scheduler/cronjob files; re-run `cortex-dogfood.sh` — if it ends with
+   scheduler/cronjob files; re-run `fleet-dogfood.sh` — if it ends with
    `✅ DOGFOOD PASSED`, the deploy is clean and the push succeeds on retry.
    - **A `❌ Deploy sync` with NO code change you can account for is usually
      SKILL DRIFT: a deployed skill copy is newer than its repo source, because
@@ -642,7 +642,7 @@ does not apply.
      doctor's list yourself, one skill at a time:
      `cmp -s skills/<cat>/<n>/SKILL.md "$HOME/.hermes/skills/<cat>/<n>/SKILL.md"`. Then propagate
      DEPLOYED → repo (that is the direction the doctor prescribes, "commit the repo source before
-     cortex-update overwrites it"), and VERIFY each copy in the same pass by comparing `sha256sum`
+     fleet-update overwrites it"), and VERIFY each copy in the same pass by comparing `sha256sum`
      of both sides — a copy you did not verify is a claim, not a fix. A deploy cannot repair this
      drift: the deploy itself runs repo → deployed.
    - **Diff a superset before copying it; its removals are usually REWRITES, not losses.** A
@@ -850,7 +850,7 @@ written while every code path looked correct.
   show ✅ loaded (the ✅ reflects the in-memory set, the block reflects the
   stale marker). The block message now names the skills whose content changed:
   re-load THOSE via `skill_view()` (serial; the 7th of a full set regenerates
-  the marker) BEFORE continuing the push sequence. A deploy (cortex-update)
+  the marker) BEFORE continuing the push sequence. A deploy (fleet-update)
   only has this effect when the deployed skill CONTENT actually changed.
   Verified 2026-09-02 (change-checklist trim → push gate blocked
   mid-sequence); mechanism corrected 2026-09-23.
@@ -873,7 +873,7 @@ written while every code path looked correct.
   operator is away) — so commit locally, report the blocking check plus the local SHA
   ("committed locally, not yet pushed"), and let the operator approve the fix. Never
   bypass the gate or delete the check to silence it.
-- The dogfood gate auto-runs cortex-update; its pull step failing with
+- The dogfood gate auto-runs fleet-update; its pull step failing with
   "cannot pull with rebase: You have unstaged changes" is a second
   fingerprint of the concurrent tree.
 - **Stash-and-restore is the repeatable pattern for rebase-with-peer-changes** when
@@ -886,7 +886,7 @@ written while every code path looked correct.
   checksum failures at once** (`Checksum: <new-module>` alongside checksums of
   peer-modified files) — after deploy, re-check the doctor output for which
   failures REMAIN before assuming your fix was incomplete.
-- Docs-only changes are deploy-exempt (cortex-update does not deploy
+- Docs-only changes are deploy-exempt (fleet-update does not deploy
   docs/) — no deploy step needed after a docs push.
 - **Never pass a multi-line or backtick-bearing body to `git commit -m`.** A
   shell-quoted `-m "..."` is expanded by the shell BEFORE git sees it, so

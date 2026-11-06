@@ -15,8 +15,8 @@ Module interface:
     Sandbox(config).is_allowed(path, op)    # returns bool
 
 CLI:
-    python3 cortex-sandbox.py status         # json status
-    python3 cortex-sandbox.py check <path>   # exit 0=allowed, 1=blocked
+    python3 fleet-sandbox.py status         # json status
+    python3 fleet-sandbox.py check <path>   # exit 0=allowed, 1=blocked
 """
 
 import sys
@@ -104,7 +104,7 @@ def load_config(config_path: Optional[Path] = None) -> SandboxConfig:
     except (FileNotFoundError, OSError):
         return SandboxConfig()
     except yaml.YAMLError as e:
-        print(f"cortex-sandbox: invalid YAML in {path}: {e}", file=sys.stderr)
+        print(f"fleet-sandbox: invalid YAML in {path}: {e}", file=sys.stderr)
         return SandboxConfig()
 
     if not isinstance(raw, dict):
@@ -114,7 +114,7 @@ def load_config(config_path: Optional[Path] = None) -> SandboxConfig:
     if sandbox_cfg is None:
         return SandboxConfig()
     if not isinstance(sandbox_cfg, dict):
-        print("cortex-sandbox: 'folder_access' must be a mapping, using defaults", file=sys.stderr)
+        print("fleet-sandbox: 'folder_access' must be a mapping, using defaults", file=sys.stderr)
         return SandboxConfig()
 
     level = sandbox_cfg.get("level", DEFAULT_LEVEL)
@@ -125,11 +125,11 @@ def load_config(config_path: Optional[Path] = None) -> SandboxConfig:
         allowed_paths = [sandbox_cfg["allowed_path"]]
 
     if level not in VALID_LEVELS:
-        print(f"cortex-sandbox: invalid level '{level}', defaulting to 'full'", file=sys.stderr)
+        print(f"fleet-sandbox: invalid level '{level}', defaulting to 'full'", file=sys.stderr)
         level = DEFAULT_LEVEL
 
     if level == "specific" and not allowed_paths:
-        print("cortex-sandbox: level=specific but no allowed_paths set, defaulting to 'full'",
+        print("fleet-sandbox: level=specific but no allowed_paths set, defaulting to 'full'",
               file=sys.stderr)
         level = DEFAULT_LEVEL
 
@@ -201,7 +201,7 @@ def _cmd_status():
 
 def _cmd_check():
     if len(sys.argv) < 3:
-        print("Usage: cortex-sandbox.py check <path> [operation]", file=sys.stderr)
+        print("Usage: fleet-sandbox.py check <path> [operation]", file=sys.stderr)
         sys.exit(2)
     path = sys.argv[2]
     operation = sys.argv[3] if len(sys.argv) > 3 else "write"
@@ -218,7 +218,7 @@ def _cmd_check():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: cortex-sandbox.py <status|check> [...]", file=sys.stderr)
+        print("Usage: fleet-sandbox.py <status|check> [...]", file=sys.stderr)
         sys.exit(2)
     cmd = sys.argv[1]
     if cmd == "status":

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  install-cortex-update-cron.sh — Register daily auto-update
+#  install-fleet-update-cron.sh — Register daily auto-update
 #
 #  Creates a system-level cron job (launchd / systemd timer /
 #  crontab) that runs fleet-update.sh daily at 3am.
@@ -13,15 +13,15 @@
 #  services were restarted.
 #
 #  Usage:
-#    bash install-cortex-update-cron.sh
-#    bash install-cortex-update-cron.sh --uninstall
+#    bash install-fleet-update-cron.sh
+#    bash install-fleet-update-cron.sh --uninstall
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
-SERVICE_NAME="com.hermes.cortex-update"
+SERVICE_NAME="com.hermes.fleet-update"
 UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/fleet-update.sh"
 STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state"
 mkdir -p "$STATE_DIR"

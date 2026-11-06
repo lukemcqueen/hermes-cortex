@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cortex-gateway functional parity matrix — executed, not asserted.
+"""fleet-gateway functional parity matrix — executed, not asserted.
 
 Answers Luke's "thoroughly test for parity between the two gateways" and then
 "build feature parity, and once we are confident, then cut over" (2026-10-02).
@@ -54,7 +54,7 @@ def _adapter(home_channel=None, results=None):
 
 def test_inbound_parity_matrix():
     """Each golden update → the target's actual envelope (or None), per the matrix."""
-    print("inbound: golden Telegram updates → cortex-gateway parse()")
+    print("inbound: golden Telegram updates → fleet-gateway parse()")
     for c in _CASES:
         a, _ = _adapter()
         env = a.parse(c["update"])

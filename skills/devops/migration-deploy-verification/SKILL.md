@@ -74,7 +74,7 @@ violation). The deploy-map gap was the real remaining bug.
 2. Deploy via the sanctioned invocation: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`
 3. Confirm migrate.py on the already-migrated host reports a no-op (idempotent):
    `tasks schema up to date (version N) — no-op`
-4. Commit + push. Every host's next cortex-update deploys the files and
+4. Commit + push. Every host's next fleet-update deploys the files and
    migrate.py takes their DB to the top version automatically.
 
 ## Verification pattern (prove it, then attack the premise)

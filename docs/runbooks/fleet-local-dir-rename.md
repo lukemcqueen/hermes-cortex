@@ -81,14 +81,14 @@ systemctl --user enable cortex-bridge-agent-steadfaste-fleet-sync.timer
 
 ### 3. Repoint standalone unit paths
 
-Any unit whose `ExecStart`/`WorkingDirectory` reads `hermes-cortex` (e.g. `cortex-gateway*`,
+Any unit whose `ExecStart`/`WorkingDirectory` reads `hermes-cortex` (e.g. `fleet-gateway*`,
 `hermes-cortex-dashboard`, `health-vector`) — sweep the path token, then `daemon-reload`:
 
 ```bash
 grep -rl hermes-cortex ~/.config/systemd/user/   # list them first
 # edit each `hermes-cortex` path token → `steadfaste-fleet`, then:
 systemctl --user daemon-reload
-systemctl --user restart cortex-gateway health-vector hermes-cortex-dashboard 2>/dev/null
+systemctl --user restart fleet-gateway health-vector hermes-cortex-dashboard 2>/dev/null
 ```
 
 ### 4. Remove stale deployed scripts
@@ -129,7 +129,7 @@ Score it by `cycle_id` (never `task_id` for another session's row) via
 ### 7. Verify
 
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet   # 0 fail
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet   # 0 fail
 curl -fsS 127.0.0.1:8903/health                                          # 200 (bus)
 grep -rl hermes-cortex ~/.config/systemd/user/ /usr/local/sbin/          # nothing
 grep -rl 'hermes-cortex' ~/.steadfaste-fleet/scripts/                    # nothing but the transition tools
@@ -188,14 +188,14 @@ The repo sweep and §1–§7 leave several **harness-owned, non-repo** configs s
 
 - `~/.pi/agent/mcp.json` — the **Pi-harness MCP manifest Pi actually reads** (not a repo
   `.mcp.json`). Six servers carry `~/.hermes-cortex/...` (`deepseek` `command`, and
-  `loop-governance`, `tasks`, `executor`, `agent-bus`, `cortex-context` `args`); repoint to
+  `loop-governance`, `tasks`, `executor`, `agent-bus`, `fleet-context` `args`); repoint to
   `~/.steadfaste-fleet/...`.
 - `~/.pi/agent/settings.json` — Pi harness extension scripts
-  `/Users/luke/.hermes-cortex/harnesses/pi/extensions/{cortex-context,cortex-governance}.ts` →
+  `/Users/luke/.hermes-cortex/harnesses/pi/extensions/{fleet-context,cortex-governance}.ts` →
   `~/.steadfaste-fleet/harnesses/pi/extensions/`.
 - `~/.steadfaste-fleet/agent.env` — `CORTEX_PYTHON=/Users/luke/.hermes-cortex/venv/bin/python3` →
   `~/.steadfaste-fleet/venv/bin/python3` (the doctor flags this if left).
-- `~/.steadfaste-fleet/gateway.yaml` — the `cortex-gateway/pi_control.py` commands (`compact`,
+- `~/.steadfaste-fleet/gateway.yaml` — the `fleet-gateway/pi_control.py` commands (`compact`,
   `check-model`) carry `/Users/luke/.hermes-cortex/...` → `~/.steadfaste-fleet/...`.
 - `~/.hermes/hermes-agent/.claude/settings.local.json` — a couple of `Read(//Users/luke/hermes-cortex/...)`
   permission rules. **Redundant** (superseded by `Read(//Users/luke/**)`); edit only if handy — the

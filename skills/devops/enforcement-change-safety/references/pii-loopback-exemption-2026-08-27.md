@@ -40,7 +40,7 @@ to /tmp (outside the shared surface), run via `terminal`, `ast.parse` the
 result before writing back. Same pattern as creation commit 7dbe7335.
 
 ## Deployed ≠ in-memory (plugin variant)
-After `cortex-dogfood.sh` deploys a new enforcer, the RUNNING gateway keeps
+After `fleet-dogfood.sh` deploys a new enforcer, the RUNNING gateway keeps
 the old module until restart. Same-session `patch`/`write_file` calls still
 see the old gate. Git hooks and the dogfood doctor read the DEPLOYED file,
 so a repo edit the deployed gate accepts commits/pushes cleanly. Verify with

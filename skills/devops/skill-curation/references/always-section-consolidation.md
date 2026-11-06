@@ -69,7 +69,7 @@ Pre-push hook runs the doctor and blocks until deployed == repo
    `end_change`) — a PENDING cycle from a FINISHED task (no live lock, e.g. a
    sibling subagent that begin_change'd but never closed) is a doctor FAIL
    that blocks push; `feedback_accept` on it is legitimate cleanup, not a bypass
-4. Doctor green (`cortex-doctor.py --quiet`, expect WARNING at most)
+4. Doctor green (`fleet-doctor.py --quiet`, expect WARNING at most)
 5. `git push` (pull --rebase first)
 
 `end_change` releases the lock — open a fresh `begin_change` if you still

@@ -39,7 +39,7 @@ does not "fix" it.
 The short name `cortex` survives throughout and was NOT renamed to `fleet`, per
 the current instruction (only `hermes-cortex` → `steadfaste-fleet`):
 - service/artifact names: `cortex-bus`, `fleet-update.sh`, `fleet_gateway`,
-  `cortex-doctor`, `cortex-dashboard`, `mycortex`
+  `fleet-doctor`, `cortex-dashboard`, `mycortex`
 - env var: `CORTEX_DEPLOY_HOME`
 - skill dirs: `cortex-bus*`, `cortex-preflight`, `cortex-deployment-sync`, `mycortex`
 

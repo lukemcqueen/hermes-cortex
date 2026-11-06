@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-FIXER = REPO / "ops" / "scripts" / "manage" / "fix-cortex-venv.py"
+FIXER = REPO / "ops" / "scripts" / "manage" / "fix-fleet-venv.py"
 REQS = REPO / "ops" / "install" / "requirements.txt"
 
 
@@ -97,7 +97,7 @@ def test_check_mode_reports_gaps_and_exits_3(tmp_path):
     )
     assert r.returncode == 3, f"gaps must be rc=3 (not a pass, not a crash): {r.stdout}{r.stderr}"
     assert "missing" in (r.stdout + r.stderr).lower()
-    assert "fix-cortex-venv.py" in (r.stdout + r.stderr), \
+    assert "fix-fleet-venv.py" in (r.stdout + r.stderr), \
         "the report must name the command that fixes it"
 
 
@@ -132,7 +132,7 @@ def test_requirements_are_found_in_both_layouts(fixer, tmp_path):
     repo_like = tmp_path / "r" / "ops" / "install"
     repo_like.mkdir(parents=True)
     (repo_like / "requirements.txt").write_text("mcp\n")
-    script = tmp_path / "r" / "ops" / "scripts" / "manage" / "fix-cortex-venv.py"
+    script = tmp_path / "r" / "ops" / "scripts" / "manage" / "fix-fleet-venv.py"
     script.parent.mkdir(parents=True)
     script.write_text("")
     assert fixer.find_requirements(script) == repo_like / "requirements.txt"
@@ -140,7 +140,7 @@ def test_requirements_are_found_in_both_layouts(fixer, tmp_path):
     dep_like = tmp_path / "d" / "install"
     dep_like.mkdir(parents=True)
     (dep_like / "requirements.txt").write_text("mcp\n")
-    dscript = tmp_path / "d" / "scripts" / "fix-cortex-venv.py"
+    dscript = tmp_path / "d" / "scripts" / "fix-fleet-venv.py"
     dscript.parent.mkdir(parents=True)
     dscript.write_text("")
     assert fixer.find_requirements(dscript) == dep_like / "requirements.txt"
@@ -156,8 +156,9 @@ def test_the_json_report_has_the_fields_a_hook_needs(tmp_path):
     data = json.loads(r.stdout.strip().split("\n")[-1])
     assert data["venv_ok"] is True
     assert set(data["missing"]) == {"mcp>=2.0", "PyYAML>=6.0", "fastapi>=0.100",
-                                    "uvicorn>=0.23", "psycopg[binary]>=3.1", "pytest>=7.0"}
-    assert any(a.endswith("fix-cortex-venv.py") for a in data["fix_argv"]), \
+                                    "uvicorn>=0.23", "psycopg[binary]>=3.1", "pytest>=7.0",
+                                    "requests>=2.31", "certifi>=2023.5.7"}
+    assert any(a.endswith("fix-fleet-venv.py") for a in data["fix_argv"]), \
         f"the report must name the command that fixes it: {data['fix_argv']}"
     assert str(py.parent.parent) in data["fix_argv"], "the report must name the venv it measured"
 
@@ -235,7 +236,7 @@ def test_check_flags_an_importable_but_incompatible_sdk(tmp_path):
     assert "incompatible" in out.lower(), (
         f"the report must name the real cause, not 'missing':\n{out}")
     assert "mcp>=2.0" in out, f"the report must name the requirement:\n{out}"
-    assert "fix-cortex-venv.py" in out, f"the report must name the fix command:\n{out}"
+    assert "fix-fleet-venv.py" in out, f"the report must name the fix command:\n{out}"
     assert "Traceback" not in out, f"a gap is not a crash:\n{out}"
 
 

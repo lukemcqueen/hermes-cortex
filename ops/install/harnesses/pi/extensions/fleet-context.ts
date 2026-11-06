@@ -1,5 +1,5 @@
 /**
- * cortex-context.ts — Pi extension: the LIFECYCLE half of cortex context (S2c).
+ * fleet-context.ts — Pi extension: the LIFECYCLE half of cortex context (S2c).
  *
  * VERIFIED AGAINST PI 1.0.0, NOT GUESSED.
  *
@@ -15,7 +15,7 @@
  *
  * WHY THIS FILE NO LONGER REGISTERS TOOLS (2026-10-03):
  *   The memory/session TOOLS come from the shared MCP server
- *   (`~/.steadfaste-fleet/scripts/cortex-context-mcp.py`, registered for Pi by
+ *   (`~/.steadfaste-fleet/scripts/fleet-context-mcp.py`, registered for Pi by
  *   `install-pi-mcp.sh`) — the SAME server Claude Code and Codex use, with
  *   schemas DERIVED from `ops/services/mycortex-mem/context_tools.py`.
  *
@@ -32,8 +32,8 @@
  *   killed session cannot call a tool — so the trigger lives in the lifecycle.
  *
  * INSTALL (in the Pi project):
- *   cp <cortex>/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
- *   pi -e extensions/cortex-context.ts --tools read,bash,edit,write
+ *   cp <cortex>/ops/install/harnesses/pi/extensions/fleet-context.ts extensions/
+ *   pi -e extensions/fleet-context.ts --tools read,bash,edit,write
  *   (the memory/session tools are NOT listed in --tools: they arrive via MCP)
  *
  * ENV: CORTEX_SESSION_HARNESS / _REPO / _BRANCH / _KEY (else derived from git;
@@ -57,7 +57,7 @@ const run = promisify(execFile);
 
 const CLI =
   process.env.CORTEX_CONTEXT_CLI ??
-  `${process.env.HOME}/.steadfaste-fleet/scripts/cortex-context.py`;
+  `${process.env.HOME}/.steadfaste-fleet/scripts/fleet-context.py`;
 
 /**
  * The GOVERNANCE CLI. The reflexion gate keys its question to the ACTIVE

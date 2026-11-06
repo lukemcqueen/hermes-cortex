@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 _REPO = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "fleet_bus_mcp_subject", _REPO / "mcp-servers" / "cortex-bus-mcp.py"
+    "fleet_bus_mcp_subject", _REPO / "mcp-servers" / "fleet-bus-mcp.py"
 )
 _bus = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_bus)

@@ -15,12 +15,12 @@ Sources under `~/steadfaste-fleet/` → dest under `~/.hermes/` or `~/`.
 | `ops/scripts/manage/memory-to-brain-sync.py` | `~/.hermes/scripts/memory-to-brain-sync.py` | |
 | `ops/scripts/install/bootstrap-brain.sh` | `~/.hermes/scripts/bootstrap-brain.sh` | |
 | `ops/scripts/health/check-memory-budget.sh` | `~/.hermes/scripts/check-memory-budget.sh` | |
-| `ops/scripts/manage/cortex-health.sh` | `~/.hermes/scripts/cortex-health.sh` | |
-| `ops/scripts/install/cortex-setup-langfuse.sh` | `~/.hermes/scripts/cortex-setup-langfuse.sh` | |
+| `ops/scripts/manage/fleet-health.sh` | `~/.hermes/scripts/fleet-health.sh` | |
+| `ops/scripts/install/fleet-setup-langfuse.sh` | `~/.hermes/scripts/fleet-setup-langfuse.sh` | |
 | `ops/scripts/install/install-legacy-sync.sh` | `~/.hermes/scripts/install-legacy-sync.sh` | `restart_legacy_sync` |
 | `ops/scripts/install/install-ollama.sh` | `~/.hermes/scripts/install-ollama.sh` | |
 | `ops/scripts/install/install-nginx.sh` | `~/.hermes/scripts/install-nginx.sh` | |
-| `ops/scripts/install/install-cortex-update-cron.sh` | `~/.hermes/scripts/install-cortex-update-cron.sh` | |
+| `ops/scripts/install/install-fleet-update-cron.sh` | `~/.hermes/scripts/install-fleet-update-cron.sh` | |
 | `ops/scripts/health/prod-watchdog.sh` | `~/.hermes/scripts/prod-watchdog.sh` | |
 | `ops/scripts/install/os-config.sh` | `~/.hermes/scripts/os-config.sh` | |
 | `ops/scripts/install/service-writer.sh` | `~/.hermes/scripts/service-writer.sh` | |
@@ -54,7 +54,7 @@ Sources under `~/steadfaste-fleet/` → dest under `~/.hermes/` or `~/`.
 ### Dashboard
 | `ops/services/dashboard/server.py` | `~/.steadfaste-fleet/dashboard/server.py` | `restart_dashboard` |
 | `ops/services/dashboard/static/index.html` | `~/.steadfaste-fleet/dashboard/static/index.html` | |
-| `ops/services/dashboard/com.hermes.cortex-dashboard.plist` | `~/Library/LaunchAgents/com.hermes.cortex-dashboard.plist` | |
+| `ops/services/dashboard/com.hermes.fleet-dashboard.plist` | `~/Library/LaunchAgents/com.hermes.fleet-dashboard.plist` | |
 
 ### Agent inbox
 

@@ -258,7 +258,7 @@ rejected.
 - Bus tasks (`source='inbox'`): > threshold (default 1h, configurable) in
   `in_progress` → sweep to **paused** with `reason='stale'` — NOT cancelled
   (preserves the arc, matches D-2; a human/next-run resolves). Allowlist
-  (`target`/`project` in config) exempts legitimately long EXEC/cortex-update.
+  (`target`/`project` in config) exempts legitimately long EXEC/fleet-update.
   Runs on the handler tick — no new infra, idempotent. Emits event + notify.
 - Manual tasks (`source='manual'`): > 24h in `in_progress` → **FLAG only**
   (doctor WARN + list marker) — never auto-transition (Product R-4: the feed
@@ -369,8 +369,8 @@ extends the base regex).
   - `< 5` → **graceful degradation**: reject `--status paused` /
     `--parent`/`--kind`/`switch` with clear "requires v005" errors, skip event
     emission, keep v1 behavior. No "function does not exist" confusion.
-- **Deploy order:** cortex-update syncs code → runs migrate.py → doctor
-  FAILs on `schema_version < expected` → recovery = re-run cortex-update
+- **Deploy order:** fleet-update syncs code → runs migrate.py → doctor
+  FAILs on `schema_version < expected` → recovery = re-run fleet-update
   (standard runbook step). The failing host is never silently degraded.
 - **`task_upsert` arity:** new params appended with defaults (3.5) — legacy
   17-arg callers (dream-bridge, restore, MCP wrappers, 3 positional SQL
@@ -426,7 +426,7 @@ QA-gated). $0 infra. ~1–2 hrs/wk maintenance.
 2. **Real-Telegram dogfood ≥ 1 day:** live EXEC + manual + story/slice
    transitions; **measure DM volume/format vs ≤40/day target**; tune quiet
    hours/mutes if over.
-3. **Fleet-wide only after:** Esther dogfood clean → cortex-update per host →
+3. **Fleet-wide only after:** Esther dogfood clean → fleet-update per host →
    doctor green everywhere → Luke confirms format/volume acceptable.
 
 ---

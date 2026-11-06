@@ -136,7 +136,7 @@ apply an *undeployed* tree.
   exists and the deployed copy is last).
 - **The live read-only probe, on this host:** the new version read returns
   `16` and the check reports PASS; run against the deployed `checks.py`.
-- **The doctor still runs green end-to-end:** `cortex-doctor.py` exits with no
+- **The doctor still runs green end-to-end:** `fleet-doctor.py` exits with no
   new FAIL, and the `Task Lifecycle v2 schema` line is read from the transcript
   (not retyped).
 - **No mutation:** `tasks.schema_version` and `pg_proc` counted for

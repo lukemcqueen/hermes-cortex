@@ -6,7 +6,7 @@ wiring is real.
 
 **What you are wiring:** one store (`mycortex_mem` in the mycortex Postgres
 instance) with two families — `mem_*` (what do I know?) and `session_*` (where am
-I?). Design: [`docs/design/cortex-memory-session-mcp.md`](../design/cortex-memory-session-mcp.md).
+I?). Design: [`docs/design/fleet-memory-session-mcp.md`](../design/fleet-memory-session-mcp.md).
 
 **Never reimplement the tool semantics.** `mem_profile`, `session_restore` and
 friends have ONE implementation: `ops/services/mycortex-mem/context_tools.py`.
@@ -71,7 +71,7 @@ known host-side failure to check before filing a bug).
 ```
                  ops/services/mycortex-mem/context_tools.py      ← ONE implementation
                         │                        │
-        mcp-servers/cortex-context-mcp.py   ops/scripts/cortex-context.py
+        mcp-servers/fleet-context-mcp.py   ops/scripts/fleet-context.py
              (MCP transport)                     (CLI transport)
                         │                        │
         Hermes · Claude Code · Codex              Pi (+ anything that shells out)
@@ -142,7 +142,7 @@ grep -n -A10 "interface TurnEndEvent" "$P"/dist/core/extensions/types.d.ts
 ### 3a. Verify the store first (always)
 
 ```bash
-cortex-context mem_context '{}'      # or: python3 ~/steadfaste-fleet/ops/scripts/cortex-context.py mem_context '{}'
+fleet-context mem_context '{}'      # or: python3 ~/steadfaste-fleet/ops/scripts/fleet-context.py mem_context '{}'
 ```
 
 Expect JSON with `"card": [...]`. If you get
@@ -156,10 +156,10 @@ down — you will chase a phantom.
 Register the server once. For Hermes:
 
 ```bash
-hermes mcp add cortex-context \
+hermes mcp add fleet-context \
     --command ~/.steadfaste-fleet/venv/bin/python3 \
-    --args ~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py
-hermes mcp list | grep cortex-context      # verify it registered
+    --args ~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py
+hermes mcp list | grep fleet-context      # verify it registered
 ```
 
 The tools then appear as `mcp__cortex_context__mem_context`, etc.
@@ -171,15 +171,15 @@ and the tool allowlist is persisted via `defaultTools` — **no `-e`/`--tools`
 flags needed at launch** (pi ≥ 1.0; `pi --version` to confirm).
 
 The harness installer deploys the extension to
-`~/.steadfaste-fleet/harnesses/pi/extensions/cortex-context.ts` (repo source:
-`ops/install/harnesses/pi/extensions/cortex-context.ts`). Register it and the
+`~/.steadfaste-fleet/harnesses/pi/extensions/fleet-context.ts` (repo source:
+`ops/install/harnesses/pi/extensions/fleet-context.ts`). Register it and the
 cortex tools in `~/.pi/agent/settings.json` — `+name` entries in `defaultTools`
 add to the inherited default set (`read, bash, edit, write`):
 
 ```json
 {
   "extensions": [
-    "~/.steadfaste-fleet/harnesses/pi/extensions/cortex-context.ts"
+    "~/.steadfaste-fleet/harnesses/pi/extensions/fleet-context.ts"
   ],
   "defaultTools": [
     "+mem_context", "+mem_search", "+mem_profile", "+mem_conclude",
@@ -199,7 +199,7 @@ added to the setting but does not disable removed ones.
 Legacy launch form (still valid, per-invocation):
 
 ```bash
-pi -e ~/.steadfaste-fleet/harnesses/pi/extensions/cortex-context.ts \
+pi -e ~/.steadfaste-fleet/harnesses/pi/extensions/fleet-context.ts \
    --tools read,bash,edit,write,mem_context,mem_search,mem_profile,mem_conclude,session_checkpoint,session_restore,session_search,session_note,session_close
 ```
 
@@ -227,7 +227,7 @@ running service").
    (e.g. a decision `"wiring-proof-<timestamp>"`), let the turn end naturally so
    the hook fires, then confirm it landed:
    ```bash
-   cortex-context session_restore '{}' | grep wiring-proof
+   fleet-context session_restore '{}' | grep wiring-proof
    ```
    If it is missing, your hook is not firing — check stderr for `CORTEX_FAIL`.
 3. **Session-start injection.** Start a SECOND session and confirm the checkpoint

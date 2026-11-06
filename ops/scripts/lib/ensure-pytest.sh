@@ -32,7 +32,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 VENV="${PYTEST_VENV:-${HOME}/.steadfaste-fleet/venv}"
 PY="${VENV}/bin/python3"
 AGE_CHECK="${REPO}/ops/scripts/health/check-package-age.py"
-VENV_FIX="${REPO}/ops/scripts/manage/fix-cortex-venv.py"
+VENV_FIX="${REPO}/ops/scripts/manage/fix-fleet-venv.py"
 REQUIREMENTS="${REPO}/ops/install/requirements.txt"
 MIN_AGE_DAYS="${MIN_AGE_DAYS:-14}"
 

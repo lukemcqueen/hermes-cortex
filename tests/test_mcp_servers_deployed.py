@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every MCP server must be deployed to EVERY host — and only one class per source.
 
-Found 2026-10-02 via Titus (worker-4): `cortex-bus-mcp.py` was registered with
+Found 2026-10-02 via Titus (worker-4): `fleet-bus-mcp.py` was registered with
 `register_orch` (orchestrator-only), so non-orchestrator hosts never received it.
 Nothing failed loudly — `install-pi-mcp.sh` warned and went on to register 3 of the 4
 MCP servers, so that host's Pi integration silently lacked the bus, and the agent
@@ -12,7 +12,7 @@ it. So:
 
   A. every `mcp-servers/*.py` must be registered (deploy or orch) — an unregistered
      server is dead weight that only surfaces when someone misses it;
-  B. `cortex-bus-mcp.py` must be a PLAIN register: its tools are all client tools
+  B. `fleet-bus-mcp.py` must be a PLAIN register: its tools are all client tools
      (inbox_send/read/watch/list_agents/send_task/…) and every agent's card declares
      `bus_access: client`, while install-pi-mcp.sh requires the file on every host;
   C. `loop-gov-mcp.py` must be a plain register — the governance gate is needed
@@ -69,10 +69,10 @@ def test_mcp_servers_are_deployed_everywhere() -> None:
            f"never deployed (invisible until someone needs it): {unregistered}")
 
     # B. the bus MCP ships to every host
-    bus = [k for k in by_source if k.endswith("mcp-servers/cortex-bus-mcp.py")]
+    bus = [k for k in by_source if k.endswith("mcp-servers/fleet-bus-mcp.py")]
     bus_cls = sorted(by_source.get(bus[0], set())) if bus else []
-    _check("cortex-bus-mcp.py is registered", bool(bus))
-    _check("cortex-bus-mcp.py is NOT orchestrator-only",
+    _check("fleet-bus-mcp.py is registered", bool(bus))
+    _check("fleet-bus-mcp.py is NOT orchestrator-only",
            bus_cls == ["register"],
            f"classes={bus_cls} — every agent is a bus client (agent cards say "
            f"bus_access: client) and install-pi-mcp.sh needs it on every host")
@@ -110,8 +110,8 @@ def test_guard_catches_an_orch_only_regression() -> None:
     Without this, check B could be passing because it is simply not looking.
     """
     try:
-        _with_modified_update(('register "mcp-servers/cortex-bus-mcp.py"',
-                               'register_orch "mcp-servers/cortex-bus-mcp.py"'))
+        _with_modified_update(('register "mcp-servers/fleet-bus-mcp.py"',
+                               'register_orch "mcp-servers/fleet-bus-mcp.py"'))
     except AssertionError as e:
         assert "NOT orchestrator-only" in str(e), f"fired for the wrong reason: {e}"
         print("  PASS  control: the guard fires when the bus MCP becomes orch-only")
@@ -122,9 +122,9 @@ def test_guard_catches_an_orch_only_regression() -> None:
 def test_guard_catches_a_duplicate_registration() -> None:
     """CONTROL: the duplicate-class trap (the bug's own first fix) must fire too."""
     try:
-        _with_modified_update(('register "mcp-servers/cortex-bus-mcp.py"',
-                               'register "mcp-servers/cortex-bus-mcp.py"\n'
-                               'register_orch "mcp-servers/cortex-bus-mcp.py"'))
+        _with_modified_update(('register "mcp-servers/fleet-bus-mcp.py"',
+                               'register "mcp-servers/fleet-bus-mcp.py"\n'
+                               'register_orch "mcp-servers/fleet-bus-mcp.py"'))
     except AssertionError as e:
         assert "NOT orchestrator-only" in str(e) or "two classes" in str(e), \
             f"fired for the wrong reason: {e}"

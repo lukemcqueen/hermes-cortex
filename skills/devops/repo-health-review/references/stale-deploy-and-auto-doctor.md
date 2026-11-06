@@ -35,15 +35,15 @@ Runs in full doctor mode (not quick mode). Reports:
 - Deploy files that are symlinks instead of copies → WARN
 
 ```bash
-python3 ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stale deploy"
+python3 ops/scripts/manage/fleet-doctor.py 2>&1 | grep "Stale deploy"
 ```
 
 ### 3. Auto-Doctor After Install & Update
 
-**install.sh** — runs `cortex-doctor.py --quiet` after installation completes
+**install.sh** — runs `fleet-doctor.py --quiet` after installation completes
 (before final cleanup).
 
-**fleet-update.sh** — runs `cortex-doctor.py --quiet` after update finishes
+**fleet-update.sh** — runs `fleet-doctor.py --quiet` after update finishes
 (after service verify, stale cleanup, cron install, governance lock cleanup).
 
 Both use `|| true` so warnings never block the install/update.
@@ -55,7 +55,7 @@ Includes: repo status, crons, scripts, services, system, config, governance,
 install footprint. Skips: skills manifest, nginx config, stale deploys.
 
 ```bash
-python3 ops/scripts/manage/cortex-doctor.py --quick
+python3 ops/scripts/manage/fleet-doctor.py --quick
 ```
 
 ## Architecture
@@ -70,6 +70,6 @@ The doctor was modularized into `fleet_doctor/` package (8 modules):
 - `cli.py` — main entry point with arg parsing
 - `__init__.py` — package exports
 
-The old `cortex-doctor.py` is now a 34-line shim. To add a new check:
+The old `fleet-doctor.py` is now a 34-line shim. To add a new check:
 1. Create a `def check_xxx(res):` function in `checks.py`
 2. Add to `all_checks` list in `cli.py`

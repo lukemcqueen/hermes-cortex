@@ -15,9 +15,9 @@ ENVIRONMENTAL — a stale deploy record, a hook false positive, or a shell
 exit-code trap — not a problem with your diff. Diagnose the gate first;
 your commit is usually fine.
 
-## 1. "Deploy sync FAIL" that survives repeated cortex-update runs
+## 1. "Deploy sync FAIL" that survives repeated fleet-update runs
 
-**Symptom:** `cortex-doctor.py` shows `❌ Deploy sync` with "HEAD ahead of
+**Symptom:** `fleet-doctor.py` shows `❌ Deploy sync` with "HEAD ahead of
 last deploy" even after `fleet-update.sh` runs "cleanly" (rc 0 or rc 1
 with a normal-looking log tail). The pre-push gate then blocks every push.
 
@@ -51,7 +51,7 @@ and confirm the record advanced ("State saved: <hash>" + fresh mtime).
 
 **Real root cause found this way (2026-09-01):** systemd ≥261 requires the
 `.service` suffix in `systemctl list-unit-files <name>` — a bare name
-returns EMPTY output/rc=1 even when the unit exists. cortex-update's
+returns EMPTY output/rc=1 even when the unit exists. fleet-update's
 SERVICE_CTL scope-detection grepped `^${unit}` on a suffix-less query, the
 check failed, it fell back to `systemctl --user`, and the dbus error
 ("Failed to connect to user scope bus") under `set -euo pipefail` killed the
@@ -197,7 +197,7 @@ all of them in one pass, then grep the set clean before continuing.
 
 **Check the deployed copy matches repo first** — `diff` the deployed `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py` against `mcp-servers/loop-gov-mcp.py`; the ONLY allowed difference is the injected `# SOURCE:` / `# Do NOT edit` header lines. Any other diff (or a running gateway process started before the fix — "deploy ≠ load") means the running code is stale and the fix hasn't loaded.
 
-**Same deploy≠load window refuses `end_change` with a reviewer EXCEPTION, not a clean banner.** After deploying a loop-gov change, the RUNNING MCP daemon still executes the old module; a non-trivial close then fails because the in-memory reviewer hits code it does not have yet. The error reads like a reviewer/data bug (`'str' object has no attribute 'get'`) rather than a "restart pending" notice. Recognize the transition window, not a regression: retrying repeats the same error; `feedback_accept`/close what you can, have the operator restart the gateway, then retry `end_change` after the restart. A watchdog alert naming "N loop-gov daemon(s) ... running pre-deploy code" is the same condition. The same window also produces a bogus-looking doctor run — re-read the doctor as a bare `python3 …cortex-doctor.py` AFTER the deploy process exits, and do not chase warns/fails captured mid-deploy.
+**Same deploy≠load window refuses `end_change` with a reviewer EXCEPTION, not a clean banner.** After deploying a loop-gov change, the RUNNING MCP daemon still executes the old module; a non-trivial close then fails because the in-memory reviewer hits code it does not have yet. The error reads like a reviewer/data bug (`'str' object has no attribute 'get'`) rather than a "restart pending" notice. Recognize the transition window, not a regression: retrying repeats the same error; `feedback_accept`/close what you can, have the operator restart the gateway, then retry `end_change` after the restart. A watchdog alert naming "N loop-gov daemon(s) ... running pre-deploy code" is the same condition. The same window also produces a bogus-looking doctor run — re-read the doctor as a bare `python3 …fleet-doctor.py` AFTER the deploy process exits, and do not chase warns/fails captured mid-deploy.
 
 **Hermetic repro for a purge fix** (no real state touched): repoint the module's `GOVERNANCE_STATE_DIR` / `LOOP_DB` at a temp dir, write a stale time-only-heartbeat lock, seed a PENDING cycle for its task, run `_purge_stale_locks()`, assert the lock is gone AND the cycle flipped to `MOVE_ON`. Proving the cycle resolution is what unblocks the gate — deleting the lock alone demonstrably does not.
 
@@ -273,7 +273,7 @@ intuition, and by design: the review that used to land after the push now gates 
   authorise a push with no active lock, but only for the bare command. Verify in a separate call.
 
 **The deploy chicken-and-egg — use a lock-carrier cycle, never an override.** The push gate also
-requires a doctor-clean DEPLOYED state, while the deploy (`cortex-dogfood.sh`) is a WRITE-class
+requires a doctor-clean DEPLOYED state, while the deploy (`fleet-dogfood.sh`) is a WRITE-class
 command that itself needs a repo lock. Once you have closed the cycle, the lock is gone and the
 deploy is blocked, so the two gates appear to deadlock. The sanctioned exit is a deploy-only cycle:
 

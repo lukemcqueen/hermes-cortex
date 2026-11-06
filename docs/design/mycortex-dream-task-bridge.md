@@ -153,7 +153,7 @@ Phase X — Actionable: 1 insight triaged to todo
 ## Implementation notes for the orchestrator
 
 - **Only `install-dream-crons.sh` prompt text changes.** No new scripts, no
-  schema, no doctor changes, no cortex-update changes. The prompts already
+  schema, no doctor changes, no fleet-update changes. The prompts already
   have `terminal,file` toolsets and deepseek-v4-flash.
 - **Where in each prompt:** add the triage step AFTER the write-back step
   (the dream must exist before it can be triaged), and add the "Phase X —

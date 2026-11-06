@@ -122,7 +122,7 @@ def test_third_registration_runs_probe_fails(tmp_path):
 
 
 def test_no_probe_at_all_fails(tmp_path):
-    cfg = config_with(tmp_path, {"agent-bus": ["cortex-bus-mcp.py"]})
+    cfg = config_with(tmp_path, {"agent-bus": ["fleet-bus-mcp.py"]})
     name, status, detail, fix = run(tmp_path, cfg)[0]
     assert status == "FAIL"
     assert "unreachable" in detail

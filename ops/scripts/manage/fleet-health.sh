@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  cortex-health.sh — Quick system readiness check
+#  fleet-health.sh — Quick system readiness check
 #
-#  Delegates to cortex-doctor.py --quick for all checks.
+#  Delegates to fleet-doctor.py --quick for all checks.
 #  Preserves original --json and --watch flags.
 #
 #  Usage:
-#    bash cortex-health.sh              # quick status table
-#    bash cortex-health.sh --json       # JSON output
-#    bash cortex-health.sh --watch      # every 5s (like htop)
+#    bash fleet-health.sh              # quick status table
+#    bash fleet-health.sh --json       # JSON output
+#    bash fleet-health.sh --watch      # every 5s (like htop)
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -22,9 +22,9 @@ for arg in "$@"; do
   esac
 done
 
-# Locate cortex-doctor.py
+# Locate fleet-doctor.py
 DOCTOR=""
-for candidate in cortex-doctor.py ~/.steadfaste-fleet/scripts/cortex-doctor.py ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py; do
+for candidate in fleet-doctor.py ~/.steadfaste-fleet/scripts/fleet-doctor.py ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py; do
   if resolved=$(command -v "$candidate" 2>/dev/null); then
     DOCTOR="$resolved"
     break
@@ -32,7 +32,7 @@ for candidate in cortex-doctor.py ~/.steadfaste-fleet/scripts/cortex-doctor.py ~
 done
 
 if [[ -z "$DOCTOR" ]]; then
-  echo "❌ cortex-doctor.py not found"
+  echo "❌ fleet-doctor.py not found"
   exit 1
 fi
 
@@ -40,7 +40,7 @@ if $WATCH_MODE; then
   echo "🔍 Watching system health (Ctrl+C to stop)..."
   while true; do
     clear 2>/dev/null || true
-    printf "\n  $(date '+%H:%M:%S')  ── cortex-doctor quick check ──\n"
+    printf "\n  $(date '+%H:%M:%S')  ── fleet-doctor quick check ──\n"
     python3 "$DOCTOR" --quick ${JSON_MODE:+--json} 2>&1
     sleep 5
   done

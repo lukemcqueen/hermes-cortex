@@ -80,7 +80,7 @@ normal session). **Disable thinking on mechanical jobs** (`reasoning_effort:
 none` on dreams, briefings, prunes, eval) — verified −54% output tokens on the
 same job. Keep it on reasoning-heavy work (orchestrator decisions, diagnosis,
 evaluation). Pin via the cron manifest so it survives deploys, not just live
-jobs.json (live edits get reverted by cortex-update).
+jobs.json (live edits get reverted by fleet-update).
 
 **Enabling per-turn reasoning-effort routing needs a MEASURED capability map,
 never a guess** — a level a model does not accept either 400s the request or is
@@ -190,7 +190,7 @@ rules for a skip-class: `references/review-gate-spend.md`.
   running gateway (long-lived daemon). Verify by firing a cheap cron and
   reading its audit line, not by grepping the file.
 - **Live job edits get reverted.** `hermes cron edit --model/--reasoning-effort`
-  writes jobs.json, but the next cortex-update re-registers crons from the
+  writes jobs.json, but the next fleet-update re-registers crons from the
   source of truth (cron-manifest.yaml / install-crons.sh). Fix the SOURCE first,
   then the live jobs — or your "migration" silently reverts. The manifest and
   the installer's pin function must both change (14-cron deepseek-chat→v4-flash

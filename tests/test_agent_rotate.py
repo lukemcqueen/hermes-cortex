@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cortex-agent-manager rotate command (per-agent token rotation).
+"""Tests for fleet-agent-manager rotate command (per-agent token rotation).
 
 Luke 2026-08-24: easy key rotation in case an agent is compromised, one
 token per coding agent, never shared. The bus already supports per-agent
@@ -22,7 +22,7 @@ import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "cortex_agent_manager", _REPO / "ops" / "scripts" / "manage" / "cortex-agent-manager.py")
+    "cortex_agent_manager", _REPO / "ops" / "scripts" / "manage" / "fleet-agent-manager.py")
 _mod = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_mod)
 

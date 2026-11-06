@@ -1021,9 +1021,9 @@ def test_the_shipped_plist_template_gives_launchd_a_reason_to_relaunch():
     real conditions come from launchd.plist(5).
     """
     import plistlib
-    path = _REPO / "docs" / "templates" / "com.hermes.cortex-gateway.plist"
+    path = _REPO / "docs" / "templates" / "com.hermes.fleet-gateway.plist"
     cfg = plistlib.loads(path.read_bytes())
-    assert cfg["Label"] == "com.hermes.cortex-gateway"
+    assert cfg["Label"] == "com.hermes.fleet-gateway"
     ka = cfg["KeepAlive"]
     assert isinstance(ka, dict), ka
     assert ka.get("SuccessfulExit") is False, \

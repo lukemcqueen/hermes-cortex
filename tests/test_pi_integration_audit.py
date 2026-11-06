@@ -11,10 +11,10 @@ against synthetic hosts, one thing broken at a time, and asserts BOTH directions
   C. an entry carrying ANOTHER agent's AGENT_NAME  -> exit 1, names it
   D. a curated skill link missing                  -> exit 1
   E. no Pi at all                                  -> exit 1 + the install command
-  F. mcp.json missing cortex-context               -> exit 1, names the server
+  F. mcp.json missing fleet-context               -> exit 1, names the server
 
 Case F exists because the audit under-verified for weeks: it required only the
-four original servers, so a host with no cortex-context MCP entry reported PASS
+four original servers, so a host with no fleet-context MCP entry reported PASS
 while mem_*/session_* were unreachable, and its PASS line claimed "4 servers
 configured" even where five were. A required server that is not checked is a
 silent hole, so the check now names every server it requires.
@@ -55,7 +55,7 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
     (dep / "tools" / "loop-governance").mkdir(parents=True)
     (dep / "tools" / "loop-governance" / "loop-gov-mcp.py").write_text("# gate\n")
     (dep / "harnesses" / "pi" / "extensions").mkdir(parents=True)
-    (dep / "harnesses" / "pi" / "extensions" / "cortex-context.ts").write_text("// ext\n")
+    (dep / "harnesses" / "pi" / "extensions" / "fleet-context.ts").write_text("// ext\n")
     (dep / "agent.env").write_text(f"AGENT_NAME={agent_name}\n")
 
     if pi:
@@ -69,7 +69,7 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
         launcher.chmod(0o755)
 
     (agent / "settings.json").write_text('{"extensions": ["' + str(dep / "harnesses" / "pi"
-                                       / "extensions" / "cortex-context.ts") + '"], "skills": ["'
+                                       / "extensions" / "fleet-context.ts") + '"], "skills": ["'
                                        + str(agent / "cortex-skills") + '"], "packages": ["'
                                        + "npm:pi-web-access@0.35.0" + '"]}\n')
     # Layer 6 needs THREE things to pass, and this fixture provided none of them: the
@@ -93,8 +93,8 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
     for name, script in (("loop-governance", dep / "tools" / "loop-governance" / "loop-gov-mcp.py"),
                          ("tasks", dep / "scripts" / "task-mcp.py"),
                          ("executor", dep / "scripts" / "executor-mcp.py"),
-                         ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py"),
-                         ("cortex-context", dep / "scripts" / "cortex-context-mcp.py")):
+                         ("agent-bus", dep / "scripts" / "fleet-bus-mcp.py"),
+                         ("fleet-context", dep / "scripts" / "fleet-context-mcp.py")):
         script.write_text("# mcp server\n")
     if mcp_json:
         import json
@@ -102,8 +102,8 @@ def _host(home: Path, *, mcp_json: bool = True, agent_name: str = "testagent",
         for name, script in (("loop-governance", dep / "tools" / "loop-governance" / "loop-gov-mcp.py"),
                              ("tasks", dep / "scripts" / "task-mcp.py"),
                              ("executor", dep / "scripts" / "executor-mcp.py"),
-                             ("agent-bus", dep / "scripts" / "cortex-bus-mcp.py"),
-                             ("cortex-context", dep / "scripts" / "cortex-context-mcp.py")):
+                             ("agent-bus", dep / "scripts" / "fleet-bus-mcp.py"),
+                             ("fleet-context", dep / "scripts" / "fleet-context-mcp.py")):
             if name == omit_server:
                 continue
             # one entry intentionally carries a foreign identity in the C case
@@ -179,9 +179,9 @@ def test_pi_integration_audit() -> None:
         _check("reports RESULT: PASS", "RESULT: PASS" in r.stdout, r.stdout[-200:])
         # The required set must be visible in the server line: a PASS line naming
         # fewer servers than are configured is how "4 servers" survived for weeks.
-        # (Layer 3 also mentions cortex-context, so match the SERVERS line only.)
-        _check("names cortex-context in the servers line",
-               any("cortex-context" in ln and "server" in ln for ln in r.stdout.splitlines()),
+        # (Layer 3 also mentions fleet-context, so match the SERVERS line only.)
+        _check("names fleet-context in the servers line",
+               any("fleet-context" in ln and "server" in ln for ln in r.stdout.splitlines()),
                r.stdout[-300:])
 
     print("B. missing mcp.json on an MCP-capable Pi fails, with the fix")
@@ -223,17 +223,17 @@ def test_pi_integration_audit() -> None:
         _check("gives the install command", "npm install -g @earendil-works/pi-coding-agent" in r.stdout,
                why + " | " + r.stdout[-300:])
 
-    print("F. an mcp.json without the cortex-context entry fails, naming it")
+    print("F. an mcp.json without the fleet-context entry fails, naming it")
     with tempfile.TemporaryDirectory() as td:
         home = Path(td)
-        dep = _host(home, omit_server="cortex-context")
+        dep = _host(home, omit_server="fleet-context")
         r = _run(home, dep)
-        # Assert on the audit's OWN failure line: "cortex-context" alone also appears
+        # Assert on the audit's OWN failure line: "fleet-context" alone also appears
         # in the Layer 3 extension PASS, so a bare substring match would pass even if
         # the server were never required (it did, before this case was tightened).
         line = next((ln for ln in r.stdout.splitlines() if "missing server(s)" in ln), "")
         _check("exit 1", r.returncode == 1, r.stdout[-300:])
-        _check("names cortex-context as missing", "cortex-context" in line, line or r.stdout[-300:])
+        _check("names fleet-context as missing", "fleet-context" in line, line or r.stdout[-300:])
         _check("names the fix in that same line", "install-pi-mcp.sh" in line, line or r.stdout[-300:])
 
     assert not _F, f"{len(_F)} audit check(s) failed: {', '.join(_F)}"

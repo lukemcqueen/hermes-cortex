@@ -53,7 +53,7 @@ fi
 if [ -z "$PY" ]; then
   echo "COULD NOT VERIFY: no interpreter on this host can import pytest." >&2
   echo "  Tried: ${RESOLVER} (and the repo copy), then python3/python on PATH" >&2
-  echo "  Fix:   ${HOME}/.steadfaste-fleet/scripts/manage/fix-cortex-venv.py" >&2
+  echo "  Fix:   ${HOME}/.steadfaste-fleet/scripts/manage/fix-fleet-venv.py" >&2
   echo "  No interpreter means no verdict — this is NOT a pass." >&2
   exit 3
 fi

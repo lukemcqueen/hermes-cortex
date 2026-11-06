@@ -99,7 +99,7 @@ Gather raw material from all sources:
      `since_minutes=60` hides everything older than an hour).
 2. **Git log** — Check recent commits for self-improvement patterns needing broader consolidation
 3. **Skill inventory** — Scan repo skills for stale/modified files
-5. **Doctor health check** — Run `cortex-doctor.py --quiet` and check for:
+5. **Doctor health check** — Run `fleet-doctor.py --quiet` and check for:
    - ❌ Crons missing → stale entries in uninstall arrays (self-healing candidate)
    - ❌ Orch crons → orchestrator cron issue
    - ❌ Script integrity → missing deployed scripts
@@ -223,7 +223,7 @@ Execute all approved actions:
    3. `git add`, commit, push
       - **Push gate fires with `❌ Deploy sync` after a skill commit** — the skills
         gate compares deployed vs repo, so BOTH commits and upstreams block until
-        `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` runs (pull →
+        `bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force` runs (pull →
         deploy → doctor → verify). Run it, confirm `✅ DOGFOOD PASSED`, then push;
         the deploy is what lands the new/changed skill into the live tree.
       - **Long commit messages via `-m` trip the cron security scanner**
@@ -403,7 +403,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   that had been copied forward as "7+ in 7 days" was a per-day sample missing its
   unit, and it made a systemic leak look like a rare one. The volume is the
   argument for making the Phase-3 drift sync mechanical rather than manual.
-  **Procedure (verified this run):** (1) `python3 ops/scripts/manage/cortex-doctor.py
+  **Procedure (verified this run):** (1) `python3 ops/scripts/manage/fleet-doctor.py
   --quiet | grep -i 'skill drift'` names each drifted path; (2) prove the
   deployed copy is a SUPERSET before syncing — `diff <repo> <deployed> | grep '^<'`
   must show only MODIFICATIONS of existing lines, never deletions of repo
@@ -446,7 +446,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   two iterations of the parity verifier ran dependencies as `cmd ... || true` and
   fell through to PASS when a tool crashed: `rc != 0` with non-empty output was
   treated as fine, and a missing repo file made an empty diff read as "nothing
-  wrong". Exit codes are AMBIGUOUS here — `cortex-doctor` exits 1 whenever any
+  wrong". Exit codes are AMBIGUOUS here — `fleet-doctor` exits 1 whenever any
   warning exists, so rc alone cannot separate "ran with warnings" from "crashed".
   State each tool's run-evidence test explicitly (>=100 per-check lines for the
   doctor; a `verdict: (PASS|FAIL)` line for the reconciler; `[ ! -f ]` guards on
@@ -528,7 +528,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   verdict line clearing the line-count bar, and dependencies resolved relative
   to a copied path. WRITE THE NEGATIVE HARNESS BEFORE TRUSTING A GREEN CHECK.
 - **Fleet stubs for the checker's python3-run dependencies must BE python (2026-10-26)** →
-  `cortex-doctor.py` / `reconcile-stranded-skills.py` are invoked as
+  `fleet-doctor.py` / `reconcile-stranded-skills.py` are invoked as
   `python3 <abs-path>`, so a probe stub written as `#!/bin/sh` is fed to the
   Python interpreter and dies with a SyntaxError on line 2 — which the checker
   then reports as a missing-script COULD NOT VERIFY, masking the real cause.

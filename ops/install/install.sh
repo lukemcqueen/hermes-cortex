@@ -180,7 +180,7 @@ source "$(_scripts)/install/service-writer.sh"
 # (which hard-fails without identity) succeeds on fresh installs. Orch hosts
 # self-derive from hostname; non-orch hosts must have AGENT_NAME set or the
 # file created manually. Warn, don't fail — the installer can still finish,
-# but the user must fix identity before cortex-update will run.
+# but the user must fix identity before fleet-update will run.
 if ! ensure_agent_identity; then
   warn "Agent identity not provisioned — set AGENT_NAME=<your-agent> or create:"
   warn "  ${HOME}/.steadfaste-fleet/agent.env  (AGENT_NAME=<your-agent>)"
@@ -460,7 +460,7 @@ if [[ -x "$MYCORTEX_CLI" ]]; then
   ok
  fi
 else
- info " mycortex CLI not deployed yet (deployed later in install) — migrations run on first cortex-update"
+ info " mycortex CLI not deployed yet (deployed later in install) — migrations run on first fleet-update"
 fi
 
 # ── Ensure bun is in PATH via ~/.local/bin (legacy brain no longer installed) ──
@@ -599,7 +599,7 @@ step "Configuring mycortex sources"
 
 MYCORTEX_CLI="${CORTEX_DEPLOY_HOME}/scripts/mycortex"
 if [[ ! -x "$MYCORTEX_CLI" ]]; then
- warn "mycortex CLI not found at ${MYCORTEX_CLI} — sources configured on first cortex-update"
+ warn "mycortex CLI not found at ${MYCORTEX_CLI} — sources configured on first fleet-update"
 else
  for source in "${SOURCES[@]}"; do
   source_dir="${BRAIN_DIR}/${source}"
@@ -1399,16 +1399,16 @@ BUDGET
  info " Installed check-memory-budget.sh"
 fi
 
-# ── cortex-profile.sh ─────────────────────────────────────
-CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/cortex-profile.sh"
+# ── fleet-profile.sh ─────────────────────────────────────
+CORTEX_PROFILE_PATH="${SCRIPTS_DIR}/fleet-profile.sh"
 if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
- skip "cortex-profile.sh already exists"
+ skip "fleet-profile.sh already exists"
 else
- cp "$(_scripts)/install/cortex-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
-  warn "cortex-profile.sh not available (only from repo)"
+ cp "$(_scripts)/install/fleet-profile.sh" "$CORTEX_PROFILE_PATH" 2>/dev/null || \
+  warn "fleet-profile.sh not available (only from repo)"
  if [[ -f "$CORTEX_PROFILE_PATH" ]]; then
   chmod +x "$CORTEX_PROFILE_PATH"
-  info " Installed cortex-profile.sh"
+  info " Installed fleet-profile.sh"
  fi
 fi
 
@@ -1425,29 +1425,29 @@ else
  fi
 fi
 
-# ── cortex-health.sh ───────────────────────────────────────
-CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/cortex-health.sh"
+# ── fleet-health.sh ───────────────────────────────────────
+CORTEX_HEALTH_PATH="${SCRIPTS_DIR}/fleet-health.sh"
 if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
- skip "cortex-health.sh already exists"
+ skip "fleet-health.sh already exists"
 else
- cp "$(_scripts)/manage/cortex-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
-  warn "cortex-health.sh not available (only from repo)"
+ cp "$(_scripts)/manage/fleet-health.sh" "$CORTEX_HEALTH_PATH" 2>/dev/null || \
+  warn "fleet-health.sh not available (only from repo)"
  if [[ -f "$CORTEX_HEALTH_PATH" ]]; then
   chmod +x "$CORTEX_HEALTH_PATH"
-  info " Installed cortex-health.sh"
+  info " Installed fleet-health.sh"
  fi
 fi
 
-# ── cortex-setup-langfuse.sh ───────────────────────────────
-CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
+# ── fleet-setup-langfuse.sh ───────────────────────────────
+CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/fleet-setup-langfuse.sh"
 if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
- skip "cortex-setup-langfuse.sh already exists"
+ skip "fleet-setup-langfuse.sh already exists"
 else
- cp "$(_scripts)/install/cortex-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
-  warn "cortex-setup-langfuse.sh not available (only from repo)"
+ cp "$(_scripts)/install/fleet-setup-langfuse.sh" "$CORTEX_LANGFUSE_PATH" 2>/dev/null || \
+  warn "fleet-setup-langfuse.sh not available (only from repo)"
  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
   chmod +x "$CORTEX_LANGFUSE_PATH"
-  info " Installed cortex-setup-langfuse.sh"
+  info " Installed fleet-setup-langfuse.sh"
  fi
 fi
 
@@ -1520,18 +1520,18 @@ if [[ -f "$(_scripts)/hermes_tz.py" ]]; then
 fi
 
 # ── Auto-Update Cron ───────────────────────────────────────────
-AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-cortex-update-cron.sh"
+AUTO_UPDATE_SCRIPT="${SCRIPTS_DIR}/install-fleet-update-cron.sh"
 if [[ -f "$AUTO_UPDATE_SCRIPT" ]]; then
- if launchctl list com.hermes.cortex-update &>/dev/null 2>&1 || \
-   systemctl --user list-timers 2>/dev/null | grep -q "cortex-update" || \
-   crontab -l 2>/dev/null | grep -q "cortex-update"; then
+ if launchctl list com.hermes.fleet-update &>/dev/null 2>&1 || \
+   systemctl --user list-timers 2>/dev/null | grep -q "fleet-update" || \
+   crontab -l 2>/dev/null | grep -q "fleet-update"; then
   skip "auto-update cron already registered"
  else
   bash "$AUTO_UPDATE_SCRIPT" 2>&1 | sed 's/^/ /'
   info " Registered daily auto-update cron (3am)"
  fi
 else
- warn "install-cortex-update-cron.sh not found — skipping auto-update setup"
+ warn "install-fleet-update-cron.sh not found — skipping auto-update setup"
 fi
 
 # ── Agent Learning Sender Cron ────────────────────────────────────
@@ -1605,7 +1605,7 @@ info "Scripts directory: ${SCRIPTS_DIR}"
 # MEMORY.md / USER.md are Hermes-owned: Hermes reads ~/.hermes/memories/
 # and creates the files on its first memory write. Cortex must NOT seed or
 # deploy a memory copy — a deploy-registered seed clobbered live memory on
-# every cortex-update (7× on 2026-08-05, because the live file is
+# every fleet-update (7× on 2026-08-05, because the live file is
 # personalized and the deploy overwrote it with the blank template). The
 # seed templates remain in docs/templates/ for reference only.
 step "Hermes memory (Hermes-owned — no cortex seed)"
@@ -1634,7 +1634,7 @@ else
  skip "memory/README.md already exists or template not found"
 fi
 
-# memory/README.md is cortex-owned — seeded by cortex-update register map.
+# memory/README.md is cortex-owned — seeded by fleet-update register map.
 ok
 
 # ─────────────────────────────────────────────────────────────
@@ -1694,7 +1694,7 @@ fi
 POST_MERGE_SRC="${CORTEX_REPO_DIR}/ops/install/hooks/post-merge"
 POST_MERGE_DST="${CORTEX_REPO_DIR}/.git/hooks/post-merge"
 if [[ -f "$POST_MERGE_SRC" ]]; then
- step "Installing post-merge hook (auto cortex-update after git pull)…"
+ step "Installing post-merge hook (auto fleet-update after git pull)…"
  cp "$POST_MERGE_SRC" "$POST_MERGE_DST"
  chmod +x "$POST_MERGE_DST"
  info " Installed: .git/hooks/post-merge → auto-runs fleet-update.sh after every pull"
@@ -1851,13 +1851,13 @@ ENVFILE
  cd - > /dev/null
 
  # Wire Hermes Agent with Langfuse integration
- CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/cortex-setup-langfuse.sh"
+ CORTEX_LANGFUSE_PATH="${SCRIPTS_DIR}/fleet-setup-langfuse.sh"
  if [[ -f "$CORTEX_LANGFUSE_PATH" ]]; then
   info " Wiring Hermes Agent with Langfuse integration..."
   bash "$CORTEX_LANGFUSE_PATH" 2>&1 | sed 's/^/  /'
   info " Hermes Agent integration complete"
  else
-  warn " cortex-setup-langfuse.sh not available for Hermes integration"
+  warn " fleet-setup-langfuse.sh not available for Hermes integration"
  fi
 fi
 
@@ -1867,7 +1867,7 @@ fi
 step "Installing Cortex Dashboard"
 
 DASHBOARD_DEST="${CORTEX_DEPLOY_HOME}/dashboard"
-DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist"
+DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.fleet-dashboard.plist"
 
 if [[ -f "$DASHBOARD_DEST/server.py" ]]; then
  skip "Cortex Dashboard already installed"
@@ -1881,7 +1881,7 @@ else
  else
   # Download minimal version from GitHub
   curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/server.py" -o "$DASHBOARD_DEST/server.py"
-  curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/com.hermes.cortex-dashboard.plist" -o "$DASHBOARD_PLIST"
+  curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/com.hermes.fleet-dashboard.plist" -o "$DASHBOARD_PLIST"
   # Download static assets
   curl -fsSL "https://raw.githubusercontent.com/lukemcqueen/steadfaste-fleet/main/ops/services/dashboard/static/index.html" -o "$DASHBOARD_DEST/static/index.html"
  fi
@@ -1897,10 +1897,10 @@ else
 
  # Install service (launchd on macOS, systemd on Linux)
  if [[ "$CORTEX_OS" == "macos" ]]; then
-  DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist"
+  DASHBOARD_PLIST="${CORTEX_HOME}/Library/LaunchAgents/com.hermes.fleet-dashboard.plist"
   if [[ ! -f "$DASHBOARD_PLIST" ]]; then
    # Update paths in plist for current user
-   sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.cortex-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
+   sed "s|CORTEX_HOME|${CORTEX_HOME}|g" "${REPO_DASHBOARD}/com.hermes.fleet-dashboard.plist" > "$DASHBOARD_PLIST" 2>/dev/null || \
    cat > "$DASHBOARD_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -2243,8 +2243,8 @@ printf " ${GREEN}•${RESET} heartbeat.py   → system health watchdog\n"
 printf " ${GREEN}•${RESET} agent-memory-to-brain-sync.py → memory sync to mycortex\\\\n"
 printf " ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verification\n"
 printf " ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
-printf " ${GREEN}•${RESET} cortex-health.sh  → single green-check system readiness\n"
-printf " ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
+printf " ${GREEN}•${RESET} fleet-health.sh  → single green-check system readiness\n"
+printf " ${GREEN}•${RESET} fleet-setup-langfuse.sh → standalone Langfuse .env generator\n"
 printf " ${GREEN}•${RESET} fleet-update.sh → git pull + delta-update + service restart\\n"
 printf " ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (no_agent watchdog)\\n"
 printf " ${GREEN}•${RESET} steadfaste-fleet-sync.sh → daily repo sync + tool re-install\\n"
@@ -2274,9 +2274,9 @@ I've installed the Steadfaste Fleet system. Please finish the setup by:
 2. Load the shared skills from ~/.steadfaste-fleet/skills/ (use skill_view(name) to browse them — includes subagent-driven-development, systematic-debugging v2.0 (6-phase feedback-loop debugging), code-review v3.0 (two-axis Standards+Spec), codebase-design (deep module vocabulary), change-test-loop, spike, plan, memory-architecture, korean-language-learning)
 3. Loading the hermes-agent skill and verifying the mycortex-command plugin
 4. Run ~/.steadfaste-fleet/scripts/bootstrap-brain.sh to ensure all brain sources are initialized, git-enabled, registered in mycortex, and synced. Note which sources have indexed pages (if any show 0 pages, add some .md files and re-sync)
-5. If using Langfuse, run: bash ~/.steadfaste-fleet/scripts/cortex-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
+5. If using Langfuse, run: bash ~/.steadfaste-fleet/scripts/fleet-setup-langfuse.sh --start (generates all required .env secrets and starts Docker Compose — no more failing on :? expansion)
 6. Seed project brains from existing repos: ~/.steadfaste-fleet/scripts/seed-project-brain.sh --all (finds matching repos under ~/Developer/AI/ and fills their brain dirs with README/docs — one command from empty shell to indexed knowledge)
-7. Run cortex-health.sh to confirm everything is green: bash ~/.steadfaste-fleet/scripts/cortex-health.sh (prints a clean status table for Ollama, Langfuse, mycortex, memory freshness, disk usage — exits 0 when all systems go)
+7. Run fleet-health.sh to confirm everything is green: bash ~/.steadfaste-fleet/scripts/fleet-health.sh (prints a clean status table for Ollama, Langfuse, mycortex, memory freshness, disk usage — exits 0 when all systems go)
 8. Setting up these cron jobs (use the cronjob tool):
 
   a) agent-mycortex-sync — every 15 min (installed by install-crons.sh):
@@ -2303,9 +2303,9 @@ I've installed the Steadfaste Fleet system. Please finish the setup by:
    Schedule: 0 4 * * *
    Prompt: Read your current MEMORY.md and USER.md from ~/.hermes/memories/ and prune/consolidate entries that are stale, redundant, or no longer relevant. Keep useful durable facts. Report what you removed and why.
 
-  f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
+  f) fleet-update — weekly on Sunday at 3am (auto-pull + delta-update):
    Schedule: 0 3 * * 0
-   Prompt: Run cortex-update to keep the system current: bash ~/.steadfaste-fleet/scripts/fleet-update.sh
+   Prompt: Run fleet-update to keep the system current: bash ~/.steadfaste-fleet/scripts/fleet-update.sh
    no_agent: true
 
   g) daily-lesson-mine — daily at 2am (auto-mining from last 24h):
@@ -2332,8 +2332,8 @@ if [[ "$CORTEX_PROFILE" == "server" ]]; then
 printf " ${GREEN}•${RESET} Langfuse:    http://localhost:3000 (nginx: :13002)\\n"
 printf " ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :13001)\n"
 printf " ${GREEN}•${RESET} 🔒 Security:   Read docs/SECURITY.md for firewall + hardening\n"
-printf " ${GREEN}•${RESET} Langfuse setup:  bash cortex-setup-langfuse.sh --start (generates .env + starts)\n"
-printf " ${GREEN}•${RESET} System health:  bash cortex-health.sh (green-check status)\n"
+printf " ${GREEN}•${RESET} Langfuse setup:  bash fleet-setup-langfuse.sh --start (generates .env + starts)\n"
+printf " ${GREEN}•${RESET} System health:  bash fleet-health.sh (green-check status)\n"
 printf " ${GREEN}•${RESET} System update:  bash fleet-update.sh (pull + delta-update)\n"
 fi
 printf " ${GREEN}•${RESET} /brain query   — search your knowledge brain\n"
@@ -2399,7 +2399,7 @@ printf "\n${GREEN}${BOLD}Steadfaste Fleet v${VERSION} installed. Enjoy! 🧠${RE
 # Clear the EXIT trap and clean up remote temp dir
 
 # Auto-run cortex doctor after install
-DOCTOR_PATH="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/cortex-doctor.py"
+DOCTOR_PATH="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/fleet-doctor.py"
 if command -v python3 &>/dev/null && [ -f "$DOCTOR_PATH" ]; then
  echo ""
  echo "━━━ Running post-install health check ━━━"

@@ -112,7 +112,7 @@ EOF
 
 - **Rewriting from memory** re-pastes identical bytes — always edit on-disk via
   programmatic replace and verify the byte delta.
-- **Pushing before cortex-update** — pre-push hook fails "Checksum: AGENTS.md"
+- **Pushing before fleet-update** — pre-push hook fails "Checksum: AGENTS.md"
   when deployed != repo. Deploy first.
 - **AGENTS.md / SOUL.md are no longer auto-synced** (soul-merge / soul-sync
   removed 2026-11-04) — there is no fleet-side copy to diverge from; edit each

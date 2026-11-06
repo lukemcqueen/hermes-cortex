@@ -10,7 +10,7 @@
 #   bash ops/scripts/manage/verify-skill-drift-parity.sh
 #
 # Claims proven:
-#   C1 cortex-doctor ran AND reports no skill drift
+#   C1 fleet-doctor ran AND reports no skill drift
 # C2 reconcile-stranded-skills.py ran AND reports 0 stranded (repo == deployed).
 #    NOTE: the reconciler's own "Detector verdict: FAIL" line is NOT the pass
 #    signal — it describes the repo tree, not this run. Judge `stranded: N`.
@@ -22,7 +22,7 @@
 # ERROR POLICY (SOUL Principle 12 — never swallow errors).
 # A dependency whose run is NOT EVIDENT is a FAILED check, never a pass. Evidence
 # of a run is checked per tool, because exit codes alone are ambiguous here:
-#   - cortex-doctor exits 1 whenever ANY warning exists, so rc alone cannot
+#   - fleet-doctor exits 1 whenever ANY warning exists, so rc alone cannot
 #     separate "ran fine, warnings present" from "crashed"; it must have emitted
 #     its per-check output (>= MIN_DOCTOR_LINES lines) or we say COULD NOT VERIFY.
 #   - secret-leak-detector exits 0 in the clean case; ANY non-zero exit is
@@ -38,12 +38,12 @@ MIN_DOCTOR_LINES=100
 
 fail() { echo "FAIL: $*"; rc=1; }
 
-echo "== C1: cortex-doctor ran, and reports no skill drift for THESE skills =="
-doctor_raw="$(python3 ops/scripts/manage/cortex-doctor.py --quiet 2>&1)"
+echo "== C1: fleet-doctor ran, and reports no skill drift for THESE skills =="
+doctor_raw="$(python3 ops/scripts/manage/fleet-doctor.py --quiet 2>&1)"
 doctor_rc=$?
 doctor_lines="$(printf '%s' "$doctor_raw" | grep -cE '^[[:space:]]*(✅|⚠️|❌|➖)' || true)"
 if [ "$doctor_lines" -lt "$MIN_DOCTOR_LINES" ]; then
-  fail "cortex-doctor emitted only $doctor_lines check lines (rc=$doctor_rc) - COULD NOT VERIFY"
+  fail "fleet-doctor emitted only $doctor_lines check lines (rc=$doctor_rc) - COULD NOT VERIFY"
 else
   # Scope: this change owns the two recovered skills. Drift on OTHER files is a
   # different change class (a peer's in-flight reconciliation, an unrelated

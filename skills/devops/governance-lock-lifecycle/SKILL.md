@@ -8,7 +8,7 @@ license: MIT
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [governance, lock, cortex-update, loop-governance, deploy]
+    tags: [governance, lock, fleet-update, loop-governance, deploy]
     related_skills: [loop-governance, cortex-deployment-sync, cortex-preflight, two-hard-rules]
 ---
 
@@ -102,7 +102,7 @@ The deploy unlocks each immutable enforcement file before overwriting it. Two
 guarantees make a leftover unlocked state self-correcting:
 
 1. **Relock on error.** `fleet-update.sh` installs `_relock_enforcement` as an
-   `EXIT` trap — and `cortex-dogfood.sh` has its own, so the mandated pre-push
+   `EXIT` trap — and `fleet-dogfood.sh` has its own, so the mandated pre-push
    gate does not depend on a CHILD script's trap for a security property. The
    relock runs on success, on error and on signal alike; a FAILED deploy no
    longer leaves the gate tamperable. Verified by failing a deploy on purpose
@@ -437,5 +437,5 @@ rules make the second half safe, and all three are load-bearing:
 ## Related (user-owned, may need `hermes curator adopt`)
 
 - `cortex-deployment-sync` — deploy mechanics, invocation forms, immutable-file pitfalls
-- `cortex-preflight` — pre-flight checks + cortex-update side-effect table
+- `cortex-preflight` — pre-flight checks + fleet-update side-effect table
 - `loop-governance` — scoring internals, lock-lifecycle race history

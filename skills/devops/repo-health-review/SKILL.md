@@ -97,7 +97,7 @@ When a `register()` line is removed, the deployed copy stays on disk as
 an orphan. The doctor detects these:
 
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stale deploy"
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py 2>&1 | grep "Stale deploy"
 ```
 
 Fix with:
@@ -114,7 +114,7 @@ cleanup may be needed.
 After any structural change, run the full doctor and check ALL sections:
 
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep -E "❌|⚠️|ℹ️" | head -20
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py 2>&1 | grep -E "❌|⚠️|ℹ️" | head -20
 ```
 
 New in this session (2026-07-23):
@@ -125,7 +125,7 @@ New in this session (2026-07-23):
 - **Skills disk presence** — verifies every listed skill exists on disk
 
 The doctor itself was modularized into `fleet_doctor/` package (8 modules).
-Monolith at `cortex-doctor.py` is now a 34-line shim. To add a new check:
+Monolith at `fleet-doctor.py` is now a 34-line shim. To add a new check:
 create a new function in `checks.py` and add it to the `all_checks` list in `cli.py`.
 
 ### Pass 5: Doc Cross-Reference

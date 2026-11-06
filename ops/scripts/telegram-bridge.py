@@ -37,7 +37,7 @@ admin-capable credential (reads ALL chats, sends as the bot) — handle it
 like a password. Store it in a per-agent secrets file with 600 perms
 (e.g. ~/.<agent>/secrets.env, chmod 600, owned by the agent user), NEVER
 in a shared-server ~/.bashrc or a world-readable systemd unit. The bus
-token is per-agent (rotated via cortex-agent-manager.py rotate <agent>),
+token is per-agent (rotated via fleet-agent-manager.py rotate <agent>),
 never shared between agents.
 
 Expansion: to give a NEW coding agent a Telegram inbox — create a bot via
@@ -382,7 +382,7 @@ def main() -> int:
     bus_auth = (os.environ.get("CORTEX_BUS_AUTH", "")
                 or os.environ.get("CORTEX_BASIC_AUTH", "")).strip()
 
-    # Config-file fallback (same precedence as cortex-bus-mcp): env first,
+    # Config-file fallback (same precedence as fleet-bus-mcp): env first,
     # then ~/steadfaste-fleet/.env for bus creds (the bridge runs
     # under the agent's own env, which may not carry the bus config).
     conf = Path.home() / "steadfaste-fleet" / ".env"

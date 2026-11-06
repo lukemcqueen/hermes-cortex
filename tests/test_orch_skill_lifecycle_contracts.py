@@ -47,7 +47,7 @@ def fail(msg: str) -> None:
 
 
 def main() -> int:
-    doctor = MANAGE / "cortex-doctor.py"
+    doctor = MANAGE / "fleet-doctor.py"
     recon = MANAGE / "reconcile-stranded-skills.py"
     for p in (doctor, recon):
         if not p.is_file():

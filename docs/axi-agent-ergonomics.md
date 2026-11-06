@@ -125,7 +125,7 @@ loads for a version probe).
 | Surface | Already conforms | Gaps |
 |---|---|---|
 | Cron deliveries (`cron-format-standard`) | Definitive `Result:` verdict; `[SILENT]` empty state (P5); concrete-example prompts; cost footer aggregate (P4) | No size hints/truncation for long evidence; `Result:` is a verdict but lists rarely carry totals |
-| `cortex-doctor` | Statuses per check (✅/❌/⚠️); remediation hints per check (P9); runs content-first with no args (P8) | Human-styled prose; no `--toon`/compact mode; per-check detail not truncated with `--full` |
+| `fleet-doctor` | Statuses per check (✅/❌/⚠️); remediation hints per check (P9); runs content-first with no args (P8) | Human-styled prose; no `--toon`/compact mode; per-check detail not truncated with `--full` |
 | `fleet` CLI (bus ops) | Definitive "No pending messages" (P5); REFUSED errors include next steps (P9); refuses rather than prompts (P6) | Emoji/human prose on stderr (P6 channels); usage text instead of content-first home (P8); no TOON lists (P1/P2); multi-line help not per-subcommand `--help` blocks (P10) |
 | MCP tool outputs (agent-bus, tasks, loop-governance) | JSON is protocol-correct | Verbose field sets (P2); totals not always present (P4); empty results sometimes bare `[]` (P5) |
 | Bus message bodies (PGMQ JSON) | Double-encoded JSON handled via `(body#>>'{}')::jsonb` — machine protocol, fine as-is | Agents read previews — previews are where P1–P5 apply, not the wire format |

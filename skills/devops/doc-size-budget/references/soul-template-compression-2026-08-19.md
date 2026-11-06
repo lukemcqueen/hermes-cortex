@@ -77,7 +77,7 @@ for s in ["## Identity","## Core Mission","## Core Traits",
 EOF
 
 python3 ops/scripts/manage/soul-merge.py --check   # exit 0 = idempotent
-python3 ops/scripts/manage/cortex-doctor.py --quiet  # HEALTHY
+python3 ops/scripts/manage/fleet-doctor.py --quiet  # HEALTHY
 python3 ops/scripts/agent/agents-doc-audit.py --repo . --json  # missing: []
 bash ops/scripts/secret-leak-detector.sh           # clean
 python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <f> --level A2 --gate
@@ -88,7 +88,7 @@ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <f> --level A2 
 `git push` FAILED with "❌ Checksum: AGENTS.md" because deployed
 `~/.hermes/AGENTS.md` hadn't been updated yet. The enforcement chain is:
 commit → `fleet-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
-push. Doctor was HEALTHY only AFTER cortex-update ran.
+push. Doctor was HEALTHY only AFTER fleet-update ran.
 
 ## Follow-ups left open
 

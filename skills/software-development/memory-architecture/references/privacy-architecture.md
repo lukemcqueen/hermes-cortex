@@ -26,7 +26,7 @@ Iterates over `$SOURCES`, skips if .gitignore already exists, otherwise copies f
 ```
 Memory is Hermes-owned: Hermes reads `~/.hermes/memories/MEMORY.md` directly
 and creates the files on its first memory write. A deploy-registered seed
-previously clobbered live memory on every cortex-update (7× on 2026-08-05)
+previously clobbered live memory on every fleet-update (7× on 2026-08-05)
 because the live file is personalized and the generic hash-overwrite path
 replaced it with the blank template. Seeds in `docs/templates/` are
 reference-only now.

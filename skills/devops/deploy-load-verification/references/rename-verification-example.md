@@ -13,15 +13,15 @@ two of the four "renamed" surfaces still old.
 | Bus daemon | ✅ `uvicorn fleet_bus.server:app`, started 18:48 | ✅ `uvicorn fleet_bus.server:app`, started 18:51 |
 | Enforcer plugin (mtime) | 18:57 | 18:59 |
 | Gateway `lstart` | 19:02 (AFTER deploy → new code loaded) | 17:41 (BEFORE deploy → OLD code in memory) |
-| MCP child argv (`mcp_stdio_watchdog`) | ✅ `cortex-bus-mcp.py` | ❌ `agent-bus-mcp.py` + old loop-gov path |
+| MCP child argv (`mcp_stdio_watchdog`) | ✅ `fleet-bus-mcp.py` | ❌ `agent-bus-mcp.py` + old loop-gov path |
 | config.yaml MCP key | ❌ still `agent-bus:` (line 201) → tools `mcp__agent_bus__*` | updated path, key check pending |
 
 - **Esther:** gateway restarted after the deploy → new enforcer + new MCP path
   live. But the config KEY was still `agent-bus`, so tools exposed
-  `mcp__agent_bus__*` while the renamed skills reference `mcp__cortex_bus__*`.
+  `mcp__agent_bus__*` while the renamed skills reference `mcp__fleet_bus__*`.
 - **Moses:** gateway started 17:41, deploy landed ~18:51–18:59 → children still
   spawned the old `agent-bus-mcp.py`; config on disk already pointed at
-  `cortex-bus-mcp.py` but was not loaded. Restart required.
+  `fleet-bus-mcp.py` but was not loaded. Restart required.
 
 ## Commands that produced the evidence
 

@@ -9,7 +9,7 @@ could reach the public repo — including the home folder.
 1. **Uniquely-personal identifiers (the deny-list: operator surname, WAN
    address, full personal names) are path-INDEPENDENT — block on ANY write
    target.** A home-folder write (`~/.hermes`, `~/.steadfaste-fleet/` deploy
-   copy, memory, brain, notes, scratch) is one `skill_manage` / `cortex-update`
+   copy, memory, brain, notes, scratch) is one `skill_manage` / `fleet-update`
    deploy / `git add` away from the public repo, so these terms must never be
    written anywhere. The exact hole is an early `if not content or not shared:
    return None` that skips ALL PII checks for a non-shared-surface path — move

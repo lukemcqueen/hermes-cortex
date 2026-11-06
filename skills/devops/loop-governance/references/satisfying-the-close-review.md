@@ -73,7 +73,7 @@ off stops looking.
 - **Order sections smallest-first and keep each one decisive**: the command, its own rc, the
 decisive lines. A truncated artifact cannot be distinguished from a complete one by size.
 - **Ask a tool for its own machine-readable summary instead of dumping its report.**
-`cortex-doctor.py --json` prints `{"summary": {"pass": N, "warn": M, "fail": 0}}` — one
+`fleet-doctor.py --json` prints `{"summary": {"pass": N, "warn": M, "fail": 0}}` — one
 line that settles "warnings or failures?" — where the ~300-line human report settles
 nothing and costs the whole budget.
 - **Never summarize a report by counting a glyph.** `grep -c "❌"` counts non-failure lines

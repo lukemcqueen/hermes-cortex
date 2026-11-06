@@ -7,7 +7,7 @@ which wire-level surfaces a third-party framework actually exposes.
 
 Tools and connections. A server exposes tools/resources; a client consumes them.
 Framework-agnostic, over stdio or HTTP. **Steadfaste Fleet status: supported**
-(cortex-bus-mcp, executor-mcp, loop-gov-mcp, task-mcp; Hermes also acts as MCP client).
+(fleet-bus-mcp, executor-mcp, loop-gov-mcp, task-mcp; Hermes also acts as MCP client).
 
 ## ACP — Agent Client Protocol
 

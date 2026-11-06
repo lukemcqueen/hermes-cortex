@@ -82,7 +82,7 @@ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <script> --leve
 ## Config (per host, ~/.hermes/config.yaml via `hermes config set`)
 
 All three servers: command = hermes venv python; args = DEPLOYED copies:
-- agent-bus → `~/.steadfaste-fleet/scripts/cortex-bus-mcp.py`
+- agent-bus → `~/.steadfaste-fleet/scripts/fleet-bus-mcp.py`
 - loop-governance → `~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py`
   (immutable, P1-A — never the repo tree)
 - tasks → `~/.steadfaste-fleet/scripts/task-mcp.py`

@@ -88,14 +88,14 @@ From the survey output, construct concrete test commands:
 
 **Level 1 — Prove on yourself (Moses → inbox_moses):**
 ```bash
-fleet exec moses cortex-doctor.py --json
+fleet exec moses fleet-doctor.py --json
 # Then manually run handler:
 cd ~/.steadfaste-fleet && python3 scripts/agent-message-handler.py --once
 ```
 
 **Level 2 — Test to host agent (Esther):**
 ```bash
-fleet exec esther cortex-doctor.py --json
+fleet exec esther fleet-doctor.py --json
 # Wait ~5min for handler cycle, then check inbox_moses for EXEC_RESULT
 ```
 

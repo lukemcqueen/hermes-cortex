@@ -382,10 +382,10 @@ When a new cross-agent feature needs every agent to support it:
 ### Example: EXEC Command (added 2026-07-21)
 
 ```
-Moses: fleet exec esther cortex-doctor.py --json
+Moses: fleet exec esther fleet-doctor.py --json
   → sends EXEC to inbox_esther
   → handler picks up within 5 min
-  → runs ~/.steadfaste-fleet/scripts/cortex-doctor.py --json
+  → runs ~/.steadfaste-fleet/scripts/fleet-doctor.py --json
   → sends EXEC_RESULT back to inbox_moses
   → fleet exec polls and displays result
 ```

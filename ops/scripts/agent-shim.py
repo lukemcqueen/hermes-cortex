@@ -23,7 +23,7 @@ shim, generated per agent (`--generate`), never hand-written bespoke per
 agent — expansion must be a config row + a token, not new code.
 
 New coding agent recipe (< 30 min):
-    1. cortex-agent-manager.py add codex            # mint scoped token
+    1. fleet-agent-manager.py add codex            # mint scoped token
     2. gateway.yaml: routing row chat → codex       # bot routes to it
     3. agent-shim.py --generate --agent codex       # emit the instance
     4. register the shim's inbox poll in the agent's runtime loop

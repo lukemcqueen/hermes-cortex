@@ -1,9 +1,9 @@
 """inbox_send with recipient "all" must fan out one message per agent to
 inbox_<agent> — never to the unconsumed `broadcast` queue.
 
-Defect (2026-10-22, escalated by esther 2026-10-23): cortex-bus-mcp.py
+Defect (2026-10-22, escalated by esther 2026-10-23): fleet-bus-mcp.py
 mapped recipient "all" → queue "broadcast", but nothing consumes that queue
-(agent-message-handler.py and cortex-bus-processor.py read only inbox_<agent>).
+(agent-message-handler.py and fleet-bus-processor.py read only inbox_<agent>).
 Every send-to-"all" (FLEET_NOTICE, post-commit notify) was silently dropped:
 the Excellence FLEET_NOTICE (918e292e) sat pending 29h delivered to nobody.
 
@@ -21,7 +21,7 @@ from types import SimpleNamespace
 
 _REPO = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "fleet_bus_mcp_fanout", _REPO / "mcp-servers" / "cortex-bus-mcp.py"
+    "fleet_bus_mcp_fanout", _REPO / "mcp-servers" / "fleet-bus-mcp.py"
 )
 _bus = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_bus)

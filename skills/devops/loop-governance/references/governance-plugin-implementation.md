@@ -327,7 +327,7 @@ ls ~/steadfaste-fleet/plugins/governance-enforcer/
 
 # Deployed via fleet-update.sh as a copy (not symlink):
 #   plugins/governance-enforcer/ → ~/.hermes/plugins/governance-enforcer/
-# Run cortex-update to ensure repo is current:
+# Run fleet-update to ensure repo is current:
 cd ~/steadfaste-fleet && git pull origin main
 bash ops/scripts/fleet-update.sh
 

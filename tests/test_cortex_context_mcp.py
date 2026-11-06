@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""cortex-context-mcp + store — memory and session over ONE store (S2c).
+"""fleet-context-mcp + store — memory and session over ONE store (S2c).
 
-Covers the three decisions the design makes (docs/design/cortex-memory-session-mcp.md):
+Covers the three decisions the design makes (docs/design/fleet-memory-session-mcp.md):
   1. session identity is explicit and derivable, never "latest";
   2. checkpoint = structured facts, not a transcript;
   3. memory and session are two views of ONE store (so `mem_context` can carry
@@ -194,7 +194,7 @@ def test_session_search_covers_state_and_history(store_mod):
 # ── The MCP server: tool surface + fail-open ─────────────────
 
 def _load_server():
-    return _load(REPO / "mcp-servers" / "cortex-context-mcp.py", "cortex_context_mcp_t")
+    return _load(REPO / "mcp-servers" / "fleet-context-mcp.py", "cortex_context_mcp_t")
 
 
 def _load_tools():
@@ -272,7 +272,7 @@ def test_server_completes_a_real_mcp_handshake():
     """
     mcp_types = pytest.importorskip("mcp.types")
     event = importlib.import_module("threading").Event()
-    script = REPO / "mcp-servers" / "cortex-context-mcp.py"
+    script = REPO / "mcp-servers" / "fleet-context-mcp.py"
     py = Path.home() / ".hermes" / "hermes-agent" / "venv" / "bin" / "python3"
     py = str(py) if py.is_file() else sys.executable
     version = getattr(mcp_types, "LATEST_PROTOCOL_VERSION", None) or \

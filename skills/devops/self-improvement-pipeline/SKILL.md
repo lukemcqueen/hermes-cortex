@@ -262,5 +262,5 @@ When testing a bus or inter-agent feature, the test is incomplete until you prov
 - SOUL.md Principle 14 (Dogfooding)
 - SOUL.md Principle 37 (Cross-Session Todo Persistence — file-level mechanism, not just tool)
 - SOUL.md Final Directive (Mandatory Session-Start)
-- cortex-doctor.py check_soul_sync() (content-based verification)
+- fleet-doctor.py check_soul_sync() (content-based verification)
 - orch-skill-lifecycle Phase 1 step 8 (session compliance audit)

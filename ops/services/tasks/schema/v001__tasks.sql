@@ -1,7 +1,7 @@
 -- ============================================================================
 -- tasks schema v001 — enterprise task workflow for the fleet (todo replacement)
 -- Source: docs/design/task-workflow.md (party-reviewed 2026-08-06)
--- Applied by: ops/services/tasks/migrate.py (version-gated, NOT cortex-update
+-- Applied by: ops/services/tasks/migrate.py (version-gated, NOT fleet-update
 --             directly — mirrors ops/services/mycortex/migrate.py)
 -- Target: mycortex-postgres, database `mycortex`, schema `tasks`
 --

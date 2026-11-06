@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cortex-update-mutex.py — the single-instance deploy lock.
+"""Tests for fleet-update-mutex.py — the single-instance deploy lock.
 
 THE GAP: fleet-update.sh has no mutex, so two concurrent updates to the SAME
 repo can run at once, each unlocking the same immutable enforcement files and
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-MUTEX = REPO / "ops" / "scripts" / "lib" / "cortex-update-mutex.py"
+MUTEX = REPO / "ops" / "scripts" / "lib" / "fleet-update-mutex.py"
 
 
 def _child(tmp: Path) -> Path:
@@ -72,7 +72,7 @@ def test_acquires_and_refuses_a_second_concurrent_holder():
     """A long-held lock must make a second invocation refuse with exit 1, while
     the first holder keeps running — the same-repo concurrency guard."""
     base = Path(tempfile.mkdtemp(prefix="mutex-"))
-    lock = base / "cortex-update.lock"
+    lock = base / "fleet-update.lock"
     child = _child(base)
     # Holder acquires via --hold for a controlled window.
     holder = subprocess.Popen(
@@ -91,7 +91,7 @@ def test_guard_runs_the_child_under_the_lock():
     """--guard acquires the lock, runs the deploy child, releases on exit — the
     production shape (deploy under a held fd)."""
     base = Path(tempfile.mkdtemp(prefix="mutex-guard-"))
-    lock = base / "cortex-update.lock"
+    lock = base / "fleet-update.lock"
     child = _child(base)
     r = _run(lock, child)
     assert "child-run" in r.stdout, (
@@ -103,7 +103,7 @@ def test_releases_automatically_after_process_exit():
     """Self-cleaning: once the holder exits, the lock is acquirable again (no
     stale-lock deadlock). This is the property a PID-file lacks."""
     base = Path(tempfile.mkdtemp(prefix="mutex-rel-"))
-    lock = base / "cortex-update.lock"
+    lock = base / "fleet-update.lock"
     child = _child(base)
     _run(lock, child)
     time.sleep(0.2)
@@ -116,8 +116,8 @@ def test_different_lock_files_do_not_block_each_other():
     other."""
     d1 = Path(tempfile.mkdtemp(prefix="mutex-d1-"))
     d2 = Path(tempfile.mkdtemp(prefix="mutex-d2-"))
-    l1 = d1 / "cortex-update.lock"
-    l2 = d2 / "cortex-update.lock"
+    l1 = d1 / "fleet-update.lock"
+    l2 = d2 / "fleet-update.lock"
     holder = subprocess.Popen(
         [sys.executable, str(MUTEX), "--hold", str(l1)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -134,7 +134,7 @@ def test_missing_lock_dir_is_created():
     """The helper must create the state dir if absent (fresh / minimal install)."""
     base = Path(tempfile.mkdtemp(prefix="mutex-mkdir-"))
     child = _child(base)
-    lock = base / "deep" / "nested" / "cortex-update.lock"
+    lock = base / "deep" / "nested" / "fleet-update.lock"
     _run(lock, child)
     assert lock.exists(), "lock file was not created under a new dir"
 

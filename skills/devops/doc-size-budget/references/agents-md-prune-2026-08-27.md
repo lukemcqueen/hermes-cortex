@@ -29,7 +29,7 @@ agents file?" — the deployed `~/.hermes/SOUL.md` AND the shared
 `git push` FAILED with "❌ Deploy sync" after committing the AGENTS.md trim:
 deployed `~/.hermes/AGENTS.md` still had the old bytes. The chain is:
 commit → `fleet-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
-push. If already committed, run `cortex-dogfood.sh --force`
+push. If already committed, run `fleet-dogfood.sh --force`
 (pull → deploy → doctor → verify) to converge, then push.
 
 ## Scripting pitfalls (bite #2 and #3 this session)
@@ -56,7 +56,7 @@ from pathlib import Path
 m = _extract_agents_markers(Path('AGENTS.md'))
 print(len(m), sorted(m))"        # 32 markers, all contract markers present
 python3 ops/scripts/agent/agents-doc-audit.py --repo . --json   # exit 0, missing_sections []
-python3 ops/scripts/manage/cortex-doctor.py --quiet             # AGENTS.md sync PASS
+python3 ops/scripts/manage/fleet-doctor.py --quiet             # AGENTS.md sync PASS
 diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md              # IDENTICAL (deployed == repo)
 ```
 
@@ -64,7 +64,7 @@ diff ~/.hermes/AGENTS.md ~/steadfaste-fleet/AGENTS.md              # IDENTICAL (
 
 `skill_manage` patches write to the DEPLOYED copy
 (`~/.steadfaste-fleet/skills/<cat>/<name>/`); the repo source
-(`~/steadfaste-fleet/skills/...`) is the fleet truth and LAGS. cortex-update
+(`~/steadfaste-fleet/skills/...`) is the fleet truth and LAGS. fleet-update
 then warns `SKILL DRIFT: deployed copy is newer than repo source`. After
 any skill_manage patch, `cp` the deployed SKILL.md back to the repo source
 and commit — otherwise the lesson never reaches the fleet.

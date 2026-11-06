@@ -47,7 +47,7 @@ REPORTS_DIR = EVALS_DIR / "reports"
 EVALS_REPO_DIR = HOME / "steadfaste-fleet" / "evals"
 SCRIPTS_DIR = CORTEX_HOME / "scripts"
 SKILLS_MANIFEST = CORTEX_HOME / "skills.yaml"
-DOCTOR = SCRIPTS_DIR / "cortex-doctor.py"
+DOCTOR = SCRIPTS_DIR / "fleet-doctor.py"
 TASK_DB = SCRIPTS_DIR / "task-db.py"
 
 TRACES_DIR.mkdir(parents=True, exist_ok=True)
@@ -342,7 +342,7 @@ def _exec_round_trip() -> tuple[bool, str]:
 def _doctor_clean() -> tuple[bool, str]:
     """Cortex doctor reports zero failures (warns tolerated)."""
     if not DOCTOR.exists():
-        return False, f"cortex-doctor.py not found at {DOCTOR}"
+        return False, f"fleet-doctor.py not found at {DOCTOR}"
     rc, out = _run(["python3", str(DOCTOR), "--json"], timeout=120)
     try:
         report = _parse_doctor_json(out)

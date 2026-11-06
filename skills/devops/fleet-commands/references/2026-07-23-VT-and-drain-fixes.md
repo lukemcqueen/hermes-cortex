@@ -8,7 +8,7 @@
 
 **Diagnostic signature:** Messages in `pending` that the handler reads but never archives. Querying audit log shows `read` but no corresponding `archive`. Checking `timeout_at` shows VT expired while handler was mid-processing.
 
-**Fix:** Changed to `bus_read(queue, vt=120)`. Cortex-update (43s) + doctor (10s) + overhead = ~96s total. 120s VT gives 24s of margin. Not enough margin for both cortex-update AND the retry (2×43s=86s + doctor 10s = 96s), but the retry path is rare.
+**Fix:** Changed to `bus_read(queue, vt=120)`. Cortex-update (43s) + doctor (10s) + overhead = ~96s total. 120s VT gives 24s of margin. Not enough margin for both fleet-update AND the retry (2×43s=86s + doctor 10s = 96s), but the retry path is rare.
 
 ### Fix 2: Multi-message drain 1→25 per tick (commit `9946158`)
 
@@ -28,8 +28,8 @@
 
 | Agent | EXEC `agent-diagnostic.py` | UPDATE_REQUEST |
 |-------|---------------------------|----------------|
-| Moses (self) | ✅ exit=0 | ✅ success=false (cortex-update failed with no stderr) |
-| Esther | ✅ exit=0 | ❌ success=false (cortex-update failed on her machine) |
+| Moses (self) | ✅ exit=0 | ✅ success=false (fleet-update failed with no stderr) |
+| Esther | ✅ exit=0 | ❌ success=false (fleet-update failed on her machine) |
 | Joseph | ✅ exit=0 | Not tested (night hours) |
 | Kustos | ✅ exit=0 | Not tested |
 | Gisu | ✅ exit=0 | Not tested |

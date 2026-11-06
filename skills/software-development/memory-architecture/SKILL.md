@@ -67,7 +67,7 @@ These exist in `docs/templates/` as **reference only**. Memory files are
 Hermes-owned: Hermes reads `~/.hermes/memories/MEMORY.md` directly and
 creates the file on its first memory write. Cortex does NOT copy, seed, or
 deploy memory templates (since 2026-08-05 — a deploy-registered seed
-clobbered live memory on every cortex-update).
+clobbered live memory on every fleet-update).
 
 ### Install script integration (`install.sh`)
 Two dedicated steps enforce the architecture:

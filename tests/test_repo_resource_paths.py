@@ -31,7 +31,7 @@ MCP_DIR = REPO / "mcp-servers"
 # The repo-relative resources the MCP servers resolve. Add a row here when a
 # server starts loading a new sibling — that is the point of the list.
 RESOLVED_BY_SERVERS = {
-    "mcp-servers/cortex-context-mcp.py": "ops/services/mycortex-mem/context_tools.py",
+    "mcp-servers/fleet-context-mcp.py": "ops/services/mycortex-mem/context_tools.py",
     "mcp-servers/task-mcp.py": "ops/scripts/manage/task-db.py",
     "mcp-servers/loop-gov-mcp.py": "ops/scripts/judgment.py",
 }

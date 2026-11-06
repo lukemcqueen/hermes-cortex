@@ -30,7 +30,7 @@ Key architectural facts:
 - **Bus server** processes at `~/steadfaste-fleet/core/fleet_bus/server.py` (module `fleet_bus.server:app`, service `cortex-bus.service`)
 - **Queue module** at `~/steadfaste-fleet/core/fleet_bus/queue.py`
 - **Postgres schema** `bus.*` in the shared mycortex database (`:15432`)
-- **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
+- **MCP tools** `mcp__fleet_bus__*` route through the bus via HTTP
 - **Health check**: `curl http://127.0.0.1:8903/health` returns 200
 - **Bearer token auth**: token from `CORTEX_BUS_TOKEN` in `.env`
 
@@ -448,7 +448,7 @@ The same 400 is returned when the `from` field doesn't match the authenticated u
 
 ### All Bus Tools Return 401 (Not 200)
 
-The MCP bus tools (`mcp__cortex_bus__*`) return HTTP 401 when:
+The MCP bus tools (`mcp__fleet_bus__*`) return HTTP 401 when:
 1. `CORTEX_BUS_TOKEN` in `.env` doesn't match the hash in `bus.tokens` table
 2. The token is missing entirely from the PG table
 
@@ -540,7 +540,7 @@ the messages sit in the local queues indefinitely.
 
 ## Dedup: consumed copies are never re-forwarded (2026-08-12)
 
-**Symptom:** a single `fleet send gisu EXEC "…cortex-doctor.py…"` produced **3
+**Symptom:** a single `fleet send gisu EXEC "…fleet-doctor.py…"` produced **3
 identical EXECs** in `inbox_gisu` with the same `correlation_id`
 (`send-ba7f68e22d6a`) at 00:04/00:06/00:11 KST. Gisu's handler archived all
 three (corr-idempotent), but the duplicate-delivery race left a task row

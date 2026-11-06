@@ -47,7 +47,7 @@ FAIL = 0
 WARN = 0
 
 HOME = Path.home()
-WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "cortex-bus-failover-watchdog.py"
+WATCHDOG_SRC = HOME / "steadfaste-fleet" / "ops" / "scripts" / "agent" / "fleet-bus-failover-watchdog.py"
 STATE_DIR = HOME / ".steadfaste-fleet" / "state"
 STATE_FILE = STATE_DIR / "bus-failover-state.json"
 MARKER_FILE = STATE_DIR / ".failover-active"

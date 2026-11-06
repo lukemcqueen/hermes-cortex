@@ -36,7 +36,7 @@ this pattern, use this standalone sequence:
 
 2. **Doctor check:**
    ```bash
-   python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py --quiet
+   python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py --quiet
    ```
 
 3. **Governance lock:** `check_lock()`

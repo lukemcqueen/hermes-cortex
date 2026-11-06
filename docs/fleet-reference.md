@@ -42,7 +42,7 @@ Every agent in the fleet falls into one of three types. This determines which in
 |--------|------------------------------|------------------|
 | Run `install-crons.sh` | ✅ Creates all `agent-*` + bare crons | ✅ Creates all `agent-*` + bare crons |
 | Run `install-orch-crons.sh` | ✅ Creates `orch-*` crons (bus, fleet, health) | ❌ Guard blocks — exits with info message |
-| Run `cortex-doctor.py` | ✅ Validates all crons including `orch-*` | ✅ Validates only `agent-*` + bare crons, skips `orch-*` |
+| Run `fleet-doctor.py` | ✅ Validates all crons including `orch-*` | ✅ Validates only `agent-*` + bare crons, skips `orch-*` |
 | Create cron manually | ✅ Has `cronjob` MCP tool | ❌ Must request via inbox or edit `jobs.json` directly |
 
 ### Cron naming convention (enforced)
@@ -94,7 +94,7 @@ These run on every agent in the fleet. Created by `install-crons.sh`.
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) | the fleet owner |
 | `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin | the fleet owner |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local | the fleet owner |
-| `cortex-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `cortex-bus-failover-watchdog.py` | Telegram | the fleet owner |
+| `fleet-bus-failover-watchdog` | `*/5 * * * *` | no_agent | `fleet-bus-failover-watchdog.py` | Telegram | the fleet owner |
 | `agent-service-recovery` | `*/5 * * * *` | no_agent | `agent-service-recovery.py` | origin | the fleet owner |
 | `agent-system-alert-watchdog` | `*/30 * * * *` | no_agent | `agent-system-alert-watchdog.py` | origin | the fleet owner |
 | `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local | the fleet owner |
@@ -241,6 +241,6 @@ non-streaming endpoint, >10 min no response) raises nothing, so the chain
 never fires and the LLM cron inactivity watchdog kills the job. Each host sets
 `providers.deepseek.request_timeout_seconds: 300` and
 `stale_timeout_seconds: 300` (via `install-provider-timeouts.sh` on every
-cortex-update) so a hang becomes a ReadTimeout at 5 min — before the 600s
+fleet-update) so a hang becomes a ReadTimeout at 5 min — before the 600s
 watchdog — and retry/fallback engage. Orthogonal to `HERMES_CRON_TIMEOUT`
 (600s known-good, do NOT lower).

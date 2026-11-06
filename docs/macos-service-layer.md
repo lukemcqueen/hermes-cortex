@@ -16,9 +16,9 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Label | What it runs | Notes |
 |---|---|---|---|
-| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
+| `com.hermes.fleet-gateway.plist` | `com.hermes.fleet-gateway` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
 | `com.hermes.gateway.plist` | `com.hermes.gateway` | the **Hermes** runtime gateway (`hermes_agent.gateway.run`) | The one service that legitimately uses the Hermes venv (the module lives there). Candidates for decommission as hosts migrate. |
-| `com.hermes.cortex-dashboard.plist` | `com.hermes.cortex-dashboard` | the cortex dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
+| `com.hermes.fleet-dashboard.plist` | `com.hermes.cortex-dashboard` | the cortex dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
 | `com.hermes.health-push.plist` | `com.hermes.health-push` | `ops/scripts/health/health-vector-push.sh` every 10 min | **Client-only agents (Titus, Gisu, Joseph) install this.** Set `AGENT_NAME` per host. |
 | `com.docker.docker.plist` | `com.docker.docker` | Docker Desktop, unattended | So containers with `restart:` policy come back after login. |
 
@@ -58,16 +58,16 @@ docs audit, which both pointed at this file before it existed.
 ## Install / check / remove
 
 ```bash
-cp docs/templates/com.hermes.cortex-gateway.plist ~/Library/LaunchAgents/
-launchctl load  ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
-launchctl list com.hermes.cortex-gateway            # check
-tail -f ~/Library/Logs/com.hermes.cortex-gateway.log
-launchctl unload ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist   # remove
-rm ~/Library/LaunchAgents/com.hermes.cortex-gateway.plist
+cp docs/templates/com.hermes.fleet-gateway.plist ~/Library/LaunchAgents/
+launchctl load  ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist
+launchctl list com.hermes.fleet-gateway            # check
+tail -f ~/Library/Logs/com.hermes.fleet-gateway.log
+launchctl unload ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist   # remove
+rm ~/Library/LaunchAgents/com.hermes.fleet-gateway.plist
 ```
 
 ⚠️ **Only one poller per bot token.** Stop the incumbent (`com.hermes.gateway`) before loading
-`com.hermes.cortex-gateway`, or the two 409 against each other.
+`com.hermes.fleet-gateway`, or the two 409 against each other.
 
 ## Enforced, not documented-only
 

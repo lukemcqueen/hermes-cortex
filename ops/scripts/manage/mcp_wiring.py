@@ -36,7 +36,7 @@ from pathlib import Path
 #: doctor's package. The values are BARE filenames (the doctor's convention); the repo-relative
 #: path is built by repo_rel_script() wherever one is printed.
 DEFAULT_EXPECTED = {
-    "agent-bus": "cortex-bus-mcp.py",
+    "agent-bus": "fleet-bus-mcp.py",
     # Two role-distinct registrations of the single loop-gov binary (Slice B):
     # loop-governance (lifecycle) + review (review-only).
     "loop-governance": "loop-gov-mcp.py",
@@ -54,7 +54,7 @@ def repo_rel_script(script):
     """The server script's path relative to the repo root.
 
     Callers pass a BARE filename (the doctor's EXPECTED_MCP_SERVERS does), so a fix string built
-    as `~/steadfaste-fleet/{script}` rendered `~/steadfaste-fleet/cortex-bus-mcp.py` — a path that does
+    as `~/steadfaste-fleet/{script}` rendered `~/steadfaste-fleet/fleet-bus-mcp.py` — a path that does
     not exist, i.e. a printed command nobody can run. Normalise here so every printed command
     resolves, whichever convention the caller used.
     """

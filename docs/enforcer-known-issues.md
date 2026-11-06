@@ -235,7 +235,7 @@ same `try` — so an incompatible SDK takes the same fail-soft path as a missing
 stays importable, the handlers stay drivable, and stderr carries a warning naming the interpreter
 and the API required. It declines to serve rather than degrading in silence, because a gate that
 quietly disables itself hides the wrong interpreter. The declared floor is `mcp>=2.0` (it was
-`>=1.0`, which admitted exactly the version that breaks), and `fix-cortex-venv.py --check` probes
+`>=1.0`, which admitted exactly the version that breaks), and `fix-fleet-venv.py --check` probes
 that capability rather than only importing — the check `fleet-update.sh` gates its repair on, so
 without it a broken host was told `ok: … imports all 6 declared requirements` and repaired
 nothing. Evidence: `docs/evidence/verify-mcp-sdk-guard.sh` beside its captured run (the pinned

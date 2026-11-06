@@ -151,13 +151,13 @@ Exact type shapes, the probe commands, and the executable-guard recipe:
 ## Cortex context (memory + session)
 
 **Pi >= 0.99 / 1.0 has an MCP client** (pi 1.0.0, reproduced: `pi mcp list` reports
-`cortex-context: connected, N tools`): it reads
+`fleet-context: connected, N tools`): it reads
 `mcpServers` from `~/.pi/agent/mcp.json` (user scope) and `.pi/mcp.json` (trusted
 projects only), the same shape as Claude Code. Governance is therefore an MCP
 registration — never hand-write a lock:
 
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # loop-governance, tasks, executor, agent-bus, cortex-context
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # loop-governance, tasks, executor, agent-bus, fleet-context
 pi mcp list                                                 # expect 5 servers, state "connected"
 ```
 
@@ -247,7 +247,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh --check   
 bash ~/steadfaste-fleet/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
 ```
 
-It writes `~/.pi/agent/settings.json` — `"extensions": [<cortex-context.ts>, <cortex-governance.ts>]`
+It writes `~/.pi/agent/settings.json` — `"extensions": [<fleet-context.ts>, <cortex-governance.ts>]`
 and `"skills": ["~/.agents/skills"]` — and RETIRES a pre-existing `~/.pi/agent/cortex-skills`
 link farm when one is found: a stale farm keeps Pi loading a curated subset beside the whole
 tree. Idempotent, and it preserves the user's other keys. It no longer reads `skills.yaml` at
@@ -287,14 +287,14 @@ HOST-scope one (every Pi project on the machine).
   resort only.
 
 The **memory/session TOOLS** also come from that MCP server — the SAME
-`cortex-context-mcp.py` Claude Code and Codex use, so the schemas are DERIVED
+`fleet-context-mcp.py` Claude Code and Codex use, so the schemas are DERIVED
 from the store contract and there is no per-harness tool list left to drift.
 The extension keeps ONLY the lifecycle triggers, which MCP cannot provide:
 
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # + cortex-context
-cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/cortex-context.ts extensions/
-pi -e extensions/cortex-context.ts --tools read,bash,edit,write
+bash ~/steadfaste-fleet/ops/scripts/install/install-pi-mcp.sh   # + fleet-context
+cp ~/steadfaste-fleet/ops/install/harnesses/pi/extensions/fleet-context.ts extensions/
+pi -e extensions/fleet-context.ts --tools read,bash,edit,write
 ```
 
 An older Pi (<= 0.87, no MCP client) reaches the same governance through the
@@ -320,7 +320,7 @@ Pi's standing context = skill NAMES+descriptions + what the harness injects; a r
 inside a skill body binds only if the agent happens to load it, and SOUL/MEMORY/USER.md
 are never read by Pi. Three surfaces reach EVERY Pi session, cheapest-effective first:
 
-1. **`before_agent_start` systemPrompt injection** (cortex-context extension) — the
+1. **`before_agent_start` systemPrompt injection** (fleet-context extension) — the
    ONLY surface that is truly always-on; it is PAID as context on every turn, so keep
    it to a compact checklist (~7 lines; the pre-ship checklist is the exemplar:
    right-first-time, survey-before-build, test-edge-cases, evidence-before-done,
@@ -471,7 +471,7 @@ Harness index: `ops/install/harnesses/INDEX.md` · Adding another harness:
 
 ## Cortex-gateway — answer a Telegram bot with pi (the `command` backend)
 
-The standalone `cortex-gateway` (a systemd/launchd unit, decoupled from
+The standalone `fleet-gateway` (a systemd/launchd unit, decoupled from
 `hermes-gateway.service`) serves a Telegram bot with pi as a `kind: command`
 backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
 
@@ -485,7 +485,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   GATEWAY's to handle via pi RPC (`fleet_gateway/pi_control.py`), never forwarded
   as prompts.
 - **A second Telegram bot must use a DISTINCT token var — never
-  `TELEGRAM_BOT_TOKEN`.** `cortex-gateway.service` runs
+  `TELEGRAM_BOT_TOKEN`.** `fleet-gateway.service` runs
   `guard_distinct_token.py` as `ExecStartPre`, which REFUSES to start when
   `gateway.yaml`'s `bots[].token_ref` is the live bot's var/name — two pollers on
   one bot token get a Telegram **409 Conflict** and the casualty is the LIVE
@@ -499,7 +499,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   every bus signature forgeable. The bot+config are assembled per host: env vars
   into the canonical cortex env (`~/steadfaste-fleet/.env`), `gateway.yaml` from the
   example, then `enable --now` the unit. Full reference: `docs/templates/
-  cortex-gateway.service` + `docs/design/cortex-gateway.md` (CR5 pi = the record,
+  fleet-gateway.service` + `docs/design/fleet-gateway.md` (CR5 pi = the record,
   live on the second-bot `@Esther0001Bot`).
 - **`TELEGRAM_API_BASE` is required and fails CLOSED — an `active` unit is not a
   WORKING gateway.** The transport resolves the API base at call time and refuses
@@ -508,7 +508,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   every poll. Set it in the cortex env (`TELEGRAM_API_BASE=https://api.telegram.org`
   for the standard API) — Hermes's own gateway supplies this internally, so a
   migration surfaces it as a NEW requirement. Verify a working gateway from the
-  JOURNAL, not `systemctl is-active`: `journalctl --user -u cortex-gateway.service`
+  JOURNAL, not `systemctl is-active`: `journalctl --user -u fleet-gateway.service`
   must show a real dispatched turn and no recurring `poll error … backing off`.
   Likewise a pi turn that exits non-zero with `No API key found for openrouter` is
   the provider key missing, not the gateway — wire `auth.json` via the

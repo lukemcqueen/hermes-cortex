@@ -12,7 +12,7 @@ Swap proof: `docs/evidence/jev-swap-seam-2026-10-28/run.sh`.
 Run the doctor and read one line:
 
 ```bash
-python3 ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Jev decision layer"
+python3 ops/scripts/manage/fleet-doctor.py 2>&1 | grep "Jev decision layer"
 ```
 
 | What it says | What it means |

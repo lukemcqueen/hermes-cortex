@@ -78,10 +78,10 @@ mk_stub_doctor() { # $1=path  $2=drift text — emits >=100 lines so the run-evi
 r1="$TMP/green"; mkdir -p "$r1/repo/ops/scripts/manage" "$r1/deployed"; mk_repo "$r1"
 echo "hello" > "$r1/repo/skills/devops/probe-skill/SKILL.md"
 echo "hello" > "$r1/deployed/devops/probe-skill/SKILL.md"
-mk_stub_doctor "$r1/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r1/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 mk_stub_recon "$r1/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
 # prove the harness' own stubs are trustworthy BEFORE trusting the probes
-[ "$(python3 "$r1/repo/ops/scripts/manage/cortex-doctor.py" | wc -l)" -ge 100 ] \
+[ "$(python3 "$r1/repo/ops/scripts/manage/fleet-doctor.py" | wc -l)" -ge 100 ] \
   && echo "  OK   stub doctor emits >=100 lines" \
   || { echo "  HARNESS BUG: stub doctor too short"; exit 1; }
 
@@ -97,7 +97,7 @@ if [ "$rc" -eq 1 ]; then echo "  OK   divergence -> rc=1 (FAIL, a deploy is outs
 echo "probe 3: reconciler crashes (rc=3, no stranded line) -> COULD NOT VERIFY, never green"
 r3="$TMP/rc3"; mkdir -p "$r3/repo/ops/scripts/manage" "$r3/deployed"; mk_repo "$r3"
 echo h > "$r3/repo/skills/devops/probe-skill/SKILL.md"; echo h > "$r3/deployed/devops/probe-skill/SKILL.md"
-mk_stub_doctor "$r3/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r3/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 printf 'import sys\nprint("boom", file=sys.stderr)\nsys.exit(3)\n' > "$r3/repo/ops/scripts/manage/reconcile-stranded-skills.py"
 chmod +x "$r3/repo/ops/scripts/manage/reconcile-stranded-skills.py"
 out="$(run_check "$r3")"; rc=$?
@@ -106,16 +106,16 @@ if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'COULD NOT VERIFY: reconciler
 echo "probe 4: doctor runs but never prints a per-check verdict -> COULD NOT VERIFY"
 r4="$TMP/trunc"; mkdir -p "$r4/repo/ops/scripts/manage" "$r4/deployed"; mk_repo "$r4"
 echo h > "$r4/repo/skills/devops/probe-skill/SKILL.md"; echo h > "$r4/deployed/devops/probe-skill/SKILL.md"
-{ printf 'for _ in range(120): print("  not a check line")\n'; } > "$r4/repo/ops/scripts/manage/cortex-doctor.py"
+{ printf 'for _ in range(120): print("  not a check line")\n'; } > "$r4/repo/ops/scripts/manage/fleet-doctor.py"
 mk_stub_recon "$r4/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
-chmod +x "$r4/repo/ops/scripts/manage/cortex-doctor.py"
+chmod +x "$r4/repo/ops/scripts/manage/fleet-doctor.py"
 out="$(run_check "$r4")"; rc=$?
 if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'COULD NOT VERIFY'; then echo "  OK   doctor without a verdict line -> COULD NOT VERIFY"; pass=$((pass+1)); else echo "  BLIND verdict-less doctor read as rc=$rc: $out"; blind=$((blind+1)); fi
 
 echo "probe 5: stranded: 6 (content only on the deployed tree) while the verdict line still says PASS"
 r5="$TMP/stranded"; mkdir -p "$r5/repo/ops/scripts/manage" "$r5/deployed"; mk_repo "$r5"
 echo h > "$r5/repo/skills/devops/probe-skill/SKILL.md"; echo h > "$r5/deployed/devops/probe-skill/SKILL.md"
-mk_stub_doctor "$r5/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r5/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 mk_stub_recon "$r5/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 6"
 out="$(run_check "$r5")"; rc=$?
 if [ "$rc" -ne 0 ]; then echo "  OK   stranded:6 with PASS verdict -> rc=$rc (count judged, not the verdict word)"; pass=$((pass+1)); else echo "  BLIND stranded:6 stayed green"; blind=$((blind+1)); fi
@@ -123,7 +123,7 @@ if [ "$rc" -ne 0 ]; then echo "  OK   stranded:6 with PASS verdict -> rc=$rc (co
 echo "probe 6: deployed file missing entirely -> FAIL, not skipped"
 r6="$TMP/nodep"; mkdir -p "$r6/repo/ops/scripts/manage" "$r6/deployed"; mk_repo "$r6"
 echo h > "$r6/repo/skills/devops/probe-skill/SKILL.md"; rmdir "$r6/deployed/devops/probe-skill"
-mk_stub_doctor "$r6/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r6/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 mk_stub_recon "$r6/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
 out="$(run_check "$r6")"; rc=$?
 if [ "$rc" -eq 1 ]; then echo "  OK   missing deployed -> rc=1 (a real failure, not 'unverifiable')"; pass=$((pass+1)); else echo "  BLIND missing deployed rc=$rc (expected 1): $out"; blind=$((blind+1)); fi
@@ -144,7 +144,7 @@ echo h > "$r7/deployed/devops/live-skill/SKILL.md"
 # a skill deployed HERE but absent from the repo = the unapplied-work gap (case (a))
 mkdir -p "$r7/deployed/devops/ghost-missing"
 echo h > "$r7/deployed/devops/ghost-missing/SKILL.md"
-mk_stub_doctor "$r7/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r7/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 mk_stub_recon "$r7/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
 now_iso="$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')"
 printf '{"text": "Learning Report — probehost\\nGenerated: %s\\nType: full\\n== Skills (3 changed) ==\\n  [NEW] live-skill (devops)\\n  [NEW] ghost-archived (.archive)\\n  [NEW] ghost-missing (devops)\\n"}' "$now_iso" \
@@ -169,7 +169,7 @@ echo "probe 8: reported name is a CATEGORY dir in the repo (exists, no SKILL.md 
 # own real drift; FAIL on them, never on this shape.
 r8="$TMP/catdir"; mkdir -p "$r8/repo/ops/scripts/manage" "$r8/deployed"; mk_repo "$r8"
 mkdir -p "$r8/repo/skills/cat/probe-cat" "$r8/deployed/cat/probe-cat"   # dirs, no SKILL.md
-mk_stub_doctor "$r8/repo/ops/scripts/manage/cortex-doctor.py" "✅ Skill drift — stub"
+mk_stub_doctor "$r8/repo/ops/scripts/manage/fleet-doctor.py" "✅ Skill drift — stub"
 mk_stub_recon "$r8/repo/ops/scripts/manage/reconcile-stranded-skills.py" "stranded: 0"
 out="$(SKILLS=probe-cat run_check "$r8")"; rc=$?
 if [ "$rc" -eq 0 ]; then echo "  OK   category dir -> rc=0 (tolerated, not a repo skill)"; pass=$((pass+1)); else echo "  BLIND category dir rc=$rc (expected 0): $out"; blind=$((blind+1)); fi

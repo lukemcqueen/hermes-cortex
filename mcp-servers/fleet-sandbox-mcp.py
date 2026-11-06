@@ -8,7 +8,7 @@ Tools:
     sandbox_validate   — validate a path list, returning blocked paths only
 
 Usage:
-    hermes mcp add --command python3 --args /path/to/cortex-sandbox-mcp.py cortex-sandbox
+    hermes mcp add --command python3 --args /path/to/fleet-sandbox-mcp.py fleet-sandbox
 """
 
 import asyncio
@@ -21,18 +21,18 @@ from pathlib import Path
 # ── Dependency Check ─────────────────────────────────────────
 _MCP_SPEC = importlib.util.find_spec("mcp")
 if _MCP_SPEC is None:
-    print("[cortex-sandbox] ERROR: 'mcp' package not found.", file=sys.stderr)
-    print("[cortex-sandbox] Install: pip install mcp", file=sys.stderr)
+    print("[fleet-sandbox] ERROR: 'mcp' package not found.", file=sys.stderr)
+    print("[fleet-sandbox] Install: pip install mcp", file=sys.stderr)
     sys.exit(1)
 
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
-    format="[cortex-sandbox] %(levelname)s: %(message)s",
+    format="[fleet-sandbox] %(levelname)s: %(message)s",
     stream=sys.stderr,
     force=True,
 )
-log = logging.getLogger("cortex-sandbox")
+log = logging.getLogger("fleet-sandbox")
 
 # ── MCP imports (after dependency check) ────────────────────
 from mcp.server import Server
@@ -40,15 +40,15 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 
 # ── Local module ─────────────────────────────────────────────
-# Resolve the cortex-sandbox.py module relative to this file's location,
+# Resolve the fleet-sandbox.py module relative to this file's location,
 # then fall back to the deployed scripts path.
 _SERVER_DIR = Path(__file__).resolve().parent
-_SANDBOX_MODULE = _SERVER_DIR.parent / "ops" / "scripts" / "sandbox" / "cortex-sandbox.py"
+_SANDBOX_MODULE = _SERVER_DIR.parent / "ops" / "scripts" / "sandbox" / "fleet-sandbox.py"
 if not _SANDBOX_MODULE.exists():
-    _SANDBOX_MODULE = Path.home() / ".steadfaste-fleet" / "scripts" / "sandbox" / "cortex-sandbox.py"
+    _SANDBOX_MODULE = Path.home() / ".steadfaste-fleet" / "scripts" / "sandbox" / "fleet-sandbox.py"
 
 if not _SANDBOX_MODULE.exists():
-    log.error(f"cortex-sandbox.py not found at {_SANDBOX_MODULE}")
+    log.error(f"fleet-sandbox.py not found at {_SANDBOX_MODULE}")
     sys.exit(1)
 
 import importlib.machinery
@@ -210,7 +210,7 @@ def _sandbox_validate(args: dict) -> CallToolResult:
 
 # ── Server ───────────────────────────────────────────────────
 
-server = Server("cortex-sandbox", on_list_tools=list_tools, on_call_tool=call_tool)
+server = Server("fleet-sandbox", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 async def main():

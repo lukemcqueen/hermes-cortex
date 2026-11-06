@@ -7,7 +7,7 @@ Generated: 2026-10-06T04:20:16Z  ·  host: esther
 Artifacts this evidence was produced from (verify with `sha256sum`):
 
 ```
-f637fdfaf6a2f8c90a97440860f5d7efcd77952d6ca8f8977ce1a793395136ad  ops/install/harnesses/pi/extensions/cortex-context.ts
+f637fdfaf6a2f8c90a97440860f5d7efcd77952d6ca8f8977ce1a793395136ad  ops/install/harnesses/pi/extensions/fleet-context.ts
 c8e54608f3046d3d6c7d6e640ccfb46dee455a4e65cf0917a87b8a8cee89533c  ops/install/harnesses/pi/verify-extension.mjs
 7d6a76a256e148a64c5f14b9cfa13662cc2700afb903274c3fc75e4bd68afb11  ops/install/harnesses/pi/run-evidence.sh
 ```
@@ -43,9 +43,9 @@ The pre-fix extension registered 11 tools BY HAND. The one-way-in invariant
 rejects that — which is what makes this a guard rather than a happy path:
 
 ```
-❌ extension registers ZERO tools (got 11) — the tools come from the shared cortex-context MCP server, so a second definition here is the phantom bug
+❌ extension registers ZERO tools (got 11) — the tools come from the shared fleet-context MCP server, so a second definition here is the phantom bug
 ❌ EXTENSION BROKEN — 1 check(s) failed:
-   - extension registers ZERO tools (got 11) — the tools come from the shared cortex-context MCP server, so a second definition here is the phantom bug
+   - extension registers ZERO tools (got 11) — the tools come from the shared fleet-context MCP server, so a second definition here is the phantom bug
 ```
 
 ---
@@ -57,8 +57,8 @@ re-runnable guard for this is
 `tests/test_context_harnesses.py::test_pi_context_tools_are_registered_as_the_shared_MCP_server`.
 
 ```
-cortex-context: connected, 12 tools (direct, global)
-  $HOME/.hermes/hermes-agent/venv/bin/python3 $HOME/.steadfaste-fleet/scripts/cortex-context-mcp.py
+fleet-context: connected, 12 tools (direct, global)
+  $HOME/.hermes/hermes-agent/venv/bin/python3 $HOME/.steadfaste-fleet/scripts/fleet-context-mcp.py
   tools: mem_profile, mem_search, mem_context, mem_conclude, session_checkpoint, session_restore, session_list, session_search, session_note, session_close, session_tool_event, session_loaded_skill
 ```
 

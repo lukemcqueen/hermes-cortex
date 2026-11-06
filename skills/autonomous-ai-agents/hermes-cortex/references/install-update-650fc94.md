@@ -42,7 +42,7 @@ DASHBOARD_DEST="${HERMES_HOME}/dashboard"
 
 # Copy dashboard/ from repo (server.py, static/index.html)
 # Install Flask if needed: pip3 install flask
-# Create launchd plist: com.hermes.cortex-dashboard.plist
+# Create launchd plist: com.hermes.fleet-dashboard.plist
 # Load service: launchctl load
 ```
 

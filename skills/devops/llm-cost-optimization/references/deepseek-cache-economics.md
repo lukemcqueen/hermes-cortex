@@ -78,7 +78,7 @@ system prompt cold once per session.
 
 - 14/17 agent crons were pinned to `deepseek-chat` (retired 2026-07-24) — the
   canonical source (ops/install/cron-manifest.yaml) still had it; live
-  `hermes cron edit` edits were reverted by the next cortex-update.
+  `hermes cron edit` edits were reverted by the next fleet-update.
 - 12% of cron runs landed in peak (2×) hours.
 - Interactive sessions (Titus) ≈ 70% of weekday spend and were invisible to
   cost tracking (usage_audit is job_id-keyed, cron-only).

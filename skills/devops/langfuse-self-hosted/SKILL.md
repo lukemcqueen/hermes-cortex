@@ -317,9 +317,9 @@ the judge model to `qwen2.5:3b` (2026-08-11): repo default and the per-host
 `JUDGE_MODEL` in `~/steadfaste-fleet/.env` (gitignored, per-host) both use the
 verified-working instruct variant. Pull it first: `ollama pull qwen2.5:3b`.
 
-### Doctor surfaces Langfuse health (cortex-doctor)
+### Doctor surfaces Langfuse health (fleet-doctor)
 
-`cortex-doctor` includes a `check_langfuse_observability` check (2026-08-11)
+`fleet-doctor` includes a `check_langfuse_observability` check (2026-08-11)
 that reports:
 - **Langfuse version** — running web image tag vs compose-pinned tag
   (catches "compose updated but `docker compose restart` never re-read it").
@@ -555,7 +555,7 @@ sed -i.bak 's/^LANGFUSE_INIT_USER_PASSWORD=.*/LANGFUSE_INIT_USER_PASSWORD=new_pa
 - `steadfaste-fleet/deploy/README-langfuse-clickhouse.md` — Full deployment guide
 - `steadfaste-fleet/deploy/docker-compose.langfuse.yml` — Canonical compose file
 - `steadfaste-fleet/deploy/clickhouse-config.d/` — ClickHouse config files
-- `steadfaste-fleet/ops/scripts/cortex-setup-langfuse.sh` — Automated setup script
+- `steadfaste-fleet/ops/scripts/fleet-setup-langfuse.sh` — Automated setup script
 - `references/clickhouse-merge-failure-repair.md` — Diagnose and fix CHECKSUM_DOESNT_MATCH merge loops
 - `references/clickhouse-oom-max-memory-conflict.md` — Diagnose per-query max_memory_usage exceeding server max_server_memory_usage (silent OOM loop)
 - `references/clickhouse-stale-huge-parts-nuke.md` — **NEW:** Nuke data volume when low-memory config is deployed but OLD parts from the pre-config era cause MEMORY_LIMIT_EXCEEDED on every merge

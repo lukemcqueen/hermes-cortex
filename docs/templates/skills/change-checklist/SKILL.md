@@ -59,7 +59,7 @@ metadata:
 
 ## Phase 5 — Final Verification
 
-- [ ] Run `cortex-doctor.py` or equivalent health check
+- [ ] Run `fleet-doctor.py` or equivalent health check
 - [ ] **Adversarial scan passed — MANDATORY for every changed script** (change-checklist Phase 1.5): `python3 ops/scripts/quality/adversarial-verify.py --file <changed-file> --level A2 --gate` per file (A4 for security/guard/hook/enforcer paths). Must exit 0. The pre-commit hook runs this gate too — no `--no-verify`, no bypass.
 - [ ] Verify all services restart cleanly (launchctl list / systemctl status)
 - [ ] Verify symlinks are valid

@@ -101,7 +101,7 @@ warning path in the same commit.
 
 ```bash
 # Run the check
-python3 cortex-doctor.py | grep "Plugin lock"
+python3 fleet-doctor.py | grep "Plugin lock"
 
 # Expected output when working:
 # ✅ Plugin lock helper — helper + sudoers OK (----i---------e------- ...)

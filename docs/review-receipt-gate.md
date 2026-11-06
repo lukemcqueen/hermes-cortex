@@ -255,7 +255,7 @@ left behind. That empty shell is what reappeared.
    recurrence surfaces as untracked.
 2. Nothing asserted the directory's *absence*. Now something does.
 
-**The check.** `cortex-doctor` reports `Repo-local .steadfaste-fleet`:
+**The check.** `fleet-doctor` reports `Repo-local .steadfaste-fleet`:
 
 | Situation | Result |
 |---|---|

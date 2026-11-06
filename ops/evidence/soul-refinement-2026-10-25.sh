@@ -358,7 +358,7 @@ PY
   say "## 6. Post-deploy state — the deploy is a MANUAL step, this asserts its result"
   say "Manual step, run OUTSIDE this generator before the capture (so the checks"
   say "below describe a state this script did not create):"
-  say "   bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force"
+  say "   bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force"
   say "Its own verdict was DOGFOOD PASSED with 0 fail; that line is not quoted"
   say "here as a measurement, because a reader can re-run the command — what is"
   say "asserted instead is the CONTENT the deploy was supposed to deliver."
@@ -380,8 +380,8 @@ PY
     fi
   done
   say ""
-  say "cmd: python3 ops/scripts/manage/cortex-doctor.py --quiet"
-  DOC_OUT="$(timeout 300 python3 ops/scripts/manage/cortex-doctor.py --quiet 2>&1)"
+  say "cmd: python3 ops/scripts/manage/fleet-doctor.py --quiet"
+  DOC_OUT="$(timeout 300 python3 ops/scripts/manage/fleet-doctor.py --quiet 2>&1)"
   DOC_RC=$?
   printf '%s\n' "$DOC_OUT" | norm | grep -E 'Skill drift|Overall:|UNDISPOSED' || say "   (no verdict lines matched)"
   say "doctor rc=$DOC_RC (rc=1 while warnings stand; the per-check lines above"

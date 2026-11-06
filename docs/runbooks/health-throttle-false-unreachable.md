@@ -2,7 +2,7 @@
 
 ## Symptom
 
-Every worker agent's `cortex-bus-failover-watchdog` recurringly emitted a
+Every worker agent's `fleet-bus-failover-watchdog` recurringly emitted a
 `⚠️ Moses (primary bus) unreachable — traffic now routes via Esther :14004`
 followed ~5 min later by `✅ Moses (primary bus) reachable again`. Observed at
 the top of `:00` and `:30` each hour (e.g. 10:00 / 11:00). Not a real outage.
@@ -87,12 +87,12 @@ sudo nginx -t && sudo systemctl reload nginx
 - `ops/install/deploy/nginx/hermes-services.conf` health block keeps its tight
   limits — do **not** relax it.
 - Live `/etc/nginx` had drifted tighter than the templates and was never
-  re-deployed by `cortex-update` (that step needs root), which is why the
+  re-deployed by `fleet-update` (that step needs root), which is why the
   earlier doc-only round didn't take.
 
 ### 3. Watchdog debounce (complementary noise suppression)
 
-Commit `84794f85`: the worker `cortex-bus-failover-watchdog.py` now alarms only
+Commit `84794f85`: the worker `fleet-bus-failover-watchdog.py` now alarms only
 after **2 consecutive** failed probes and recovers only after **3 consecutive**
 successes, so a single transient blip no longer spams the channel. This stops
 the alert noise; step 1 stops the actual throttling.

@@ -58,7 +58,7 @@ grep -rn '<name>' ~/.steadfaste-fleet/scripts/install*.sh ~/steadfaste-fleet/ops
 | `~/.hermes/bin/uv`, `uvx`, `tirith` | Python toolchain + security scanner (tirith referenced in `config.yaml` `security.tirith_*`) |
 | `~/.hermes/node/`, `~/.hermes/lsp/` | Runtimes for desktop/LSP features |
 | `~/.hermes/agent-profiles/` | SOUL.md profile templates (legacy) — `soul-merge.py`/`soul-sync-all.sh` that read them were removed 2026-11-04; `pre-commit-score` no longer syncs SOUL |
-| `~/.hermes/AGENTS.md.local`, any `local-*` | Preserved by rule (cortex-update never deletes) |
+| `~/.hermes/AGENTS.md.local`, any `local-*` | Preserved by rule (fleet-update never deletes) |
 | `~/.steadfaste-fleet/state/deploy-backups/`, `scripts-unique-backup-*` | Recent deploy rollback safety nets |
 
 ## Truly Stale — Safe to Delete
@@ -137,7 +137,7 @@ hermes profile list        # the duplicate-credential warning must be gone
 2. **Verify chain** — for each candidate, run the 4-step grep above
 3. **Classify** — LIVE (skip) / STALE (delete) / VERIFY-FIRST (flag to owner)
 4. **Delete stale only**, from the table above. Never `rm -rf` a LIVE path
-5. **Re-verify** — `du -sh` before/after; `hermes doctor` / `cortex-doctor.py --quiet` still clean
+5. **Re-verify** — `du -sh` before/after; `hermes doctor` / `fleet-doctor.py --quiet` still clean
 6. **Report** — table of what was removed, evidence, space reclaimed
 7. **Share** — push any new knowledge (new live/stale entries) back into this skill
 

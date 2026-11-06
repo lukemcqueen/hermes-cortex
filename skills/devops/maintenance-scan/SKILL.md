@@ -72,7 +72,7 @@ Check what you already know BEFORE querying any external system:
 
 ### Step 3: Doctor
 ```
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet
 ```
 Record: pass count, fail count, warn count. Note every ❌ and ⚠️ line.
 Exit 0 = clean. Exit 2 = failures present.
@@ -207,7 +207,7 @@ Fix each issue without asking (Principle 2 — Be Proactive). Only escalate:
 with an owner and a reason — an undisposed warning reads as an unnoticed failure on the next run:
 
 ```bash
-python3 ~/.steadfaste-fleet/scripts/cortex-doctor.py --disposition "<exact check name>" \
+python3 ~/.steadfaste-fleet/scripts/fleet-doctor.py --disposition "<exact check name>" \
   --as deferred --owner <agent> --reason "<why this is not yours / not now>"
 ```
 
@@ -239,7 +239,7 @@ For docs: edit → sync (`cp repo_path ~/.hermes/`) → commit → push → veri
 
 ### Step 9: Re-verify
 ```
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --quiet
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --quiet
 ```
 Confirm: 41 pass · 0 warn · 0 fail — or better than baseline.
 

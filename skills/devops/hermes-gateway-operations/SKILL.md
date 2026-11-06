@@ -315,9 +315,9 @@ Concrete shapes — paths, the callback envelope, callback-data encoding, and th
 4. Restart the gateway
 5. Verify `gateway_state.json` shows `"connected"` and send a test message
 
-## Enabling the decoupled cortex-gateway (a CLI-agent backend)
+## Enabling the decoupled fleet-gateway (a CLI-agent backend)
 
-The repo ships a standalone `cortex-gateway` unit (`docs/templates/cortex-gateway.service`)
+The repo ships a standalone `fleet-gateway` unit (`docs/templates/fleet-gateway.service`)
 that answers a messaging bot with a pluggable backend, including a `kind: command` CLI
 coding agent (pi, Codex, Claude Code). It is deliberately INDEPENDENT of
 `hermes-gateway.service` — own unit, own config, no `After=`/`Wants=` on the incumbent.
@@ -382,7 +382,7 @@ step either finds the break or rules it out; stop at the first red.
 5. **Inbound peek** — raw `getUpdates?offset=<persisted>` returns only NEWER updates
    WITHOUT consuming them (the offset advances only when you pass a higher one):
    0 pending = nothing stuck in Telegram's queue for the bot.
-6. **Journal + unit** — `journalctl --user -u cortex-gateway.service`, `systemctl
+6. **Journal + unit** — `journalctl --user -u fleet-gateway.service`, `systemctl
    --user show <unit> -p Restart -p NRestarts`, and kernel/dmesg OOM for the death cause.
 7. **Backend session transcripts — the record of whether a turn RAN.** The CLI
    agent's own session files (pi: `~/.pi/agent/sessions/--home-moses--/*hc-pi-<chat>.jsonl` —

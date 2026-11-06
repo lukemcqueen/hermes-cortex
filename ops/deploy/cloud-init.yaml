@@ -12,7 +12,7 @@
 #    2. sudo -Hu ubuntu cat ~/steadfaste-fleet/.env.example > .env
 #    3. Edit ~/steadfaste-fleet/.env with your secrets
 #    4. bash ~/steadfaste-fleet/ops/install/install.sh
-#    5. cortex-doctor.py --fix
+#    5. fleet-doctor.py --fix
 # ───────────────────────────────────────────────────────────────
 
 package_update: true
@@ -238,7 +238,7 @@ runcmd:
       echo "     cd ~/steadfaste-fleet && bash ops/install/install.sh"
       echo ""
       echo "  5. Verify with doctor:"
-      echo "     python3 ops/scripts/manage/cortex-doctor.py"
+      echo "     python3 ops/scripts/manage/fleet-doctor.py"
       echo ""
       echo "══════════════════════════════════════════════════════════════"
     fi

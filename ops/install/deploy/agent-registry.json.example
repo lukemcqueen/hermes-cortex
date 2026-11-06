@@ -42,8 +42,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -122,8 +122,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -203,8 +203,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -292,8 +292,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -375,8 +375,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {
@@ -454,8 +454,8 @@
           "repo_path": "~/steadfaste-fleet"
         },
         "deploy": {
-          "update_method": "cortex-update",
-          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+          "update_method": "fleet-update",
+          "doctor_path": "~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
         }
       },
       "fleet_concerns": {

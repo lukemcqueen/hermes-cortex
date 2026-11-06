@@ -141,7 +141,7 @@ transparently — no data is lost.
 │   NOT symlinked.                  │
 │   ~/.hermes/.env = Agent only    Both point to same skills dir
 │   ~/steadfaste-fleet/.env = Cortex (Hermes manages ~/.hermes/skills/
-│   ~/steadfaste-fleet/.env = Repo)   via skills_sync.py, cortex-update
+│   ~/steadfaste-fleet/.env = Repo)   via skills_sync.py, fleet-update
 │                                   deploys through the symlink)
 ```
 
@@ -165,7 +165,7 @@ The exception is container/CI environments with `--read-only` root filesystems
 | Directory has runtime writes | **Symlink** — writes resolve through the link to the real path |
 | File must be at `~/.hermes/` for Hermes Agent to find it | **Symlink** — if Hermes can follow symlinks (it can) |
 | File is a Hermes Agent core config | **Real file** — never symlink |
-| The deployment target is already `~/.steadfaste-fleet/` | **Symlink** — cortex-update writes to the real path |
+| The deployment target is already `~/.steadfaste-fleet/` | **Symlink** — fleet-update writes to the real path |
 
 ## Installation / Update
 

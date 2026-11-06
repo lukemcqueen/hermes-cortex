@@ -14,13 +14,13 @@ MCP-native; registration is a config entry, no shim.
 
 ```bash
 Add to .mcp.json:
-  {"mcpServers": {"cortex-context": {"command": "python3",
+  {"mcpServers": {"fleet-context": {"command": "python3",
     "args": ["<mcp_server>"]}}}
 ```
 
 ## Verify (do not report a wiring you have not exercised)
 
-1. claude mcp list  (or /mcp) shows cortex-context
+1. claude mcp list  (or /mcp) shows fleet-context
 2. Call mem_context; the peer card must come back.
 
 ## Session identity
@@ -42,8 +42,8 @@ export CORTEX_CONTEXT_PYTHON=<path>   # see the failure modes in the runbook
 
 ## Shared pieces (identical for every harness — never fork them)
 
-- CLI: `~/.steadfaste-fleet/scripts/cortex-context.py`
-- MCP server: `~/steadfaste-fleet/mcp-servers/cortex-context-mcp.py`
+- CLI: `~/.steadfaste-fleet/scripts/fleet-context.py`
+- MCP server: `~/steadfaste-fleet/mcp-servers/fleet-context-mcp.py`
 - Trigger: `~/.steadfaste-fleet/scripts/session-autocheckpoint.py`
 - One implementation: `ops/services/mycortex-mem/context_tools.py`
 

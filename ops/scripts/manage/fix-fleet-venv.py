@@ -23,10 +23,10 @@ WHAT IT DOES
   * re-checks by import afterwards and fails loudly if the venv still cannot import them.
 
 USAGE
-  python3 fix-cortex-venv.py                    # repair the default venv
-  python3 fix-cortex-venv.py --check            # report only; exit 3 if anything is missing
-  python3 fix-cortex-venv.py --check --json     # last line is JSON, for a doctor/deploy hook
-  python3 fix-cortex-venv.py --venv /path/to/venv --requirements /path/to/requirements.txt
+  python3 fix-fleet-venv.py                    # repair the default venv
+  python3 fix-fleet-venv.py --check            # report only; exit 3 if anything is missing
+  python3 fix-fleet-venv.py --check --json     # last line is JSON, for a doctor/deploy hook
+  python3 fix-fleet-venv.py --venv /path/to/venv --requirements /path/to/requirements.txt
 
 EXIT CODES
   0  the venv can import everything declared (repaired if it could not)
@@ -217,8 +217,8 @@ def venv_state(python, requirements):
 def find_requirements(start):
     """The declared set, from the repo layout OR the deployed one.
 
-    Deployed: <deploy-home>/scripts/fix-cortex-venv.py -> <deploy-home>/install/requirements.txt
-    Repo:     ops/scripts/manage/fix-cortex-venv.py    -> ops/install/requirements.txt
+    Deployed: <deploy-home>/scripts/fix-fleet-venv.py -> <deploy-home>/install/requirements.txt
+    Repo:     ops/scripts/manage/fix-fleet-venv.py    -> ops/install/requirements.txt
     A fixed number of `..` cannot serve both, so search upward for either shape.
     """
     p = Path(start).resolve()

@@ -3,12 +3,12 @@
 Steadfaste Fleet Agent Manager — Enterprise credential provisioning.
 
 Usage:
-  cortex-agent-manager.py add <name> --role worker|orchestrator [--labels key=val,key2=val2]
-  cortex-agent-manager.py remove <name> [--confirm]
-  cortex-agent-manager.py list [--show-labels]
-  cortex-agent-manager.py label set <name> <key>=<value> [<key>=<value> ...]
-  cortex-agent-manager.py label unset <name> <key>
-  cortex-agent-manager.py label show <name>
+  fleet-agent-manager.py add <name> --role worker|orchestrator [--labels key=val,key2=val2]
+  fleet-agent-manager.py remove <name> [--confirm]
+  fleet-agent-manager.py list [--show-labels]
+  fleet-agent-manager.py label set <name> <key>=<value> [<key>=<value> ...]
+  fleet-agent-manager.py label unset <name> <key>
+  fleet-agent-manager.py label show <name>
 
 Manages: bus.tokens, bus.permissions, nginx htpasswd, agent queues.
 Must be run on the orchestrator (Moses/Esther) with Postgres + nginx access.
@@ -28,7 +28,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-logger = logging.getLogger("cortex-agent-manager")
+logger = logging.getLogger("fleet-agent-manager")
 
 # ── Paths ────────────────────────────────────────────────────
 CORTEX_HOME = Path(os.environ.get("CORTEX_DEPLOY_HOME", Path.home() / ".steadfaste-fleet"))
@@ -647,7 +647,7 @@ def main():
         elif args.label_cmd == "show":
             cmd_label_show(args)
         else:
-            print("Usage: cortex-agent-manager.py label <set|unset|show> ...")
+            print("Usage: fleet-agent-manager.py label <set|unset|show> ...")
             sys.exit(1)
     else:
         parser.print_help()

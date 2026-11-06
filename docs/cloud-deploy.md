@@ -140,7 +140,7 @@ bash ops/install/install.sh
 ### 4. Verify
 
 ```bash
-python3 ops/scripts/manage/cortex-doctor.py
+python3 ops/scripts/manage/fleet-doctor.py
 ```
 
 Expected: all checks pass (or acceptable warnings).
@@ -162,7 +162,7 @@ sudo certbot --nginx -d yourdomain.com -d dashboard.yourdomain.com -d langfuse.y
 
 ## Verification Checklist
 
-- [ ] `cortex-doctor.py` passes with no FAIL reports
+- [ ] `fleet-doctor.py` passes with no FAIL reports
 - [ ] Ollama responds: `curl http://127.0.0.1:11434/api/tags`
 - [ ] Health endpoint: `curl https://yourdomain.com:13007/health`
 - [ ] Dashboard accessible: `https://yourdomain.com:13001`

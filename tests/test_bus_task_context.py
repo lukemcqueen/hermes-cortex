@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for bus task_delegation F13 context enrichment (cortex-bus-mcp).
+"""Tests for bus task_delegation F13 context enrichment (fleet-bus-mcp).
 
 When an orchestrator dispatches a task via inbox_send_task with a worktree,
 the task_delegation body should carry a pre-fetched context envelope
@@ -22,7 +22,7 @@ _REPO = Path(__file__).resolve().parent.parent
 # must be importable so the direct import works in tests and in prod.
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 _SPEC = importlib.util.spec_from_file_location(
-    "fleet_bus_mcp", _REPO / "mcp-servers" / "cortex-bus-mcp.py")
+    "fleet_bus_mcp", _REPO / "mcp-servers" / "fleet-bus-mcp.py")
 _bus = importlib.util.module_from_spec(_SPEC)
 try:
     _SPEC.loader.exec_module(_bus)
@@ -45,7 +45,7 @@ def git_repo(tmp_path):
     return tmp_path
 
 
-@pytest.mark.skipif(_bus is None, reason="cortex-bus-mcp imports MCP SDK")
+@pytest.mark.skipif(_bus is None, reason="fleet-bus-mcp imports MCP SDK")
 def test_enrich_adds_context_when_worktree(git_repo):
     body = {"type": "task_delegation", "description": "fix the bug"}
     out = _bus._enrich_task_with_context(body, worktree=str(git_repo),
@@ -55,14 +55,14 @@ def test_enrich_adds_context_when_worktree(git_repo):
     assert "fix the bug" in out["context_envelope"]
 
 
-@pytest.mark.skipif(_bus is None, reason="cortex-bus-mcp imports MCP SDK")
+@pytest.mark.skipif(_bus is None, reason="fleet-bus-mcp imports MCP SDK")
 def test_enrich_keeps_body_light_without_worktree():
     body = {"type": "task_delegation", "description": "check health"}
     out = _bus._enrich_task_with_context(body, worktree="")
     assert "context_envelope" not in out
 
 
-@pytest.mark.skipif(_bus is None, reason="cortex-bus-mcp imports MCP SDK")
+@pytest.mark.skipif(_bus is None, reason="fleet-bus-mcp imports MCP SDK")
 def test_enrich_budgets_context(git_repo):
     body = {"type": "task_delegation", "description": "t"}
     out = _bus._enrich_task_with_context(body, worktree=str(git_repo),
@@ -70,7 +70,7 @@ def test_enrich_budgets_context(git_repo):
     assert len(out["context_envelope"]) <= 400 + 50
 
 
-@pytest.mark.skipif(_bus is None, reason="cortex-bus-mcp imports MCP SDK")
+@pytest.mark.skipif(_bus is None, reason="fleet-bus-mcp imports MCP SDK")
 def test_enrich_never_raises_on_bad_repo():
     body = {"type": "task_delegation", "description": "t"}
     out = _bus._enrich_task_with_context(body, worktree="/nonexistent/repo",

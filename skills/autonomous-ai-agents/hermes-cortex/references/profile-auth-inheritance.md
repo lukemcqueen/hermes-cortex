@@ -53,7 +53,7 @@ cp ~/.hermes/auth.json ~/.hermes/profiles/<name>/auth.json
 ~/bin/sync-hermes-auth.sh
 ```
 
-**Prevention:** `scripts/cortex-profile.sh` now includes step 2b that copies root
+**Prevention:** `scripts/fleet-profile.sh` now includes step 2b that copies root
 auth.json during profile creation.
 
 ## Caveat

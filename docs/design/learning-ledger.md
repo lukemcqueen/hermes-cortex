@@ -167,7 +167,7 @@ docker exec mycortex-postgres psql -U mycortex -d mycortex \
 
 Same applies to `task-*` reader role if a parallel timing gap appears. A future
 hardening (F-nnn): make the grant unconditional in a v00X migration, or reconcile
-grants at cortex-update time.
+grants at fleet-update time.
 
 ## Testing
 

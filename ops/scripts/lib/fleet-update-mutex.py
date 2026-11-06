@@ -17,7 +17,7 @@ the child's. Acquire failure => exit 1 and the deploy script refuses.
 Properties (what the fleet needs):
 
   * per-deploy-home scoping: the lock file is named from
-    ``$CORTEX_DEPLOY_HOME/state/cortex-update.lock``, so two sessions on the
+    ``$CORTEX_DEPLOY_HOME/state/fleet-update.lock``, so two sessions on the
     SAME repo share one lock (the second refuses, exit 1) while DIFFERENT repos
     on one server use different lock files and deploy independently — free
     isolation, no extra logic.
@@ -35,9 +35,9 @@ venv python are resolved), guarded so the inner run skips the wrapper:
 
     if [[ -z "${CORTEX_UPDATE_INNER:-}" ]]; then
       "${CORTEX_DEPLOY_HOME}/venv/bin/python3" \
-        "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex-update-mutex.py" \
-        --guard "${CORTEX_DEPLOY_HOME}/state/cortex-update.lock" \
-        "$0" "$@" || { echo 'refusing concurrent cortex-update (mutex held)'; exit 1; }
+        "${CORTEX_DEPLOY_HOME}/scripts/lib/fleet-update-mutex.py" \
+        --guard "${CORTEX_DEPLOY_HOME}/state/fleet-update.lock" \
+        "$0" "$@" || { echo 'refusing concurrent fleet-update (mutex held)'; exit 1; }
       exit $?   # inner run's exit code
     fi
 
@@ -53,7 +53,7 @@ from pathlib import Path
 
 
 def _usage() -> int:
-    print("usage: cortex-update-mutex.py --guard <lock-file> <script> [args...] "
+    print("usage: fleet-update-mutex.py --guard <lock-file> <script> [args...] "
           "| --hold <lock-file>", file=sys.stderr)
     return 2
 
@@ -91,7 +91,7 @@ def main() -> int:
 
     fd = _acquire(lock_path)
     if fd is None:
-        print(f"cortex-update mutex held: another deploy is running "
+        print(f"fleet-update mutex held: another deploy is running "
               f"({lock_path})", file=sys.stderr)
         return 1
 
@@ -103,7 +103,7 @@ def main() -> int:
         r = subprocess.run([script, *script_args], env=env)
         return r.returncode
     except FileNotFoundError:
-        print(f"cortex-update-mutex: deploy script not found: {script}",
+        print(f"fleet-update-mutex: deploy script not found: {script}",
               file=sys.stderr)
         return 2
     finally:
@@ -113,7 +113,7 @@ def main() -> int:
 def _hold(lock_path: Path) -> int:
     fd = _acquire(lock_path)
     if fd is None:
-        print(f"cortex-update mutex held ({lock_path})", file=sys.stderr)
+        print(f"fleet-update mutex held ({lock_path})", file=sys.stderr)
         return 1
     try:
         time.sleep(30)  # keep the lock so a peer can probe it

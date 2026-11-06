@@ -277,7 +277,7 @@ def test_a_lock_write_never_touches_the_nested_repo():
 
     This test asserted the in-repo `.steadfaste-fleet/.governance-lock` followed the
     ABSOLUTE repo path. That marker was removed on purpose — inside a repo the name
-    shadows the runtime `~/.steadfaste-fleet`, and cortex-doctor now FAILS when the
+    shadows the runtime `~/.steadfaste-fleet`, and fleet-doctor now FAILS when the
     directory exists. What matters is that a lock write never lands in the repo,
     whichever path shape the state carries (2026-10-08).
     """

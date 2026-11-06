@@ -538,7 +538,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/steadfaste-fleet/.env` | Your bus credentials and agent identity (HTTP client) |
 | `~/.hermes/config.yaml` | Hermes config — MCP server entry lives here |
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
-| `~/steadfaste-fleet/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
+| `~/steadfaste-fleet/mcp-servers/fleet-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
 | `~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
 | `~/steadfaste-fleet/core/fleet_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
 | `~/steadfaste-fleet/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |
@@ -592,7 +592,7 @@ You don't need to install or manage Postgres yourself — your `fleet-update.sh`
 **Verify your DB connectivity:** The doctor checks this:
 
 ```bash
-python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py
+python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py
 ```
 
 Look for `Task DB connectivity` + `Task DB write-probe` — should show `PASS`.

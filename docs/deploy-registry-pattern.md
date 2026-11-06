@@ -1,7 +1,7 @@
 # Deploy Registry Pattern
 
 > **Rewritten 2026-10-03.** This document previously described a `legacy-brain/` +
-> `private-data` multi-repo strategy with hermetic `cortex-profile.sh` profiles,
+> `private-data` multi-repo strategy with hermetic `fleet-profile.sh` profiles,
 > `brain-*` branches and a private→public sync workflow. **None of that exists in
 > this repository** — it was fabricated documentation. Every claim below was
 > checked against the tree.
@@ -31,26 +31,26 @@ no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 ## The register() map
 
 `ops/scripts/fleet-update.sh` holds the deployment as data: a list of
-`register "<repo path>" "<deployed path>"` calls — **394** of them,
-of which **389** use the `${CORTEX_DEPLOY_HOME}/` deployed shape (the count the doc
+`register "<repo path>" "<deployed path>"` calls — **395** of them,
+of which **390** use the `${CORTEX_DEPLOY_HOME}/` deployed shape (the count the doc
 test parses) and **5** deploy to `${HOME}/…` paths (four langfuse files and the macOS
-dashboard plist). Reconcile on **394** when editing: 352 `register` + 42
+dashboard plist). Reconcile on **395** when editing: 353 `register` + 42
 `register_orch`. One-release shims each add an entry beside the renamed file they
 re-export (registered: `lib/cortex_bus.py` beside `lib/fleet_bus.py`;
 `manage/cortex_doctor/__init__.py` beside `manage/fleet_doctor/`;
 `ops/scripts/cortex_gateway/__init__.py` beside `ops/scripts/fleet_gateway/` — the
 live gateway unit still ExecStarts the old daemon path until the P5 unit rename; the
 `core/cortex_bus` package shim is NOT registered — nothing deployed imports the
-package, the live gateway runs the repo tree; `ops/scripts/cortex-update.sh` is the
+package, the live gateway runs the repo tree; `ops/scripts/fleet-update.sh` is the
 forwarding shim for the renamed `fleet-update.sh` deploy script) — the shims' lines
 are deleted when the old name is retired. (Count re-measured 2026-11-06; the previous figures were
 stale — the doc test now passes against these numbers.
 `tests/test_repo_resource_paths.py` computes the map numbers, so change the doc in
 the same commit as any `register()` edit.)
 
-**The deployed path cannot be derived from the repo path.** Only 136 of the 389
-follow the obvious "strip the leading `ops/`" rule. **253 follow no rule at all**
-(plus the 5 `${HOME}/` shapes = 258 of the full 394),
+**The deployed path cannot be derived from the repo path.** Only 136 of the 390
+follow the obvious "strip the leading `ops/`" rule. **254 follow no rule at all**
+(plus the 5 `${HOME}/` shapes = 258 of the full 395),
 and every one of those also drops a subdirectory:
 
 | repo | deployed |
@@ -117,7 +117,7 @@ steadfaste-fleet/
 ├── mcp-servers/     the MCP servers every agent connects to
 ├── ops/
 │   ├── deploy/      deploy helpers
-│   ├── install/     installers (cortex-profile.sh, bootstrap-brain.sh, …)
+│   ├── install/     installers (fleet-profile.sh, bootstrap-brain.sh, …)
 │   ├── offline/     offline content tooling
 │   ├── scripts/     fleet-update.sh, cortex_lib/, health/, manage/, …
 │   ├── services/    long-running services (mycortex-mem, …)
@@ -128,7 +128,7 @@ steadfaste-fleet/
 └── tests/           pytest suite
 ```
 
-`ops/scripts/install/cortex-profile.sh` **does** exist, but it is not the hermetic
+`ops/scripts/install/fleet-profile.sh` **does** exist, but it is not the hermetic
 per-project toolchain loader the previous version described: `profiles/` contains a
 README, not `profiles/<name>/` directories with `activate`/`deactivate` hooks and
 pinned `tools/`.
@@ -140,7 +140,7 @@ pinned `tools/`.
 bash ops/scripts/fleet-update.sh
 
 # Pre-push gate: pull → deploy → doctor → verify
-bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force
+bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force
 
 # Verify what actually landed
 cat ~/.steadfaste-fleet/deploy-manifest.tsv
@@ -180,7 +180,7 @@ to `${CORTEX_DEPLOY_HOME}` (normally `~/.steadfaste-fleet`) and the mapping is
 | `ops/scripts/judgment.py` | `scripts/judgment.py` |
 | `ops/offline/hermes_paths.py` | `offline/hermes_paths.py` |
 
-Of the same 389 `${CORTEX_DEPLOY_HOME}/` `register()` calls (394 in total with the `${HOME}/` shapes), **253 follow no derivable rule** — the first two rows
+Of the same 390 `${CORTEX_DEPLOY_HOME}/` `register()` calls (395 in total with the `${HOME}/` shapes), **253 follow no derivable rule** — the first two rows
 above both live under `ops/scripts/manage/` and deploy to different depths.
 
 So a component that *guesses* — strip `ops/`, strip a subdir, try a short list of

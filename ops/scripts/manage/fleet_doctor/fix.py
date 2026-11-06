@@ -91,7 +91,7 @@ def apply_fixes(res):
 
   # Fix: missing scripts → fleet-update.sh
   if any(k.startswith("Script") for k in fix_map):
-    if _run_fix("Deploying scripts via cortex-update", ["bash", str(CORTEX_UPDATE), ""]):
+    if _run_fix("Deploying scripts via fleet-update", ["bash", str(CORTEX_UPDATE), ""]):
       fixed += 1
     else:
       failed += 1

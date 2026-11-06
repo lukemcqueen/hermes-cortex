@@ -1,5 +1,5 @@
 """
-CLI entry point for cortex-doctor.
+CLI entry point for fleet-doctor.
 
 Parses arguments, runs checks, optionally fixes issues,
 sends bus alerts, and prints summaries.

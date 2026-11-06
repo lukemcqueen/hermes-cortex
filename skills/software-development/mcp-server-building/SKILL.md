@@ -80,7 +80,7 @@ except (ImportError, TypeError) as _sdk_err:
 ```
 
 Report the WARNING rather than degrading in silence: a gate that quietly disables itself is
-how the wrong interpreter stays invisible. `ops/scripts/manage/fix-cortex-venv.py` carries
+how the wrong interpreter stays invisible. `ops/scripts/manage/fix-fleet-venv.py` carries
 the same idea for the fleet venv (an `mcp` that imports but cannot construct the handlers is
 reported **incompatible**, not healthy).
 
@@ -308,7 +308,7 @@ yes | hermes mcp add server-name --command python3 --args /path/to/server.py
 | `Connection closed` | Import error in server | Run `python3 server.py` directly, check stderr |
 | `Connection closed` | Wrong Python interpreter | Use `--command /path/to/python3` instead of just `python3` |
 | `AttributeError: 'Server' object has no attribute 'list_tools'` | mcp 2.0 removed the `@server.list_tools()` / `@server.call_tool()` decorators this server still uses, so the SDK is NEWER than the code | Use the 2.0 constructor API: `Server(name, on_list_tools=..., on_call_tool=...)`. See `docs/older/reference/mcp-sdk-v2-migration.md` |
-| `TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'` | The installed mcp is OLDER than the 2.0 constructor API this code uses. It reads backwards — `on_list_tools` is the NEW kwarg, so "unexpected keyword argument" means the SDK is too old (measured: gisu, 2026-10-20) | Run it with an interpreter that has mcp>=2.0 (`~/.steadfaste-fleet/venv/bin/python3`), or repair that venv with `ops/scripts/manage/fix-cortex-venv.py`. The import guard should probe this API, not just the package's presence |
+| `TypeError: Server.__init__() got an unexpected keyword argument 'on_list_tools'` | The installed mcp is OLDER than the 2.0 constructor API this code uses. It reads backwards — `on_list_tools` is the NEW kwarg, so "unexpected keyword argument" means the SDK is too old (measured: gisu, 2026-10-20) | Run it with an interpreter that has mcp>=2.0 (`~/.steadfaste-fleet/venv/bin/python3`), or repair that venv with `ops/scripts/manage/fix-fleet-venv.py`. The import guard should probe this API, not just the package's presence |
 | `ModuleNotFoundError` | Missing dependency | Install the missing package |
 | `Permission denied` | File not executable | `chmod +x server.py` |
 | `Tool not found` | Wrong tool name in call | Check `hermes mcp test` output for exact names |

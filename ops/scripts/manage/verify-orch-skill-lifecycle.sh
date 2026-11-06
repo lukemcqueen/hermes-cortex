@@ -23,7 +23,7 @@ say() { printf '%s\n' "$*"; }
 [ -d "$DEPLOYED" ] || { say "FAIL: deployed skills tree not found: $DEPLOYED"; exit 2; }
 
 # ---- 1. Skill drift: the doctor is the authority on repo<->deployed parity ----
-DOCTOR="$REPO/ops/scripts/manage/cortex-doctor.py"
+DOCTOR="$REPO/ops/scripts/manage/fleet-doctor.py"
 RECON="$REPO/ops/scripts/manage/reconcile-stranded-skills.py"
 [ -f "$DOCTOR" ] || { say "FAIL: doctor not found at $DOCTOR"; exit 2; }
 [ -f "$RECON" ]  || { say "FAIL: reconciler not found at $RECON"; exit 2; }

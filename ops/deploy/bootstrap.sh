@@ -25,7 +25,7 @@
 #    8. nginx + Let's Encrypt SSL — reverse proxy with auto HTTPS
 #    9. fail2ban                  — nginx/SSH jail config
 #   10. UFW + security hardening  — firewall, sysctl, permissions
-#   11. Final verification        — cortex-doctor, health check
+#   11. Final verification        — fleet-doctor, health check
 #   12. Summary                   — URLs, ports, next steps
 #
 #  Idempotent — safe to re-run. Skips already-completed phases.
@@ -606,9 +606,9 @@ next_step "Final verification"
 sleep 3
 
 # Run doctor
-info "Running cortex-doctor.py..."
+info "Running fleet-doctor.py..."
 cd "$CORTEX_REPO"
-# Resolve the interpreter by CAPABILITY, not by PATH. cortex-doctor.py imports yaml, and a bare
+# Resolve the interpreter by CAPABILITY, not by PATH. fleet-doctor.py imports yaml, and a bare
 # `python3` on a host like this one may not have it — the agent session even puts a Hermes tools
 # python ahead of /usr/bin on PATH. At bootstrap time the fleet venv may not exist yet, so ask
 # the shared resolver; if nothing here can import yaml, say COULD NOT VERIFY instead of letting
@@ -616,18 +616,18 @@ cd "$CORTEX_REPO"
 _DOCTOR_RC=0
 _DOCTOR_PY="$(bash "$CORTEX_REPO/ops/scripts/lib/python-with-module.sh" --print yaml 2>/dev/null)" || _DOCTOR_RC=$?
 if [[ -n "$_DOCTOR_PY" ]]; then
-  sudo -u "$REAL_USER" HOME="$REAL_HOME" "$_DOCTOR_PY" ops/scripts/manage/cortex-doctor.py --quiet 2>&1 | \
+  sudo -u "$REAL_USER" HOME="$REAL_HOME" "$_DOCTOR_PY" ops/scripts/manage/fleet-doctor.py --quiet 2>&1 | \
     while IFS= read -r line; do printf "    %s\n" "$line"; done
 elif [[ "$_DOCTOR_RC" -eq 3 ]]; then
   # 3 is the resolver's OWN "no interpreter here can import it" — an honest COULD NOT VERIFY.
-  warn "cortex-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)"
+  warn "fleet-doctor needs yaml and no interpreter on this host can import it — skipped (COULD NOT VERIFY)"
 else
   # Any OTHER status means the RESOLVER failed (missing, unreadable, crashed at startup).
   # Reporting that as "no interpreter can import yaml" would hide a broken script behind a
   # dependency story — different problem, different fix (self-adversarial ADV-12432-2, 2026-10-13).
   # Note the `|| _DOCTOR_RC=$?` above is required: this script runs under `set -e`, so a bare
   # failing substitution in an assignment would abort the bootstrap instead of reaching this line.
-  warn "the interpreter resolver FAILED (rc=${_DOCTOR_RC}) — cortex-doctor was not run; check $CORTEX_REPO/ops/scripts/lib/python-with-module.sh"
+  warn "the interpreter resolver FAILED (rc=${_DOCTOR_RC}) — fleet-doctor was not run; check $CORTEX_REPO/ops/scripts/lib/python-with-module.sh"
 fi
 
 # Check key endpoints
@@ -682,7 +682,7 @@ echo ""
 echo "  ${BOLD}Next steps${RESET}"
 echo "  1. Edit ~/steadfaste-fleet/.env to fill in any missing API keys"
 echo "  2. If models are still downloading: ollama ps"
-echo "  3. Verify: python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"
+echo "  3. Verify: python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py"
 echo "  4. Create agent cron jobs: cd ~/steadfaste-fleet && bash ops/scripts/install/install-crons.sh"
 echo "  5. For orchestrator: set IS_ORCHESTRATOR=true in .env"
 echo ""
@@ -690,7 +690,7 @@ echo "  ${BOLD}Recovery (if something goes wrong)${RESET}"
 echo "  The script is idempotent — just re-run it. Or for a full reset:"
 echo "    # Reset Docker:      docker compose -f ~/langfuse/docker-compose.yml down"
 echo "    # Reset nginx:       rm /etc/nginx/sites-enabled/steadfaste-fleet.conf"
-echo "    # Re-run doctor:     python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py --fix"
+echo "    # Re-run doctor:     python3 ~/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py --fix"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -98,7 +98,7 @@ in the same commit) → **reflexion gate** → adversarial → score-cycle.
   It asks HC's own session/memory store (`mycortex_mem.tool_events`), keyed by the
   governance lock's `session_id`. Hermes sessions record automatically (the enforcer
   plugin writes a row per `skill_view`); any other harness calls
-  `cortex-context.py session_tool_event` with its `session_key`.
+  `fleet-context.py session_tool_event` with its `session_key`.
   Exit codes: `0` loaded, `1` not loaded, `3` store unreachable — **all non-zero
   refuse**. A gate that passes when it cannot verify is not a gate.
 
@@ -110,7 +110,7 @@ The pre-push gate runs the doctor. If deployed state ≠ repo source (i.e. you c
 anything `fleet-update.sh` deploys), the push is **rejected** until you run:
 
 ```bash
-bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force   # pull → deploy → doctor → verify
+bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force   # pull → deploy → doctor → verify
 ```
 
 Then push, and verify the **deployed** copy afterwards — a committed file is not a
@@ -172,5 +172,5 @@ matches its diff cannot converge, and a lock description must never be hand-edit
 | Score + close | `feedback_accept(…scores…)` → `end_change(task_id=…)` |
 | Re-judge a fixed change | `rereview_change(task_id=…, note=<NEW note + evidence>)` |
 | Commit-hook gate | automatic (`core.hooksPath`) |
-| Deploy + verify | `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` |
-| Full health | `python3 ops/scripts/manage/cortex-doctor.py` |
+| Deploy + verify | `bash ~/.steadfaste-fleet/scripts/fleet-dogfood.sh --force` |
+| Full health | `python3 ops/scripts/manage/fleet-doctor.py` |

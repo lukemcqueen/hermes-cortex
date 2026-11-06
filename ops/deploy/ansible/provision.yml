@@ -344,10 +344,10 @@
     # ═══════════════════════════════════════════════════════════
     #  VERIFY — health checks
     # ═══════════════════════════════════════════════════════════
-    - name: Verify — run cortex-doctor
+    - name: Verify — run fleet-doctor
       tags: [verify, all]
       become: false
-      command: "python3 {{ cortex_repo }}/ops/scripts/manage/cortex-doctor.py --quiet"
+      command: "python3 {{ cortex_repo }}/ops/scripts/manage/fleet-doctor.py --quiet"
       register: doctor_result
       changed_when: false
       failed_when: doctor_result.rc >= 2

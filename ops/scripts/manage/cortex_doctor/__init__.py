@@ -1,7 +1,7 @@
 """cortex_doctor — ONE-RELEASE shim for the renamed fleet_doctor package (cortex->fleet, 2026-11-06).
 
 The canonical package is now `fleet_doctor` (ops/scripts/manage/fleet_doctor/; deployed
-scripts/fleet_doctor/). The deployed `cortex-doctor.py` entrypoint (hyphen name retained
+scripts/fleet_doctor/). The deployed `fleet-doctor.py` entrypoint (hyphen name retained
 until the P3 hyphen sweep) does:
 
     _pkg_dir = os.path.join(_this_dir, "fleet_doctor")   # this shim dir is NOT that

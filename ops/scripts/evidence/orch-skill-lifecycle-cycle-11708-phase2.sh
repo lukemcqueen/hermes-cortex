@@ -4,12 +4,12 @@
 set -u
 cd "$(dirname "$0")/../../.."
 
-# The interpreter is resolved by CAPABILITY, not by PATH: cortex-doctor.py imports yaml, and in an
+# The interpreter is resolved by CAPABILITY, not by PATH: fleet-doctor.py imports yaml, and in an
 # agent session a bare `python3` can be a Hermes tools python with no yaml at all (measured
 # 2026-10-13). Guarded by tests/test_direct_run_interpreter.py, which class-scans the repo.
 DOCTOR_PY="$(bash ops/scripts/lib/python-with-module.sh --print yaml 2>/dev/null || true)"
 if [[ -z "$DOCTOR_PY" ]]; then
-  echo "  (no interpreter here can import yaml — cortex-doctor cannot run: COULD NOT VERIFY)"
+  echo "  (no interpreter here can import yaml — fleet-doctor cannot run: COULD NOT VERIFY)"
   exit 0
 fi
 
@@ -27,14 +27,14 @@ echo "=== B. Learning ledger: pending items ==="
 python3 ops/scripts/manage/learning-ledger.py list --status pending 2>&1 | sed 's/^/  /'
 
 echo
-echo "=== C. SOUL.md evaluation (cortex-doctor) ==="
-"$DOCTOR_PY" ops/scripts/manage/cortex-doctor.py 2>&1 | grep -iE 'SOUL' | sed 's/^/  /'
+echo "=== C. SOUL.md evaluation (fleet-doctor) ==="
+"$DOCTOR_PY" ops/scripts/manage/fleet-doctor.py 2>&1 | grep -iE 'SOUL' | sed 's/^/  /'
 
 echo
 echo "=== D. Repo skill inventory ==="
 echo "  repo SKILL.md count: $(find skills -name SKILL.md | wc -l)"
 echo "  skill drift (doctor):"
-"$DOCTOR_PY" ops/scripts/manage/cortex-doctor.py 2>&1 | grep -iE 'Skill drift' | sed 's/^/    /'
+"$DOCTOR_PY" ops/scripts/manage/fleet-doctor.py 2>&1 | grep -iE 'Skill drift' | sed 's/^/    /'
 echo "  (Full staleness/prune pass runs on Monday deep-eval; today is a daily run.)"
 
 echo

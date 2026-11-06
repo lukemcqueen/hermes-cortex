@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""P3 step-2: the cortex-update.sh forwarding shim must WORK, not just exist.
+"""P3 step-2: the fleet-update.sh forwarding shim must WORK, not just exist.
 
 The P3 exit criterion is that a deploy runs from the NEW name
 (ops/scripts/fleet-update.sh) while every legacy invocation keeps working.
-The shim at ops/scripts/cortex-update.sh is the load-bearing legacy path —
+The shim at ops/scripts/fleet-update.sh is the load-bearing legacy path —
 live crons, documented commands and the sanctioned gate all resolve through
 it for this one release. Three facts pinned here:
 
@@ -12,7 +12,7 @@ it for this one release. Three facts pinned here:
    presence-only test).
 2. The canonical script it forwards to exists (the executable target, not
    a claim).
-3. FORWARDING WORKS: `bash ops/scripts/cortex-update.sh --status` exits 0
+3. FORWARDING WORKS: `bash ops/scripts/fleet-update.sh --status` exits 0
    and reaches the real script's own output. --status is deliberately the
    fast, non-mutating invocation — it prints "Changed files since last
    update" and returns 0; running the full deploy in a unit test would
@@ -22,7 +22,7 @@ import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SHIM = REPO / "ops" / "scripts" / "cortex-update.sh"
+SHIM = REPO / "ops" / "scripts" / "fleet-update.sh"
 CANONICAL = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 

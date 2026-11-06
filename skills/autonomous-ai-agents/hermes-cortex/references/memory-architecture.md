@@ -84,7 +84,7 @@ This prevents memory bloat — only durable, reusable, non-obvious, high-impact 
 | Docker Desktop | `com.docker.docker` | `docs/templates/com.docker.docker.plist` |
 | Legacy Sync | `com.legacy-brain.sync-watch` | Created by `scripts/install-legacy-sync.sh` |
 | Hermes Gateway | `ai.hermes.gateway` | Created by Hermes Agent install |
-| Cortex Dashboard | `com.hermes.cortex-dashboard` | `docs/templates/com.hermes.cortex-dashboard.plist` |
+| Cortex Dashboard | `com.hermes.cortex-dashboard` | `docs/templates/com.hermes.fleet-dashboard.plist` |
 
 **Plist template convention:** Templates in `docs/templates/` use `CORTEX_HOME` as a placeholder. Replace before installing:
 ```bash

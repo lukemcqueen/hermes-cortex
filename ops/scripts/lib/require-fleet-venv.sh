@@ -27,7 +27,7 @@ fleet_venv_python() { printf '%s' "$(fleet_venv_dir)/bin/python3"; }
 #: The repair sequence for an absent venv, in the order a human should run it.
 fleet_venv_fix_hint() {
   echo "  create: python3 -m venv \"$(fleet_venv_dir)\""
-  echo "  fill:   \"$(fleet_venv_python)\" \"${HOME}/.steadfaste-fleet/scripts/fix-cortex-venv.py\""
+  echo "  fill:   \"$(fleet_venv_python)\" \"${HOME}/.steadfaste-fleet/scripts/fix-fleet-venv.py\""
   echo "  (fixer not deployed yet? bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh)"
 }
 

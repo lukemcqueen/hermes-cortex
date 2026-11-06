@@ -37,7 +37,7 @@ except the deliberately-repointed artifacts below.
 |---|---|---|
 | `hermes-cortex-dashboard.service` (host unit) | `fleet-dashboard.service` | P5 |
 | `ops/install/deploy/hermes-cortex.env.example` | `ops/install/deploy/fleet.env.example` | P3 |
-| `docs/templates/com.hermes.cortex-dashboard.plist`, `ops/services/dashboard/com.hermes.cortex-dashboard.plist` | `com.steadfaste.fleet-dashboard.plist` | P3 |
+| `docs/templates/com.hermes.fleet-dashboard.plist`, `ops/services/dashboard/com.hermes.fleet-dashboard.plist` | `com.steadfaste.fleet-dashboard.plist` | P3 |
 
 ## Deliberate keeps (do NOT touch)
 
@@ -77,4 +77,4 @@ be swept too, or every future host regenerates the old names.
 - Residue grep of the active families (`cortex-`, `cortex_`, `Cortex`, `\bcortex\b`) == 0 in
   scope; `CORTEX_` is NOT in this list for P0–P7.
 - `git grep -c mycortex` / `hermes-cortex` unchanged per file (except the mapped renames).
-- `cortex-doctor.py --quiet` → 0 fail; doctor green after every deploy. Deploy, then push.
+- `fleet-doctor.py --quiet` → 0 fail; doctor green after every deploy. Deploy, then push.

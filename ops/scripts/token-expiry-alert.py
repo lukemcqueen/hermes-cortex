@@ -25,10 +25,10 @@ from pathlib import Path
 
 
 def _bus_conn():
-    """Connect to the bus Postgres (same seam as cortex-agent-manager)."""
+    """Connect to the bus Postgres (same seam as fleet-agent-manager)."""
     import importlib.util
     here = Path(__file__).resolve().parent
-    mgr = here / "cortex-agent-manager.py"
+    mgr = here / "fleet-agent-manager.py"
     spec = importlib.util.spec_from_file_location("cam", mgr)
     cam = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cam)
@@ -83,7 +83,7 @@ def main() -> int:
         state = "EXPIRED" if (e["days_left"] is not None and e["days_left"] < 0) else "expiring"
         print(f"  - {e['agent']}: expires {e['expires']} "
               f"({e['days_left']} days left) [{state}]")
-    print("  → Rotate now: cortex-agent-manager.py rotate <agent>")
+    print("  → Rotate now: fleet-agent-manager.py rotate <agent>")
     return 1
 
 

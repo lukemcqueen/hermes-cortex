@@ -54,7 +54,7 @@ INDEX appended, 2 insights triaged, both SKIPped by the bridge's dedup
 bus, unless this is intentional."** (Luke, 2026-08-06)
 
 - Workers run `mycortex-postgres` (doctor `check_todo_db` runs on every
-  host) but NEVER receive the `bus` schema — `setup-cortex-bus.sh` is
+  host) but NEVER receive the `bus` schema — `setup-fleet-bus.sh` is
   `register_orch` (orchestrator-only deploy).
 - So `bus.todos` silently does not exist for workers → no todos. The
   "fleet-visible, all agents see each other's todos" claim in

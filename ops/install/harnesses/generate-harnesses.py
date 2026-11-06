@@ -16,7 +16,7 @@ this generator derives each harness's README from it.
 Adding harness #37 is therefore: one registry entry (+ a bespoke artifact only if
 the layer demands one), then `--check` proves every derived file agrees.
 
-Design: docs/design/cortex-memory-session-mcp.md
+Design: docs/design/fleet-memory-session-mcp.md
 Runbook: docs/runbooks/context-integration.md
 """
 from __future__ import annotations
@@ -214,8 +214,8 @@ def render_readme(reg: dict, h: dict) -> str:
         out += ["```", ""]
 
     out += ["## Shared pieces (identical for every harness — never fork them)", "",
-            f"- CLI: `{defaults.get('cli_path', 'cortex-context')}`",
-            f"- MCP server: `{defaults.get('mcp_server', 'cortex-context-mcp.py')}`",
+            f"- CLI: `{defaults.get('cli_path', 'fleet-context')}`",
+            f"- MCP server: `{defaults.get('mcp_server', 'fleet-context-mcp.py')}`",
             f"- Trigger: `{defaults.get('trigger', 'session-autocheckpoint.py')}`",
             f"- One implementation: `{defaults.get('impl', 'ops/services/mycortex-mem/context_tools.py')}`",
             "",

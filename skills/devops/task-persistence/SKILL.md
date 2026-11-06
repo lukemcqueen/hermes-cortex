@@ -95,7 +95,7 @@ task-db.py add "Fix dashboard health check" --priority 2 \
     --project steadfaste-fleet --repo steadfaste-fleet --scope personal --source manual
 task-db.py add "Story: fleet observability" --kind story
 task-db.py add "Slice: bus task wiring" --kind slice --parent <story-uuid>
-task-db.py add "EXEC: cortex-doctor.py" --source inbox --correlation-id <corr>
+task-db.py add "EXEC: fleet-doctor.py" --source inbox --correlation-id <corr>
 
 # Update status (canonical lifecycle; column=done on completed)
 task-db.py update <id> --status in_progress

@@ -88,6 +88,6 @@ Also fixed stale "v001+v002" comments in `tests/test-tasks-schema.sh` (header
 
 ## Pre-existing issue noticed (not this fix)
 
-cortex-update printed `Failed to update job: Cron workdir must be an absolute
+fleet-update printed `Failed to update job: Cron workdir must be an absolute
 path (got 'false')` from install-orch-crons.sh — a separate workdir bug in the
 cron installer, worth its own cycle. Flagged to Luke.

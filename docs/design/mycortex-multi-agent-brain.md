@@ -144,7 +144,7 @@ participates without a Harness-specific adapter.
   Claude Code tool, a custom agent) writes text files there; the per-host sync
   walks the whole `~/brain` tree regardless of which harness produced the file.
 - **Read contract.** Reads go through the shared mycortex CLI (`mycortex
-  search/list`) or the `cortex-context-mcp.py` MCP adapter, which is registered
+  search/list`) or the `fleet-context-mcp.py` MCP adapter, which is registered
   per harness already (Pi reads `~/.pi/agent/mcp.json`; Claude Code via its MCP
   config; custom via any MCP client or the CLI). No harness-specific coupling
   in the index, the owner column, or RLS.

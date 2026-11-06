@@ -45,7 +45,7 @@ hr "P1b: git commits in last 24h"
 echo "count = $(git log --since='24 hours ago' --oneline | wc -l)"
 
 hr "P1c: doctor summary"
-python3 "$REPO/ops/scripts/manage/cortex-doctor.py" --quiet 2>&1 | grep -E "Skill drift|Overall"
+python3 "$REPO/ops/scripts/manage/fleet-doctor.py" --quiet 2>&1 | grep -E "Skill drift|Overall"
 
 hr "P3a: the 2 drift-synced skills — deployed == repo (md5) + fences even"
 for s in deploy-load-verification governance-closeout; do

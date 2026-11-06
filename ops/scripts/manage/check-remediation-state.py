@@ -45,7 +45,7 @@ def _read(path: Path) -> str | None:
 
 
 def _strip_deploy_banner(text: str) -> str:
-    """cortex-update prepends a 3-line banner under the shebang of .py files."""
+    """fleet-update prepends a 3-line banner under the shebang of .py files."""
     lines = text.splitlines(keepends=True)
     if len(lines) > 3 and lines[1].startswith(SOURCE_HEADER):
         return "".join(lines[:1] + lines[4:])
@@ -86,7 +86,7 @@ def check_deploy_is_current() -> str:
     if deployed.strip() != head:
         return (f"FAIL HEAD ({head[:12]}) is not deployed "
                 f"(state/update-commit={deployed.strip()[:12]}) - "
-                "run: bash ops/scripts/cortex-dogfood.sh")
+                "run: bash ops/scripts/fleet-dogfood.sh")
     return f"PASS state/update-commit == HEAD ({head[:12]})"
 
 

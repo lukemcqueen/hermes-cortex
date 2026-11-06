@@ -67,7 +67,7 @@ that knows where a message came from):
   `inbox_<agent>`, hand the message to the agent, `reply()` → `out_<agent>`, `ack()` after
   handling. It implements the queue contract for external coding agents; the "hand the
   message to the agent" step is still backend-specific.
-- **A `reply` tool on the agent-bus MCP** (`mcp-servers/cortex-bus-mcp.py`) — the agent
+- **A `reply` tool on the agent-bus MCP** (`mcp-servers/fleet-bus-mcp.py`) — the agent
   answers deliberately from its own session: `inbox_reply(text, origin_msg_id)` reads the
   origin message and builds the reply envelope from that routing.
 

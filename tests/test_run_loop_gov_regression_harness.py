@@ -10,7 +10,7 @@ anyone who reads only the summary line.
 The fix is not "install pytest on this host". It is to resolve the interpreter by CAPABILITY
 through the resolver every other deployed script already uses
 (`ops/scripts/lib/python-with-module.sh`), and to name the repair that IS committed when nothing
-can import pytest (`ops/scripts/manage/fix-cortex-venv.py`, which installs the declared set in
+can import pytest (`ops/scripts/manage/fix-fleet-venv.py`, which installs the declared set in
 `ops/install/requirements.txt` — pytest is declared there). Those two facts, plus the third
 outcome being visible in the summary, are what this file pins.
 
@@ -33,7 +33,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 HARNESS = Path(os.environ.get("HARNESS_UNDER_TEST") or (REPO / "tests" / "run_loop_gov_regression.py"))
 RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
-VENV_FIX = REPO / "ops" / "scripts" / "manage" / "fix-cortex-venv.py"
+VENV_FIX = REPO / "ops" / "scripts" / "manage" / "fix-fleet-venv.py"
 REQUIREMENTS = REPO / "ops" / "install" / "requirements.txt"
 
 

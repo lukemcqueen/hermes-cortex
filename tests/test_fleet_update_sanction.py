@@ -4,9 +4,9 @@
 The enforcer's _is_sanctioned_fleet_update_command is the single lock-free
 carve-out that lets any agent run the deploy script without a governance lock.
 It sanctions the path by LITERAL regex — the compiled rule is
-`(?:cortex-update|fleet-update)\.sh` (verified in plugins/governance-enforcer/
+`(?:fleet-update|fleet-update)\.sh` (verified in plugins/governance-enforcer/
 __init__.py, same family as this test) — so renaming
-ops/scripts/cortex-update.sh -> ops/scripts/fleet-update.sh without widening
+ops/scripts/fleet-update.sh -> ops/scripts/fleet-update.sh without widening
 the gate first would lock EVERY host out of deploys (the old name's sanction
 dies with the file). Step 1 widened the regex to the dual-accept form above and
 this test pins BOTH that the CURRENT name still sanctions AND that the FUTURE

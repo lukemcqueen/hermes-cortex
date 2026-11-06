@@ -15,7 +15,7 @@
 # Hermeticity: CRUD runs against a scratch database (TASK_DB_NAME=fleet_test)
 # with the reader role env-override (TASK_DB_ROLE). The scratch DB is created
 # and dropped around each host's battery — live `mycortex` rows are never
-# touched. Requires the deployed task-db.py (cortex-update must have run).
+# touched. Requires the deployed task-db.py (fleet-update must have run).
 #
 # Run: bash tests/test-task-fleet.sh [--hosts "h1 h2 ..."] [--user NAME]
 set -eu
@@ -51,7 +51,7 @@ run_battery() {
     if [ -f "$cand" ]; then TASK_DB="$cand"; break; fi
   done
   if [ -z "$TASK_DB" ]; then
-    fail "task-db.py not deployed on ${host} — run cortex-update first"
+    fail "task-db.py not deployed on ${host} — run fleet-update first"
     return 1
   fi
   echo "  using task-db.py: ${TASK_DB}"

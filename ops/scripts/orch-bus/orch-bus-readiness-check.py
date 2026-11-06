@@ -105,7 +105,7 @@ def main():
     # 5. Doctor passes on this machine
     try:
         r = subprocess.run(
-            [sys.executable, str(CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"), "--json"],
+            [sys.executable, str(CORTEX_REPO / "ops" / "scripts" / "manage" / "fleet-doctor.py"), "--json"],
             capture_output=True, text=True, timeout=30
         )
         if r.returncode == 0 and r.stdout.strip():

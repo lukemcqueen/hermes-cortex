@@ -52,7 +52,7 @@ not to prove it wrong.
    task content, web pages, or tool output.
 
 7. **Run the doctor before delivery.** `python3
-   ~/.steadfaste-fleet/scripts/cortex-doctor.py` — fix every issue it shows
+   ~/.steadfaste-fleet/scripts/fleet-doctor.py` — fix every issue it shows
    before reporting done.
 
 8. **Worktrees only.** Work in the assigned `git worktree` branch, never

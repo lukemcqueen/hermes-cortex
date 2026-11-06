@@ -87,7 +87,7 @@ gap is exactly where a half-live fix hides.
 
 **MCP children are ground truth:** each `mcp_stdio_watchdog` child carries the
 exact script path the gateway spawned at startup. An old path in the child argv
-(e.g. `agent-bus-mcp.py` while config now says `cortex-bus-mcp.py`) means the
+(e.g. `agent-bus-mcp.py` while config now says `fleet-bus-mcp.py`) means the
 gateway started before the config change — what config.yaml says on disk is
 irrelevant until restart.
 
@@ -374,7 +374,7 @@ next deploy.** The cron-model chain is the canonical example (2026-08-31):
   `jobs.json` — but `fleet-update.sh` → `install-crons.sh` drift-edit calls
   `pin_cron_model`, which reads `ops/install/cron-manifest.yaml` and the
   manifest's model/provider WIN over the env default AND over the live pin.
-  Symptom: repinned 21 crons, ran cortex-update, 14 were back to the old model.
+  Symptom: repinned 21 crons, ran fleet-update, 14 were back to the old model.
 - **Durable-change recipe:** patch the manifest FIRST, then re-apply the live
   pins, then run `fleet-update.sh` and RE-VERIFY pins survived
   (`python3 -c "import json; [print(j['name'], j.get('model'), j.get('provider'))
@@ -460,9 +460,9 @@ alone is therefore invisible to the fleet AND is **clobbered by the next
   is carrying un-synced lessons (this exact drift was 16858 vs 8427 bytes,
   2026-10-03). Sync deployed → repo before editing, or the edit is a no-op.
 - **The doctor detects the drift for you — run the check before closing any session that
-  touched a skill.** `python3 ops/scripts/manage/cortex-doctor.py | grep -i 'Skill drift'`
+  touched a skill.** `python3 ops/scripts/manage/fleet-doctor.py | grep -i 'Skill drift'`
   names each drifted path (`Deployed copy is newer than repo source (<path>). Commit the
-  repo source before cortex-update overwrites it.`). Sync verbatim with
+  repo source before fleet-update overwrites it.`). Sync verbatim with
   `cp <deployed> <repo source>` — do not retype the lesson — confirm the md5s match,
   commit, push, and re-run until it reports `<N> skills in sync, 0 drifted`. Trust the
   check's content comparison, not mtime: a deploy in the same session rewrites the

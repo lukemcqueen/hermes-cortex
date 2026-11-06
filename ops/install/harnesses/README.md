@@ -40,7 +40,7 @@ generate-harnesses.py    ← derives every README + INDEX.md from the registry
 INDEX.md                 ← generated coverage table (start here)
 <harness>/README.md      ← generated: install, run, verify (never hand-written)
 <harness>/…              ← a bespoke artifact, only if the layer needs one
-                           (e.g. pi/extensions/cortex-context.ts)
+                           (e.g. pi/extensions/fleet-context.ts)
 ```
 
 ## Adding a harness (#37, #38, …)
@@ -67,7 +67,7 @@ wiring you have not exercised**:
 
 1. Read path: call `mem_context` **in the harness**; the peer card must return.
 2. Write path **through the harness**: let a turn end with a marker decision, then
-   `cortex-context session_restore '{}' | grep <marker>`. Missing ⇒ the hook is
+   `fleet-context session_restore '{}' | grep <marker>`. Missing ⇒ the hook is
    not firing.
 3. Session-start injection: a second session shows the checkpoint unasked.
 4. Fail-open: stop the store; the harness must continue, not error.
