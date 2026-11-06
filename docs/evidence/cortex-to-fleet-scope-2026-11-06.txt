@@ -5,11 +5,11 @@ cmd: git ls-files | wc -l   ->  tracked files = 3517
 
 ## 1. Token families (tracked text files, .pyc skipped)
 family                        total   files    sweep
-cortex- (hyphen)               6586    1022     3676
+cortex- (hyphen)               6590    1022     3678
 cortex_ (underscore)           2588     582     2056
-CORTEX_ (env/const)            3428     492     3112
+CORTEX_ (env/const)            3429     492     3112
 Cortex (titlecase)              421     174      211
-\bcortex\b (bare)              4073     662      792
+\bcortex\b (bare)              4074     662      793
 
 ## 2. Sweep-scope carriers, top 5 by hit count
     817  ops/scripts/cortex-update.sh
@@ -25,6 +25,7 @@ Cortex (titlecase)              421     174      211
     dir  docs/evidence/
     dir  tests/artifacts/
     dir  docs/reviews/
+    self docs/rename-cortex-to-fleet.md
     self docs/plans/cortex-to-fleet-rename-plan.md
     self docs/evidence/cortex-to-fleet-scope-2026-11-06.py
     self docs/evidence/cortex-to-fleet-scope-2026-11-06.txt
@@ -42,7 +43,7 @@ Cortex (titlecase)              421     174      211
   MAP TOTAL (register + register_orch)         = 388
   of which ${CORTEX_DEPLOY_HOME}/ shape (test-visible) = 383
   all occurrences of the token 'register'      = 445
-  (the plan cited the TOKEN count as if it were the MAP count — corrected)
+  (plan history: the TOKEN count was once mistaken for the MAP count; corrected)
 
 ## 5. CORTEX_* env var names — distinct count + top carriers
   distinct CORTEX_* names = 138
@@ -81,10 +82,10 @@ Cortex (titlecase)              421     174      211
   sites (file:line) — first 6 of 54:
     docs/DOCS-INDEX.md:79
     docs/env-vars.md:3
-    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:46
-    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:46
-    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:87
-    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:126
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:47
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:47
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:88
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:127
   NOTE: a replacement driven by the FAMILY counter rewrites prose wildcard
   mentions too; a residue grep driven by the IDENTIFIER counter will not see
   them. Use the family counter for the sweep and the identifier counter for

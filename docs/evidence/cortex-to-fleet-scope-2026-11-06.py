@@ -18,6 +18,7 @@ EXCLUDE_DIRS = ("docs/older/", "docs/evidence/", "tests/artifacts/", "docs/revie
 # the path inventory; the exclusion is printed so a "0 residuals" claim cannot read
 # as coverage of everything.
 SELF_EXCLUDES = (
+    "docs/rename-cortex-to-fleet.md",
     "docs/plans/cortex-to-fleet-rename-plan.md",
     "docs/evidence/cortex-to-fleet-scope-2026-11-06.py",
     "docs/evidence/cortex-to-fleet-scope-2026-11-06.txt",
@@ -121,7 +122,7 @@ def main() -> int:
     print(f"  MAP TOTAL (register + register_orch)         = {n_calls + n_orch}")
     print(f"  of which ${'{CORTEX_DEPLOY_HOME}/'} shape (test-visible) = {n_deploy_home}")
     print(f"  all occurrences of the token 'register'      = {n_token}")
-    print(f"  (the plan cited the TOKEN count as if it were the MAP count — corrected)")
+    print(f"  (plan history: the TOKEN count was once mistaken for the MAP count; corrected)")
 
     print("\n## 5. CORTEX_* env var names — distinct count + top carriers")
     names = collections.Counter()

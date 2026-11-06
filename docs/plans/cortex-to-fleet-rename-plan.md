@@ -16,7 +16,7 @@
 |---|---|---|---|
 | Q1 | Why was the 2026-11-04 attempt reverted? | **It was too big a bang** — the failure was execution size, not design. The boundary still holds. | Staged §5 confirmed; the §3 boundary stands unchanged (that is what a bang got wrong, so the plan stays split). |
 | Q2 | Does the dashboard unit join the rename? | **Yes.** `hermes-cortex-dashboard` → **`fleet-dashboard`** (kept `-dashboard`, dropped the `hermes-cortex` product prefix to match the rest of the framework's `fleet-` family). | §3.1 now sweeps the dashboard service + plist; the §3.3 contradiction is resolved. |
-| Q3 | Full sweep (incl. env vars) or names-only? | **Names-only.** `CORTEX_*` env vars are **deferred** to a follow-on release. | §6's primary recommendation flips to names-only (≈ 6,735 executable); §5 P4 is retained as the *deferred* env-var change, not part of this sweep. |
+| Q3 | Full sweep (incl. env vars) or names-only? | **Names-only.** `CORTEX_*` env vars are **deferred** to a follow-on release. | §6's primary recommendation flips to names-only (≈ 6,738 executable); §5 P4 is retained as the *deferred* env-var change, not part of this sweep. |
 | Q4 | Fold the four `hermes-cortex*` skills now? | **Leave for a third sweep.** | §3.3 keeps them excluded; this plan does not touch their `name:` load key. |
 
 ---
@@ -48,23 +48,24 @@ Computed 2026-11-06 over `git ls-files` (3,517 tracked files), compiled caches s
 > `docs/reviews/`), the **documents that describe this change** (this plan and its four evidence
 > files mention the very tokens being counted, so including them would make each figure grow every
 > time the plan is rewritten), and the four **Q4-deferred** `hermes-cortex*` skill dirs (they stay
-> byte-identical; a third sweep owns them). The exclusion list is printed in the evidence §3.
+> byte-identical; a third sweep owns them). The exclusion list is printed in the evidence §3, and
+> it includes the P0 boundary doc `docs/rename-cortex-to-fleet.md`.
 
 | token family | total (all files) | files | **sweep** (this sweep) |
 |---|---:|---:|---:|
-| `cortex-` (hyphen) | 6,585 | 1,022 | 3,676 |
-| `cortex_` (underscore) | 2,588 | 582 | 2,056 |
-| `CORTEX_` (env / const) | 3,421 | 492 | 3,110 |
-| `Cortex` (title case) | 421 | 174 | 211 |
-| `\bcortex\b` (bare word) | 4,071 | 662 | 792 |
-| **sweep-scope total** | | | 9,845 |
-| *of which `CORTEX_*` (deferred, Q3)* | | | *3,110* |
-| **names-only execution set** | | | **≈ 6,735** |
+| `cortex-` (hyphen) | 6,606 | 1,023 | 3,678 |
+| `cortex_` (underscore) | 2,590 | 583 | 2,056 |
+| `CORTEX_` (env / const) | 3,445 | 493 | 3,112 |
+| `Cortex` (title case) | 422 | 175 | 211 |
+| `\bcortex\b` (bare word) | 4,076 | 663 | 793 |
+| **sweep-scope total** | | | 9,850 |
+| *of which `CORTEX_*` (deferred, Q3)* | | | *3,112* |
+| **names-only execution set** | | | **≈ 6,738** |
 
 Tracked paths whose name contains `cortex` (excluding `mycortex`): **198**, of which **67** are
 excluded → **131 sweep paths** to rename.
 
-Bare-`cortex` is concentrated in record directories; the sweep-scope bare-word count is only 792.
+Bare-`cortex` is concentrated in record directories; the sweep-scope bare-word count is only 793.
 
 ### 2.1 Densest sweep-scope carriers (measured)
 
@@ -97,7 +98,7 @@ table is derived from it verbatim.
 | Scripts / modules | `cortex-doctor.py`, `cortex-health.sh`, `cortex-dogfood.sh`, `cortex-context.py`, `cortex-sandbox.py`, `cortex-agent-manager.py`, `cortex-bus-bridge-*.py`, `cortex-bus-mcp.py`, `cortex-context-mcp.py`, `cortex-sandbox-mcp.py`, `cortex-bus-processor.py`, `cortex-bus-remediate.sh`, `cortex-bus-failover-watchdog.py`, `cortex-profile.sh`, `fix-cortex-venv.py`, `setup-cortex-bus.sh`, `install-cortex-update-cron.sh`, `cortex-update-mutex.py`, `cortex-setup-langfuse.sh` | same with `fleet-` / `fleet_` |
 | Config / unit templates | `ops/install/deploy/config/cortex-config.yaml`, `ops/install/deploy/cortex-bus.service`, `hermes-cortex.env.example`, `docs/templates/cortex-gateway.service`, `docs/templates/com.hermes.cortex-gateway.plist`, `com.hermes.cortex-dashboard.plist`, `ops/services/dashboard/com.hermes.cortex-dashboard.plist` | `fleet-*` / `com.steadfaste.fleet-dashboard.plist` |
 | Pi-harness extensions | `cortex-context.ts`, `cortex-governance.ts` | `fleet-context.ts`, `fleet-governance.ts` |
-| Env vars (`CORTEX_*`) | **DECIDED (Q3): outside this sweep.** 138 distinct names / 3,097 identifier occurrences / 3,110 family occurrences (§4.2) — deferred to a follow-on release, §5 P4 spec-only | not renamed here |
+| Env vars (`CORTEX_*`) | **DECIDED (Q3): outside this sweep.** 138 distinct names / 3,099 identifier occurrences / 3,112 family occurrences (§4.2) — deferred to a follow-on release, §5 P4 spec-only | not renamed here |
 | systemd units | `cortex-bridge-*` (~90 service + timer + `.wants`), `cortex-bus.service`, `cortex-gateway.service`, `cortex-gateway-<agent>.service`, `hermes-cortex-dashboard.service` (Q2) | `fleet-bridge-*`, `fleet-bus`, `fleet-gateway`, `fleet-dashboard` |
 | Cron names (`~/.hermes/cron/jobs.json`) | `cortex-bus-workday`, `cortex-bus-evening`, `cortex-bus-overnight` | `fleet-bus-workday`, `fleet-bus-evening`, `fleet-bus-overnight` |
 | Skill load keys | `cortex-bus`, `cortex-bus-automation`, `cortex-bus-inbox`, `cortex-bus-messaging`, `cortex-bus-polling`, `cortex-preflight`, `cortex-deployment-sync` | `fleet-bus*`, `fleet-preflight`, `fleet-deployment-sync` |
@@ -168,11 +169,13 @@ the record and breaks the checksum it carries. Records are excluded from the rep
 - Detection/report messages whose *subject* is the old name (doctor "stray …", enforcer brand
   allow-list entry) — the old name is the SUBJECT of the sentence, not a path to resolve.
 - `docs/rename-followups-steadfaste-fleet.md`, `docs/runbooks/fleet-local-dir-rename.md`,
-  **this plan** and the P0-created `docs/rename-cortex-to-fleet.md` — a path-token replace rewrites
-  both sides of their `old → new` mapping lines, inverting them to `new → new` and silently
-  deleting the worked example. (Measured pitfall: `rename-sweep`'s own worked example was corrupted
-  exactly this way.) The P0 boundary doc is added to §3.4/mapping exclusions when it is created,
-  in the same commit.
+  **this plan**, the P0 boundary doc `docs/rename-cortex-to-fleet.md`, the P7 runbook
+  `docs/runbooks/cortex-to-fleet-rename.md`, and the `docs/DOCS-INDEX.md` rows that link to them —
+  a path-token replace rewrites both sides of their `old → new` mapping lines, inverting them to
+  `new → new` and silently deleting the worked example. (Measured pitfall: `rename-sweep`'s own
+  worked example was corrupted exactly this way.) Each new mapping doc is added to these
+  exclusions **in the same commit that creates it**, and the residue greps must preserve the path
+  literals that point at an excluded doc.
 - `docs/images/hermes cortex avatar.jpg` — a binary asset; rename only with its doc references.
 
 ---
@@ -204,14 +207,14 @@ deploy-reload comments (142, 829, 3280, 3312–3319).
 
 ### 4.2 🔴 Env vars live outside the repo
 
-**138 distinct** `CORTEX_*` identifier names, **3,097** occurrences (sweep scope, same run as §2).
+**138 distinct** `CORTEX_*` identifier names, **3,099** occurrences (sweep scope, same run as §2).
 Two counters exist and they are **deliberately different measurements — never mix them in one
 claim**. Both are reported in the evidence §7 from the same run:
 
 | counter | regex | sweep | what it is for |
 |---|---|---:|---|
-| family | `CORTEX_` | 3,110 | needed LATER (P4) — catches prose wildcard mentions too |
-| identifier | `CORTEX_[A-Z0-9_]+` | 3,097 | needed LATER (P4) — real names only |
+| family | `CORTEX_` | 3,112 | needed LATER (P4) — catches prose wildcard mentions too |
+| identifier | `CORTEX_[A-Z0-9_]+` | 3,099 | needed LATER (P4) — real names only |
 
 The **13-token delta** is `CORTEX_` followed by a character that cannot continue an identifier —
 measured, every one is a **prose wildcard mention** written `` `CORTEX_*` `` in docs
@@ -373,8 +376,11 @@ and answer.
 ### P3 — File/script names, `register()` map, sanctioned-command regex
 The phase that must not break the deploy chain.
 1. Widen the enforcer regex + `_is_sanctioned_cortex_update_command` to accept **both** names
-   (the `(hermes-cortex|steadfaste-fleet)` dual-accept pattern), in its own commit, deployed and
-   **verified by exercising both the old and the new deploy invocation**.
+   (the `(hermes-cortex|steadfaste-fleet)` dual-accept pattern), in its own commit, deployed.
+   **Verification is staged because the new name does not exist yet:** step 1 unit-verifies that
+   `_is_sanctioned_cortex_update_command` returns true when fed the FUTURE
+   `…/ops/scripts/fleet-update.sh` path string (and still true for the current `cortex-update.sh`);
+   the **live** new-name invocation is exercised in step 2, once the `git mv` has happened.
 2. `git mv ops/scripts/cortex-update.sh ops/scripts/fleet-update.sh`; keep a `cortex-update.sh`
    **forwarding shim** for one release; update all **388** `register`/`register_orch`
    deployed-path targets (§9 item 2 — base settled as 388 in P0) and every caller
@@ -462,7 +468,7 @@ revert was caused by a bang, not by the boundary — the stages are the correcti
 
 **Names-only is the decided scope (Q3), not an option.** `CORTEX_*` env vars are **deferred** to a
 follow-on release: this sweep renames every `cortex-` / `cortex_` / `Cortex` / `\bcortex\b`
-*identifier and filename* — ≈ **6,735** (9,845 sweep-scope − 3,110 `CORTEX_` family) — but leaves
+*identifier and filename* — ≈ **6,738** (9,850 sweep-scope − 3,112 `CORTEX_` family) — but leaves
 the `CORTEX_*` variable NAMES untouched. §5 P4 remains in the plan purely as the *spec* for that
 later env-var change; it is **not** part of the current execution. The existing `CORTEX_*` reads
 stay live across all hosts; a later release adds the `FLEET_*` dual-read then drops the old names.
@@ -499,7 +505,10 @@ default, and it is exactly what got reverted.
   `test_gateway_modules_are_deployed.py`, `test_registered_sources_are_tracked.py`,
   `test_cortex_doctor_*`, `test_skills_loadable_check.py`.
 - Dogfood: the **deployed** copy runs its real invocation, not the repo copy.
-- `cortex-doctor.py --quiet` → record the **exit code and warning count**, not just the ✅ lines.
+- The doctor, **by whatever name exists at that phase**: `cortex-doctor.py --quiet` is the name
+  until P3 renames it to `fleet-doctor.py` (a `cortex-doctor.py` forwarding shim exists from P3
+  until the shim is removed — see §3.4). Record the **exit code and warning count**, not just the
+  ✅ lines.
 - Deploy, **then** push, nothing committed in between; `verify-landed.py --repo . --base <prev tip>`.
 - Evidence committed to `docs/evidence/` in the same cycle — a load-bearing claim living only in a
   close note is filed unverified-claim.
@@ -548,7 +557,7 @@ listed here so the resolution is adjacent to where the questions were first aske
 - **Q2 — resolved: dashboard joins.** `hermes-cortex-dashboard.service` →
   `fleet-dashboard.service`; the plist follows. Supersedes the earlier "keeps its name" note.
 - **Q3 — resolved: names-only.** `CORTEX_*` env vars deferred to a follow-on release. This sweep
-  is ≈ 6,735 sweep-scope (the four non-env families); §5 P4 is spec-only for the later change.
+  is ≈ 6,738 sweep-scope (the four non-env families); §5 P4 is spec-only for the later change.
 - **Q4 — resolved: leave for a third sweep.** The four `hermes-cortex*` skills keep their
   `name:` load key; this plan does not rewire their gates.
 
@@ -560,7 +569,7 @@ listed here so the resolution is adjacent to where the questions were first aske
 |---|---|
 | Big-bang single sweep | No symlink absorbs a missed unit name; failures are silent and per-host — and it is what actually got reverted on 2026-11-04 (§6) |
 | Names-only, keep `CORTEX_*` | Now the operator DECISION, not a rejection — Q3 defers the env vars, which stay live until a follow-on release (all other options below are against the resulting scope) |
-| Include env vars now | The most expensive and least valuable part (139 host-backed names); deferred by Q3 to keep this sweep shippable in stages — §5 P4 is its spec |
+| Include env vars now | The most expensive and least valuable part (138 host-backed names); deferred by Q3 to keep this sweep shippable in stages — §5 P4 is its spec |
 | Leave `cortex` as-is | It is the last framework brand straggler; the 2026-11-04 rename explicitly deferred it as "a SECOND, larger sweep with its own runtime-contract risks". This is that sweep |
 | Rename the DB / role to match | `mycortex` is a different product with live data; out of scope (§3.2) |
 
