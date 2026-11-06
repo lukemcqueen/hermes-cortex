@@ -1,11 +1,22 @@
 """
-Human-in-the-Loop Gate — handles workflow steps that need human approval.
+Human-in-the-Loop Gate — workflow steps that need human approval.
 
-When a workflow routes to a human (assigned_to == 'luke'):
-  1. Workflow is marked 'blocked'
-  2. A PGMQ message is sent to inbox_luke
-  3. The HTML dashboard shows the pending review
-  4. REST API endpoints allow Approve / Reject / Request Changes
+This module defines the HIL request/response API. Verified wiring
+(2026-11-06, during the cortex->fleet P2 rename):
+
+- router.py decides when a step needs a human: it marks the workflow
+  'blocked' (update_workflow_state + 'step_waiting_human'/'step_blocked'
+  audit) and returns 'blocked'.
+- server.py exposes the review surface: GET pending reviews
+  (get_pending_hil) and POST decisions (process_hil_response) wired to
+  REST endpoints.
+- create_hil_request() (inbox_luke PGMQ message + 'hil_requested' audit)
+  is currently defined but has NO caller anywhere in the repo — the
+  notification step is an unwired gap, tracked against the workflow
+  engine, not something this rename slice changed.
+
+The 'assigned_to == luke' human-agent convention is carried in workflow
+definitions and read by router.py; nothing here enforces it.
 
 Integration with Telegram is handled by the existing message delivery
 pipeline — when a message hits inbox_luke, the normal inbox-watch cron

@@ -234,7 +234,15 @@ def write_audit(workflow_id: str, event: str, actor: str = "system",
 # ── Helpers ─────────────────────────────────────────────────
 
 def _row_to_dict(cur, row) -> dict:
-    """Convert a psycopg row (tuple or Record) to a dict, filtering pgvector junk."""
+    """Convert a psycopg row (tuple or Record) to a dict, serializing types.
+
+    Defensive filters — none trigger for the CURRENT workflow tables
+    (verified 2026-11-06: bus.agent_workflows / agent_workflow_steps /
+    agent_workflow_audit / a2a_tasks have no bytea/vector columns, see
+    schema/workflow.sql): bytes are dropped outright (binary payloads mean
+    nothing to workflow JSON consumers) and pgvector columns are excluded by
+    name.
+    """
     cols = [d.name for d in cur.description]
     
     def _clean(v):
@@ -245,7 +253,7 @@ def _row_to_dict(cur, row) -> dict:
         if isinstance(v, uuid.UUID):
             return str(v)
         if isinstance(v, bytes):
-            return None  # skip binary/pgvector
+            return None  # defensive: no binary columns exist in the workflow tables
         return v
     
     return {col: _clean(val) for col, val in zip(cols, row)

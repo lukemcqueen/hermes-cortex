@@ -71,6 +71,59 @@ class TestImportGraphFromCoreContext:
         assert r.returncode == 0, r.stderr
         assert r.stdout.strip() == "ok"
 
+    def test_queue_exports_get_queue_and_busclient(self):
+        # workflow/db.py's top-level `from fleet_bus.queue import get_queue,
+        # BusClient` — both names must exist on the queue module.
+        r = self._run(
+            "from fleet_bus.queue import get_queue, BusClient; "
+            "assert callable(get_queue); "
+            "assert isinstance(BusClient, type)"
+        )
+        assert r.returncode == 0, r.stderr
+
+    def test_workflow_db_imports_from_core_context(self):
+        # db.py's module-top import (get_queue, BusClient) resolves from the
+        # runtime context; the module graph imports cleanly.
+        r = self._run(
+            "import fleet_bus.workflow.db as d; "
+            "assert d.create_workflow and d.get_workflow and d.write_audit"
+        )
+        assert r.returncode == 0, r.stderr
+
+    def test_create_workflow_exercises_mocked_bus(self):
+        # The reviewer's exact ask for workflow/db.py: exercise create_workflow
+        # against a MOCKED BusClient, verifying the private-attribute protocol
+        # this file relies on (_ensure_conn/_conn.cursor/_conn.commit) and the
+        # SQL target. The REAL protocol is additionally proven daily at
+        # runtime: the live gateway calls validate_token (same protocol,
+        # bus._ensure_conn/_conn) on every API request. No DB touched here.
+        r = self._run(
+            "import unittest.mock\n"
+            "import fleet_bus.workflow.db as db\n"
+            "class _FakeCursor:\n"
+            "    def __init__(self): self.executed = []\n"
+            "    def execute(self, sql, params=None): self.executed.append(sql)\n"
+            "    def __enter__(self): return self\n"
+            "    def __exit__(self, *a): return False\n"
+            "class _FakeConn:\n"
+            "    def __init__(self): self.c = _FakeCursor()\n"
+            "    def cursor(self): return self.c\n"
+            "    def commit(self): self.committed = True\n"
+            "class _FakeBus:\n"
+            "    def _ensure_conn(self): return None\n"
+            "    def __init__(self): self._conn = _FakeConn()\n"
+            "fake = _FakeBus()\n"
+            "with unittest.mock.patch('fleet_bus.workflow.db.get_queue', return_value=fake):\n"
+            "    wf_id = db.create_workflow('t', {'steps': []}, priority=1)\n"
+            "assert isinstance(wf_id, str) and len(wf_id) == 36\n"
+            "sql = fake._conn.c.executed[0]\n"
+            "assert 'INSERT INTO bus.agent_workflows' in sql\n"
+            "assert fake._conn.committed is True\n"
+            "print('exercised')\n"
+        )
+        assert r.returncode == 0, r.stderr
+        assert "exercised" in r.stdout, r.stdout
+
     def test_circuit_breaker_exercises_mocked_dependency(self):
         # The reviewer's exact ask: exercise check_and_restore/is_available with
         # fleet_bus.queue.get_queue MOCKED, proving the dotted import resolves
