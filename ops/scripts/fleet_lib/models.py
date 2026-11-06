@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cortex_lib/models.py — Shared model configuration loader (canonical, Hermes-independent).
+fleet_lib/models.py — Shared model configuration loader (canonical, Hermes-independent).
 
 Canonical home of the model-config logic in hermes_models.py, moved so no fleet
 component requires the Hermes runtime to resolve it (component-hermes-separation
@@ -26,7 +26,7 @@ Defined env vars (see ~/steadfaste-fleet/.env for current values):
                       which reads it with get_model() and guards it with qualify_model())
 
 Usage:
-    from cortex_lib.models import get_model
+    from fleet_lib.models import get_model
     from hermes_models import get_model  # back-compat shim
 
     judge = get_model("JUDGE_MODEL", "qwen2.5:3b")

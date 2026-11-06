@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cortex_lib/tz.py — Timezone helper (canonical, Hermes-independent).
+fleet_lib/tz.py — Timezone helper (canonical, Hermes-independent).
 
 Canonical home of the timezone logic in hermes_tz.py. Moved so no fleet
 component requires the Hermes runtime to resolve it. `hermes_tz` remains as a
@@ -9,7 +9,7 @@ thin re-export shim (see component-hermes-separation.md S1a).
 Defaults to system local timezone, allows override via HERMES_TIMEZONE env var.
 
 Usage:
-    from cortex_lib.tz import get_timezone, format_timestamp
+    from fleet_lib.tz import get_timezone, format_timestamp
     from hermes_tz import get_timezone, format_timestamp  # back-compat shim
 
     tz = get_timezone()  # Returns timezone object

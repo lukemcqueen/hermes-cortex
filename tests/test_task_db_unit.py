@@ -32,7 +32,7 @@ TASK_MCP_PATH = REPO / "mcp-servers" / "task-mcp.py"
 
 # The repo every scoped-query test DECLARES, so its verdict cannot come from the invoker.
 # cmd_pending/cmd_list resolve the repo from: explicit arg -> injected repo_path -> repo_slug ->
-# CORTEX_SESSION_REPO -> a git repo at the cwd -> None (cortex_lib/session_repo.py:87). On None
+# CORTEX_SESSION_REPO -> a git repo at the cwd -> None (fleet_lib/session_repo.py:87). On None
 # they print `[]` (operator rule 2026-10-14: an unresolvable repo returns NOTHING), so a test that
 # declares none of them reads `[]` and fails on items[0] wherever pytest is invoked from a
 # non-git cwd — measured 2026-10-16: 7 failed / 55 passed, `IndexError: list index out of range`.

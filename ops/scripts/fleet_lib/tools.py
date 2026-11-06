@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cortex_lib/tools.py — Hermes-independent file-tool surface (canonical).
+fleet_lib/tools.py — Hermes-independent file-tool surface (canonical).
 
 Provides the small read_file/write_file surface that fleet scripts used to pull
 from the Hermes runtime's `hermes_tools`, implemented in the stdlib so the

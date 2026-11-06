@@ -86,25 +86,25 @@ for _candidate in (_HERMES_SCRIPTS, _CORTEX_DEPLOY_SCRIPTS, _REPO_SCRIPTS):
     if _candidate.exists():
         sys.path.insert(0, str(_candidate))
 
-# ── cortex_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
-# cortex_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
+# ── fleet_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
+# fleet_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
 # in-repo, scripts/ deployed), so locate it by that dir rather than by guessing a
 # relative depth. Guarded on purpose: the import failure is reported by whichever
 # server actually needs the resource, naming what it wanted.
 resolve_repo_resource = repo_resource_candidates = None
-# cortex_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/cortex_lib/)
-# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/cortex_lib/). Search both: a
+# fleet_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/fleet_lib/)
+# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/fleet_lib/). Search both: a
 # bootstrap that knew only the deployed shape left every server unimportable from the
 # repo tree — the running system stayed green while the repo's own tests died at import.
 for _p in Path(__file__).resolve().parents:
-    if (_p / "cortex_lib" / "paths.py").is_file():
+    if (_p / "fleet_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p))
         break
-    if (_p / "ops" / "scripts" / "cortex_lib" / "paths.py").is_file():
+    if (_p / "ops" / "scripts" / "fleet_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p / "ops" / "scripts"))
         break
 try:
-    from cortex_lib.paths import (  # noqa: E402
+    from fleet_lib.paths import (  # noqa: E402
         repo_resource_candidates, resolve_repo_resource)
 except ImportError:
     pass
@@ -6163,13 +6163,13 @@ _JUDGMENT_REL = "ops/scripts/judgment.py"
 def _load_judgment_client():
     """Import the judgment client (repo or deployed). None if absent.
 
-    Resolved through cortex_lib.paths so both layouts agree. The hand-rolled pair
+    Resolved through fleet_lib.paths so both layouts agree. The hand-rolled pair
     this replaced looked at `<deploy>/tools/ops/scripts/judgment.py` first — a
     path that exists in NEITHER layout, because this server deploys under
     tools/loop-governance/ rather than scripts/.
     """
     if resolve_repo_resource is None:
-        log.warning("triage: cortex_lib.paths unavailable — cannot resolve the "
+        log.warning("triage: fleet_lib.paths unavailable — cannot resolve the "
                     "judgment client")
         return None
     cand = resolve_repo_resource(_JUDGMENT_REL)

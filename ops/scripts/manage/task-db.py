@@ -100,15 +100,15 @@ PG_OPTS = ["-v", "ON_ERROR_STOP=1", "-t", "-A", "-F", "||"]
 # ── Repo scoping for task QUERIES (cycle 12593) ───────────────
 # A task query is scoped to the CALLER's own repo: agents were picking up
 # another repo's pending work because these queries returned every repo.
-# One resolver, shared with the rest of the fleet — cortex_lib sits BESIDE this
+# One resolver, shared with the rest of the fleet — fleet_lib sits BESIDE this
 # file when deployed (<deploy>/scripts/) and one level up in the repo
 # (ops/scripts/), so locate it from __file__ instead of guessing a depth.
 for _p in (Path(__file__).resolve().parent, Path(__file__).resolve().parent.parent):
-    if (_p / "cortex_lib" / "session_repo.py").is_file():
+    if (_p / "fleet_lib" / "session_repo.py").is_file():
         if str(_p) not in sys.path:
             sys.path.insert(0, str(_p))
         break
-from cortex_lib.session_repo import (  # noqa: E402
+from fleet_lib.session_repo import (  # noqa: E402
     FLEET_ALL, ResolvedRepo, resolve_query_repo, unknown_repo_message)
 
 # The repo predicate. SCOPED is STRICT — the caller's own repo and nothing else

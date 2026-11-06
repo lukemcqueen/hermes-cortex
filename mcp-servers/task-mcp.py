@@ -67,25 +67,25 @@ logging.basicConfig(
 log = logging.getLogger("task-mcp")
 
 # ── Locate + import task-db.py (hyphenated filename → importlib) ──
-# ── cortex_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
-# cortex_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
+# ── fleet_lib bootstrap — IDENTICAL in every MCP server; do not vary. ─────
+# fleet_lib/paths.py sits in the scripts dir in BOTH layouts (ops/scripts/
 # in-repo, scripts/ deployed), so locate it by that dir rather than by guessing a
 # relative depth. Guarded on purpose: the import failure is reported by whichever
 # server actually needs the resource, naming what it wanted.
 resolve_repo_resource = repo_resource_candidates = None
-# cortex_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/cortex_lib/)
-# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/cortex_lib/). Search both: a
+# fleet_lib sits BESIDE this file in the deployed layout (<deploy>/scripts/fleet_lib/)
+# but ONE LEVEL DOWN in the repo (<repo>/ops/scripts/fleet_lib/). Search both: a
 # bootstrap that knew only the deployed shape left every server unimportable from the
 # repo tree — the running system stayed green while the repo's own tests died at import.
 for _p in Path(__file__).resolve().parents:
-    if (_p / "cortex_lib" / "paths.py").is_file():
+    if (_p / "fleet_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p))
         break
-    if (_p / "ops" / "scripts" / "cortex_lib" / "paths.py").is_file():
+    if (_p / "ops" / "scripts" / "fleet_lib" / "paths.py").is_file():
         sys.path.insert(0, str(_p / "ops" / "scripts"))
         break
 try:
-    from cortex_lib.paths import (  # noqa: E402
+    from fleet_lib.paths import (  # noqa: E402
         repo_resource_candidates, resolve_repo_resource)
 except ImportError:
     pass
@@ -94,7 +94,7 @@ _TASK_DB_REL = "ops/scripts/manage/task-db.py"
 _TASK_DB = resolve_repo_resource(_TASK_DB_REL) if resolve_repo_resource else None
 if _TASK_DB is None:
     _tried = ([str(p) for p in repo_resource_candidates(_TASK_DB_REL)]
-              if repo_resource_candidates else ["<cortex_lib.paths unavailable>"])
+              if repo_resource_candidates else ["<fleet_lib.paths unavailable>"])
     print(f"[task-mcp] ERROR: {_TASK_DB_REL} not found. Tried: "
           + ", ".join(_tried), file=sys.stderr)
     sys.exit(1)

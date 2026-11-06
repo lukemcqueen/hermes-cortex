@@ -236,7 +236,7 @@ def detect_cheat_patterns(file_path: str, lines: list[str]) -> list[dict]:
     # Line-based on purpose: the regex form could not express "and no statement
     # follows", so an `except` whose FIRST body line was a comment was reported as an
     # empty except — a documented handler that names the failure and then prints or
-    # raises it counted as a swallow (measured 2026-10-14 on cortex_lib/models.py,
+    # raises it counted as a swallow (measured 2026-10-14 on fleet_lib/models.py,
     # where the handler's only crime was putting its comment before its `print`).
     empty_excepts = []
     for i, line in enumerate(lines):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The empty-except detector must report SWALLOWS, not documented handlers.
 
-Measured 2026-10-14: `cortex_lib/models.py` was reported as `error-swallow` — medium —
+Measured 2026-10-14: `fleet_lib/models.py` was reported as `error-swallow` — medium —
 because its `except (OSError, IOError) as exc:` handler put its explanatory COMMENT
 before its `print`. The regex could not express "and no statement follows", so a
 comment as the first body line was enough. That is a false positive on correct code,
@@ -110,11 +110,11 @@ def test_a_bare_except_that_re_raises_is_not_a_swallow(tmp_path):
 
 
 def test_the_live_model_library_has_no_error_swallow():
-    lib = _REPO / "ops" / "scripts" / "cortex_lib" / "models.py"
+    lib = _REPO / "ops" / "scripts" / "fleet_lib" / "models.py"
     got = [f for f in _load().detect_cheat_patterns(str(lib), lib.read_text().splitlines(keepends=True))
            if f["pattern"] == "error-swallow"]
     assert got == [], got
-    print("  cortex_lib/models.py reports no error-swallow ✓")
+    print("  fleet_lib/models.py reports no error-swallow ✓")
 
 
 if __name__ == "__main__":

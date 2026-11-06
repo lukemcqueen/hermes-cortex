@@ -341,7 +341,7 @@ register_orch() {
 # scripts/manage/…). Components therefore used to GUESS, and a guess that
 # resolved in the repo failed after a deploy, on a host, far from the edit.
 #
-# So the map is written out and cortex_lib.paths.resolve_repo_resource() reads
+# So the map is written out and fleet_lib.paths.resolve_repo_resource() reads
 # it. ONE source of truth: the register() lines below. Regenerated on every sync.
 _write_deploy_manifest() {
   [[ $# -gt 0 ]] || return 0
@@ -856,15 +856,21 @@ register "docs/templates/adversarial-reviewer-prompt.md"     "${CORTEX_DEPLOY_HO
 
 # Timezone helper (required by monitoring scripts)
 register "ops/scripts/hermes_tz.py"                "${CORTEX_DEPLOY_HOME}/scripts/hermes_tz.py"
-# cortex_lib — canonical Hermes-independent client library (component-hermes-
-# separation S1a). hermes_tz.py / hermes_paths.py above are thin re-export shims
-# that import cortex_lib at runtime; the package MUST deploy alongside them or
-# the deployed shims break (import fails). Register file-by-file like
-# core/governance — register() maps single files, not directories.
-register "ops/scripts/cortex_lib/__init__.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"
-register "ops/scripts/cortex_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tz.py"
-register "ops/scripts/cortex_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"
-register "ops/scripts/cortex_lib/session_repo.py"  "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/session_repo.py"
+# fleet_lib — canonical Hermes-independent client library (component-hermes-
+# separation S1a), renamed from cortex_lib 2026-11-06 (cortex->fleet sweep).
+# hermes_tz.py / hermes_paths.py above are thin re-export shims that import
+# fleet_lib at runtime; the package MUST deploy alongside them or the deployed
+# shims break (import fails). Register file-by-file like core/governance —
+# register() maps single files, not directories.
+# NOTE: ops/scripts/cortex_lib/{__init__,paths}.py are the ONE-RELEASE shim that
+# aliases fleet_lib so non-redeployed callers keep resolving; DELETE them (and
+# their two register lines) when the old name is retired.
+register "ops/scripts/fleet_lib/__init__.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/__init__.py"
+register "ops/scripts/fleet_lib/tz.py"            "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/tz.py"
+register "ops/scripts/fleet_lib/paths.py"         "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/paths.py"
+register "ops/scripts/fleet_lib/session_repo.py"  "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/session_repo.py"
+register "ops/scripts/cortex_lib/__init__.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/__init__.py"   # shim
+register "ops/scripts/cortex_lib/paths.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/paths.py"      # shim
 register "ops/scripts/cortex-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-run.py"
 register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-generate.py"
 # cortex-gateway — the decoupled gateway package (CR1 transport + CR2 backend seam)
@@ -909,8 +915,8 @@ register "ops/scripts/cortex_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"
-register "ops/scripts/cortex_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/tools.py"
-register "ops/scripts/cortex_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/cortex_lib/models.py"
+register "ops/scripts/fleet_lib/tools.py"         "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/tools.py"
+register "ops/scripts/fleet_lib/models.py"        "${CORTEX_DEPLOY_HOME}/scripts/fleet_lib/models.py"
 
 # mycortex knowledge brain — schema, migration runner, import, CLI, parity harness
 register "ops/services/mycortex/migrate.py"          "${CORTEX_DEPLOY_HOME}/services/mycortex/migrate.py"

@@ -107,7 +107,7 @@ def test_server_starts_without_hermes_models_symlink():
             f"stderr:\n{proc.stderr[:2000]}"
         )
         # Degrade-not-crash: the fallback warning is expected ONLY when the module is
-        # genuinely unavailable. Since the cortex_lib bootstrap now also puts the REPO's
+        # genuinely unavailable. Since the fleet_lib bootstrap now also puts the REPO's
         # ops/scripts on sys.path, hermes_models.py IS importable from the repo tree
         # (it lives there), so the fallback is correctly not taken. Asserting the
         # warning unconditionally would now be asserting the module is missing, which

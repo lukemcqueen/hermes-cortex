@@ -255,7 +255,7 @@ def main() -> int:
         else:
             read_manifest = dp._load_read_manifest()
             if read_manifest is None:
-                unverified.append("deployed tree: cannot import cortex_lib.paths.read_manifest")
+                unverified.append("deployed tree: cannot import fleet_lib.paths.read_manifest")
                 print(f"{_CANNOT}: cannot read the deploy map; the deployed tree was NOT checked.")
             else:
                 mapping = read_manifest(manifest)

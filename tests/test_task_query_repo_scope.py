@@ -35,7 +35,7 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parent.parent
 TASK_DB_PATH = REPO / "ops" / "scripts" / "manage" / "task-db.py"
 TASK_MCP_PATH = REPO / "mcp-servers" / "task-mcp.py"
-SESSION_REPO_PATH = REPO / "ops" / "scripts" / "cortex_lib" / "session_repo.py"
+SESSION_REPO_PATH = REPO / "ops" / "scripts" / "fleet_lib" / "session_repo.py"
 
 
 def _load(name: str, path: Path):

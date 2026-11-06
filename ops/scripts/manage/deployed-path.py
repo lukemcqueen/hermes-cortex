@@ -4,7 +4,7 @@
 WHY THIS EXISTS
 ---------------
 The deployed path of a repo file CANNOT be derived from the repo path: 192 of the ~289
-register() entries in cortex-update.sh follow no rule (cortex_lib/paths.py documents this in
+register() entries in cortex-update.sh follow no rule (fleet_lib/paths.py documents this in
 its own header, and the repo's deploy skill repeats it). A probe that mirrors the repo
 layout under the deploy home therefore checks NOTHING, and pairing it with
 ``2>/dev/null || echo "<conclusion>"`` prints that failure AS a finding. That is exactly how
@@ -36,7 +36,7 @@ _MANIFEST_NAME = "deploy-manifest.tsv"
 
 
 def _load_read_manifest():
-    """Reuse cortex_lib.paths.read_manifest — one parser, one source of truth.
+    """Reuse fleet_lib.paths.read_manifest — one parser, one source of truth.
 
     A second parser here would be a second thing to drift. If it cannot be imported we say
     so and stop; we do not fall back to reading the map by hand.
@@ -44,9 +44,9 @@ def _load_read_manifest():
     here = Path(__file__).resolve()
     for parent in here.parents:
         for candidate in (parent, parent / "ops" / "scripts"):
-            if (candidate / "cortex_lib" / "paths.py").is_file():
+            if (candidate / "fleet_lib" / "paths.py").is_file():
                 sys.path.insert(0, str(candidate))
-                from cortex_lib.paths import read_manifest  # noqa: WPS433
+                from fleet_lib.paths import read_manifest  # noqa: WPS433
                 return read_manifest
     return None
 
@@ -83,7 +83,7 @@ def main() -> int:
 
     read_manifest = _load_read_manifest()
     if read_manifest is None:
-        print("COULD NOT RESOLVE: cortex_lib.paths.read_manifest is not importable — "
+        print("COULD NOT RESOLVE: fleet_lib.paths.read_manifest is not importable — "
               "cannot read the deploy map. Nothing was checked.")
         return 2
 

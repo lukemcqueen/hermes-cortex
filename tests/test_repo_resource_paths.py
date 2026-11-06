@@ -11,7 +11,7 @@ edit. loop-gov-mcp's judgment lookup was one such guess: its first candidate,
 <deploy>/tools/ops/scripts/judgment.py, exists in NEITHER layout.
 
 The fix: cortex-update.sh writes its own map out as `deploy-manifest.tsv`, and
-cortex_lib.paths.resolve_repo_resource() READS it. These tests hold that line.
+fleet_lib.paths.resolve_repo_resource() READS it. These tests hold that line.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-PATHS_PY = REPO / "ops/scripts/cortex_lib/paths.py"
+PATHS_PY = REPO / "ops/scripts/fleet_lib/paths.py"
 UPDATE_SH = REPO / "ops/scripts/cortex-update.sh"
 MCP_DIR = REPO / "mcp-servers"
 
@@ -38,7 +38,7 @@ RESOLVED_BY_SERVERS = {
 
 
 def _load_paths():
-    spec = importlib.util.spec_from_file_location("cortex_lib_paths_under_test", PATHS_PY)
+    spec = importlib.util.spec_from_file_location("fleet_lib_paths_under_test", PATHS_PY)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -132,7 +132,7 @@ def test_cortex_update_syntax_is_valid():
 def test_mcp_server_uses_the_shared_resolver(server):
     src = (REPO / server).read_text()
     assert "resolve_repo_resource" in src, (
-        f"{server} must resolve its sibling through cortex_lib.paths — a "
+        f"{server} must resolve its sibling through fleet_lib.paths — a "
         "hand-rolled candidate list is the bug this replaces")
     assert "repo_resource_candidates" in src, (
         f"{server} must report where it looked when the resource is missing")
@@ -157,7 +157,7 @@ def test_no_mcp_server_hand_rolls_a_candidate_list_for_a_repo_resource():
 
 # ── one bootstrap idiom, byte-identical ─────────────────────────────
 
-BOOTSTRAP_START = ("# ── cortex_lib bootstrap — IDENTICAL in every MCP server; "
+BOOTSTRAP_START = ("# ── fleet_lib bootstrap — IDENTICAL in every MCP server; "
                    "do not vary. ─────")
 BOOTSTRAP_END = "except ImportError:\n    pass\n"
 
@@ -176,11 +176,11 @@ def test_every_mcp_server_carries_the_identical_bootstrap():
         text = path.read_text()
         if BOOTSTRAP_START in text:
             blocks[path.name] = _bootstrap_block(text)
-    assert blocks, "no MCP server carries the canonical cortex_lib bootstrap"
+    assert blocks, "no MCP server carries the canonical fleet_lib bootstrap"
     reference_name, reference = next(iter(blocks.items()))
     drifted = [n for n, b in blocks.items() if b != reference]
     assert not drifted, (
-        f"these servers have a DIFFERENT cortex_lib bootstrap than "
+        f"these servers have a DIFFERENT fleet_lib bootstrap than "
         f"{reference_name}: {drifted}. One idiom, or they drift again.")
     assert len(blocks) >= 3, (
         f"only {len(blocks)} server(s) carry the bootstrap; the servers that "

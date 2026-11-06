@@ -2,11 +2,11 @@
 """
 hermes_tz.py — BACK-COMPAT SHIM.
 
-Canonical implementation moved to cortex_lib.tz (component-hermes-separation.md
-S1a). This module re-exports cortex_lib.tz so existing callers work unmodified.
-New code should import from cortex_lib.tz directly.
+Canonical implementation moved to fleet_lib.tz (component-hermes-separation.md
+S1a). This module re-exports fleet_lib.tz so existing callers work unmodified.
+New code should import from fleet_lib.tz directly.
 """
-from cortex_lib.tz import (  # noqa: F401
+from fleet_lib.tz import (  # noqa: F401
     get_timezone,
     format_timestamp,
     get_tz_name,

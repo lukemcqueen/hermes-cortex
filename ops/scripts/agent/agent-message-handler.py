@@ -672,7 +672,7 @@ corr = sys.argv[3]
 
 # The handler is loaded BY FILE PATH, so this child must reproduce the sys.path
 # entries that module itself imports from — its own directory is not enough.
-# agent-message-handler.py imports `hermes_paths` (-> cortex_lib) from its
+# agent-message-handler.py imports `hermes_paths` (-> fleet_lib) from its
 # PARENT directory, so inserting only the handler's dir killed every detached
 # UPDATE worker at import. Measured 2026-10-24: the worker died BEFORE its
 # try/except, wrote no result and left its .running marker behind, so the

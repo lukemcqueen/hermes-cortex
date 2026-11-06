@@ -15,7 +15,7 @@ INTENDED USAGE:
     execute_code(code="python3 ~/.steadfaste-fleet/scripts/analyze-failures.py --week last")
 
 NOTES:
-    This script now uses cortex_lib.tools.read_file/write_file (component-hermes-
+    This script now uses fleet_lib.tools.read_file/write_file (component-hermes-
     separation S1b), so it runs standalone from the shell with no Hermes runtime
     required:
         python3 ~/.steadfaste-fleet/scripts/analyze-failures.py --week last
@@ -36,12 +36,12 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Any
 
-# File tools — resolved from cortex_lib.tools (Hermes-independent, S1b of
+# File tools — resolved from fleet_lib.tools (Hermes-independent, S1b of
 # component-hermes-separation). Runs standalone, no Hermes runtime required.
-# Bootstrap cortex_lib onto sys.path for BOTH layouts: in-repo this file sits at
-# ops/scripts/manage/ (cortex_lib is two levels up at ops/scripts/), deployed it
-# sits flat at ~/.steadfaste-fleet/scripts/ (cortex_lib is alongside). Same walk
-# cortex_lib.paths.ensure_scripts_path does, done here directly to avoid a
+# Bootstrap fleet_lib onto sys.path for BOTH layouts: in-repo this file sits at
+# ops/scripts/manage/ (fleet_lib is two levels up at ops/scripts/), deployed it
+# sits flat at ~/.steadfaste-fleet/scripts/ (fleet_lib is alongside). Same walk
+# fleet_lib.paths.ensure_scripts_path does, done here directly to avoid a
 # circular import.
 _T_SCRIPTS = {
     str(Path(__file__).resolve().parent.parent),   # ops/scripts/            (in-repo)
@@ -51,7 +51,7 @@ for _t in _T_SCRIPTS:
     if _t not in sys.path:
         sys.path.insert(0, _t)
 
-from cortex_lib.tools import read_file, write_file
+from fleet_lib.tools import read_file, write_file
 
 # Configuration
 CORTEX_HOME = Path.home() / ".steadfaste-fleet"
