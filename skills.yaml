@@ -12,30 +12,20 @@
 #   simple-code, enterprise, debug, ui, api, db, data,
 #   pipeline, research, writing, review, planning
 #
-# Canonical 7 (consolidated 2026-08-20):
-#   - task-start absorbed session-start-discipline
-#   - agent-flow absorbed reasoning-patterns
-#   - survey-before-action absorbed cortex-preflight
+# Consolidated 3 (2026-11-06): route → execute → verify.
+#   - task-orient absorbed task-start, agent-flow, session-start-discipline, reasoning-patterns
+#   - execute-right absorbed agent-contract, survey-before-action, cortex-preflight, prove-before-create, test-driven-development
+#   - verify-and-ship absorbed change-checklist, reflexion-check
 # The enforcer _REQUIRED_SKILLS and doctor check_skills lists MUST stay in
 # sync with this section — any change here is a change to the write-gate.
 
 always:
-  - name: task-start
-    why: Mandatory first action — bundles complete pre-task sequence (incl. todo restore; absorbed session-start-discipline 2026-08-20)
-  - name: agent-flow
-    why: Workflow router — classifies task, dispatches pattern + skills (incl. reasoning-patterns table; absorbed reasoning-patterns 2026-08-20)
-  - name: reflexion-check
-    why: Self-critique before delivering — catch blind spots
-  - name: change-checklist
-    why: Mandatory pre-ship verification before end_change()
-  - name: survey-before-action
-    why: Pre-flight resource search + repo-specific pre-flight (absorbed cortex-preflight 2026-08-20)
-  - name: agent-contract
-    why: Non-negotiable execution rules — honesty, verification, citations
-  - name: test-driven-development
-    why: Iron Law — no production code without a failing test first. Always-loaded so test-first is structurally first, not an afterthought (Titus 2026-08-20)
-  - name: prove-before-create
-    why: Extend-don't-rebuild discipline before creating any file — survey existing functionality first (Luke 2026-10-29)
+  - name: task-orient
+    why: Mandatory first action — governance chain + workflow router (absorbed task-start + agent-flow 2026-11-06)
+  - name: execute-right
+    why: Execution contract + survey-before-action + extend-don't-rebuild + TDD Iron Law (absorbed 4 skills 2026-11-06)
+  - name: verify-and-ship
+    why: Pre-ship change checklist + 8-question reflexion before end_change() (absorbed change-checklist + reflexion-check 2026-11-06)
 
 on_task:
   debug:

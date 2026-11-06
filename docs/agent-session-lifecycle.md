@@ -14,7 +14,7 @@
 Governance wraps every change in a fixed order. There is no step to invent.
 
 ```
-skill_view('task-start')        ← always first; it bundles everything below
+skill_view('task-orient')        ← always first; it bundles everything below
   cache_search(query)           ← what did past cycles learn about this?
   begin_change(task_id, desc)   ← opens a cycle, writes a lock
   … load skills, do the work …
@@ -94,7 +94,7 @@ syntax → docs audit → secret/PII scan → TDD gate (new production code need
 in the same commit) → **reflexion gate** → adversarial → score-cycle.
 
 - `--no-verify` is **logged** by the sentinel and counts against a bypass budget.
-- **Reflexion gate**: the commit must prove this session loaded `reflexion-check`.
+- **Reflexion gate**: the commit must prove this session loaded `verify-and-ship`.
   It asks HC's own session/memory store (`mycortex_mem.tool_events`), keyed by the
   governance lock's `session_id`. Hermes sessions record automatically (the enforcer
   plugin writes a row per `skill_view`); any other harness calls

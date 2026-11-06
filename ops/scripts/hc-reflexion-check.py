@@ -44,7 +44,7 @@ import sys
 from pathlib import Path
 
 GOV_DIR = Path.home() / ".steadfaste-fleet" / "state"
-DEFAULT_SKILL = "reflexion-check"
+DEFAULT_SKILL = "verify-and-ship"
 
 # The cron store this host runs its jobs from. Read ONLY to diagnose a refusal
 # (never to answer the gate's question): see automated_session_job_hint.

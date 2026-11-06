@@ -246,10 +246,10 @@ loading by touching a file.
 the manifest, the enforcer and the doctor cannot drift apart — the direct fix for
 a measured 7-vs-8 count discrepancy. `_REQUIRED_SKILLS_DEFAULT` is the documented
 fail-closed fallback for remote backends where the manifest is not mounted. Today
-the set is: task-start (absorbed session-start-discipline), agent-flow (absorbed
-reasoning-patterns), reflexion-check, change-checklist, survey-before-action
-(absorbed cortex-preflight), agent-contract, test-driven-development,
-prove-before-create.
+the set is: task-orient (absorbed task-start, agent-flow, session-start-discipline,
+reasoning-patterns), execute-right (absorbed agent-contract, survey-before-action,
+cortex-preflight, prove-before-create, test-driven-development), verify-and-ship
+(absorbed change-checklist, reflexion-check).
 
 ### How it works
 
@@ -310,7 +310,7 @@ in a per-session file. The `touch` bypass is structurally closed. See also
 Before `write_file`/`patch`/`skill_manage`, the enforcer detects the domain
 skill for the target file type (extension, filename, or path context — see
 `_EXT_DOMAIN_SKILLS`, `_FILENAME_DOMAIN_SKILLS`, `_PATH_CTX_HINTS` in the
-enforcer source; MUST stay in sync with `survey-before-action` Phase 0a) and
+enforcer source; MUST stay in sync with `execute-right` Phase 0a) and
 blocks the write until that skill is loaded via `skill_view()`. First offense
 educates (`💡 DOMAIN SKILL SUGGESTION`), repeat offenses escalate
 (`⛔ DOMAIN SKILL REQUIRED`). This is an **educational/quality gate** for
@@ -337,7 +337,7 @@ that cannot legitimately satisfy it. Interactive sessions keep the full gate.
 
 ## Survey Gate for Cron Creation
 
-The enforcer implements a **survey-before-action gate** specifically for cron creation.
+The enforcer implements a **survey gate** specifically for cron creation.
 Before `cronjob(action="create")` is allowed, the agent must demonstrate it has
 surveyed existing resources by creating a marker file:
 

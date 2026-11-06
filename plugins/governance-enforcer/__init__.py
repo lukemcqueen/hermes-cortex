@@ -84,11 +84,7 @@ log = logging.getLogger("governance-enforcer")
 # documented fail-closed fallback for remote backends where ~/.steadfaste-fleet
 # is not mounted (README:561). doctor checks.py derives the same way.
 _REQUIRED_SKILLS_DEFAULT: set = {
-    "task-start", "agent-flow",
-    "reflexion-check", "change-checklist", "survey-before-action",
-    "agent-contract", "test-driven-development", "prove-before-create",
-    # prove-before-create (the "prove existing can't handle it" discipline) is
-    # required by the write gate so extend/rebuild awareness binds as a gate.
+    "task-orient", "execute-right", "verify-and-ship",
 }
 _REQUIRED_SKILLS: set = set(_REQUIRED_SKILLS_DEFAULT)
 # Deployed manifest the set derives from; mtime fingerprinted so a refresh is
@@ -382,7 +378,7 @@ def _stale_skills(session_id: str) -> list:
 # Before write_file/patch, check if the file type's domain
 # skill has been loaded. First offense → suggest (educate).
 # Repeat → block (enforce). Path context refines suggestion.
-# MUST stay in sync with survey-before-action Phase 0a.
+# MUST stay in sync with execute-right Phase 0a.
 _EXT_DOMAIN_SKILLS = {
     ".sh":    ("shell-scripting",           "Bash portability, strict-mode, path patterns"),
     ".bash":  ("shell-scripting",           "Bash portability, strict-mode, path patterns"),
@@ -403,17 +399,17 @@ _FILENAME_DOMAIN_SKILLS = {
 }
 # Path fragments that override the extension-based suggestion
 _PATH_CTX_HINTS = {
-    "test":      "test-driven-development",
-    "spec":      "test-driven-development",
-    "deploy":    "survey-before-action",
-    "install":   "survey-before-action",
+    "test":      "execute-right",
+    "spec":      "execute-right",
+    "deploy":    "execute-right",
+    "install":   "execute-right",
     "cron":      "cron-job-management",
     "docs":      "documentation-auditing",
     "reference": "documentation-auditing",
 }
 # YAML is ambiguous: only Docker compose files gate on docker-management.
 # General YAML (config/scrapers.yml, workflow definitions, etc.) has no
-# dedicated skill — same split as survey-before-action Phase 0a. Detection
+# dedicated skill — same split as execute-right Phase 0a. Detection
 # is content-agnostic: look for docker/compose markers in the path.
 _YAML_DOCKER_MARKERS = ("docker", "compose")
 
@@ -2381,7 +2377,7 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
     # educate→block escalation as the domain gate below.
     tdd_needed, tdd_fname = _tdd_required(tool_name, args)
     if tdd_needed:
-        if "test-driven-development" not in _session_skills(session_id or ""):
+        if "execute-right" not in _session_skills(session_id or ""):
             if session_id not in _domain_warnings:
                 _domain_warnings[session_id] = {}
             tdd_count = _domain_warnings[session_id].get("tdd-iron-law", 0)
@@ -2391,10 +2387,10 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
                 msg = (
                     f"💡 TDD IRON LAW REQUIRED\n\n"
                     f"You are writing production code `{tdd_fname}` without "
-                    f"`test-driven-development` loaded.\n\n"
+                    f"`execute-right` loaded.\n\n"
                     f"**Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**\n\n"
                     f"Load it and write the test first (RED), then the code (GREEN):\n"
-                    f"  skill_view(name='test-driven-development')\n\n"
+                    f"  skill_view(name='execute-right')\n\n"
                     f"The write is blocked until you load the skill. "
                     f"Read-only tools ARE available.\n"
                 )
@@ -2404,10 +2400,10 @@ def _check_domain_skill_gate(tool_name: str, args: dict, session_id: str) -> Opt
                 msg = (
                     f"⛔ TDD IRON LAW REQUIRED\n\n"
                     f"You have been warned {tdd_count} time(s) this session about writing "
-                    f"production code without `test-driven-development` loaded.\n\n"
+                    f"production code without `execute-right` loaded.\n\n"
                     f"**Iron Law: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**\n\n"
                     f"Load the skill and write the failing test before the code:\n"
-                    f"  skill_view(name='test-driven-development')\n\n"
+                    f"  skill_view(name='execute-right')\n\n"
                     f"After loading, retry the write. Read-only tools ARE still available.\n"
                 )
                 return {"action": "block", "message": msg}
@@ -3345,7 +3341,7 @@ def register(ctx):
                     # them (content-hashed) — named in the message below so the
                     # agent reloads exactly those, not the whole always-set.
                     stale_skills = (
-                        _stale_skills(hermes_session_id) if loaded_count == 7 else []
+                        _stale_skills(hermes_session_id) if loaded_count == len(_REQUIRED_SKILLS) else []
                     )
                     loaded_list = ", ".join(
                         f"✅ {s}" if loaded[s] else f"  {s}"
@@ -3356,10 +3352,10 @@ def register(ctx):
                         "message": (
                             "🛑 Write tool blocked — session skills not fully loaded.\n\n"
                             "Tool '" + tool_name + "' modifies state — "
-                            + str(loaded_count) + "/7 always-section skills loaded.\n\n"
+                            + str(loaded_count) + "/" + str(len(_REQUIRED_SKILLS)) + " always-section skills loaded.\n\n"
                             + (
                                 (
-                                    "⚠️ All 7 are recorded for this session, but the proof is STALE —\n"
+                                    "⚠️ All " + str(len(_REQUIRED_SKILLS)) + " are recorded for this session, but the proof is STALE —\n"
                                     "the CONTENT of these skills changed since you loaded them:\n"
                                     + "".join(
                                         f"  skill_view(name='{s}')\n" for s in stale_skills
@@ -3369,13 +3365,13 @@ def register(ctx):
                                     "invalidates credit). Expected after a real skills change —\n"
                                     "not an error, and not something to work around.\n\n"
                                     if stale_skills else
-                                    "⚠️ All 7 are recorded for this session, but its proof is STALE:\n"
-                                    "re-load the 7 always-section skills IN ONE TURN (batched\n"
+                                    "⚠️ All " + str(len(_REQUIRED_SKILLS)) + " are recorded for this session, but its proof is STALE:\n"
+                                    "re-load the " + str(len(_REQUIRED_SKILLS)) + " always-section skills IN ONE TURN (batched\n"
                                     "skill_view calls; unchanged content is deduplicated, so this\n"
                                     "is cheap) to regenerate the marker. Expected after a skills\n"
                                     "deploy — not an error.\n\n"
                                 )
-                                if loaded_count == 7 else ""
+                                if loaded_count == len(_REQUIRED_SKILLS) else ""
                             )
                             + (
                                 "⚠️ The enforcer received NO session id on this call, so no\n"
@@ -3387,23 +3383,20 @@ def register(ctx):
                             )
                             + "Required always-section skills:\n"
                             + loaded_list + "\n\n"
-                            "Load all 7 with — START HERE, this is the whole procedure:\n"
-                            "  1. skill_view('task-start')              # bundles the complete sequence\n"
-                            "  2. skill_view('agent-flow')              # workflow router + reasoning patterns\n"
-                            "  3. skill_view('reflexion-check')         # self-critique before deliver\n"
-                            "  4. skill_view('change-checklist')        # pre-ship verification\n"
-                            "  5. skill_view('survey-before-action')    # pre-flight + repo-specific checks\n"
-                            "  6. skill_view('agent-contract')          # execution rules\n"
-                            "  7. skill_view('test-driven-development') # TDD Iron Law\n\n"
-                            "Load all 7 IN ONE TURN — batched skill_view calls work and are fastest.\n"
+                            "Load all " + str(len(_REQUIRED_SKILLS)) + " with — START HERE, this is the whole procedure:\n"
+                            + "".join(
+                                f"  {i+1}. skill_view('{s}')\n"
+                                for i, s in enumerate(sorted(_REQUIRED_SKILLS))
+                            )
+                            + "Load all " + str(len(_REQUIRED_SKILLS)) + " IN ONE TURN — batched skill_view calls work and are fastest.\n"
                             "Loads you already made count and never need repeating; the marker is\n"
-                            "auto-created the moment the 7th one arrives.\n"
+                            "auto-created the moment the " + str(len(_REQUIRED_SKILLS)) + "th one arrives.\n"
                             "Do NOT go reading ~/.hermes/plugins/governance-enforcer/ to work out\n"
                             "what to do — this message IS the procedure.\n"
                             "Do NOT try to set skills-state.json or touch skills-loaded directly —\n"
                             "rejected.\n\n"
                             "This is GATE 1 of 2. The gates are INDEPENDENT: after loading all\n"
-                            "7 skills, writes still require an active governance lock (gate 2),\n"
+                            + str(len(_REQUIRED_SKILLS)) + " skills, writes still require an active governance lock (gate 2),\n"
                             "so a second block saying 'GOVERNANCE LOCK REQUIRED' is EXPECTED —\n"
                             "call mcp__loop_governance__begin_change() then.\n\n"
                             "Note: READ-ONLY commands are lock-free, INCLUDING compounds where\n"

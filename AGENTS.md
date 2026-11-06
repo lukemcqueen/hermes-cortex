@@ -2,7 +2,7 @@
 
 > **⚠️ THREE HARD RULES — Every Agent Must Follow**
 >
-> **RULE 1: LOAD TASK-START FIRST — `skill_view('task-start')` is your first tool call on every task.** Nothing precedes it; a task not preceded by it is a trust violation. It bundles the pre-task sequence: cache_search → begin_change → always-skills (task-start, agent-flow, reflexion-check, change-checklist, survey-before-action, agent-contract, test-driven-development) → classify → work. **Exact tool names (double underscores):** `mcp__review__cache_search` → `mcp__loop_governance__begin_change` → `mcp__review__feedback_accept` → `mcp__loop_governance__end_change`. Load all 7 always-skills in ONE turn (loads accumulate across turns — never reload one you already have). A block message states its gate (GATE 1 of 2 / GATE 2 of 2) and the exact call to make: follow it, don't read the enforcer source. If `begin_change` is absent from your tool list the MCP server isn't registered here — check `hermes mcp list` (lock-free), report to your orchestrator, never hand-write a lock file. To see what YOUR host's enforcer actually does — gate timing, read-only matrix, block-message text, skill-credit state — run `python3 ~/.steadfaste-fleet/scripts/probe-gate-logic.py` (read-only, lock-free, exit 0 = matches docs); that is the diagnostic for "am I stuck on a real gate or on broken plumbing?"
+> **RULE 1: LOAD TASK-ORIENT FIRST — `skill_view('task-orient')` is your first tool call on every task.** Nothing precedes it; a task not preceded by it is a trust violation. It bundles the pre-task sequence: cache_search → begin_change → always-skills (task-start, agent-flow, reflexion-check, change-checklist, survey-before-action, agent-contract, test-driven-development) → classify → work. **Exact tool names (double underscores):** `mcp__review__cache_search` → `mcp__loop_governance__begin_change` → `mcp__review__feedback_accept` → `mcp__loop_governance__end_change`. Load all 7 always-skills in ONE turn (loads accumulate across turns — never reload one you already have). A block message states its gate (GATE 1 of 2 / GATE 2 of 2) and the exact call to make: follow it, don't read the enforcer source. If `begin_change` is absent from your tool list the MCP server isn't registered here — check `hermes mcp list` (lock-free), report to your orchestrator, never hand-write a lock file. To see what YOUR host's enforcer actually does — gate timing, read-only matrix, block-message text, skill-credit state — run `python3 ~/.steadfaste-fleet/scripts/probe-gate-logic.py` (read-only, lock-free, exit 0 = matches docs); that is the diagnostic for "am I stuck on a real gate or on broken plumbing?"
 >
 > **RULE 2: USE LOOP GOVERNANCE ALWAYS.** Every change: `mcp__loop_governance__begin_change` → work → `mcp__review__cycle_query` → `feedback_accept/override` → `mcp__loop_governance__end_change`. Write tools block without a lock. **Close out (2026-08-08; tightened 2026-09-23):** `end_change()` refuses until the cycle is closed out — meaning `composite > 0` **or** an explicit `unscored_reason` recorded by `feedback_accept`/`feedback_override`. An unscored close must say why. Decisions are compared by **class** (`LOOP 🔄 — keep iterating` counts as LOOP). `begin_change()` refuses while unclosed cycles exist. Never stack PENDING. **Hook bypass blocked:** `git -c core.hooksPath=...` / `GIT_CONFIG_*=...` blocked — NOT the `--no-verify` hatch (3 tolerated, 4th+ mandated).
 >
@@ -31,7 +31,7 @@ Public installer + skill set for [Hermes Agent](https://hermes-agent.nousresearc
 
 ## Skill loading — NOT OPTIONAL
 
-Every session: read the skills manifest at `~/.steadfaste-fleet/skills.yaml` — the deployed runtime copy, and the one the governance enforcer enforces. Load `always` skills, classify with `agent-flow`, load `on_task` skills. The repo's canonical source is [`skills.yaml`](skills.yaml); project-local manifests, and the same-name-directory trap to avoid, are in [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
+Every session: read the skills manifest at `~/.steadfaste-fleet/skills.yaml` — the deployed runtime copy, and the one the governance enforcer enforces. Load `always` skills, classify with `task-orient`, load `on_task` skills. The repo's canonical source is [`skills.yaml`](skills.yaml); project-local manifests, and the same-name-directory trap to avoid, are in [`docs/skills-manifest-reference.md`](docs/skills-manifest-reference.md).
 
 ---
 
@@ -77,7 +77,7 @@ Before: `survey-before-action` (search_files → map scope → skill_view). Afte
 
 Survey/leverage and plan-review are **gates, not prose**, and run in **every repo** the hook touches:
 
-1. **Survey-before-build gate** — the commit hook refuses a governed development commit unless the session loaded `reflexion-check`, `survey-before-action`, `prove-before-create`, and `agent-contract`. Ungoverned/human commits (no session) are skipped.
+1. **Survey-before-build gate** — the commit hook refuses a governed development commit unless the session loaded `task-orient`, `execute-right`, and `verify-and-ship`. Ungoverned/human commits (no session) are skipped.
 2. **Plan-review-before-slice gate** — a non-trivial slice (multi-file or >50 lines in a project repo) is refused at commit unless its active cycle has a recorded adversarial plan review. The worker records it themselves — `python3 ~/.steadfaste-fleet/scripts/adversarial-review.py --cycle-id <N> --material-file <plan.md> --review --reviewer-id plan-<slug>` — no orchestrator, no second lock (the review write is sanctioned lock-free; the store is append-only). To re-judge after improving the material: `--re-review` (moves the old verdict into history — never DELETE rows). Plan → review → implement → commit. **Scratch cleanup in `/tmp` is a sanctioned lock-free carve-out** — `rm -f /tmp/x /tmp/y && rm -rf /tmp/sub && echo cleaned` (only `rm`/`rmdir` + -f/-r/-rf/-d, operands resolving strictly under `/tmp`, `&&`-chains, one trailing `echo`). Deleting scratch outside any repo must not need a repo lock. `.`/`..`/wildcards/sudo/mv/cd/`;`/pipes/redirects and any operand outside `/tmp` still need a lock.
 
 The reflexion questions apply to **any** development, not steadfaste-fleet-specific work.
@@ -105,7 +105,7 @@ Your change runs in more places than your session. Name all three before calling
 
 ## Loop Governance
 
-**Every change:** `cache_search` → `begin_change` → work → `change-checklist` → `cycle_query` → `feedback_accept/override` → `end_change` → `git push`. MCP blocks writes without lock. Pre-commit scores every commit.
+**Every change:** `cache_search` → `begin_change` → work → `verify-and-ship` → `cycle_query` → `feedback_accept/override` → `end_change` → `git push`. MCP blocks writes without lock. Pre-commit scores every commit.
 
 ---
 

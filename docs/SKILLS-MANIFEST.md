@@ -560,22 +560,19 @@ their domain.
 |-------|---------|---------|-----------|
 | `social-media-analyzer` | 1.0.0 | Social media campaign analysis and performance tracking. Calculates engagement rates, ROI, and benchmarks a... | `skill_view(name='social-media-analyzer')` |
 
-## Software Development (68 skills)
+## Software Development (63 skills)
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
 | `adversarial-finding-fix-patterns` | 1.0.0 | Fix adversarial-verify.py findings with real handling. | `skill_view(name='adversarial-finding-fix-patterns')` |
 | `adversarial-verifier` | 1.0.0 | Adversarial verification — systematically attempts to break code BEFORE it ships. Covers A0-A5 maturity lev... | `skill_view(name='adversarial-verifier')` |
-| `agent-contract` | 1.1.0 | Core execution contract: real work, honest results, verified outputs, minimal changes. | `skill_view(name='agent-contract')` |
 | `agent-ergonomic-output` | 1.0.0 | Use when building scripts whose stdout agents read (AXI). | `skill_view(name='agent-ergonomic-output')` |
-| `agent-flow` | 1.2.0 | Workflow router skill — classifies the incoming request into one of 12 patterns and dispatches to the corre... | `skill_view(name='agent-flow')` |
 | `alembic-enum-double-create` | 1.0.0 | Use when alembic fails DuplicateObject enum on fresh DB. | `skill_view(name='alembic-enum-double-create')` |
 | `api-documentation` | 1.0.0 | API documentation standards and tooling: OpenAPI/Swagger specs, endpoint descriptions, request/response sch... | `skill_view(name='api-documentation')` |
 | `architecture-review` | 1.2.0 | Multi-role architecture review (a.k.a. HC-Party) with weighted decision matrices, conflict resolution, and... | `skill_view(name='architecture-review')` |
 | `background-job-queue` | 1.0.0 | Add durable background job processing to a FastAPI/asyncpg app using arq. Covers project layout, job functi... | `skill_view(name='background-job-queue')` |
 | `batch-job-optimization` | 1.0.0 | Systematically analyze and optimize database-bound batch processing jobs (imports, exports, ETL, bulk updat... | `skill_view(name='batch-job-optimization')` |
 | `build-check-split` | 1.0.0 | Use when driving a task list tagged BUILD vs CHECK. | `skill_view(name='build-check-split')` |
-| `change-checklist` | 2.3.0 | Mandatory pre-ship verification before calling end_change(). Covers survey, test, adversarial verify, multi... | `skill_view(name='change-checklist')` |
 | `change-test-loop` | 1.1.0 | Small changes with real verification, bounded retries, self-healing. | `skill_view(name='change-test-loop')` |
 | `code-review` | 3.0.0 | Two-axis pre-commit review: Standards (documents + code smells) and Spec (requirement compliance) via paral... | `skill_view(name='code-review')` |
 | `code-wiki` | 0.1.0 | Generate wiki docs + Mermaid diagrams for any codebase. | `skill_view(name='code-wiki')` |
@@ -593,6 +590,7 @@ their domain.
 | `engineering-approach` | 1.9.0 | Engineering and communication standards for this project: terse, direct, skip explanations, always handle e... | `skill_view(name='engineering-approach')` |
 | `enterprise-regrets` | 0.1.0 | Check proposals against enterprise regret patterns. | `skill_view(name='enterprise-regrets')` |
 | `error-handling` | 1.0.0 | Error handling patterns and idioms: structured exceptions, graceful degradation, retry strategies, circuit... | `skill_view(name='error-handling')` |
+| `execute-right` | 0.1.0 | Execution contract: real work, honest results, verified outputs, survey before creating, extend-don't-rebui... | `skill_view(name='execute-right')` |
 | `fail-closed-design` | 1.0.0 | Use when writing fail-closed security-critical code. | `skill_view(name='fail-closed-design')` |
 | `hermetic-python-testing` | 1.0.0 | Write Python modules with hermetic unit-test seams. Covers sandboxed inputs AND live-side-effect output def... | `skill_view(name='hermetic-python-testing')` |
 | `large-mechanical-refactor` | 1.0.0 | Use when a wide refactor ripples across many files. | `skill_view(name='large-mechanical-refactor')` |
@@ -604,7 +602,6 @@ their domain.
 | `memory-architecture` | 1.0.0 | Design and maintain agent memory system: MEMORY.md structure, privacy boundaries, gitignore per brain sourc... | `skill_view(name='memory-architecture')` |
 | `product-requirements` | 1.0.0 | Concise 1-page PRD template: problem, scope, functional/non-functional requirements, edge cases, acceptance... | `skill_view(name='product-requirements')` |
 | `project-map` | 1.0.0 | Structural project analysis — build a dependency graph so agents | `skill_view(name='project-map')` |
-| `prove-before-create` | 1.0.0 | Enforce the "prove existing can't handle it" discipline before creating any new file. Supplements survey-be... | `skill_view(name='prove-before-create')` |
 | `public-contribution` | 1.0.0 | After any improvement, bug fix, workflow discovery, or lesson — pause and evaluate whether the insight is p... | `skill_view(name='public-contribution')` |
 | `rails-data-pipeline-debugging` | 1.2.0 | Debugging data transformation bugs in legacy Rails apps — tracing heuristic text-splitting, internationalis... | `skill_view(name='rails-data-pipeline-debugging')` |
 | `react-best-practices` | 1.0.0 | 70+ React & Next.js performance optimization rules from Vercel Engineering — covers waterfalls, bundle size... | `skill_view(name='react-best-practices')` |
@@ -612,7 +609,6 @@ their domain.
 | `react-composition-patterns` | 1.0.0 | React composition patterns that scale — compound components, state lifting, context interfaces, and avoidin... | `skill_view(name='react-composition-patterns')` |
 | `react-view-transitions` | 1.0.0 | Implement smooth native-browser animations between UI states using React's ViewTransition component and doc... | `skill_view(name='react-view-transitions')` |
 | `reasoning-patterns` | 1.1.0 | DEPRECATED alias — merged into agent-flow (2026-08-20). Load agent-flow instead; its embedded reasoning-pat... | `skill_view(name='reasoning-patterns')` |
-| `reflexion-check` | 1.3.0 | Pre-delivery self-critique: eight-question audit to catch blind spots, verify claims, keep the operator inf... | `skill_view(name='reflexion-check')` |
 | `repo-organization` | 1.1.0 | Canonical repo organization for Steadfaste Fleet — structure, naming, consolidation, symlinks, and audit pr... | `skill_view(name='repo-organization')` |
 | `requirements-elicitation` | 1.2.0 | Requirements elicitation for Steadfaste Fleet (a.k.a. elicit) — structured domain exploration, RICE/MoSCoW... | `skill_view(name='requirements-elicitation')` |
 | `rest-graphql-debug` | 1.2.0 | Debug REST/GraphQL APIs: status codes, auth, schemas, repro. | `skill_view(name='rest-graphql-debug')` |
@@ -628,10 +624,9 @@ their domain.
 | `story-decomposition` | 1.0.0 | Break features into user-visible, testable stories using vertical slicing patterns. | `skill_view(name='story-decomposition')` |
 | `storybook-setup` | 1.0.0 | Set up Storybook with Next.js (Vite) + Tailwind CSS + @storybook/test — init, Tailwind wiring, story patter... | `skill_view(name='storybook-setup')` |
 | `subagent-driven-development` | 1.2.0 | Execute plans via delegate_task subagents (2-stage review). | `skill_view(name='subagent-driven-development')` |
-| `survey-before-action` | 2.1.0 | Mandatory pre-flight checklist before creating or modifying any file. Prevents redundant work by systematic... | `skill_view(name='survey-before-action')` |
 | `task-decomposition` | 1.0.0 | Break large tasks into discrete, verifiable, independently completable units. Uses functional decomposition... | `skill_view(name='task-decomposition')` |
-| `test-driven-development` | 1.2.0 | TDD: enforce RED-GREEN-REFACTOR, tests before code. | `skill_view(name='test-driven-development')` |
 | `test-seed-uniqueness` | 1.0.0 | Ensure test seed data never causes unique constraint violations — UUID-based, timestamp-based, counter-base... | `skill_view(name='test-seed-uniqueness')` |
+| `verify-and-ship` | 0.1.0 | Pre-ship verification: the mandatory change checklist and the eight-question self-critique before end_chang... | `skill_view(name='verify-and-ship')` |
 
 ## Spiritual Disciplines (1 skill)
 
@@ -661,7 +656,7 @@ their domain.
 
 | Skill | Version | Purpose | Load With |
 |-------|---------|---------|-----------|
-| `task-start` | 1.3.0 | MANDATORY first action for every task. Bundles the complete pre-task sequence into one reference. Load this... | `skill_view(name='task-start')` |
+| `task-orient` | 0.1.0 | MANDATORY first action for every task — bundles the complete pre-task sequence, governance chain, and workf... | `skill_view(name='task-orient')` |
 
 ## X Twitter Growth (1 skill)
 

@@ -25,16 +25,11 @@ import os
 from pathlib import Path
 
 
-# The 8 always-skills from skills.yaml `always:` (the audit reads these via awk).
+# The 3 always-skills from skills.yaml `always:` (the audit reads these via awk).
 ALWAYS = [
-    "task-start",
-    "agent-flow",
-    "reflexion-check",
-    "change-checklist",
-    "survey-before-action",
-    "agent-contract",
-    "test-driven-development",
-    "prove-before-create",
+    "task-orient",
+    "execute-right",
+    "verify-and-ship",
 ]
 
 
@@ -97,9 +92,9 @@ def test_pass_when_all_always_skills_present(tmp_path):
 
 
 def test_fail_lists_missing_skill(tmp_path):
-    root = _make_published_root(tmp_path / "tree", missing=["prove-before-create"])
+    root = _make_published_root(tmp_path / "tree", missing=["execute-right"])
     missing, _ = probe(_settings(root), ALWAYS)
-    assert missing == ["prove-before-create"]
+    assert missing == ["execute-right"]
 
 
 def test_noroot_when_settings_has_no_skills_dir(tmp_path):
