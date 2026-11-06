@@ -3897,7 +3897,22 @@ except: print('error')
   # here rather than discovering it as missing tools. Non-fatal: the deploy's job is to report.
   _mcp_audit="${CORTEX_DEPLOY_HOME}/scripts/mcp_wiring.py"
   if [[ -n "${_fleet_venv:-}" && -x "${_fleet_venv:-}" && -f "$_mcp_audit" ]]; then
-    _mcp_out="$("$_fleet_venv" "$_mcp_audit" --orch 2>&1)"; _mcp_rc=$?
+    # G1/G6 (Titus eval 2026-11-06): --orch must never abort the deploy under
+    # `set -euo pipefail`. On worker hosts agent-bus/executor are gateway-wired,
+    # NOT config.yaml mcp_servers, so `--orch` returns non-zero and the bare
+    # command-substitution assignment aborts the whole deploy before the doctor
+    # auto-run. Also G6: --orch only reads config.yaml, so on workers it would
+    # report false FAILs. Fix: run the substitution inside an `if` CONDITION
+    # (set -e is disabled there) and only pass --orch on orchestrator hosts.
+    _mcp_orch=()
+    if [[ "${HOSTNAME:-}" == moses || "${HOSTNAME:-}" == esther ]]; then
+      _mcp_orch=(--orch)
+    fi
+    if _mcp_out="$("$_fleet_venv" "$_mcp_audit" "${_mcp_orch[@]}" 2>&1)"; then
+      _mcp_rc=0
+    else
+      _mcp_rc=$?
+    fi
     if [[ $_mcp_rc -ne 0 ]] || printf '%s' "$_mcp_out" | grep -q "WARN"; then
       warn "MCP wiring needs attention:"
       printf '%s\n' "$_mcp_out" | sed 's/^/  /'
@@ -3938,7 +3953,15 @@ except: print('error')
   # deploy that ends with failures must not report success, but warnings are the normal state of
   # a working host, so the code is captured and acted on rather than discarded with `|| true`.
   set +e
-  python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+  # G2 (Titus eval 2026-11-06): the deploy-path doctor must run under the FLEET
+  # venv interpreter — `python3` here often resolves to ~/.local/bin/python3,
+  # which cannot import yaml/mcp, so its auto-run checks ran "WEAKER". Fall back
+  # to bare python3 only when the venv is not resolvable.
+  if [[ -n "${_fleet_venv:-}" && -x "${_fleet_venv:-}" ]]; then
+    "$_fleet_venv" "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+  else
+    python3 "${CORTEX_DEPLOY_HOME}/scripts/cortex-doctor.py" --quiet 2>&1 | sed 's/^/  /'
+  fi
   _doc_rc=${PIPESTATUS[0]}
   set -e
   if [[ $_doc_rc -eq 2 ]]; then
