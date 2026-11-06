@@ -25,9 +25,20 @@ SELF_EXCLUDES = (
     "docs/evidence/cortex-to-fleet-worktree-2026-11-06.txt",
 )
 
+# The four hermes-cortex* skills are MEASURED in the family totals but DEFERRED from
+# this sweep (operator decision Q4). Excluding them from the sweep-scope column keeps
+# the table aligned with the boundary: hermes-cortex* stays byte-identical.
+DEFERRED_DIRS = (
+    "skills/autonomous-ai-agents/hermes-cortex/",
+    "skills/autonomous-ai-agents/hermes-cortex-setup/",
+    "skills/devops/hermes-cortex-maintenance/",
+    "skills/devops/hermes-cortex-repo-deploy/",
+)
+
 
 def excluded(f: str) -> bool:
-    return f.startswith(EXCLUDE_DIRS) or f in SELF_EXCLUDES
+    """True for records + self-documents + Q4-deferred skill dirs (sweep-scope column)."""
+    return f.startswith(EXCLUDE_DIRS) or f in SELF_EXCLUDES or f.startswith(DEFERRED_DIRS)
 
 FAMILIES = [
     ("cortex- (hyphen)",       re.compile(r"cortex-")),
@@ -54,7 +65,7 @@ def main() -> int:
     print("=" * 72)
 
     print("\n## 1. Token families (tracked text files, .pyc skipped)")
-    print(f"{'family':26s} {'total':>8s} {'files':>7s} {'in-scope':>9s}")
+    print(f"{'family':26s} {'total':>8s} {'files':>7s} {'sweep':>8s}")
     for label, rx in FAMILIES:
         hits = collections.Counter()
         for f in files:
@@ -69,10 +80,10 @@ def main() -> int:
             if n:
                 hits[f] = n
         total = sum(hits.values())
-        inscope = sum(v for k, v in hits.items() if not excluded(k))
-        print(f"{label:26s} {total:8d} {len(hits):7d} {inscope:9d}")
+        sweep = sum(v for k, v in hits.items() if not excluded(k))
+        print(f"{label:26s} {total:8d} {len(hits):7d} {sweep:8d}")
 
-    print("\n## 2. In-scope carriers, top 5 by hit count")
+    print("\n## 2. Sweep-scope carriers, top 5 by hit count")
     rx = re.compile(r"cortex-|cortex_|CORTEX_|(?<![a-zA-Z])Cortex|(?<![a-zA-Z])cortex(?![a-zA-Z_-])")
     hits = collections.Counter()
     for f in files:
@@ -87,12 +98,14 @@ def main() -> int:
     print("\n## 3. Tracked paths containing 'cortex' (excluding mycortex)")
     named = [f for f in files if "cortex" in f.lower() and "mycortex" not in f.lower()]
     records = [f for f in named if excluded(f)]
-    print(f"  total = {len(named)}   records(excluded) = {len(records)}   live = {len(named) - len(records)}")
-    print("  excluded (records + the documents describing this change):")
+    print(f"  total = {len(named)}   excluded = {len(records)}   sweep = {len(named) - len(records)}")
+    print("  excluded (records + self-documents + Q4-deferred skills):")
     for d in EXCLUDE_DIRS:
         print(f"    dir  {d}")
     for d in SELF_EXCLUDES:
         print(f"    self {d}")
+    for d in DEFERRED_DIRS:
+        print(f"    q4   {d}")
 
     print("\n## 4. register() map — exact count in cortex-update.sh")
     upd = REPO / "ops/scripts/cortex-update.sh"

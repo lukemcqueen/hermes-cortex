@@ -24,7 +24,7 @@ COULD_NOT_VERIFY = 3
 
 REQUIRED_SECTIONS = (
     "## 1. Token families",
-    "## 2. In-scope carriers",
+    "## 2. Sweep-scope carriers",
     "## 3. Tracked paths containing 'cortex'",
     "## 4. register() map",
     "## 5. CORTEX_* env var names",
