@@ -2,8 +2,9 @@
 """
 fleet-bus-bridge-run.py — standalone no_agent job runner for the systemd-timer
 bridge (component-hermes-separation S2a).
-P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-run.py;
-provenance: git log --follow -- ops/scripts/fleet-bus-bridge-run.py.
+P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-run.py
+via git mv (token-swap content only); provenance: git log --follow --
+ops/scripts/fleet-bus-bridge-run.py.
 
 This is the delivery wrapper that lets a no_agent cron job run under a systemd
 user timer WITHOUT the Hermes process. A no_agent job's contract is: run the

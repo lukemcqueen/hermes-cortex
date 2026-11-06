@@ -2,8 +2,9 @@
 r"""
 fleet-bus-bridge-generate.py — generate systemd user timer units for simple
 no_agent cron jobs (component-hermes-separation S2a).
-P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-generate.py;
-provenance: git log --follow -- ops/scripts/fleet-bus-bridge-generate.py.
+P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-generate.py
+via git mv (token-swap content only); provenance: git log --follow --
+ops/scripts/fleet-bus-bridge-generate.py.
 
 Reads ~/.hermes/cron/jobs.json, and for each SIMPLE no_agent job (a pure
 script job with no context_from/continuity chaining and no model pin — i.e. a
@@ -17,7 +18,8 @@ writes a user-scope systemd pair:
 
 The service unit's stdout/stderr are captured by the bridge-run wrapper and
 delivered (non-empty) to the messenger; empty = silent. This removes the
-load-bearing coupling "gateway process down → 60+ no_agent jobs don't run (the historical count; see the cron-bridge-migration docs)",
+load-bearing coupling "gateway process down → 60+ no_agent jobs don't run"
+(that count is recorded in docs/runbooks/cron-bridge-migration.md),
 proving S2a on one job at a time.
 
 KillMode=process (2026-10-24)
