@@ -92,7 +92,7 @@ echo "=== [7] \$ date"
 date
 echo "--- rc=$?"
 echo
-"$PY" "$HOME/steadfaste-fleet/ops/scripts/manage/fleet-doctor.py" --quiet > "$TMP"/_ev_doctor.txt 2>&1
+"$PY" "$HOME/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py" --quiet > "$TMP"/_ev_doctor.txt 2>&1
 echo "--- doctor rc=$?"
 grep -E "Cron manifest drift|Overall" "$TMP"/_ev_doctor.txt
 echo

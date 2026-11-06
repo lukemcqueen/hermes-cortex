@@ -178,8 +178,8 @@ PY
 
   rule
   say "## 4. The gate's own verdict, re-run after the deploy"
-  say "cmd: python3 ops/scripts/manage/fleet-doctor.py (default verbose) | grep 'Skill drift'"
-  DOC_OUT="$(timeout 300 python3 ops/scripts/manage/fleet-doctor.py 2>&1)"
+  say "cmd: python3 ops/scripts/manage/cortex-doctor.py (default verbose) | grep 'Skill drift'"
+  DOC_OUT="$(timeout 300 python3 ops/scripts/manage/cortex-doctor.py 2>&1)"
   DOC_RC=$?
   printf '%s\n' "$DOC_OUT" | norm | grep -E 'Skill drift' || say "   (no 'Skill drift' line in doctor output)"
   printf '%s\n' "$DOC_OUT" | norm | grep -E 'Overall:' || say "   (no Overall line)"
