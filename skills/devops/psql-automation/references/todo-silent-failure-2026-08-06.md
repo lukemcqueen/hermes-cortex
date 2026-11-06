@@ -30,7 +30,7 @@ Both had to be fixed for errors to surface.
 
 ## The fix (committed + deployed)
 
-1. Applied `core/cortex_bus/schema/todos.sql` (idempotent) → `bus.todos` +
+1. Applied `core/fleet_bus/schema/todos.sql` (idempotent) → `bus.todos` +
    `bus.todo_archive` + `todo_upsert`/`todo_list`/`todo_archive_old`
 2. `todo-db.py` psql(): switched to `-c` mode; `_get_db_query()` tries direct
    `docker exec` (rc propagates) with `sg` fallback that embeds the query in

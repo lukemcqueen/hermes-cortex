@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
-from lib.cortex_bus import bus_peek, bus_archives, bus_list_queues
+from lib.fleet_bus import bus_peek, bus_archives, bus_list_queues
 
 CORRS = Path.home() / ".hermes/cache/scratch/cost4-update-corrs.json"
 sent = json.loads(CORRS.read_text())

@@ -67,7 +67,7 @@ async def api_read(request: ReadRequest):
 Since this is a **server-side change**, no agent code changes are needed immediately.
 Existing consumers without `poll_timeout` get the current behavior.
 
-When agents opt in, the `cortex_bus.py` library gets a new function:
+When agents opt in, the `fleet_bus.py` library gets a new function:
 
 ```python
 def bus_read_longpoll(queue, vt=60, poll_timeout=30):
@@ -338,7 +338,7 @@ async def api_send(request: SendRequest):
 Since this is server-side, no agent changes are needed for compatibility.
 Existing consumers without `poll_timeout` get the current behavior.
 
-For consumers that want responsiveness, update the `cortex_bus.py` library:
+For consumers that want responsiveness, update the `fleet_bus.py` library:
 
 ```python
 def bus_read_longpoll(queue, vt=60, poll_timeout=30):
@@ -381,4 +381,4 @@ handles the current single-process FastAPI architecture.
 
 | File | Action |
 |------|--------|
-| `core/cortex_bus/server.py` | Add long-poll logic to read handler, send wake to send handler |
+| `core/fleet_bus/server.py` | Add long-poll logic to read handler, send wake to send handler |

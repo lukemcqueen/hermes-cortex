@@ -3,7 +3,7 @@
 
 Luke 2026-08-24: easy key rotation in case an agent is compromised, one
 token per coding agent, never shared. The bus already supports per-agent
-tokens + revoke (core/cortex_bus/auth.py); the CLI had add/remove/list/
+tokens + revoke (core/fleet_bus/auth.py); the CLI had add/remove/list/
 label but NO rotate — the missing piece for compromise recovery without
 re-provisioning the whole agent.
 

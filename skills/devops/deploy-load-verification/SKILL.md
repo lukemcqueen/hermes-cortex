@@ -17,7 +17,7 @@ metadata:
 ## When to Use
 
 - After changing `config.yaml` (MCP servers, plugins, enforcer) — is the change actually live?
-- After renaming a service/package (e.g. `agent_bus` → `cortex_bus`) — do tool names match what skills/crons reference?
+- After renaming a service/package (e.g. `agent_bus` → `fleet_bus`) — do tool names match what skills/crons reference?
 - Symptom: "tools still expose old names", "deployed but nothing changed", "restart needed"
 - BEFORE claiming "everything renamed" — verify the config key AND the running process, not just the repo
 
@@ -491,6 +491,6 @@ alone is therefore invisible to the fleet AND is **clobbered by the next
 
 ## References
 
-- `references/rename-verification-example.md` — worked example: the `agent_bus` → `cortex_bus` fleet rename (2026-08-04)
+- `references/rename-verification-example.md` — worked example: the `agent_bus` → `fleet_bus` fleet rename (2026-08-04)
 - `references/cron-model-fallback-chain.md` — LLM cron model/fallback chain rebuild: manifest-vs-live pin reversion, env-driven fallback chain, opencode free/zen providers, fleet propagation gap (2026-08-31)
 - `references/memory-provider-tool-registration.md` — provider advertises tools the executor cannot route: the two-pass registration timing, the unconditional-schemas fix, and the RED→GREEN regression test

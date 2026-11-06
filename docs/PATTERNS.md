@@ -62,7 +62,7 @@ built on Postgres PGMQ — no Kafka, no Redis, no shared state.
 
 | Asset | Location |
 |---|---|
-| Bus library (HTTP wrapper) | [`ops/scripts/lib/cortex_bus.py`](../ops/scripts/lib/cortex_bus.py) — 381 lines, zero deps |
+| Bus library (HTTP wrapper) | [`ops/scripts/lib/fleet_bus.py`](../ops/scripts/lib/fleet_bus.py) — 381 lines, zero deps |
 | Message handler (agent-side poller) | [`ops/scripts/agent/agent-message-handler.py`](../ops/scripts/agent/agent-message-handler.py) |
 | Update protocol (REQUEST/RESULT) | [`docs/fleet-update-protocol.md`](fleet-update-protocol.md) |
 | Bus architecture | [`docs/architecture.md`](architecture.md) |
@@ -74,7 +74,7 @@ queue. Messages carry `correlation_id` for request/response matching.
 
 **Minimal send/read (the whole API):**
 ```python
-from cortex_bus import bus_send, bus_read, bus_archive
+from fleet_bus import bus_send, bus_read, bus_archive
 
 # send a message to another agent's inbox
 bus_send("inbox_worker", {
@@ -239,7 +239,7 @@ order:
 
 | Want to understand... | Read |
 |---|---|
-| A2A messaging end-to-end | `ops/scripts/lib/cortex_bus.py` + `docs/fleet-update-protocol.md` |
+| A2A messaging end-to-end | `ops/scripts/lib/fleet_bus.py` + `docs/fleet-update-protocol.md` |
 | Token-cost caching | `ops/web-cache/web_cache.py` (400 lines, self-contained) |
 | Enforced governance | `mcp-servers/loop-gov-mcp.py` + `docs/loop-governance-reference.md` |
 | Self-healing | `ops/scripts/remediation/` sensors + `agent-fixer-*` crons |

@@ -27,7 +27,7 @@ import sys
 
 # Ensure the package directory AND the scripts parent are on the path.
 # This handles both deployment (~/.steadfaste-fleet/scripts/) and in-repo
-# (ops/scripts/manage/) layouts so that hermes_paths and lib.cortex_bus
+# (ops/scripts/manage/) layouts so that hermes_paths and lib.fleet_bus
 # are importable regardless of CWD.
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _pkg_dir = os.path.join(_this_dir, "cortex_doctor")

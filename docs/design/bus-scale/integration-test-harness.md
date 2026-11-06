@@ -21,8 +21,8 @@ the full message lifecycle across multiple agents simultaneously.
 
 @pytest_asyncio.fixture
 async def bus_connection():
-    """Fixture providing a raw bus connection (not through cortex_bus.py) for testing."""
-    # Use direct HTTP to the bus server (avoid cortex_bus.py caching)
+    """Fixture providing a raw bus connection (not through fleet_bus.py) for testing."""
+    # Use direct HTTP to the bus server (avoid fleet_bus.py caching)
     async with httpx.AsyncClient(base_url=BUS_URL) as client:
         yield client
 

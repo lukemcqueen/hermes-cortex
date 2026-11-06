@@ -1000,11 +1000,14 @@ register "ops/scripts/manage/agent-session-mine-cron.py"   "${CORTEX_DEPLOY_HOME
 register "ops/scripts/manage/agent-session-correction-scan.py" "${CORTEX_DEPLOY_HOME}/scripts/manage/agent-session-correction-scan.py"
 # orch-bus-* scripts are orchestrator-only — run from repo path
 # Shared bus library for fleet scripts
+register "ops/scripts/lib/fleet_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/fleet_bus.py"
+# ONE-release shim for lib.fleet_bus (cortex->fleet, P2): legacy `from lib.cortex_bus
+# import bus_send` keeps resolving while peers redeploy. Delete with the old name.
 register "ops/scripts/lib/cortex_bus.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/cortex_bus.py"
 # The bus core: bot_locks.py (used by the gateway AND msg-gateway) loads the bus core from
 # ~/.steadfaste-fleet/queue.py, so this destination is load-bearing, not cosmetic. Without it the
-# deployed gateway dies at startup with "cortex_bus queue.py not found (bus core missing)".
-register "core/cortex_bus/queue.py" "${CORTEX_DEPLOY_HOME}/queue.py"
+# deployed gateway dies at startup with "fleet_bus queue.py not found (bus core missing)".
+register "core/fleet_bus/queue.py" "${CORTEX_DEPLOY_HOME}/queue.py"
 register "ops/scripts/lib/bus_outbox.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/bus_outbox.py"
 # Shared Telegram notify library (R-9: single Bot API copy — handler, verifier, task-db)
 register "ops/scripts/lib/telegram_notify.py" "${CORTEX_DEPLOY_HOME}/scripts/lib/telegram_notify.py"
@@ -1078,7 +1081,7 @@ register_orch "ops/services/dashboard/com.hermes.cortex-dashboard.plist" "${HOME
 register "ops/scripts/install/os-config.sh"               "${CORTEX_DEPLOY_HOME}/scripts/install/os-config.sh"
 register "ops/scripts/install/service-writer.sh"          "${CORTEX_DEPLOY_HOME}/scripts/service-writer.sh"
 
-restart_cortex_bus() {
+restart_fleet_bus() {
   # macOS launchd
   if launchctl list com.hermes.cortex-bus 2>/dev/null | grep -q "PID"; then
     info "  Restarting Agent Bus (launchd)…"
@@ -1148,7 +1151,7 @@ restart_dashboard() {
     SERVICE_CTL restart steadfaste-fleet-dashboard 2>&1 | sed 's/^/    /'
   fi
 }
-# restart_agent_inbox — removed; use restart_cortex_bus instead
+# restart_agent_inbox — removed; use restart_fleet_bus instead
 
 restart_health_server() {
   # health-vector.service — canonical health endpoint server (:8905).
@@ -3490,7 +3493,7 @@ main() {
       case "$cmd" in
         restart_langfuse)    restart_langfuse ;;
         restart_dashboard)   restart_dashboard ;;
-        restart_cortex_bus)  restart_cortex_bus ;;
+        restart_fleet_bus)  restart_fleet_bus ;;
         restart_health_server) restart_health_server ;;
         *)                   warn "Unknown restart command: $cmd" ;;
       esac
@@ -3498,10 +3501,10 @@ main() {
   fi
 
   # Restart the bus daemon when its code changed. The bus runs FROM THE REPO
-  # (core/cortex_bus via uvicorn cortex_bus.server:app) — a git pull updates
+  # (core/fleet_bus via uvicorn fleet_bus.server:app) — a git pull updates
   # the files on disk but the running process keeps the old modules in memory
   # (Deploy ≠ load). Without this restart, new bus endpoints/schema changes
-  # never go live until the service happens to restart. restart_cortex_bus
+  # never go live until the service happens to restart. restart_fleet_bus
   # self-guards (systemctl --user is-active / launchctl list) so hosts without
   # a local bus service (joseph/gisu/kustos/titus — client bus_access) no-op.
   local _bus_changed=false
@@ -3510,13 +3513,14 @@ main() {
   else
     for _f in "${CHANGED[@]}"; do
       case "$_f" in
-        core/cortex_bus/*) _bus_changed=true ; break ;;
+        core/fleet_bus/*) _bus_changed=true ; break ;;
+        core/cortex_bus/*) _bus_changed=true ; break ;;  # one-release package shim
       esac
     done
   fi
   if $_bus_changed; then
     info "Bus code changed — restarting Agent Bus…"
-    $DRY_RUN && echo "    would restart: restart_cortex_bus" || restart_cortex_bus
+    $DRY_RUN && echo "    would restart: restart_fleet_bus" || restart_fleet_bus
   fi
 
   # Save commit
@@ -3659,8 +3663,8 @@ main() {
         warn "    systemctl --user disable cortex-bus"
         _warned=true
       fi
-      if pgrep -f cortex_bus.server &>/dev/null 2>&1; then
-        warn "🚫 Bus server process (cortex_bus) detected on non-orch agent"
+      if pgrep -f fleet_bus.server &>/dev/null 2>&1; then
+        warn "🚫 Bus server process (fleet_bus) detected on non-orch agent"
         _warned=true
       fi
       if $_warned; then

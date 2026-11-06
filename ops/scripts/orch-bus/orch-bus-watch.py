@@ -19,7 +19,7 @@ from hermes_tz import format_timestamp
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from cortex_bus.queue import get_queue, NotAvailableError
+from fleet_bus.queue import get_queue, NotAvailableError
 
 
 def main():

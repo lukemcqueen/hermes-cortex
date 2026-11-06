@@ -34,7 +34,7 @@ say "asked (ops/scripts/agent/commands.py:113-134)."
 import json
 import sys
 sys.path.insert(0, str(__import__("pathlib").Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
-from lib.cortex_bus import bus_peek, bus_archives, bus_list_queues
+from lib.fleet_bus import bus_peek, bus_archives, bus_list_queues
 
 SELFTEST = "cost4-selftest-8c8c62176e3a"
 WORKERS = {

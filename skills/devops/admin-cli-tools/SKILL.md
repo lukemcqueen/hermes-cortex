@@ -16,7 +16,7 @@ Principles for building admin CLI tools (tools for the human operator, not for a
 ### Host-Independent HTTP Client, Not Local docker exec (2026-08-06)
 
 Admin tools talk to the Agent Bus over **HTTP** via the shared
-`lib/cortex_bus.py` client (`ops/scripts/lib/cortex_bus.py`) — the SAME client
+`lib/fleet_bus.py` client (`ops/scripts/lib/fleet_bus.py`) — the SAME client
 every fleet script uses. This is host-independent: `fleet` works identically on
 moses' and esther's hosts.
 
@@ -29,7 +29,7 @@ fleet exec gisu       ← sends EXEC + polls inbox_moses via peek
 
 | Approach | When |
 |----------|------|
-| **HTTP via lib.cortex_bus** | Default — send (bus_send), peek (bus_peek), queues (bus_list_queues), health (bus_health) |
+| **HTTP via lib.fleet_bus** | Default — send (bus_send), peek (bus_peek), queues (bus_list_queues), health (bus_health) |
 | **SQL `bus.send()`** | Only for local-Postgres tooling that runs on the bus host (diagnostics) |
 
 **Why not docker exec?** The old `fleet` ran `docker exec mycortex-postgres psql`
@@ -48,7 +48,7 @@ messages without consuming them. Unlike `bus_read()` (which marks messages
 their state unchanged — safe for inbox inspection and exec-result polling.
 
 ```python
-from lib.cortex_bus import bus_peek, bus_send, bus_list_queues, bus_health
+from lib.fleet_bus import bus_peek, bus_send, bus_list_queues, bus_health
 
 msgs = bus_peek("inbox_esther", limit=20)   # ✅ non-destructive list
 bus_send("inbox_esther", {"from": "moses", "subject": "EXEC", ...})

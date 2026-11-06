@@ -149,8 +149,8 @@ bus_shard_errors{shard="7"} 0
 
 | File | Action |
 |------|--------|
-| `core/cortex_bus/server.py` | Add shard routing to PGMQ backend |
-| `core/cortex_bus/shard.py` | Create — shard management module |
-| `core/cortex_bus/reshard.py` | Create — resharding utility |
-| `core/cortex_bus/schema/shard.sql` | Create — shard schema DDL |
+| `core/fleet_bus/server.py` | Add shard routing to PGMQ backend |
+| `core/fleet_bus/shard.py` | Create — shard management module |
+| `core/fleet_bus/reshard.py` | Create — resharding utility |
+| `core/fleet_bus/schema/shard.sql` | Create — shard schema DDL |
 | `ops/scripts/install/install-bus.sh` | Update — create shard schemas |

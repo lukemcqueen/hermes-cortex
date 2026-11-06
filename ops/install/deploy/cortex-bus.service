@@ -6,7 +6,7 @@ After=network.target docker.service
 Type=simple
 WorkingDirectory=%h/steadfaste-fleet/core
 Environment=PYTHONPATH=%h/steadfaste-fleet/core
-ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 -m uvicorn cortex_bus.server:app --host 127.0.0.1 --port 8903 --log-level warning
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python3 -m uvicorn fleet_bus.server:app --host 127.0.0.1 --port 8903 --log-level warning
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes

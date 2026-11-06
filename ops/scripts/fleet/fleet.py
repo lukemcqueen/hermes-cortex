@@ -52,7 +52,7 @@ DEFAULT_AGENT = ""
 
 # Make the shared bus client importable from both the repo and the
 # deployed layout (repo: ops/scripts/lib; deployed: scripts/lib).
-# `from lib.cortex_bus import …` needs the PARENT of lib/ on sys.path.
+# `from lib.fleet_bus import …` needs the PARENT of lib/ on sys.path.
 # Insert only the FIRST existing candidate (priority order) so the repo
 # copy isn't shadowed by a stale deployed copy missing new functions.
 _LIB_CANDIDATES = [
@@ -66,7 +66,7 @@ for _lib in _LIB_CANDIDATES:
         break
 
 try:
-    from lib.cortex_bus import (  # type: ignore
+    from lib.fleet_bus import (  # type: ignore
         bus_archives,
         bus_health,
         bus_list_queues,
@@ -85,11 +85,11 @@ except Exception:
     BUS_FALLBACK_URL = ""
 
     def bus_archives(queue: str, limit: int = 20, since_minutes: int = 60) -> list[dict]:
-        """Stub — lib.cortex_bus unavailable; _get_archives guards on _HAS_LIB."""
+        """Stub — lib.fleet_bus unavailable; _get_archives guards on _HAS_LIB."""
         return []
 
     def bus_peek(queue: str, limit: int = 20) -> list[dict]:
-        """Stub — lib.cortex_bus unavailable; cmd_send guards on _HAS_LIB."""
+        """Stub — lib.fleet_bus unavailable; cmd_send guards on _HAS_LIB."""
         return []
 
 
@@ -237,7 +237,7 @@ def _record_verification(
 def _get_messages(queue: str, limit: int = 20) -> list[dict]:
     """Get pending messages from a queue (non-destructive read via HTTP peek)."""
     if not _HAS_LIB:
-        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         return bus_peek(queue, limit=limit)
@@ -254,7 +254,7 @@ def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[
     fast-archived EXEC_RESULT is found instead of hanging (2026-08-06).
     """
     if not _HAS_LIB:
-        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         return bus_archives(queue, limit=limit, since_minutes=since_minutes)
@@ -266,7 +266,7 @@ def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[
 def _get_queue_depths() -> list[dict]:
     """Get depth of all inbox queues via HTTP (name + depth)."""
     if not _HAS_LIB:
-        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         queues = bus_list_queues()
@@ -283,7 +283,7 @@ def _get_queue_depths() -> list[dict]:
 def _send_message(queue: str, body: dict) -> str:
     """Send a message via the bus HTTP API (active bus, fallback on failure)."""
     if not _HAS_LIB:
-        return "❌ lib.cortex_bus not importable — run cortex-update.sh to deploy."
+        return "❌ lib.fleet_bus not importable — run cortex-update.sh to deploy."
     try:
         result = bus_send(queue, body)
         if result is None:
@@ -413,11 +413,11 @@ def _probe_health(url: str, timeout: float = 5.0) -> bool:
 def _norm_body(value) -> str:
     """Canonical string form of a message body for duplicate comparison.
 
-    Delegates to the shared implementation in cortex_bus so the dedup
+    Delegates to the shared implementation in fleet_bus so the dedup
     rule lives in exactly one place (bus_outbox.py uses it too).
     """
     try:
-        from cortex_bus import bus_norm_body
+        from fleet_bus import bus_norm_body
         return bus_norm_body(value)
     except Exception:  # noqa: BLE001 — degrade to local if lib missing
         if isinstance(value, dict):
@@ -429,11 +429,11 @@ def _norm_body(value) -> str:
 def _pending_duplicate(msgs: list, subject: str, body_text: str, corr_id: str) -> dict | None:
     """Return the first pending message duplicating the proposed send.
 
-    Canonical rule lives in cortex_bus.bus_find_duplicate — this shim
+    Canonical rule lives in fleet_bus.bus_find_duplicate — this shim
     keeps fleet.py's call site unchanged while the semantics stay shared.
     """
     try:
-        from cortex_bus import bus_find_duplicate
+        from fleet_bus import bus_find_duplicate
         return bus_find_duplicate(msgs, subject, body_text, corr_id)
     except Exception:  # noqa: BLE001 — degrade to local if lib missing
         norm_body = _norm_body(body_text)
@@ -535,7 +535,7 @@ def cmd_send(cfg: dict, args: list):
 
         # 2. Dedup
         if not _HAS_LIB:
-            print("  ⚠️  lib.cortex_bus not importable — dedup check skipped.", file=sys.stderr)
+            print("  ⚠️  lib.fleet_bus not importable — dedup check skipped.", file=sys.stderr)
         else:
             try:
                 pending = bus_peek(f"inbox_{agent}", limit=50)
@@ -587,7 +587,7 @@ def cmd_status(cfg: dict, args: list):
         except Exception as e:
             print(f"❌ Bus health: unreachable ({e})")
     else:
-        print("❌ lib.cortex_bus not importable — run cortex-update.sh to deploy.")
+        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.")
 
     # Queue depths
     print()
@@ -991,9 +991,9 @@ def cmd_env(cfg: dict, args: list):
         print(f"   Bus URL      = {BUS_URL or '(unset)'}")
         print(f"   Fallback URL = {BUS_FALLBACK_URL or '(unset)'}")
         print(f"   Backend      = HTTP (active bus, fallback on failure)")
-        print(f"   Auth         = Bearer → Basic fallback (via lib.cortex_bus)")
+        print(f"   Auth         = Bearer → Basic fallback (via lib.fleet_bus)")
     else:
-        print(f"   Backend      = ❌ lib.cortex_bus not importable (run cortex-update.sh)")
+        print(f"   Backend      = ❌ lib.fleet_bus not importable (run cortex-update.sh)")
     print(f"\nTip: Any agent's inbox is readable:")
     print(f"  fleet inbox moses    fleet inbox joseph    fleet inbox esther")
 

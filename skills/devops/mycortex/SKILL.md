@@ -187,7 +187,7 @@ per-host, non-destructive (old container STOPPED, not removed; dump kept in
 (1726 pages / 29298 chunks verified post-restore).
 
 **Connection fixes shipped with the migration:**
-- `core/cortex_bus/queue.py` `_load_config()` — the `.env` fallback previously
+- `core/fleet_bus/queue.py` `_load_config()` — the `.env` fallback previously
   never read `CORTEX_BUS_PG_DB`, so the bus ignored .env DB changes and kept
   hitting the dead `mycortex` DB. Fixed (2026-08-05).
 - mycortex CLI / migrate.py / task-db.py / fleet.py / orch-bus / retention /

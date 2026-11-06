@@ -42,9 +42,9 @@ def test_the_bus_core_the_gateway_loads_is_registered_at_the_path_it_probes():
     dests = {}
     for line in UPDATE.read_text().splitlines():
         line = line.strip()
-        if line.startswith("register ") and "core/cortex_bus/queue.py" in line:
+        if line.startswith("register ") and "core/fleet_bus/queue.py" in line:
             dests["queue.py"] = line.split('"')[3]        # the destination, 4th quoted field
-    assert dests, "core/cortex_bus/queue.py is not registered — the deployed gateway cannot start"
+    assert dests, "core/fleet_bus/queue.py is not registered — the deployed gateway cannot start"
     assert "${CORTEX_DEPLOY_HOME}/queue.py" == dests["queue.py"], (
         f"the bus core must deploy to ${{CORTEX_DEPLOY_HOME}}/queue.py (what bot_locks probes), "
         f"not {dests['queue.py']}")

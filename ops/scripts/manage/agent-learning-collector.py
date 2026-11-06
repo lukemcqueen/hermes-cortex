@@ -502,7 +502,7 @@ def send_report(report: dict, dry_run: bool = False) -> list[str] | None:
         subject_parts.append(f"{len(lessons)} lessons")
     if learnings:
         subject_parts.append(f"{len(learnings)} learnings")
-    # Bus protocol (core/cortex_bus/validate.py) requires UPPER_CASE subject
+    # Bus protocol (core/fleet_bus/validate.py) requires UPPER_CASE subject
     # names (A-Z0-9_) and integer priority 0-100: a human-readable
     # "Learning Report: N skills" subject and a "high"/"normal" string priority
     # are both rejected with HTTP 400 and the report is silently lost

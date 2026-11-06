@@ -161,7 +161,7 @@ python3 ~/.steadfaste-fleet/scripts/learning-collect.py --route remediation --ty
   --source-ref "agent-auto-remediate run 2026-09-08"
 ```
 
-Constraint check before running: `--impact` must be an integer in [-3, 3] (default 0); `--content` must be ≤4000 chars (longer is truncated with a warning) and must not be paired with `--content-file`. If the script prints `ERROR: lib.cortex_bus unavailable`, the bus client config is missing — report `⚠️ learning capture failed: bus lib unavailable` and move on (do not retry the capture).
+Constraint check before running: `--impact` must be an integer in [-3, 3] (default 0); `--content` must be ≤4000 chars (longer is truncated with a warning) and must not be paired with `--content-file`. If the script prints `ERROR: lib.fleet_bus unavailable`, the bus client config is missing — report `⚠️ learning capture failed: bus lib unavailable` and move on (do not retry the capture).
 
 - **Idempotent by fix signature** — the content IS the fix signature; the
   ledger dedups on (route, content_hash), so re-capturing the same fix is a

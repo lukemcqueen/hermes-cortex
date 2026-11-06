@@ -1704,10 +1704,10 @@ def _check_bus_e2e(res):
   try:
     from hermes_paths import ensure_scripts_path
     ensure_scripts_path()
-    from lib.cortex_bus import bus_send, bus_read, bus_archive, bus_archives, bus_health
+    from lib.fleet_bus import bus_send, bus_read, bus_archive, bus_archives, bus_health
   except (ImportError, RuntimeError) as _bus_import_err:
     res.add("Bus E2E test", "SKIP",
-        f"cortex_bus.py not usable ({type(_bus_import_err).__name__}: {_bus_import_err}) — "
+        f"fleet_bus.py not usable ({type(_bus_import_err).__name__}: {_bus_import_err}) — "
         "expected if bus config is absent on this agent")
     return
 
@@ -1718,7 +1718,7 @@ def _check_bus_e2e(res):
 
   # ── 1. Config check ──
   try:
-    from lib.cortex_bus import BUS_URL, BUS_FALLBACK_URL
+    from lib.fleet_bus import BUS_URL, BUS_FALLBACK_URL
     bus_url = BUS_URL
     fallback_url = BUS_FALLBACK_URL
     if bus_url:
@@ -1731,7 +1731,7 @@ def _check_bus_e2e(res):
       res.add("Bus config (fallback)", "WARN", "No FALLBACK_URL configured",
           "Add CORTEX_BUS_FALLBACK_URL in .env for resilience")
   except Exception:
-    return # cortex_bus not importable — bus checks handled by earlier import guard
+    return # fleet_bus not importable — bus checks handled by earlier import guard
 
   # ── 2. Health check ──
   try:
@@ -1840,7 +1840,7 @@ def _check_bus_e2e(res):
   try:
     import urllib.error
     import urllib.request
-    from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
+    from lib.fleet_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
     bus_url = BUS_URL
     # Try Bearer if token available, then fall back to Basic auth on 401/403.
     # The orchestrator bus accepts Basic (.env); a stale Bearer
@@ -1894,7 +1894,7 @@ def _check_bus_e2e(res):
     import urllib.error
     import urllib.request
     from datetime import datetime, timezone
-    from lib.cortex_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
+    from lib.fleet_bus import BUS_URL, CORTEX_BUS_TOKEN, CORTEX_BUS_AUTH
 
     agents = _known_agent_names()
 
@@ -2280,7 +2280,7 @@ def check_services(res):
         res.add(f"Service ({name})", "WARN", f"HTTP {code} (unexpected)")
 
   # Agent Bus direct health
-  if process_running("cortex_bus"):
+  if process_running("fleet_bus"):
     bus_url = run_bg([CURL, "-s", "-o", "/dev/null", "-w", "%{http_code}",
              "http://127.0.0.1:8903/health", "--max-time", "5"])
     if bus_url == "200":
@@ -2293,7 +2293,7 @@ def check_services(res):
     else:
       res.add("Agent Bus (direct)", "FAIL",
           f"HTTP {bus_url} — unexpected response",
-          "Check: systemctl status cortex_bus (system) or systemctl --user status cortex_bus")
+          "Check: systemctl status fleet_bus (system) or systemctl --user status fleet_bus")
   else:
     def _get_conf(key):
       val = os.environ.get(key, "")
@@ -2326,10 +2326,10 @@ def check_services(res):
 
   # Non-orch guard: detect orchestrator-only services running on non-orch agents
   if AGENT_ROLE != "orchestrator":
-    _bus_proc = run_bg(["pgrep", "-f", "cortex_bus.server"], timeout=5) or ""
-    if "cortex_bus" in _bus_proc:
+    _bus_proc = run_bg(["pgrep", "-f", "fleet_bus.server"], timeout=5) or ""
+    if "fleet_bus" in _bus_proc:
       res.add("Bus (non-orch guard)", "WARN",
-          "cortex_bus process running on non-orch agent — should only run on orchestrator hosts",
+          "fleet_bus process running on non-orch agent — should only run on orchestrator hosts",
           "Stop: systemctl stop cortex-bus (system) or systemctl --user stop cortex-bus; then disable")
 
   # Ollama

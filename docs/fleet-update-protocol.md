@@ -29,7 +29,7 @@ including the backup when the primary is down or degraded.
 - **Results** still go to `inbox_moses` (they reply to the originating
   orchestrator's queue via `inbox_moses`).
 - The queue is auto-created on first send; schema seed lives in
-  `core/cortex_bus/schema/auth.sql`.
+  `core/fleet_bus/schema/auth.sql`.
 
 ## Common Headers
 
@@ -90,7 +90,7 @@ When an agent receives `UPDATE_REQUEST`, it:
 }
 ```
 
-> **The message ENVELOPE is an allowlist** (`core/cortex_bus/validate.py`,
+> **The message ENVELOPE is an allowlist** (`core/fleet_bus/validate.py`,
 > enforced at `/api/pgmq/send`). The only keys a message may carry are
 > `from`, `to`, `subject`, `body`, `correlation_id`, `timestamp`, `priority`,
 > `type`, `forwarded_from`. **`topic` is NOT one of them** — an envelope

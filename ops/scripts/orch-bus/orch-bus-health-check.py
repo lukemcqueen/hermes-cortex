@@ -15,7 +15,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-# Add repo core dir to path (cortex_bus package lives in <repo>/core).
+# Add repo core dir to path (fleet_bus package lives in <repo>/core).
 # Works from repo layout (ops/scripts/orch-bus/) and deployed layout
 # (~/.steadfaste-fleet/scripts/) since the repo is at ~/steadfaste-fleet.
 _REPO_CORE = os.path.expanduser("~/steadfaste-fleet/core")
@@ -24,8 +24,8 @@ if os.path.isdir(_REPO_CORE):
 else:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "core"))
 
-from cortex_bus.queue import get_queue, NotAvailableError
-from cortex_bus.circuit_breaker import get_circuit_breaker
+from fleet_bus.queue import get_queue, NotAvailableError
+from fleet_bus.circuit_breaker import get_circuit_breaker
 
 
 def main():

@@ -20,7 +20,7 @@ from urllib.error import HTTPError, URLError
 import pytest
 
 _LIB = Path(__file__).resolve().parent.parent / "ops" / "scripts" / "lib"
-sys.path.insert(0, str(_LIB))  # bus_outbox does `from cortex_bus import ...` at top
+sys.path.insert(0, str(_LIB))  # bus_outbox does `from fleet_bus import ...` at top
 
 
 def _load(name, path):
@@ -39,10 +39,10 @@ def outbox(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def cortex_bus(outbox, monkeypatch, tmp_path):
-    """Load cortex_bus with the outbox retry dir pointing at temp."""
+def fleet_bus(outbox, monkeypatch, tmp_path):
+    """Load fleet_bus with the outbox retry dir pointing at temp."""
     monkeypatch.setenv("CORTEX_BUS_RETRY_DIR", str(tmp_path / "bus-retry"))
-    mod = _load("cortex_bus", _LIB / "cortex_bus.py")
+    mod = _load("fleet_bus", _LIB / "fleet_bus.py")
     return mod
 
 
@@ -142,10 +142,10 @@ def test_sweep_dedupes_against_pending(outbox, monkeypatch):
 
 def test_dedup_requires_same_correlation(outbox):
     # the sweep's dedup uses the canonical bus_find_duplicate (shared with fleet.py)
-    # Load the single-file module by PATH: in the full suite the core/cortex_bus
-    # package may already own the `cortex_bus` name in sys.modules and it has no
+    # Load the single-file module by PATH: in the full suite the core/fleet_bus
+    # package may already own the `fleet_bus` name in sys.modules and it has no
     # bus_find_duplicate — path-loading is deterministic.
-    _cb = _load("bus_outbox_cortex_bus", _LIB / "cortex_bus.py")
+    _cb = _load("bus_outbox_fleet_bus", _LIB / "fleet_bus.py")
     bus_find_duplicate = _cb.bus_find_duplicate
     pending = [{"body": {"subject": "PING", "correlation_id": "c-1"}}]
     assert bus_find_duplicate(pending, "PING", "x", "c-1") is not None
@@ -204,29 +204,29 @@ def test_sweep_respects_held_lock(outbox, monkeypatch):
 # ────────────────────────────────────────────────────────────────
 # bus_send integration
 # ────────────────────────────────────────────────────────────────
-def test_bus_send_failure_queues_to_outbox(cortex_bus, monkeypatch, tmp_path):
+def test_bus_send_failure_queues_to_outbox(fleet_bus, monkeypatch, tmp_path):
     def _dead_post(endpoint, payload, fallback=False):
         raise ConnectionError("bus down")
-    monkeypatch.setattr(cortex_bus, "_bus_post", _dead_post)
-    r = cortex_bus.bus_send("inbox_test", {"subject": "PING", "correlation_id": "c-3"})
+    monkeypatch.setattr(fleet_bus, "_bus_post", _dead_post)
+    r = fleet_bus.bus_send("inbox_test", {"subject": "PING", "correlation_id": "c-3"})
     assert r is not None
     assert r["queued"] is True
     files = list(Path(tmp_path / "bus-retry").glob("*.json"))
     assert len(files) == 1
 
 
-def test_bus_send_success_no_outbox(cortex_bus, monkeypatch, tmp_path):
-    monkeypatch.setattr(cortex_bus, "_bus_post", lambda e, p, fallback=False: {"ok": True})
-    r = cortex_bus.bus_send("inbox_test", {"subject": "PING"})
+def test_bus_send_success_no_outbox(fleet_bus, monkeypatch, tmp_path):
+    monkeypatch.setattr(fleet_bus, "_bus_post", lambda e, p, fallback=False: {"ok": True})
+    r = fleet_bus.bus_send("inbox_test", {"subject": "PING"})
     assert r == {"ok": True}
     assert list(Path(tmp_path / "bus-retry").glob("*.json")) == []
 
 
-def test_bus_send_no_outbox_env_fails_hard(cortex_bus, monkeypatch, tmp_path):
+def test_bus_send_no_outbox_env_fails_hard(fleet_bus, monkeypatch, tmp_path):
     monkeypatch.setenv("CORTEX_BUS_NO_OUTBOX", "1")
-    monkeypatch.setattr(cortex_bus, "_bus_post",
+    monkeypatch.setattr(fleet_bus, "_bus_post",
                         lambda e, p, fallback=False: (_ for _ in ()).throw(ConnectionError("down")))
-    r = cortex_bus.bus_send("inbox_test", {"subject": "PING"})
+    r = fleet_bus.bus_send("inbox_test", {"subject": "PING"})
     assert r is None
     assert list(Path(tmp_path / "bus-retry").glob("*.json")) == []
 
@@ -247,7 +247,7 @@ def test_bus_post_fallback_retries_basic_auth(monkeypatch, tmp_path):
     monkeypatch.setenv("CORTEX_BUS_FALLBACK_URL", "http://127.0.0.1:14004")
     monkeypatch.setenv("CORTEX_BUS_TOKEN", "hbus_test_token")
     monkeypatch.setenv("CORTEX_BASIC_AUTH", "user:pass")
-    mod = _load("cortex_bus", _LIB / "cortex_bus.py")
+    mod = _load("fleet_bus", _LIB / "fleet_bus.py")
 
     seen = []  # (url, auth_header)
 

@@ -48,7 +48,7 @@ Fleet agents run `agent-message-handler.py` as a cron (`*/5 * * * *`). Source: `
 }
 ```
 
-**Envelope fields are an ALLOWLIST (`core/cortex_bus/validate.py`).** The only
+**Envelope fields are an ALLOWLIST (`core/fleet_bus/validate.py`).** The only
 keys a message may carry are `from`, `to`, `subject`, `body`,
 `correlation_id`, `timestamp`, `priority`, `type`, `forwarded_from`. Anything
 else — **including `topic`** — is rejected at ingestion with HTTP 400
@@ -578,7 +578,7 @@ After they report back, fix the identified issue (corrupt state file, handler cr
   WHERE state = 'processing' AND timeout_at < NOW();
   ```
 - **Telegram notifications from handler** — the handler now sends Telegram notifications to the home channel on pickup (📥 `[agent] Received EXEC from moses`) and completion (✅/❌ `[agent] EXEC script.py: exit=N — output preview`). Uses Telegram Bot API directly: reads `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` from `~/.hermes/.env` (recipient never hardcoded — PII scrub 2026-08-06), with `timeout=10`. Not `hermes send` (may time out when gateway has MCP issues).
-- **`fleet send` was local-only (FIXED 2026-08-06)** — it used `docker exec` to reach Postgres directly on this machine, so on Esther's host it wrote to her own (unpolled) bus. Now fleet routes through `lib.cortex_bus` over HTTP (`CORTEX_BUS_URL` ACTIVE + fallback) — host-independent, works identically on moses and esther. Remote agents connect via the nginx proxy (port 13004) with Basic auth. The `fleet bus` dashboard remains a local-Postgres view (labeled).
+- **`fleet send` was local-only (FIXED 2026-08-06)** — it used `docker exec` to reach Postgres directly on this machine, so on Esther's host it wrote to her own (unpolled) bus. Now fleet routes through `lib.fleet_bus` over HTTP (`CORTEX_BUS_URL` ACTIVE + fallback) — host-independent, works identically on moses and esther. Remote agents connect via the nginx proxy (port 13004) with Basic auth. The `fleet bus` dashboard remains a local-Postgres view (labeled).
 
 - **Fleet dispatch BLOCKS silently without `--self-tested` — the warning is a gate, not a note.** `fleet send <agent> UPDATE_REQUEST <body>` (no flag) prints *"Use --self-tested only AFTER the self-test is verified"* and sends NOTHING — the message never lands (bus stays empty). Verified 2026-08-02: 5 sends without the flag → zero messages in any inbox; re-issuing all 5 with `--self-tested` → all 5 landed `pending`. The required sequence is: (1) prove the identical flow on yourself — `fleet send moses UPDATE_REQUEST <body>`, run `python3 scripts/agent-message-handler.py --once`, verify consumed/archived in `bus.archives`; (2) THEN re-issue the fleet loop with `--self-tested`. Self-test first, flag second — the flag exists to force exactly that order.
 - **Direct API auth quirks** — the PGMQ `/api/pgmq/archive` endpoint may return "Invalid or expired token" when the Bearer token has whitespace/quote issues from shell extraction. The `fleet` tool avoids this by going through psql directly. Use `bus.archive()` via psql for reliable cleanup.
@@ -626,5 +626,5 @@ After they report back, fix the identified issue (corrupt state file, handler cr
   1. Cron has different $CORTEX_DEPLOY_HOME pointing to a different config file
   2. Cron has different $CORTEX_BUS_AUTH env var overriding config
   3. Cron runs with different $HOME resolving ~/steadfaste-fleet/.env differently
-  4. The deployed cortex_bus.py at ~/.steadfaste-fleet/scripts/lib/cortex_bus.py differs from the repo version
-  **Diagnostic:** compare env output from cron vs interactive shell, and check diff between deployed and repo cortex_bus.py.
+  4. The deployed fleet_bus.py at ~/.steadfaste-fleet/scripts/lib/fleet_bus.py differs from the repo version
+  **Diagnostic:** compare env output from cron vs interactive shell, and check diff between deployed and repo fleet_bus.py.

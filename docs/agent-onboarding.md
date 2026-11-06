@@ -22,7 +22,7 @@ YOU (laptop / local machine)              MOSES (server)
 ─────────────────────────────             ──────────────
 Hermes Agent                             Hermes gateway (:8905)
   ↳ .env (HTTP client)              ↳ Agent Bus API (PGMQ message store)
-  ↳ contact-orchestrator.sh / lib.cortex_bus          ↳ nginx proxy :13004 → :8905
+  ↳ contact-orchestrator.sh / lib.fleet_bus          ↳ nginx proxy :13004 → :8905
   ↳ calls Moses's Agent Bus via HTTPS      ↳ SSL + Basic Auth
   ↳ NO cortex-bus MCP server in config.yaml
 ```
@@ -94,7 +94,7 @@ Then lock it down:
 chmod 600 ~/steadfaste-fleet/.env
 ```
 
-> The HTTP client (`contact-orchestrator.sh`, `lib.cortex_bus`, `agent-message-handler`)
+> The HTTP client (`contact-orchestrator.sh`, `lib.fleet_bus`, `agent-message-handler`)
 > reads this file. Keep it safe — this is your identity on the fleet.
 >
 > **Escalation path:** the HTTP client targets `inbox_orchestrator` (the
@@ -540,7 +540,7 @@ This step happens **on Moses's machine**, not yours. Moses will:
 | `~/.hermes/SOUL.md` | Your identity document — copy from `docs/templates/SOUL.md` |
 | `~/steadfaste-fleet/mcp-servers/cortex-bus-mcp.py` | The MCP client that talks to the Agent Bus (PGMQ) — **orchestrators only; do NOT install on worker hosts** |
 | `~/steadfaste-fleet/ops/scripts/manage/push-metrics.sh` | Standalone metrics push script — system-level Prometheus metrics to VictoriaMetrics |
-| `~/steadfaste-fleet/core/cortex_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
+| `~/steadfaste-fleet/core/fleet_bus/metrics.py` | Python metrics module — prometheus_client definitions + push client for custom metrics |
 | `~/steadfaste-fleet/ops/install/deploy/docker-compose.victoria-metrics.yml` | VictoriaMetrics + Grafana Docker compose (central stack, runs on Moses) |
 | `~/steadfaste-fleet/ops/install/deploy/agent-registry.template.json` | Fleet registry template |
 

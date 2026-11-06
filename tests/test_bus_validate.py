@@ -1,14 +1,14 @@
 """Strict bus envelope validation tests.
 
 Modules are loaded by file path (they are pure stdlib) so this suite NEVER
-mutates sys.path — mutating it shadows lib/cortex_bus for sibling suites.
+mutates sys.path — mutating it shadows lib/fleet_bus for sibling suites.
 """
 import importlib.util
 import json
 import os
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
-VALIDATE_PATH = os.path.join(TESTS_DIR, "..", "core", "cortex_bus", "validate.py")
+VALIDATE_PATH = os.path.join(TESTS_DIR, "..", "core", "fleet_bus", "validate.py")
 
 
 def _load(name, path):
@@ -19,7 +19,7 @@ def _load(name, path):
     return mod
 
 
-validate = _load("cortex_bus_validate_under_test", VALIDATE_PATH)
+validate = _load("fleet_bus_validate_under_test", VALIDATE_PATH)
 validate_envelope = validate.validate_envelope
 validate_send_payload = validate.validate_send_payload
 MAX_MESSAGE_BYTES = validate.MAX_MESSAGE_BYTES

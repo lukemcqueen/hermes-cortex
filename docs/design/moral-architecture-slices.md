@@ -154,12 +154,12 @@ sliced, but several are `CHECK` (fail-closed) and several are pure-doc `BUILD`.
 > Power expires by default; affirmative re-grant is the control.
 
 **M5.1 — Bus permission expiry field + re-grant sweep** — BUILD
-- File: extend the bus permission schema (see `core/cortex_bus/schema/auth.sql`)
+- File: extend the bus permission schema (see `core/fleet_bus/schema/auth.sql`)
   with an `expires_at` column, and add
   `ops/scripts/manage/bus-grant-sweep.py` that lists grants past `expires_at`.
 - Test: seed a grant with `expires_at` in the past → the sweep lists it; a
   future grant is omitted.
-- Depends: nothing (bus schema is in `core/cortex_bus/`).
+- Depends: nothing (bus schema is in `core/fleet_bus/`).
 
 **M5.2 — Doctor check: no indefinite grants without a named decision** — CHECK
 - File: `cortex_doctor/checks.py` — warn if any bus grant has `expires_at IS NULL`

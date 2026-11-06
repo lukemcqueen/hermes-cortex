@@ -1,6 +1,6 @@
-# Worked example: agent_bus → cortex_bus fleet rename verification (2026-08-04)
+# Worked example: agent_bus → fleet_bus fleet rename verification (2026-08-04)
 
-A fleet-wide bus rename (package `agent_bus` → `cortex_bus`, server restore,
+A fleet-wide bus rename (package `agent_bus` → `fleet_bus`, server restore,
 schema migration, 85 files, 5 skill dirs, 4 crons, installers, doctor, nginx
 upstream, both hosts' config.yaml) was committed and deployed, then reported as
 "one bus, one name, zero confusion left". A follow-up verification pass found
@@ -10,7 +10,7 @@ two of the four "renamed" surfaces still old.
 
 | Surface | Esther host (:14004) | Moses host (:13004) |
 |---|---|---|
-| Bus daemon | ✅ `uvicorn cortex_bus.server:app`, started 18:48 | ✅ `uvicorn cortex_bus.server:app`, started 18:51 |
+| Bus daemon | ✅ `uvicorn fleet_bus.server:app`, started 18:48 | ✅ `uvicorn fleet_bus.server:app`, started 18:51 |
 | Enforcer plugin (mtime) | 18:57 | 18:59 |
 | Gateway `lstart` | 19:02 (AFTER deploy → new code loaded) | 17:41 (BEFORE deploy → OLD code in memory) |
 | MCP child argv (`mcp_stdio_watchdog`) | ✅ `cortex-bus-mcp.py` | ❌ `agent-bus-mcp.py` + old loop-gov path |
@@ -33,7 +33,7 @@ stat -c '%y %n' ~/.hermes/plugins/governance-enforcer/__init__.py ~/.hermes/conf
 grep -n -iE 'agent-bus|cortex-bus' ~/.hermes/config.yaml   # HYPHENS, not underscores
 ```
 
-Note the grep trap: `grep -iE 'agent_bus|cortex_bus'` matched NOTHING in
+Note the grep trap: `grep -iE 'agent_bus|fleet_bus'` matched NOTHING in
 config.yaml because config keys are hyphenated (`agent-bus:`) — the underscore
 pattern only matches Python package names. The initial grep only looked
 "successful" because the `mcp`/`enforcer` keywords matched other lines.

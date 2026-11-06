@@ -47,7 +47,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
-from lib.cortex_bus import bus_send, bus_peek
+from lib.fleet_bus import bus_send, bus_peek
 from lib.handoff_schema import validate_payload
 
 CORRS = Path.home() / ".hermes/cache/scratch/cost4-update-corrs.json"
@@ -97,7 +97,7 @@ say "── the four worker queues, right after the dispatch ──"
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
-from lib.cortex_bus import bus_list_queues
+from lib.fleet_bus import bus_list_queues
 for q in bus_list_queues():
     n = q.get("name", "")
     if n.startswith("inbox_") and n != "inbox_health_check":

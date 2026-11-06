@@ -17,7 +17,7 @@ import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "server", _REPO / "core" / "cortex_bus" / "server.py")
+    "server", _REPO / "core" / "fleet_bus" / "server.py")
 # server.py imports FastAPI etc. — import the helper function in isolation
 # by extracting the matching predicate into the module-level function.
 

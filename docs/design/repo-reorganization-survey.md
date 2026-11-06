@@ -16,7 +16,7 @@
 | `skills/` | 999 | Canonical skill library |
 | `docs/` | 975 | Docs + 759 evidence + 69 `docs/older` |
 | `tests/` | 391 | Test suite |
-| `core/` | 44 | `cortex_bus` 24, `governance` 19 |
+| `core/` | 44 | `fleet_bus` 24, `governance` 19 |
 | `tools/` | 19 | `fleet-search` 18 + one script |
 | `plugins/` | 11 | governance-enforcer, mycortex-mem/-command, prompt-guard, hc-lean-index |
 | `mcp-servers/` | 6 | cortex-bus/context/sandbox, executor, loop-gov, task |

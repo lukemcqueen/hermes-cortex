@@ -12,7 +12,7 @@ Thorough, repeatable test of the orchestrator failover contract:
            fleet notified (dry-run in safe mode).
   PHASE 3  All-agent fallback — every agent's bus config must have Esther's
            URL as fallback (primary=Moses, fallback=Esther) so their
-           lib.cortex_bus lands on Esther when Moses is unreachable.
+           lib.fleet_bus lands on Esther when Moses is unreachable.
   PHASE 4  Resume — Moses healthy again for 3 checks → watchdog RECOVERS:
            config restored to primary=Moses, marker removed, fleet notified.
   PHASE 5  Full-cycle simulation — drive the watchdog through the complete
@@ -291,7 +291,7 @@ def phase2_autofailover(mod) -> None:
 # ═══════════════════════════════════════════════
 def phase3_agent_fallback(mod) -> None:
     print("\n═══ Phase 3: All-Agent Fallback Config ═══")
-    # Every worker's lib.cortex_bus must fall back to Esther's URL.
+    # Every worker's lib.fleet_bus must fall back to Esther's URL.
     # We audit the documented worker config contract (cortex-bus-config.md §8)
     # and Esther's own conf as the reference implementation.
     conf = _read_conf()
@@ -319,17 +319,17 @@ def phase3_agent_fallback(mod) -> None:
     else:
         warn("no Basic auth key found in Esther conf (orchestrator uses Bearer — acceptable)")
 
-    # Simulated worker fallback: with primary dead, lib.cortex_bus must choose
+    # Simulated worker fallback: with primary dead, lib.fleet_bus must choose
     # the fallback URL. Verify the library's URL-selection logic exists.
     try:
         sys.path.insert(0, str(HOME / "steadfaste-fleet" / "ops" / "scripts"))
-        import lib.cortex_bus as cb
+        import lib.fleet_bus as cb
         if cb.BUS_FALLBACK_URL:
-            ok(f"lib.cortex_bus fallback configured: {cb.BUS_FALLBACK_URL}")
+            ok(f"lib.fleet_bus fallback configured: {cb.BUS_FALLBACK_URL}")
         else:
-            bad("lib.cortex_bus has NO fallback URL configured")
+            bad("lib.fleet_bus has NO fallback URL configured")
     except ImportError as e:
-        bad("lib.cortex_bus import failed", str(e))
+        bad("lib.fleet_bus import failed", str(e))
 
 
 # ═══════════════════════════════════════════════

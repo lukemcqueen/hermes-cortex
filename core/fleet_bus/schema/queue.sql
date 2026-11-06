@@ -4,10 +4,10 @@
 -- Lightweight message queue on Postgres using SKIP LOCKED.
 -- No external extensions required.
 --
--- Tables:
---   cortex_bus_queues      — queue metadata (name, config)
---   cortex_bus_messages    — messages (one row per message)
---   cortex_bus_archives    — processed messages (for audit)
+-- Tables (all in the `bus` schema, see schema/*.sql for the DDL):
+--   queues     — queue metadata (name, config)
+--   messages   — messages (one row per message)
+--   archives   — processed messages (for audit)
 --
 -- API:
 --   bus.send(queue, message)       → msg_id

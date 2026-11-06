@@ -87,7 +87,7 @@ curl -sI "$(grep CORTEX_BUS_URL ~/steadfaste-fleet/.env 2>/dev/null | head -1 | 
 **Required:** HTTP 200 + auth creds. Missing = contact Moses.
 
 **Known 401 trap (2026-09-04):** the collector's `_build_auth_headers` prefers
-`CORTEX_BASIC_AUTH` and gives up on 401, whereas `lib/cortex_bus.py` prefers the
+`CORTEX_BASIC_AUTH` and gives up on 401, whereas `lib/fleet_bus.py` prefers the
 Bearer `CORTEX_BUS_TOKEN` and falls back to Basic on 401/403. A stale Basic cred
 STILL in `.env` alongside a valid token makes the collector 401 while
 `bus_send` (moses/esther handlers) succeeds on the same host. Collector-and-lib

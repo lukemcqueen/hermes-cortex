@@ -2,7 +2,7 @@
 """cortex-bus-processor.py — Companion script for bus message processing.
 
 Runs every 10m as a no_agent watchdog. Checks the Agent Bus for
-new broadcast messages via the bus library (lib.cortex_bus).
+new broadcast messages via the bus library (lib.fleet_bus).
 Silent when nothing new.
 
 Uses bus_list_queues() to peek at queue depths (non-consuming),
@@ -23,12 +23,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Ensure the steadfaste-fleet scripts dir is in sys.path for lib.cortex_bus
+# Ensure the steadfaste-fleet scripts dir is in sys.path for lib.fleet_bus
 _HC_SCRIPTS = Path.home() / ".steadfaste-fleet" / "scripts"
 if str(_HC_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_HC_SCRIPTS))
 
-from lib.cortex_bus import bus_list_queues, bus_read, bus_archive
+from lib.fleet_bus import bus_list_queues, bus_read, bus_archive
 
 HOME = Path.home()
 STATE_DIR = HOME / ".hermes" / "state"

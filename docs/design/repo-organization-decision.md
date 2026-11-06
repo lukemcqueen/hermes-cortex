@@ -19,7 +19,7 @@ swept (`05f6ff68`). Today:
 | `skills/` | 999 | canonical skill library (by domain) |
 | `docs/` | 975 | docs (evidence 759, design 46, older 69, templates, runbooks, reviews, adr, prd) |
 | `tests/` | 391 | test suite |
-| `core/` | 44 | cortex_bus 24, governance 19, README 1 — sum 44 |
+| `core/` | 44 | fleet_bus 24, governance 19, README 1 — sum 44 |
 | `tools/` | 19 | fleet-search 18 + one script |
 | `plugins/` | 11 | Hermes plugins (governance-enforcer, mycortex-mem/-command, prompt-guard, hc-lean-index) |
 | `mcp-servers/` | 6 | cortex-bus/context/sandbox, executor, loop-gov, task |

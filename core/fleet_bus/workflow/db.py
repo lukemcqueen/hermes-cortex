@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
-from cortex_bus.queue import get_queue, BusClient
+from fleet_bus.queue import get_queue, BusClient
 
 
 # ── Workflow CRUD ───────────────────────────────────────────

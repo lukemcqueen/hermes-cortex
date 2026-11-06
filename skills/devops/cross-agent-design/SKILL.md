@@ -314,7 +314,7 @@ This is the trickiest failure: no evidence left behind. The handler consumed the
    ```bash
    python3 -c "
    import sys; sys.path.insert(0, '$HOME/steadfaste-fleet/ops/scripts')
-   from lib.cortex_bus import bus_send
+   from lib.fleet_bus import bus_send
    r = bus_send('inbox_orchestrator', {'from':'test','subject':'TEST','body':{},
                                 'correlation_id':'diag'})
    print(f'Send: {r}')

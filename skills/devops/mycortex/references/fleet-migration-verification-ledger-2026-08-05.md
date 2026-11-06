@@ -40,7 +40,7 @@ bus.record_dispatch(...) does not exist` — but the message DOES land
 
 **Root cause:** `hc.py` and `local-orch-fleet-command-verifier.py` call
 `bus.record_dispatch()` / `bus.verify_command()`, but
-`core/cortex_bus/schema/command-verifications.sql` was **never applied to any
+`core/fleet_bus/schema/command-verifications.sql` was **never applied to any
 live bus DB**. Bus schema files (queue.sql, auth.sql, todos.sql,
 command-verifications.sql) are applied MANUALLY at bus setup — none are
 registered in cortex-update.sh or install.sh. The migration to a fresh
@@ -48,7 +48,7 @@ container surfaced it because the new DB was born without the whole bus
 schema layer; the old DB had it only because setup predated the file.
 
 **Fix:** apply the idempotent DDL directly:
-`docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f core/cortex_bus/schema/command-verifications.sql`
+`docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f core/fleet_bus/schema/command-verifications.sql`
 → creates `bus.command_verifications` + 4 functions
 (record_dispatch / verify_command / get_pending_verifications /
 cleanup_verifications). Verified: `hc send` then records cleanly.

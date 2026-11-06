@@ -39,7 +39,7 @@ the pieces you need:
 | # | Take-away | Where | What you get |
 |---|-----------|-------|--------------|
 | 1 | 🛡️ **Bad-actor IP blocklist** | [`ops/install/deploy/nginx/blocked_ips.add`](ops/install/deploy/nginx/blocked_ips.add) | **4,559 evidence-based blocked IPs**, one per line — drop into nginx/fail2ban/UFW today |
-| 2 | 🤝 **Agent-to-agent messaging** | [`ops/scripts/lib/cortex_bus.py`](ops/scripts/lib/cortex_bus.py) · [protocol](docs/fleet-update-protocol.md) | Production A2A over Postgres PGMQ — `bus_send`/`bus_read`/`bus_archive`, correlation IDs, no Kafka/Redis |
+| 2 | 🤝 **Agent-to-agent messaging** | [`ops/scripts/lib/fleet_bus.py`](ops/scripts/lib/fleet_bus.py) · [protocol](docs/fleet-update-protocol.md) | Production A2A over Postgres PGMQ — `bus_send`/`bus_read`/`bus_archive`, correlation IDs, no Kafka/Redis |
 | 3 | 💰 **RAG + semantic caching** | [`ops/web-cache/web_cache.py`](ops/web-cache/web_cache.py) · [mycortex](docs/design/mycortex-DESIGN.md) | sqlite-vec + Ollama cache that answers queries **before** the LLM — cuts token spend, works offline |
 | 4 | 🔒 **Enforced change governance** | [`plugins/governance-enforcer/`](plugins/governance-enforcer/) · [reference](docs/loop-governance-reference.md) | Change discipline **blocked at the tool level**, not suggested — no bypass flags, TDD Iron Law, adversarial verification |
 | 5 | 🤖 **Self-healing operations** | [`ops/scripts/health/agent-remediation-sensor.py`](ops/scripts/health/agent-remediation-sensor.py) · [reference](docs/fleet-reference.md) | sensor → marker → fixer pipeline that repairs crashes before you wake up |
@@ -348,7 +348,7 @@ Titus ──UPDATE_RESULT──→ AgentBus ──→ Moses
 
 ### Shared Bus Library
 
-All fleet scripts use `ops/scripts/lib/cortex_bus.py` — a shared HTTP API wrapper that reads `CORTEX_BUS_URL` / `CORTEX_BUS_FALLBACK_URL` from the environment. This eliminates the old pattern of `docker exec` calls into the Postgres container.
+All fleet scripts use `ops/scripts/lib/fleet_bus.py` — a shared HTTP API wrapper that reads `CORTEX_BUS_URL` / `CORTEX_BUS_FALLBACK_URL` from the environment. This eliminates the old pattern of `docker exec` calls into the Postgres container.
 
 ### Agent Message Handler (Inbox Polling)
 

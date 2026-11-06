@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))    # deployed: lib/ is sibling
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in parent
 
-from lib.cortex_bus import bus_send, bus_read
+from lib.fleet_bus import bus_send, bus_read
 
 HOME = Path.home()
 HERMES_STATE = HOME / ".steadfaste-fleet" / "state"

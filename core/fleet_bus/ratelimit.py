@@ -1,4 +1,4 @@
-"""cortex_bus.ratelimit — per-agent send rate limiting (anti-spam).
+"""fleet_bus.ratelimit — per-agent send rate limiting (anti-spam).
 
 In-memory sliding window keyed by authenticated agent name. A single
 bus-server process can serve thousands of agents; each gets an independent

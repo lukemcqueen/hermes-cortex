@@ -141,13 +141,13 @@ def main():
         # bus-send the full contents back to Moses inbox — CHUNKED (90KB cap,
         # same pattern as agent-collect-skills.sh). One message per chunk.
         try:
-            from lib.cortex_bus import bus_send  # deployed alongside
+            from lib.fleet_bus import bus_send  # deployed alongside
         except ImportError:
             sys.path.insert(0, str(HOME / ".steadfaste-fleet" / "scripts"))
             try:
-                from lib.cortex_bus import bus_send
+                from lib.fleet_bus import bus_send
             except ImportError:
-                print("WARN: lib.cortex_bus not found — cannot send", file=sys.stderr)
+                print("WARN: lib.fleet_bus not found — cannot send", file=sys.stderr)
                 return 2
 
         MAX_BODY_BYTES = 90_000

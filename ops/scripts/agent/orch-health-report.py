@@ -38,7 +38,7 @@ from typing import Optional
 HOME = Path.home()
 CORTEX_ENV = HOME / "steadfaste-fleet" / ".env"
 
-# Ensure lib.cortex_bus is importable (same pattern as orch-clean-health-queue.py)
+# Ensure lib.fleet_bus is importable (same pattern as orch-clean-health-queue.py)
 try:
     from hermes_paths import ensure_scripts_path
     ensure_scripts_path()
@@ -225,7 +225,7 @@ def _fetch_inbox_vector(agent_key: str) -> Optional[list[int]]:
         pass  # fall through to live queue read
     # Fallback: peek the live queue (covers a ping the cleaner hasn't drained yet)
     try:
-        from lib.cortex_bus import bus_read
+        from lib.fleet_bus import bus_read
     except Exception:
         return None
     for _ in range(20):  # scan up to 20 pending pings

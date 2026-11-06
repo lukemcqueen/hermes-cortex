@@ -167,7 +167,7 @@ export REPO_ROOT
 # Verify the sla_watchdog module's _check_dlqs() no longer calls requeue
 WATCHDOG_CODE=$(python3 -c "
 import ast, sys, os
-path = os.path.join(os.environ['REPO_ROOT'], 'core/cortex_bus/workflow/sla_watchdog.py')
+path = os.path.join(os.environ['REPO_ROOT'], 'core/fleet_bus/workflow/sla_watchdog.py')
 with open(path) as f:
     tree = ast.parse(f.read())
 for node in ast.walk(tree):

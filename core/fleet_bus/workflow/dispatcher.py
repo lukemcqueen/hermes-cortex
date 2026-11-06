@@ -15,10 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from cortex_bus.queue import get_queue, BusClient
-from cortex_bus.workflow import Workflow, WorkflowStep, RouteIf
-from cortex_bus.workflow.yaml_loader import load_workflow, parse_workflow_yaml
-from cortex_bus.workflow.db import (
+from fleet_bus.queue import get_queue, BusClient
+from fleet_bus.workflow import Workflow, WorkflowStep, RouteIf
+from fleet_bus.workflow.yaml_loader import load_workflow, parse_workflow_yaml
+from fleet_bus.workflow.db import (
     create_workflow, create_step, update_workflow_state,
     write_audit, get_workflow, get_steps_for_workflow,
     update_step_state, get_step, _row_to_dict,
@@ -26,7 +26,7 @@ from cortex_bus.workflow.db import (
 
 # Standard workflow directories
 WORKFLOW_DIRS = [
-    Path.home() / "steadfaste-fleet" / "core" / "cortex_bus" / "workflows",
+    Path.home() / "steadfaste-fleet" / "core" / "fleet_bus" / "workflows",
 ]
 
 
@@ -176,7 +176,7 @@ def dispatch_workflow(workflow_name: str, workflow_source: str,
                       priority: int = 0,
                       correlation_id: Optional[str] = None) -> str:
     """Convenience: directly dispatch a workflow (no queue)."""
-    from cortex_bus.workflow.db import get_queue as _get_queue
+    from fleet_bus.workflow.db import get_queue as _get_queue
     
     msg = {
         "body": {

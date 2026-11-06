@@ -4,7 +4,7 @@ learning-collect.py — F-001 collector write path (no_agent, zero LLM).
 
 Any of the 8 capture routes calls this to record a learning in the fleet
 ledger. It POSTs to the bus server's /api/learnings endpoint via the shared
-lib.cortex_bus.learning_capture() — the server inserts as DB owner through
+lib.fleet_bus.learning_capture() — the server inserts as DB owner through
 learnings.capture(); collectors never touch Postgres directly (party L-1,
 L-5: server-side write, existing bus auth, INSERT-only).
 
@@ -41,7 +41,7 @@ for _lib in _LIB_CANDIDATES:
         break
 
 try:
-    from lib.cortex_bus import learning_capture  # type: ignore
+    from lib.fleet_bus import learning_capture  # type: ignore
     _HAS_LIB = True
 except Exception:
     learning_capture = None  # type: ignore
@@ -107,7 +107,7 @@ def main() -> int:
         print("WARNING: content truncated to 4000 chars", file=sys.stderr)
 
     if not _HAS_LIB or learning_capture is None:
-        print("ERROR: lib.cortex_bus unavailable (is .env configured?)",
+        print("ERROR: lib.fleet_bus unavailable (is .env configured?)",
               file=sys.stderr)
         return 1
 

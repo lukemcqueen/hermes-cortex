@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))    # deployed: lib/ is sibling
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo: lib/ in parent
 
-from lib.cortex_bus import bus_list_queues
+from lib.fleet_bus import bus_list_queues
 
 HOME = Path.home()
 CORTEX_REPO = HOME / "steadfaste-fleet"

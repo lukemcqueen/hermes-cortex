@@ -24,7 +24,7 @@ to different directories.
 
 From the repo path, `from hermes_paths import ensure_scripts_path` fails
 because `hermes_paths.py` is one directory level up. The import guard
-catches this and shows SKIP — but for the WRONG reason (not "cortex_bus
+catches this and shows SKIP — but for the WRONG reason (not "fleet_bus
 not found", but "hermes_paths not found").
 
 ## Debugging Steps
@@ -49,16 +49,16 @@ for level in [_this_dir, os.path.dirname(_this_dir)]:
 
 ### 3. Identify the gap
 
-If the import chain is `hermes_paths → ensure_scripts_path → lib.cortex_bus`,
+If the import chain is `hermes_paths → ensure_scripts_path → lib.fleet_bus`,
 check each link:
 
 1. **Can `hermes_paths` be imported?** Requires `hermes_paths.py` on `sys.path`
 2. **Can `ensure_scripts_path()` find the right scripts dir?** Depends on the
    `__file__` resolution of *hermes_paths.py itself* (not the caller)
-3. **Can `lib.cortex_bus` be imported?** Requires `lib/` under scripts dir
+3. **Can `lib.fleet_bus` be imported?** Requires `lib/` under scripts dir
 
 A failure at step 1 or 2 produces a misleading SKIP — the guard interprets
-it as "cortex_bus not available" when really the path setup is incomplete.
+it as "fleet_bus not available" when really the path setup is incomplete.
 
 ## Fix Pattern
 

@@ -6,7 +6,7 @@
 # Usage: contact-orchestrator.sh "subject" "body" [priority]
 #   priority: normal (default), urgent, critical
 #
-# FALLBACK (2026-08-05): this script now uses lib.cortex_bus (bus_send) instead of a
+# FALLBACK (2026-08-05): this script now uses lib.fleet_bus (bus_send) instead of a
 # hand-rolled curl. The library resolves CORTEX_BUS_URL from env or .env
 # and AUTOMATICALLY falls back to CORTEX_BUS_FALLBACK_URL when the primary bus is
 # unreachable (per-call failover — same mechanism the rest of the fleet uses). It
@@ -21,7 +21,7 @@
 #      orchestrators, Moses and Esther, so whichever is available handles it)
 #
 # NOTE: body should be a single line. Multi-line bodies are flattened by the
-# JSON builder in lib.cortex_bus.
+# JSON builder in lib.fleet_bus.
 
 set -euo pipefail
 
@@ -64,7 +64,7 @@ if [ -z "$SUBJECT" ] || [ -z "$BODY" ]; then
   exit 1
 fi
 
-# lib.cortex_bus is deployed alongside this script (~/.steadfaste-fleet/scripts/lib/).
+# lib.fleet_bus is deployed alongside this script (~/.steadfaste-fleet/scripts/lib/).
 LIB_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts"
 
 echo "📤 Sending to ${TARGET_QUEUE} (primary bus, fallback automatic)..."
@@ -73,7 +73,7 @@ RESULT=$(AGENT_NAME="$AGENT_NAME" SUBJECT="$SUBJECT" BODY="$BODY" PRIORITY="$PRI
   python3 -c '
 import json, os, sys
 sys.path.insert(0, os.environ["LIB_DIR"])
-from lib.cortex_bus import bus_send
+from lib.fleet_bus import bus_send
 
 message = {
     "from": os.environ["AGENT_NAME"],

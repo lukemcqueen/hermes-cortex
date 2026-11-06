@@ -11,13 +11,13 @@ message would be silently lost. This module makes bus delivery durable:
   sweep(now=None)
       Re-send queued messages with exponential backoff + jitter,
       dedup against already-pending queue messages (canonical rule in
-      cortex_bus.bus_find_duplicate), quarantine poison-pill messages
+      fleet_bus.bus_find_duplicate), quarantine poison-pill messages
       (corrupt / max attempts). Returns a result dict; prints nothing
       (watchdog pattern — the cron delivers only when something happened).
 
   main()  — CLI entry; the agent-bus-retry-sweep cron calls this module
             DIRECTLY (script=lib/bus_outbox.py). No wrapper script, no
-            sys.path hack — this file sits in lib/ beside cortex_bus.py.
+            sys.path hack — this file sits in lib/ beside fleet_bus.py.
 
 Design (enterprise-grade):
   - Atomic writes: tmp file + fsync + os.replace + dir fsync — a
@@ -53,9 +53,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 try:  # adversarial-ignore: error-swallow — dual-mode import fallback (lib. vs bare)
-    from lib.cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
+    from lib.fleet_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
 except ImportError:
-    from cortex_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
+    from fleet_bus import bus_peek, bus_send, bus_find_duplicate  # noqa: E402
 
 log = logging.getLogger("bus_outbox")
 

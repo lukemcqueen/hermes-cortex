@@ -5,7 +5,7 @@ agent-message-handler.py — Inbox message handler for fleet agents.
 Polls the agent inbox for messages (UPDATE_REQUEST, ROLLBACK_REQUEST,
 GIT_AUTH_CHECK) and processes them, sending results back to Moses.
 
-Uses the Agent Bus HTTP API (lib/cortex_bus.py) — no Docker required.
+Uses the Agent Bus HTTP API (lib/fleet_bus.py) — no Docker required.
 Set CORTEX_BUS_URL to the orchestrator's external bus endpoint before running.
 
 Designed to run as a systemd timer (Linux), launchd plist (macOS),
@@ -57,7 +57,7 @@ if not AGENT_NAME:
 # Export for child modules (commands.py dispatch etc.) — identity is explicit,
 # never hostname-derived (Luke directive 2026-08-10).
 os.environ["AGENT_NAME"] = AGENT_NAME
-# Ensure lib.cortex_bus is importable
+# Ensure lib.fleet_bus is importable
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
 
@@ -615,7 +615,7 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
     "body": body_with_topic,
   }
   try:
-    from lib.cortex_bus import bus_send
+    from lib.fleet_bus import bus_send
     result = bus_send(queue, full_body)
     ok = result is not None
     if ok:
@@ -812,7 +812,7 @@ def _send_pending_update_results() -> None:
 def read_inbox(queue: str) -> dict | None:
   """Read one message from queue, return parsed body or None."""
   try:
-    from lib.cortex_bus import bus_read
+    from lib.fleet_bus import bus_read
     # VT only needs to cover the read→archive window — the handler archives
     # the message immediately after reading (early archive, c7231c3), so VT
     # expiry can never re-expose a message mid-processing. The subprocess
@@ -1142,7 +1142,7 @@ def archive_message(queue: str, msg_id: str) -> bool:
   """Archive a processed message from the inbox. Returns True on success."""
   if not msg_id:
     return False
-  from lib.cortex_bus import bus_archive
+  from lib.fleet_bus import bus_archive
   result = bus_archive(queue, msg_id)
   if not result:
     log(f"⚠️ Failed to archive message {msg_id[:8]}… in {queue}")
@@ -1179,7 +1179,7 @@ def report_health_change(doctor: dict, prev_doctor: dict) -> None:
     "body": body_with_topic,
   }
   try:
-    from lib.cortex_bus import bus_send
+    from lib.fleet_bus import bus_send
     result = bus_send("inbox_health_check", full_body)
     if result:
       log(f"Health report sent: {level}")

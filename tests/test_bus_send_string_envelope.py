@@ -21,7 +21,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
-SERVER_PATH = os.path.join(TESTS_DIR, "..", "core", "cortex_bus", "server.py")
+SERVER_PATH = os.path.join(TESTS_DIR, "..", "core", "fleet_bus", "server.py")
 
 
 def _load(name, path):
@@ -32,7 +32,7 @@ def _load(name, path):
     return mod
 
 
-server = _load("cortex_bus_server_under_test", SERVER_PATH)
+server = _load("fleet_bus_server_under_test", SERVER_PATH)
 
 
 class _FakeRequest:

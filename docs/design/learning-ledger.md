@@ -24,7 +24,7 @@ orch-skill-lifecycle (F-006) is the only UPDATE path.
 ```
   8 capture routes (any agent, no_agent)
         │
-        ▼  learning-collect.py (CLI)  →  lib.cortex_bus.learning_capture()
+        ▼  learning-collect.py (CLI)  →  lib.fleet_bus.learning_capture()
         │        │
         │        ▼  POST /api/learnings   (existing bus auth: Bearer | nginx Basic)
         │        │        │
@@ -64,11 +64,11 @@ retired), impact_score (-3..+3), source_ref (provenance), applied_ref
   `--content`/`--content-file`, `--type`, `--impact`, `--source-ref`,
   `--dry-run`, `--list-routes`. Watchdog semantics: exit 0 + empty stdout on
   success (incl. dedup), exit 1 + stderr on failure. Silent = healthy.
-- **Lib** `ops/scripts/lib/cortex_bus.py::learning_capture()` — shared client,
+- **Lib** `ops/scripts/lib/fleet_bus.py::learning_capture()` — shared client,
   reuses `_bus_post` (Bearer→Basic 401 fallback, primary→fallback URL
   retry). Errors logged, never raised — a lost learning beats a crashed
   collector.
-- **Server** `core/cortex_bus/server.py::POST /api/learnings` — authenticates
+- **Server** `core/fleet_bus/server.py::POST /api/learnings` — authenticates
   via existing `_authenticate` (Bearer token or nginx X-Forwarded-User),
   validates route/type/impact against the canonical allowlists (clean 400s),
   calls `learnings.capture()` as the owner connection. Agent identity is

@@ -173,22 +173,22 @@ def grader(name: str) -> Callable:
 def _bus_round_trip() -> tuple[bool, str]:
     """Send a probe message to inbox_esther, read it back (vt-hidden), archive it.
 
-    Uses the CANONICAL lib.cortex_bus client (Bearer→Basic auth fallback,
+    Uses the CANONICAL lib.fleet_bus client (Bearer→Basic auth fallback,
     retries, fallback URL — nginx validates Basic auth and ignores Bearer
     through the proxy). Tests the ACTIVE bus path the agent's own crons use.
     The vt=600 peek hides the message from the 5-min message-handler poll and
     the audit watchdog (DLQ/stuck >5min only), so the probe is invisible to
     consumers and leaves zero residue.
     """
-    # Resolve the deployed scripts dir so `lib.cortex_bus` imports in both
+    # Resolve the deployed scripts dir so `lib.fleet_bus` imports in both
     # layouts: deployed (~/.steadfaste-fleet/scripts/) and in-repo (ops/scripts/).
     scripts_dir = SCRIPTS_DIR if SCRIPTS_DIR.is_dir() else HOME / "steadfaste-fleet" / "ops" / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
-        from lib.cortex_bus import bus_archive, bus_read, bus_send  # noqa: PLC0415
+        from lib.fleet_bus import bus_archive, bus_read, bus_send  # noqa: PLC0415
     except ImportError as e:
-        return False, f"cannot import lib.cortex_bus: {e}"
+        return False, f"cannot import lib.fleet_bus: {e}"
 
     queue = "inbox_esther"
     correlation_id = f"regression-gate-{uuid.uuid4().hex[:12]}"
@@ -237,7 +237,7 @@ def _bus_round_trip() -> tuple[bool, str]:
         return False, "archive failed — probe left hidden until vt expiry"
 
     return True, (f"send→read→archive OK (msg {str(sent_id)[:8]}, "
-                  f"correlation {correlation_id[:8]}…) via lib.cortex_bus")
+                  f"correlation {correlation_id[:8]}…) via lib.fleet_bus")
 
 
 @grader("task_lifecycle")

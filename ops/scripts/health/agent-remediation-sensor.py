@@ -412,7 +412,7 @@ def _is_local_url(url):
         return True
 
 
-def check_cortex_bus():
+def check_fleet_bus():
     """Check Steadfaste Fleet Agent Bus health.
     
     Checks that the Agent Bus service is active AND the endpoint responds.
@@ -584,7 +584,7 @@ def main():
     check_disk()
     check_memory()
     check_services()
-    check_cortex_bus()  # Agent Bus health check (before systemd services)
+    check_fleet_bus()  # Agent Bus health check (before systemd services)
     check_systemd_services()  # Linux complement to check_services()
     check_nginx()
     if _local_agent_name() in CERT_HOLDER_HOSTS:

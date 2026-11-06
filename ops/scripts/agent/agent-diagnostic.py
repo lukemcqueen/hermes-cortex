@@ -85,7 +85,7 @@ def _bus_get(endpoint: str) -> dict:
     try:
         import sys
         sys.path.insert(0, str(HOME / ".steadfaste-fleet" / "scripts"))
-        from lib.cortex_bus import _get_auth_header, _read_config as _bus_cfg
+        from lib.fleet_bus import _get_auth_header, _read_config as _bus_cfg
         bus_url = _bus_cfg("CORTEX_BUS_URL") or os.environ.get("CORTEX_BUS_URL", "")
         if not bus_url:
             return {}

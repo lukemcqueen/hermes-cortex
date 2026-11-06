@@ -15,7 +15,7 @@ steadfaste-fleet/
 ├── README.md / CONTRIBUTING.md / LICENSE / VERSION / skills.yaml / pytest.ini
 ├── REPO-MAP.md          # NEW — the single 30-second map of where things are
 ├── ops/                 # ALL operational source (12 subtrees, see map)
-│   ├── core/            # ← from top-level core/ (cortex_bus, governance)
+│   ├── core/            # ← from top-level core/ (fleet_bus, governance)
 │   ├── tools/           # ← from top-level tools/ (fleet-search, auto-remediation-scan)
 │   ├── evals/           # ← from top-level evals/
 │   ├── mcp-servers/     # ← from top-level mcp-servers/ (6 servers)

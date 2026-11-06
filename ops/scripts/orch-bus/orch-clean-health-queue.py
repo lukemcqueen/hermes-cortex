@@ -5,7 +5,7 @@ no_agent watchdog pattern:
   Empty stdout → silent (nothing to clean)
   Text output  → delivered (count of cleaned pings)
 
-Runs every 10 minutes via cron. Uses cortex_bus library for proper
+Runs every 10 minutes via cron. Uses fleet_bus library for proper
 auth (Basic/Bearer) and bus URL resolution (CORTEX_BUS_URL with
 fallback). Reads/archives up to 50 messages per tick.
 
@@ -33,7 +33,7 @@ if not REPO.is_dir() or not REPO_VAR:
 
 from hermes_paths import ensure_scripts_path
 ensure_scripts_path()
-from lib.cortex_bus import bus_read, bus_archive
+from lib.fleet_bus import bus_read, bus_archive
 
 QUEUE = "inbox_health_check"
 MAX_PER_TICK = 50

@@ -27,8 +27,8 @@ The Agent Bus is a Postgres-native message queue (`lib/pgmq` implementation with
 > with `FATAL: role "mycortex" does not exist`.
 
 Key architectural facts:
-- **Bus server** processes at `~/steadfaste-fleet/core/cortex_bus/server.py` (module `cortex_bus.server:app`, service `cortex-bus.service`)
-- **Queue module** at `~/steadfaste-fleet/core/cortex_bus/queue.py`
+- **Bus server** processes at `~/steadfaste-fleet/core/fleet_bus/server.py` (module `fleet_bus.server:app`, service `cortex-bus.service`)
+- **Queue module** at `~/steadfaste-fleet/core/fleet_bus/queue.py`
 - **Postgres schema** `bus.*` in the shared mycortex database (`:15432`)
 - **MCP tools** `mcp__cortex_bus__*` route through the bus via HTTP
 - **Health check**: `curl http://127.0.0.1:8903/health` returns 200
@@ -58,7 +58,7 @@ Every `/api/pgmq/send` is validated at ingestion (2026-09-02, anti-poisoning/ant
 
 `workflow_step_result` queue uses its own schema (`workflow_id` `step_id` `status` `result` `error`) — agents post step results without an envelope.
 
-Implementation: `core/cortex_bus/validate.py` + `core/cortex_bus/ratelimit.py`, tests in `tests/test_bus_validate.py`. Sending messages: use `bus_send()` / the MCP inbox tools — they build conforming envelopes.
+Implementation: `core/fleet_bus/validate.py` + `core/fleet_bus/ratelimit.py`, tests in `tests/test_bus_validate.py`. Sending messages: use `bus_send()` / the MCP inbox tools — they build conforming envelopes.
 
 ## Inbox Message Decision Framework
 
@@ -397,7 +397,7 @@ SELECT bus.recover_timeouts();
 
 After fix, the cron `orch-bus-recover-timeouts` (every 5m) auto-maintains the DLQ. Verify with queue overview query.
 
-**Prevention:** The queue creation code at `core/cortex_bus/queue.py:create_queues_for_agent()` already sets `is_dlq = true` — the bug only affects queues created before the column was added to the schema.
+**Prevention:** The queue creation code at `core/fleet_bus/queue.py:create_queues_for_agent()` already sets `is_dlq = true` — the bug only affects queues created before the column was added to the schema.
 
 ### recover_timeouts Fails with messages_queue_name_fkey (missing DLQ row)
 
@@ -409,7 +409,7 @@ present in table "queues".`
 
 **Root cause:** a queue exists in `bus.queues` but its `<queue>_dlq` row was
 never seeded. The seed creates `inbox_orchestrator` without its DLQ
-(`core/cortex_bus/schema/auth.sql`, 2026-08-12), while agent inboxes get DLQs
+(`core/fleet_bus/schema/auth.sql`, 2026-08-12), while agent inboxes get DLQs
 via `create_queues_for_agent()`. `recover_timeouts()` Step 2b moves exhausted
 processing messages to `queue_name || '_dlq'` — the FK fails and **kills the
 whole run**, so the cron never recovers anything.
@@ -431,8 +431,8 @@ whole run**, so the cron never recovers anything.
 
 **Apply to a live DB** (schema changes deploy via file copy, not auto-applied):
 ```bash
-sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/cortex_bus/schema/queue.sql
-sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/cortex_bus/schema/auth.sql
+sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/fleet_bus/schema/queue.sql
+sg docker -c "docker exec -i mycortex-postgres psql -U mycortex -d mycortex -v ON_ERROR_STOP=1 -f -" < core/fleet_bus/schema/auth.sql
 ```
 
 **Verify:** `SELECT bus.recover_timeouts();` returns a number (not an error), and
@@ -484,7 +484,7 @@ Note: The bus at `:8903` is a direct local connection. It's also proxied through
 
 ## Client fail-fast on 4xx — BusPermanentError, never outboxed (2026-09-09)
 
-`ops/scripts/lib/cortex_bus.py` classifies 4xx responses as PERMANENT, not retryable:
+`ops/scripts/lib/fleet_bus.py` classifies 4xx responses as PERMANENT, not retryable:
 
 - `lib._bus_post` raises `BusPermanentError` on any 4xx — except 401/403 while the
   Basic-auth fallback still has a try left.
@@ -533,7 +533,7 @@ resolves from `.env`; a manual drain run pushes stranded messages
 mirrors ALL `inbox_*` queues to the peer, so its `bus.permissions` row on the
 PRIMARY's bus needs every inbox queue in `can_read` + `can_write`. Without it,
 LOCAL→PEER drain fails with `403 — Agent 'esther' does not have write access to
-queue 'inbox_gisu'` (per-queue ACL at `core/cortex_bus/server.py`
+queue 'inbox_gisu'` (per-queue ACL at `core/fleet_bus/server.py`
 `_check_permission`). Grant SQL: `docs/esther-bus-setup.md` Step 7. Symptom:
 `orch-bus-forwarder-sync` cron alerts `LOCAL→PEER: N failed` every tick while
 the messages sit in the local queues indefinitely.
@@ -574,7 +574,7 @@ fleet view.
 ```bash
 cd ~/steadfaste-fleet/ops/scripts && python3 -c "
 import sys, json; sys.path.insert(0, '.')
-from lib.cortex_bus import bus_archives
+from lib.fleet_bus import bus_archives
 for a in ('gisu','joseph','kustos','titus','moses'):
     arch = bus_archives(f'inbox_{a}', limit=400, since_minutes=720)
     corrs = {}
@@ -589,7 +589,7 @@ for a in ('gisu','joseph','kustos','titus','moses'):
 
 ## Token rotation (Bearer, `hbus_*`)
 
-- **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/cortex_bus/auth.py hash_token`).
+- **Hash scheme:** `bus.tokens.token_hash` = `hashlib.pbkdf2_hmac("sha256", token, b"hermes-bus-salt", 100000).hex()` (`core/fleet_bus/auth.py hash_token`).
 - **Rotate:** generate `"hbus_" + secrets.token_hex(32)` → update `~/steadfaste-fleet/.env` AND `~/steadfaste-fleet/.env` (both carry `CORTEX_BUS_TOKEN`; the forwarder's `LOCAL_TOKEN` reads the conf) → `UPDATE bus.tokens SET token_hash='<pbkdf2(new)>', rotated_at=NOW() WHERE agent_name='<agent>'` → verify Bearer against the LOCAL bus (`127.0.0.1:8903`): new → 200, old → 401.
 - **Verify Bearer on the LOCAL bus only.** Testing Bearer against the external nginx port (`:13004`/`:14004`) is meaningless — nginx validates Basic auth and sets `X-Forwarded-User`; a Bearer header sent through nginx is ignored (401 for missing Basic). A token that "401s" through nginx can still be LIVE on the local bus.
 - **Never delete `CORTEX_BUS_TOKEN` from `.env` because Bearer "401s through nginx".** The local raw bus (`127.0.0.1:8903`) REQUIRES that Bearer token; a 401 through nginx only proves the request lacked Basic auth. Removing it silently breaks every local-bus consumer — `orch-bus-forwarder` exits 1 with `LOCAL_URL and LOCAL_TOKEN required`, `orch-bus-inbox-relay` prints `cannot relay`, the confirmation-poller goes deaf. The systemd bridge runner (`cortex-bus-bridge-run.py`) returns 0 regardless of the script's exit code, so the timer shows `success` while the job crashes — the tells are a FROZEN `~/.steadfaste-fleet/state/bus-forwarder-state.json` `last_run` and a growing BACKUP-bus `inbox_orchestrator` depth (stale-mirror sweep stopped). Restore the token (verify against `127.0.0.1:8903` → 200), then re-run the forwarder.
@@ -658,7 +658,7 @@ message (e.g. the orchestrator processing a worker's escalation) can read
 original sender identity entirely.
 
 **Envelope allowlist:** the bus server's `ENVELOPE_KEYS` in
-`core/cortex_bus/validate.py` includes `forwarded_from` — the field passes
+`core/fleet_bus/validate.py` includes `forwarded_from` — the field passes
 validation and does not trigger "unknown envelope field" rejection. Without
 this, a forwarded message with `forwarded_from` gets **400**.
 
@@ -675,7 +675,7 @@ escalations when the primary is down. Fix: a shared `inbox_orchestrator` queue
 both orchestrators read/write — now the **default target** for all agent →
 orchestrator traffic:
 
-- **Schema:** `core/cortex_bus/schema/auth.sql` seeds the queue idempotently (also auto-creates on first send)
+- **Schema:** `core/fleet_bus/schema/auth.sql` seeds the queue idempotently (also auto-creates on first send)
 - **Handler:** `agent-message-handler.py` on orchestrators polls `inbox_orchestrator` as a secondary queue — **archive from the SOURCE queue** (`source_queue`, not the hardcoded own-inbox name)
 - **Workers:** `contact-orchestrator.sh` defaults to `inbox_orchestrator` (override with `CORTEX_INBOX_TARGET` only for point-to-point replies)
 - **Docs:** ACL table in `docs/bus-architecture.md` + `docs/reference/cortex-bus-config.md` (orchestrators read `inbox_orchestrator`; workers `can_send` it)
@@ -710,7 +710,7 @@ with c.cursor() as cur:
     [print(r) for r in cur.fetchall()]
 PY
 ```
-Compare `hash_token(<CORTEX_BUS_TOKEN>)` (`core/cortex_bus/auth.py`) with the
+Compare `hash_token(<CORTEX_BUS_TOKEN>)` (`core/fleet_bus/auth.py`) with the
 row's `token_hash` to confirm the secret is right and only the expiry is stale.
 
 **Root cause (two layers):**
@@ -743,5 +743,5 @@ requires it; extend/rotate instead.
 
 - `references/forwarder-peer-resolution.md` — role-aware PEER fix detail (2026-08-03)
 - `references/credential-rotation.md`, `references/dlq-monitor-fix.md`, `references/cross-server-architecture.md` — may exist on orchestrator hosts only (check `ls ~/.hermes/skills/devops/cortex-bus/references/` first)
-- `core/cortex_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
-- `core/cortex_bus/server.py` — HTTP API, auth, dashboard
+- `core/fleet_bus/queue.py` — Queue creation, DLQ logic, send/read/archive
+- `core/fleet_bus/server.py` — HTTP API, auth, dashboard

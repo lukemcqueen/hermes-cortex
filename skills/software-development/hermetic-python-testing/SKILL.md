@@ -317,8 +317,8 @@ unit seams cannot. Two rules keep that test honest and durable:
   A `sys.path.insert(0, <repo>/core)` in one suite SHADOWS same-named
   modules/packages for every sibling suite running later in the same pytest
   process. Verified 2026-09-02: inserting `<repo>/core` made
-  `import cortex_bus` resolve to the `core/cortex_bus/` PACKAGE instead of
-  the `lib/cortex_bus.py` MODULE a sibling suite (test_bus_outbox) expected
+  `import fleet_bus` resolve to the `core/fleet_bus/` PACKAGE instead of
+  the `lib/fleet_bus.py` MODULE a sibling suite (test_bus_outbox) expected
   → ImportErrors in the full run, green in isolation. The suite that
   "passes alone but breaks others" is the culprit — run the pair together
   to confirm. Fix for pure-stdlib modules under test: load them by FILE
@@ -330,7 +330,7 @@ unit seams cannot. Two rules keep that test honest and durable:
       mod = importlib.util.module_from_spec(spec)
       spec.loader.exec_module(mod)
       return mod
-  validate = _load("cortex_bus_validate_test", "core/cortex_bus/validate.py")
+  validate = _load("cortex_bus_validate_test", "core/fleet_bus/validate.py")
   ```
   Works whenever the module has no intra-package imports. If it does, use a
   `conftest.py` `pythonpath` entry (pytest-managed) instead of hand-rolled

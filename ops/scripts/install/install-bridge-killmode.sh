@@ -233,7 +233,7 @@ needing="$(python3 - "$GEN" <<'PY'
 import importlib.util
 import sys
 
-spec = importlib.util.spec_from_file_location("cortex_bus_bridge_generate", sys.argv[1])
+spec = importlib.util.spec_from_file_location("fleet_bus_bridge_generate", sys.argv[1])
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 units = sorted(mod._UNITS.glob(f"{mod._PREFIX}*.service")) if mod._UNITS.is_dir() else []

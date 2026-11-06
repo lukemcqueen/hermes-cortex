@@ -32,24 +32,24 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
-# ── Add src to path for cortex_bus imports ──
+# ── Add src to path for fleet_bus imports ──
 SRC_DIR = Path.home() / "steadfaste-fleet" / "core"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from cortex_bus.queue import get_queue, NotAvailableError, BusClient
-from cortex_bus.auth import validate_token
-from cortex_bus.validate import validate_send_payload
-from cortex_bus.ratelimit import RateLimiter
-from cortex_bus.circuit_breaker import get_circuit_breaker
-from cortex_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_message
-from cortex_bus.workflow.router import process_step_result as router_process_step
+from fleet_bus.queue import get_queue, NotAvailableError, BusClient
+from fleet_bus.auth import validate_token
+from fleet_bus.validate import validate_send_payload
+from fleet_bus.ratelimit import RateLimiter
+from fleet_bus.circuit_breaker import get_circuit_breaker
+from fleet_bus.workflow.dispatcher import dispatch_workflow, process_dispatch_message
+from fleet_bus.workflow.router import process_step_result as router_process_step
 
 # Per-agent send rate limiter (anti-spam at fleet scale). In-memory sliding
 # window; quota per authenticated agent (default 600/hour, env-tunable).
 _rate_limiter = RateLimiter()
-from cortex_bus.workflow.human_gate import get_pending_hil, process_hil_response
-from cortex_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
+from fleet_bus.workflow.human_gate import get_pending_hil, process_hil_response
+from fleet_bus.workflow.db import get_workflow, get_steps_for_workflow, list_active_workflows
 
 app = FastAPI(title="Steadfaste Fleet Agent Bus")
 
@@ -109,7 +109,7 @@ def _check_permission(agent: str, queue: str, action: str):
     '*' anywhere in the relevant array grants all queues (documented wildcard,
     auth.sql: "'*' in an array grants all queues").
     """
-    from cortex_bus.queue import get_queue
+    from fleet_bus.queue import get_queue
     bus = get_queue()
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
@@ -203,11 +203,11 @@ def _mirror_to_orchestrator_inbox(bus, source_queue: str, message: dict, sender:
         bus.send(_MIRROR_QUEUE, mirror, 0, mirror.get("correlation_id"))
         _log_audit_safe(f"mirror→{_MIRROR_QUEUE}: {message.get('subject')} (to={to})")
     except Exception as e:  # noqa: BLE001 — mirror must never break delivery
-        logging.getLogger("cortex_bus").warning("orchestrator mirror failed: %s", e)
+        logging.getLogger("fleet_bus").warning("orchestrator mirror failed: %s", e)
 
 
 def _log_audit_safe(message: str) -> None:
-    logging.getLogger("cortex_bus").info(message)
+    logging.getLogger("fleet_bus").info(message)
 
 
 def _queue_allowed(queue: str, allowed: list | None) -> bool:
@@ -882,7 +882,7 @@ async def api_list_workflows(request: Request, state: str = ""):
     """List workflows, optionally filtered by state."""
     agent = _authenticate(request)
     if state:
-        from cortex_bus.workflow.db import get_queue
+        from fleet_bus.workflow.db import get_queue
         bus = get_queue()
         bus._ensure_conn()
         with bus._conn.cursor() as cur:
@@ -890,7 +890,7 @@ async def api_list_workflows(request: Request, state: str = ""):
                 "SELECT * FROM bus.agent_workflows WHERE state = %s ORDER BY created_at DESC",
                 (state,),
             )
-            from cortex_bus.workflow.db import _row_to_dict
+            from fleet_bus.workflow.db import _row_to_dict
             workflows = [_row_to_dict(cur, r) for r in cur.fetchall()]
     else:
         workflows = list_active_workflows()

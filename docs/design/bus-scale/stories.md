@@ -168,13 +168,13 @@ Feature: Queue Sharding
     And reads check both old and new shards until old queue is empty
 
   Scenario: No agent-side changes
-    Given an agent calls `bus_send` and `bus_read` via `cortex_bus.py`
+    Given an agent calls `bus_send` and `bus_read` via `fleet_bus.py`
     Then the agent does not know about shards
     And the agent's code does not change
 ```
 
 **Acceptance criteria:**
-- [ ] Hash routing implemented in bus server (not in `cortex_bus.py`)
+- [ ] Hash routing implemented in bus server (not in `fleet_bus.py`)
 - [ ] 8 shards created automatically on deploy
 - [ ] Read/write operations hit only the correct shard
 - [ ] Zero changes to agent-side code
@@ -272,7 +272,7 @@ Feature: Long-Poll Read
 - [ ] Default behavior unchanged (no poll_timeout = poll once)
 - [ ] Server-side polling loop in asyncio (not blocking threads)
 - [ ] Postgres load reduced by ~90% at 1000 agents
-- [ ] Works with existing `cortex_bus.py` library (opt-in)
+- [ ] Works with existing `fleet_bus.py` library (opt-in)
 
 ---
 

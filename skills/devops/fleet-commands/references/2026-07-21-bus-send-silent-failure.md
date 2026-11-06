@@ -41,7 +41,7 @@ Possible root causes when read works but send doesn't:
 
 1. **Local PGMQ running on agent** — agent has its OWN Postgres running with PGMQ at `localhost:13004`. The `.env` points to `https://example.com:13004` for READ (nginx proxy), but something in the stack resolves SEND to the local PGMQ instead. Check: does the agent have its own `legacy Postgres` Docker container?
 
-2. **CORTEX_BASIC_AUTH env var override** — `cortex_bus.py` line 39 reads `CORTEX_BUS_AUTH` from env FIRST before falling back to config file. If an env var has a stale or wrong auth value, it overrides the config file. Check: `echo $CORTEX_BUS_AUTH` on the agent.
+2. **CORTEX_BASIC_AUTH env var override** — `fleet_bus.py` line 39 reads `CORTEX_BUS_AUTH` from env FIRST before falling back to config file. If an env var has a stale or wrong auth value, it overrides the config file. Check: `echo $CORTEX_BUS_AUTH` on the agent.
 
 3. **Send endpoint specific** — PGMQ API `/api/pgmq/send` may have different auth requirements than `/api/pgmq/read`. Check: can the agent send via curl on the command line?
 
@@ -49,7 +49,7 @@ Possible root causes when read works but send doesn't:
 
 ```bash
 cd ~/steadfaste-fleet && python3 -c "
-from ops.scripts.lib.cortex_bus import bus_send, bus_read, BUS_URL, CORTEX_BUS_AUTH, CORTEX_BUS_TOKEN
+from ops.scripts.lib.fleet_bus import bus_send, bus_read, BUS_URL, CORTEX_BUS_AUTH, CORTEX_BUS_TOKEN
 print(f'URL: {BUS_URL}')
 print(f'Has auth: {bool(CORTEX_BUS_AUTH)}')
 print(f'Has token: {bool(CORTEX_BUS_TOKEN)}')

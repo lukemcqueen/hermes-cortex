@@ -67,7 +67,7 @@ def send_rollback_request(agent: str, target_sha: str, reason: str, dispatch_id:
         "body": body_with_topic,
     }
     try:
-        from lib.cortex_bus import bus_send
+        from lib.fleet_bus import bus_send
         result = bus_send(f"inbox_{agent}", body)
         ok = result is not None
         if ok:
@@ -82,7 +82,7 @@ def send_rollback_request(agent: str, target_sha: str, reason: str, dispatch_id:
 
 def read_inbox(vt: int = 30) -> dict | None:
     try:
-        from lib.cortex_bus import bus_read
+        from lib.fleet_bus import bus_read
         return bus_read("inbox_moses", vt)
     except Exception:
         print("expected — silently handled", file=sys.stderr)

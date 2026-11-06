@@ -179,7 +179,7 @@ discovering them in a later grep.
     repo, the deployed copy is a leftover (deploy never prunes it) whose body still
     carries the OLD name while the codebase moved on. Before deleting, find the
     artifact's CURRENT home — the component often moved within the repo
-    (`ops/services/agent-bus/server.py` → `core/cortex_bus/server.py`, repo-served
+    (`ops/services/agent-bus/server.py` → `core/fleet_bus/server.py`, repo-served
     and already clean). A deployed file whose source is gone AND that is not
     registered in the deploy map is stale and removable.
 13. **A stale WORKTREE survives under the old name as a `.git` FILE, not a

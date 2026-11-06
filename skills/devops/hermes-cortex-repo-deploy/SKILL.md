@@ -265,7 +265,7 @@ copy — before reporting the tool as available to the fleet.
 **Guard register-vs-directory agreement, and verify on the DEPLOYED tree.** The repo's
 tests import the REPO tree while the host runs the DEPLOYED tree, so a module that is
 committed, imported by a deployed script, and never registered keeps a GREEN suite while
-the host dies at startup (observed: `RuntimeError: cortex_bus queue.py not found (bus core
+the host dies at startup (observed: `RuntimeError: fleet_bus queue.py not found (bus core
 missing)` out of `bot_locks`, whose loader probes `~/.steadfaste-fleet/queue.py` — so that
 DESTINATION, not just some deployed copy, is the contract). Assert agreement in BOTH
 directions (an unregistered module; a register entry whose source no longer exists), assert

@@ -120,7 +120,7 @@ def send_bus_result(queue: str, correlation_id: str, result_body: dict, subject:
         "subject": subject, "correlation_id": correlation_id, "body": body_with_topic,
     }
     try:
-        from lib.cortex_bus import bus_send
+        from lib.fleet_bus import bus_send
         result = bus_send(queue, full)
         ok = result is not None
         if ok:

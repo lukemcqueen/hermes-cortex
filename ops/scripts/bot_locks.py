@@ -31,21 +31,21 @@ def _connect():
     """Reuse the bus core's psycopg connection (same seam as queue.py)."""
     import importlib.util
     from pathlib import Path
-    # The bus core lives at core/cortex_bus/queue.py (repo) or
+    # The bus core lives at core/fleet_bus/queue.py (repo) or
     # ~/.steadfaste-fleet/queue.py (deployed). Try the deployed first, then
     # the repo relative path.
     candidates = [
         Path.home() / ".steadfaste-fleet" / "queue.py",
         Path(__file__).resolve().parent.parent.parent
-        / "core" / "cortex_bus" / "queue.py",
+        / "core" / "fleet_bus" / "queue.py",
     ]
     for path in candidates:
         if path.exists():
-            spec = importlib.util.spec_from_file_location("cortex_bus_queue", path)
+            spec = importlib.util.spec_from_file_location("fleet_bus_queue", path)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             return mod._connect()
-    raise RuntimeError("cortex_bus queue.py not found (bus core missing)")
+    raise RuntimeError("fleet_bus queue.py not found (bus core missing)")
 
 
 def _try_lock(conn, key: int) -> bool:

@@ -138,7 +138,7 @@ hermes cortex audit summary --since 30d
 
 | File | Action |
 |------|--------|
-| `core/cortex_bus/schema/audit.sql` | Create |
-| `core/cortex_bus/server.py` | Add audit logging middleware |
-| `core/cortex_bus/audit.py` | Create — audit log module |
+| `core/fleet_bus/schema/audit.sql` | Create |
+| `core/fleet_bus/server.py` | Add audit logging middleware |
+| `core/fleet_bus/audit.py` | Create — audit log module |
 | `ops/scripts/manage/bus-audit-cleanup.py` | Create — retention cron |

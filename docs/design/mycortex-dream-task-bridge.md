@@ -173,7 +173,7 @@ container, and the migrated `mycortex-postgres`. `todo-db.py add` printed ✅
 while every row vanished — stdin-mode psql returns rc=0 on SQL failure.
 So the implementation shipped MORE than the proposal, in four parts:
 
-1. **Schema:** `core/cortex_bus/schema/todos.sql` applied idempotently to
+1. **Schema:** `core/fleet_bus/schema/todos.sql` applied idempotently to
    `mycortex-postgres` (bus.todos + bus.todo_archive + todo_upsert /
    todo_list / todo_archive_old). Verified live.
 2. **todo-db.py fixes:** psql() now uses `-c` mode via direct `docker exec`

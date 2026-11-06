@@ -1,4 +1,4 @@
-"""cortex_bus.validate — strict bus message envelope validation.
+"""fleet_bus.validate — strict bus message envelope validation.
 
 Enforced at the ingestion boundary (``/api/pgmq/send``) so malformed,
 spoofed, or oversized messages never enter a queue. Senders receive HTTP 400

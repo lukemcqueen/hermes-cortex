@@ -16,7 +16,7 @@ remember to auto-parse it, leading to:
 
 ## Solution
 
-Fix `bus_send()` and `bus_read()` in `cortex_bus.py` so that the inner body is
+Fix `bus_send()` and `bus_read()` in `fleet_bus.py` so that the inner body is
 auto-serialized (on send) and auto-parsed (on read). Consumers never see JSON strings.
 
 ### Send-Side Fix
@@ -78,7 +78,7 @@ The fix is backward compatible:
 
 | File | Action |
 |------|--------|
-| `ops/scripts/lib/cortex_bus.py` | Modify `bus_send()` and `bus_read()` |
+| `ops/scripts/lib/fleet_bus.py` | Modify `bus_send()` and `bus_read()` |
 
 ### Verification
 

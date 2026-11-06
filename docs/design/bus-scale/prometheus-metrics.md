@@ -284,9 +284,9 @@ curl -s -X POST "$VICTORIA_URL" \
 
 | File | Action |
 |------|--------|
-| `core/cortex_bus/server.py` | Add `/metrics` endpoint |
-| `core/cortex_bus/metrics.py` | Create — metric definitions + push loop |
-| `core/cortex_bus/push-metrics.sh` | Create — standalone push script for agents |
+| `core/fleet_bus/server.py` | Add `/metrics` endpoint |
+| `core/fleet_bus/metrics.py` | Create — metric definitions + push loop |
+| `core/fleet_bus/push-metrics.sh` | Create — standalone push script for agents |
 | `requirements.txt` | Add `prometheus-client` |
 | `ops/install/deploy/docker-compose.victoria-metrics.yml` | Create — VictoriaMetrics + Grafana stack |
 | `ops/install/deploy/config/grafana-datasources.yml` | Create — auto-provisioned Grafana datasource |

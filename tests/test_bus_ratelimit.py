@@ -4,7 +4,7 @@ import importlib.util
 import os
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
-RATELIMIT_PATH = os.path.join(TESTS_DIR, "..", "core", "cortex_bus", "ratelimit.py")
+RATELIMIT_PATH = os.path.join(TESTS_DIR, "..", "core", "fleet_bus", "ratelimit.py")
 
 
 def _load(name, path):
@@ -15,7 +15,7 @@ def _load(name, path):
     return mod
 
 
-ratelimit = _load("cortex_bus_ratelimit_under_test", RATELIMIT_PATH)
+ratelimit = _load("fleet_bus_ratelimit_under_test", RATELIMIT_PATH)
 RateLimiter = ratelimit.RateLimiter
 
 

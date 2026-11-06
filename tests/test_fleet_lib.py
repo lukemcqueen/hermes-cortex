@@ -9,8 +9,8 @@ and the shims resolve to the same callables.
 This file carries the cortex->fleet P2 slice-1 scope: the renamed package
 (fleet_lib), the legacy hermes_* re-export shims, and the ONE-RELEASE
 cortex_lib shim (which aliases fleet_lib and must resolve to the IDENTICAL
-callables — the whole point of the transition). The core/cortex_bus hermetic
-invariant moved out with the cortex_bus slice.
+callables — the whole point of the transition). The core/fleet_bus hermetic
+invariant moved out with the fleet_bus slice.
 
 Tests import through the interface (codebase-design: the interface is the test
 surface) — get_timezone/format_timestamp on fleet_lib.tz, ensure_scripts_path

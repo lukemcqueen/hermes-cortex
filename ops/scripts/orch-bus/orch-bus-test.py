@@ -296,7 +296,7 @@ test("Agent card has name", data.get("name") == "steadfaste-fleet-bus")
 
 section("DLQ Flow")
 # Ensure test DLQ queue exists
-from cortex_bus.queue import get_queue
+from fleet_bus.queue import get_queue
 bus = get_queue()
 bus.create_queues_for_agent("test_dlq")
 

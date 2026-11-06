@@ -31,7 +31,7 @@ so `add` printed "✅ Todo added" while the row vanished. Compounded by
    string — appending `-c query` as separate argv passes it to sg itself).
    Direct `docker exec` preferred when the user is in the docker group
    (`docker exec <container> true` probe; `id -nG | grep docker`).
-2. `todo-db.py --apply-schema` — applies `core/cortex_bus/schema/todos.sql`
+2. `todo-db.py --apply-schema` — applies `core/fleet_bus/schema/todos.sql`
    idempotently (CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE FUNCTION),
    platform-aware: docker exec on Linux, direct psql via mycortex.conf on
    macOS. cortex-update.sh runs it every update, **WARN not exit** — a fleet

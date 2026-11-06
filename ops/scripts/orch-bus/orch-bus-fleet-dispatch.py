@@ -131,7 +131,7 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
     "correlation_id": correlation_id,
   }
   try:
-    from lib.cortex_bus import bus_send
+    from lib.fleet_bus import bus_send
     result = bus_send(queue, full_body)
     if result is not None:
       log(f" ✅ Sent UPDATE_REQUEST to {queue[6:]} (corr={correlation_id[:8]}…)")
@@ -146,7 +146,7 @@ def send_bus_message(queue: str, body: dict, correlation_id: str = "") -> bool:
 def read_inbox_queue(queue: str, vt: int = 60) -> dict | None:
   """Read one message from a PGMQ queue via bus library (CORTEX_BUS_URL)."""
   try:
-    from lib.cortex_bus import bus_read
+    from lib.fleet_bus import bus_read
     return bus_read(queue, vt)
   except Exception:
     return None

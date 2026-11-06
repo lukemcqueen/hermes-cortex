@@ -58,7 +58,7 @@ Then confirm the BODY arrived whole — the peek display is not the payload:
   you sent:
 
   ```python
-  from cortex_bus import bus_peek          # non-destructive — never bus_read
+  from fleet_bus import bus_peek          # non-destructive — never bus_read
   msgs = bus_peek("inbox_<agent>", limit=20)
   body = json.loads(m["body"]) if isinstance(m["body"], str) else m["body"]
   text = body.get("text") or body.get("body") or ""

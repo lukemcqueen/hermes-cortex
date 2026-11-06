@@ -78,9 +78,12 @@ Bare-`cortex` is concentrated in record directories; the in-scope bare-word coun
   79  mcp-servers/loop-gov-mcp.py
 ```
 
-`ops/scripts/cortex-update.sh` holds **388** `register`/`register_orch` map entries (346 +
+`ops/scripts/cortex-update.sh` holds **391** `register`/`register_orch` map entries (349 +
 42) — the single densest file and the governance-critical one (§4.1). See §9 item 2 for the
-count reconciliation (383 test-visible, 5 `${HOME}/` shapes, 445 token occurrences).
+count reconciliation (386 test-visible, 5 `${HOME}/` shapes, 449 token occurrences). P2's
+one-release shims add one entry per registered renamed file (lib/cortex_bus.py shim registered;
+core/cortex_bus package shim NOT registered — nothing deployed imports the package, the live
+gateway runs the repo tree) — see the register-map note there.
 
 
 ---
@@ -368,9 +371,10 @@ that is *observed*, not asserted.
    boundary + ordered guard table, in the `rename-followups` pattern) is cut from it and indexed in
    `docs/DOCS-INDEX.md`, so a later reader does not re-touch the kept names.
 5. **Reconcile the `register()` figures** — DONE 2026-11-06: 388 map entries (346 + 42), 383
-   test-visible, 5 `${HOME}/` shapes, 445 tokens. Recorded in §9 item 2; the previously-stale
-   386 figure is corrected in `docs/deploy-registry-pattern.md` and its test is green. Sweep
-   base = **388**.
+   test-visible… **re-measured 391 after P2** (349 `register` + 42 `register_orch`; 386
+   test-visible; the +1 shim is lib/cortex_bus.py — the core package shim is repo-only) —
+   recorded in §9 item 2; the previously-stale 386 figure is corrected in
+   `docs/deploy-registry-pattern.md` and its test is green. Sweep base = **391**.
 6. Freeze: no concurrent rename in flight anywhere on the fleet; one owner.
 
 **Exit:** index clean; residue count 0; boundary doc committed; the four decisions recorded and
@@ -424,8 +428,9 @@ The phase that must not break the deploy chain.
    `…/ops/scripts/fleet-update.sh` path string (and still true for the current `cortex-update.sh`);
    the **live** new-name invocation is exercised in step 2, once the `git mv` has happened.
 2. `git mv ops/scripts/cortex-update.sh ops/scripts/fleet-update.sh`; keep a `cortex-update.sh`
-   **forwarding shim** for one release; update all **388** `register`/`register_orch`
-   deployed-path targets (§9 item 2 — base settled as 388 in P0) and every caller
+   **forwarding shim** for one release; update all **391** `register`/`register_orch`
+   deployed-path targets (§9 item 2 — base settled as 391; the one-release shim entries are
+   kept) and every caller
    (`cortex-dogfood.sh:23`, `pre-push-pull`, `install-crons.sh`, `install-cortex-update-cron.sh`,
    the bridge generator, the doctor's expected lists).
 3. Sweep the remaining script/module filenames from §3.1, including the mapping lines the guard
@@ -579,14 +584,18 @@ default, and it is exactly what got reverted.
 
 1. `plugins/governance-enforcer/__init__.py:2013,2018` — the sanctioned `cortex-update.sh`
    invocation (fleet-wide deploy lockout if missed). **Dual-accept first, rename second.**
-2. `ops/scripts/cortex-update.sh` `register()` map — **388** map entries (346 `register` + 42
-   `register_orch`; 445 `register` token occurrences in comments/code; **383** entries with a
+2. `ops/scripts/cortex-update.sh` `register()` map — **391** map entries (349 `register` + 42
+   `register_orch`, incl. the **P2 one-release shim entries** — `cortex_lib/` (2, registered
+   beside the fleet_lib files it aliases) and `lib/cortex_bus.py` (1); the `core/cortex_bus`
+   package shim is NOT registered — nothing deployed imports the package, the live gateway runs
+   the repo tree; 449 `register` token occurrences in comments/code; **386** entries with a
    `${CORTEX_DEPLOY_HOME}/` deployed shape — the number the doc test parses — and **5** `${HOME}/`
-   shapes: four langfuse files + the macOS dashboard plist). **Reconciled and recorded in P0**
-   (2026-11-06): the previous figures were stale — the doc/test pair was failing at HEAD
-   (doc said 386, map is 388/383) and is now fixed and green. Use 388 as the sweep base; the
-   deployed path is **not derivable** from the repo path (131 of the 383 follow the strip-`ops/`
-   rule; 252 do not). Use `cortex_lib.paths.resolve_repo_resource`; verify on the deployed tree.
+   shapes: four langfuse files + the macOS dashboard plist). **Reconciled in P0 and re-measured
+   after P2 slices 1–2** (2026-11-06): the previous figures were stale — the doc/test pair was
+   failing at HEAD (doc said 386, map is 391/386) and is now fixed and green. Use **391** as the
+   sweep base; the deployed path is **not derivable** from the repo path (134 of the 386 follow
+   the strip-`ops/` rule; 252 do not). Use `fleet_lib.paths.resolve_repo_resource`; verify on
+   the deployed tree.
 3. `ops/scripts/cortex-dogfood.sh:23` + `pre-push-pull` — the pre-push gate chain.
 4. `cortex_lib/paths.py` parent-walk bootstrap — byte-identical in every MCP server.
 5. `~/.hermes/config.yaml` `mcp_servers.*.args` — security-sensitive; `hermes config set` only.

@@ -319,11 +319,11 @@ find ~/steadfaste-fleet/core -name 'sla_watchdog.py' 2>/dev/null
 ```python
 # Before
 sys.path.insert(0, "~/steadfaste-fleet/runtime")
-from cortex_bus.workflow.sla_watchdog import main
+from fleet_bus.workflow.sla_watchdog import main
 
 # After
 sys.path.insert(0, "~/steadfaste-fleet/core")
-from cortex_bus.workflow.sla_watchdog import main
+from fleet_bus.workflow.sla_watchdog import main
 ```
 
 **Two copies to patch (always):**

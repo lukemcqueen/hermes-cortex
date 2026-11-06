@@ -38,7 +38,7 @@ Agent → Bus (:8903) directly
     (CORTEX_BUS_TOKEN)
 ```
 
-### Auth Resolution Chain (cortex_bus.py)
+### Auth Resolution Chain (fleet_bus.py)
 
 ```
 1. CORTEX_BUS_TOKEN set?   → Bearer    (direct localhost)

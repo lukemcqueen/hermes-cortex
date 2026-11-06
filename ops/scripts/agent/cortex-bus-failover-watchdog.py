@@ -22,14 +22,14 @@ ROLE BEHAVIOR
   DEGRADED   Primary down but fallback (Esther :14004) up → warn ONCE
              after WORKER_ALERT_CONSECUTIVE consecutive failures (debounced —
              a single transient probe blip never announces an outage): traffic
-             routes via Esther automatically (lib.cortex_bus per-call
+             routes via Esther automatically (lib.fleet_bus per-call
              fallback). No config change needed on the worker.
   ISOLATED   PRIMARY AND FALLBACK BOTH DOWN → CRITICAL alert: no bus path
              at all; messages queue locally until a bus returns.
   RECOVERED  Primary back for RECOVER_REQUIRED_SUCCESSES consecutive checks
              → report recovery, silent.
 
-  Workers NEVER swap config or write markers — their lib.cortex_bus already
+  Workers NEVER swap config or write markers — their lib.fleet_bus already
   falls back per-call; this watchdog only detects and reports.
 
   ── Moses (primary orchestrator) ───────────────────────────────────
@@ -248,7 +248,7 @@ def swap_bus_config(active: bool) -> bool:
 
 # ── Seam 3: fleet notification (orchestrator only, injectable) ────
 def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> int:
-    """Broadcast a SYSTEM_EVENT to each fleet inbox via lib.cortex_bus.
+    """Broadcast a SYSTEM_EVENT to each fleet inbox via lib.fleet_bus.
 
     During failover the messages land on Esther's LOCAL bus (she is primary),
     so workers that have already fallen back to :14004 can read them.
@@ -260,9 +260,9 @@ def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> in
         try:
             if WATCHDOG_DIR not in sys.path:
                 sys.path.insert(0, WATCHDOG_DIR)
-            from lib.cortex_bus import bus_send  # type: ignore
+            from lib.fleet_bus import bus_send  # type: ignore
         except ImportError as e:
-            _log(f"WARN: lib.cortex_bus unavailable ({e}) — broadcast skipped")
+            _log(f"WARN: lib.fleet_bus unavailable ({e}) — broadcast skipped")
             return 0
     sent = 0
     for queue in queues:
@@ -310,7 +310,7 @@ def _activate(state: dict) -> list[str]:
     sent = notify_fleet(
         "SYSTEM_EVENT: FAILOVER_ACTIVE",
         "Moses is unreachable. Esther is now the acting orchestrator. "
-        "Workers: your lib.cortex_bus already falls back to :14004 automatically — no action needed. "
+        "Workers: your lib.fleet_bus already falls back to :14004 automatically — no action needed. "
         "Events go via inbox_orchestrator; the orchestrator will relay on his return.",
     )
     lines.append(f"   ✅ fleet notified ({sent} queues)")
@@ -355,7 +355,7 @@ def _worker_alert(isolated: bool) -> list[str]:
         ]
     return [
         "⚠️ Moses (primary bus) unreachable — traffic now routes via Esther :14004",
-        "   lib.cortex_bus falls back per-call; no worker config change needed.",
+        "   lib.fleet_bus falls back per-call; no worker config change needed.",
         f"   Will alert again if both buses go down. Recovery reported when Moses returns.",
     ]
 

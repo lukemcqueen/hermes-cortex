@@ -52,7 +52,7 @@ metadata:
    python3 - <<'EOF'
    import sys, json, uuid, socket
    sys.path.insert(0, str(Path.home() / "steadfaste-fleet" / "ops" / "scripts"))
-   from lib.cortex_bus import bus_send
+   from lib.fleet_bus import bus_send
    corr = f"backlog-{uuid.uuid4().hex[:12]}"
    my_name = socket.gethostname().split(".")[0]
    body = {"from": my_name, "to": "<agent>",

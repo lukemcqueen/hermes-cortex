@@ -48,7 +48,7 @@ Each agent sends a `Learning Report` every 6h via `agent-learning-collector` to 
 
 ```
 Subject: LEARNING_REPORT (bus protocol name — UPPER_CASE A-Z0-9_ per
-core/cortex_bus/validate.py). The human-readable "Learning Report — {hostname}"
+core/fleet_bus/validate.py). The human-readable "Learning Report — {hostname}"
 header and the counts live in the BODY, not the subject: a "Learning Report: N
 skills" subject is rejected with HTTP 400 and the report dies silently
 (2026-09-11 — collector blind 9 days). See Pitfalls.
@@ -334,7 +334,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   skills directly (42625c80, acea4937) — re-check the repo before upstreaming
   so a skill doesn't get committed twice.
 - **Subject must be UPPER_CASE protocol (2026-09-11)** → the bus validator
-  (`core/cortex_bus/validate.py`) rejects any subject outside `[A-Z0-9_]` with
+  (`core/fleet_bus/validate.py`) rejects any subject outside `[A-Z0-9_]` with
   HTTP 400, and likewise rejects string priorities ("high"/"normal" — must be
   integer 0-100). `agent-learning-collector` printed the rejection to
   **stderr only**, so the cron wrapper recorded "silent (empty output)", state

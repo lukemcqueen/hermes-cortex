@@ -44,7 +44,7 @@ def _agent_name(explicit: str = "") -> str:
 def _bus_config() -> tuple:
     """(bus_url, headers) from the cortex env — the same source every other client uses."""
     sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
-    import lib.cortex_bus as cb  # noqa: PLC0415
+    import lib.fleet_bus as cb  # noqa: PLC0415
     auth = {}
     if cb.CORTEX_BUS_TOKEN:
         auth = {"Authorization": f"Bearer {cb.CORTEX_BUS_TOKEN}"}

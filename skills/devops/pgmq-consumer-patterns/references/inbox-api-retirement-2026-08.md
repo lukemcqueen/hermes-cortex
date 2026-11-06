@@ -48,7 +48,7 @@ inbox API was retired but consumers/docs were never swept.
 ```bash
 # Seed a ping exactly like the producer
 PYTHONPATH=~/steadfaste-fleet/ops/scripts python3 -c "
-from lib.cortex_bus import bus_send
+from lib.fleet_bus import bus_send
 import json, time
 bus_send('inbox_health_check', {'from': 'titus', 'subject': 'health',
     'body': json.dumps({'v':[1]*9,'h':'t','t':int(time.time())})})"

@@ -15,13 +15,13 @@
 
 ## 1. The seam map (surveyed 2026-09-30)
 
-Most infra is **already Hermes-independent**: Postgres/PGMQ bus server (`core/cortex_bus/server.py` — standalone), governance DB, mycortex, task DB all run under systemd/docker with zero Hermes import. The coupling is a *thin, named seam*, enumerated below.
+Most infra is **already Hermes-independent**: Postgres/PGMQ bus server (`core/fleet_bus/server.py` — standalone), governance DB, mycortex, task DB all run under systemd/docker with zero Hermes import. The coupling is a *thin, named seam*, enumerated below.
 
 ### 1.1 Genuine runtime imports (the real coupling)
 
 | Where | Import | What it is |
 |---|---|---|
-| `core/cortex_bus/__init__.py:8` | `from hermes_bus.queue import get_queue` | **The only true `hermes_bus` dependency.** Self-referential: bus's own module exports the Hermes-runtime bus client. Guarded (a bare `import hermes_bus` already fails when Hermes runtime absent → the seam is leaky-but-not-load-bearing). |
+| `core/fleet_bus/__init__.py:8` | `from hermes_bus.queue import get_queue` | **The only true `hermes_bus` dependency.** Self-referential: bus's own module exports the Hermes-runtime bus client. Guarded (a bare `import hermes_bus` already fails when Hermes runtime absent → the seam is leaky-but-not-load-bearing). |
 | `mcp-servers/loop-gov-mcp.py:91` + `manage/*.py` (9 files) | `hermes_models.get_model` `load_models_env` | Model resolution — needed for governance scoring. |
 | `manage/*.py`, `health/*.py` (18+ files) | `hermes_tz.format_timestamp` / `get_timezone` | Timestamping. |
 | `ops/scripts/*` (9 files) | `hermes_paths.ensure_scripts_path` | sys.path bootstrap. |
@@ -49,7 +49,7 @@ Most infra is **already Hermes-independent**: Postgres/PGMQ bus server (`core/co
 | **S1b** | Vendor the small Hermes-runtime stateless helpers (`_format_timestamp`, `_get_timezone` logic) into `cortex_lib/tz.py` so timecode works with zero Hermes import | `cortex_lib/tz.py` |
 | **S1c** | `hermes_models.get_model` → `cortex_lib/models.py` reading the same env/`model` config sources, no `hermes_models` requirement. Update 8 MCP/`manage` callers | `cortex_lib/models.py` + mcp-servers/loop-gov-mcp.py + manage/*.py |
 | **S1d** | `hermes_tools` runtime imports → either `cortex_lib/tools.py` wrapping the same underlying callable, or (where mechanical) inline the tool; used by offline/session-cache/analysis | `cortex_lib/tools.py` |
-| **S1e** | Bus `__init__.py`: import `get_queue` from its own `server`/`queue` module path, not via `hermes_bus` (remove seam #1.1 row 1) | `core/cortex_bus/__init__.py` |
+| **S1e** | Bus `__init__.py`: import `get_queue` from its own `server`/`queue` module path, not via `hermes_bus` (remove seam #1.1 row 1) | `core/fleet_bus/__init__.py` |
 
 **Done-proof for S1:** for each sha sl, `python3 -I -c "import cortex_lib.tz"` (isolated mode, no Hermes on path) succeeds; full `cargo`-equivalent test suite + doctor + a live cron run still green; `grep -rl "import hermes" ops/ mcp-servers/ core/` returns **zero**.
 

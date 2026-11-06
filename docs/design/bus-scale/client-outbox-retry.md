@@ -39,8 +39,8 @@ bus_send(queue, msg)
 | Asset | Location |
 |-------|----------|
 | Outbox library | `ops/scripts/lib/bus_outbox.py` (enqueue + sweep + CLI) |
-| Fallback hook | `ops/scripts/lib/cortex_bus.py` → `bus_send()` |
-| Canonical dedup | `cortex_bus.bus_find_duplicate()` / `bus_norm_body()` |
+| Fallback hook | `ops/scripts/lib/fleet_bus.py` → `bus_send()` |
+| Canonical dedup | `fleet_bus.bus_find_duplicate()` / `bus_norm_body()` |
 | Cron | `agent-bus-retry-sweep` (`*/15 * * * *`, no_agent) in `install-crons.sh` |
 | Tests | `tests/test_bus_outbox.py` (17 tests) |
 
