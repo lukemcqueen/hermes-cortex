@@ -27,7 +27,7 @@ hermes mcp add fleet-context \
 ## Verify (do not report a wiring you have not exercised)
 
 1. hermes mcp list | grep fleet-context
-2. Call mcp__cortex_context__mem_context; the peer card must come back.
+2. Call mcp__fleet_context__mem_context; the peer card must come back.
 
 ## Session identity
 
