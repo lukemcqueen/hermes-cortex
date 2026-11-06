@@ -1,8 +1,14 @@
 """
 Bearer token authentication for the Agent Bus.
 
-Tokens are stored bcrypt-hashed in Postgres. Each agent has a unique token
-that can be rotated independently. Tokens auto-expire after 90 days.
+Token hashes are stored in Postgres (bus.tokens). Each agent has a unique
+random token (`hbus_` + 32 hex bytes = 256-bit entropy) that can be rotated
+independently. Hashes use PBKDF2-HMAC-SHA256, 100,000 iterations, with a
+single static application salt — chosen over bcrypt to avoid an extra
+dependency (see the TODO below for the bcrypt upgrade path). Tokens do NOT
+auto-expire: issue_token_for_agent never sets expires_at (validate_token
+honors it when set, but no issuing path sets it), so validity is controlled
+by the is_active flag and rotation.
 """
 
 import hashlib
@@ -17,7 +23,15 @@ HASH_ALGO = "sha256"
 
 
 def hash_token(token: str) -> str:
-    """Hash a bearer token for storage."""
+    """Hash a bearer token for storage.
+
+    The salt is a single static application constant (b"hermes-bus-salt").
+    This is a deliberate trade: the hashed material is a 256-bit random token
+    (generate_token), so per-token salts add no entropy — the static salt's
+    job is only to slow brute force via the 100k PBKDF2 iterations. A unique
+    per-token salt would require storing the salt per row for zero security
+    gain here, and changing this value would invalidate every issued token.
+    """
     return hashlib.pbkdf2_hmac(HASH_ALGO, token.encode(), b"hermes-bus-salt", 100000).hex()
 
 
