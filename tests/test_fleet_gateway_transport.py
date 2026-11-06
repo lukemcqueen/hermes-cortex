@@ -41,6 +41,33 @@ def test_transport_bus_helpers_present():
         assert callable(getattr(transport, name)), f"missing {name}"
 
 
+def test_bus_headers_scheme_follows_target():
+    """Auth scheme must match where the bus actually lives.
+
+    The external bus is nginx-fronted: nginx validates Basic auth and IGNORES a
+    Bearer header (401 for missing Basic). The raw local bus (127.0.0.1:8903)
+    instead REQUIRES the Bearer token. Regression (2026-11-06): the gateway
+    always sent Bearer when a token was set, so dispatching to the external
+    nginx bus 401'd and every inbound message was dropped.
+
+    RED on the old Bearer-only code; GREEN with the loopback-aware selection.
+    """
+    from fleet_gateway import transport
+    tok, auth = "THEBOT", "user:pass"
+    # external nginx bus → Basic (Bearer is ignored through nginx)
+    ext = transport._bus_headers(tok, auth, "https://bus.example.net:13004")
+    assert ext["Authorization"].startswith("Basic "), f"external must be Basic, got {ext}"
+    # loopback raw bus → Bearer
+    loc = transport._bus_headers(tok, auth, "http://127.0.0.1:8903")
+    assert loc["Authorization"].startswith("Bearer "), f"loopback must be Bearer, got {loc}"
+    # no token, external → still Basic (Basic is the external convention)
+    assert transport._bus_headers("", auth, "https://bus.example.net:13004")[
+        "Authorization"].startswith("Basic ")
+    # external but no basic creds → cannot Basic, fall back to Bearer
+    assert transport._bus_headers(tok, "", "https://bus.example.net:13004")[
+        "Authorization"].startswith("Bearer ")
+
+
 # ── CR1.2 TransportAdapter is the same abstract interface ───────────────────
 def test_transport_adapter_interface_unimplemented():
     from fleet_gateway.transport import TransportAdapter

@@ -175,7 +175,22 @@ class BotConfig:
 
 # ── Bus helpers ──────────────────────────────────────────────
 
-def _bus_headers(bus_token: str, bus_auth: str) -> dict:
+def _bus_headers(bus_token: str, bus_auth: str, bus_url: str = "") -> dict:
+    """Auth header for a PGMQ bus request.
+
+    The external bus is nginx-fronted: nginx validates Basic auth and sets
+    X-Forwarded-User, and IGNORES a Bearer header (401 for missing Basic).
+    The raw local bus (127.0.0.1:8903) instead REQUIRES the Bearer token.
+    Pick the scheme by whether the target is loopback.
+    """
+    host = ""
+    if bus_url:
+        host = bus_url.split("://", 1)[-1].split("/", 1)[0].lower()
+    loopback = (not host or host.startswith("127.")
+                or host.split(":", 1)[0] in ("localhost", "127.0.0.1", "::1"))
+    if not loopback and bus_auth:
+        return {"Authorization": "Basic "
+                + base64.b64encode(bus_auth.encode()).decode()}
     if bus_token:
         return {"Authorization": f"Bearer {bus_token}"}
     enc = base64.b64encode(bus_auth.encode()).decode()

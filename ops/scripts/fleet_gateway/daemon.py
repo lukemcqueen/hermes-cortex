@@ -1208,7 +1208,7 @@ def _build_backends(cfg: dict) -> dict:
             "gateway; an empty key makes those signatures forgeable by "
             "anyone. Set GATEWAY_SECRET (e.g. `openssl rand -hex 32`) in the "
             "env, or 'secret' in gateway.yaml.")
-    headers = _bus_headers(bus_token, bus_auth)
+    headers = _bus_headers(bus_token, bus_auth, bus_url)
     # The registry validates every entry and fails closed on an unknown kind, so a typo in
     # gateway.yaml is a startup error naming the entry instead of a silent no-backend drop.
     from .agents import build_backends
@@ -1216,8 +1216,24 @@ def _build_backends(cfg: dict) -> dict:
                           {"bus_url": bus_url, "bus_headers": headers, "secret": secret})
 
 
-def _bus_headers(bus_token: str, bus_auth: str) -> dict:
+def _bus_headers(bus_token: str, bus_auth: str, bus_url: str = "") -> dict:
+    """Auth header for a PGMQ bus request.
+
+    The external bus is nginx-fronted: nginx validates Basic auth and sets
+    X-Forwarded-User, and IGNORES a Bearer header (401 for missing Basic).
+    The raw local bus (127.0.0.1:8903) instead REQUIRES the Bearer token.
+    Pick the scheme by whether the target is loopback — mirroring how every
+    other fleet script reaches the bus (external peer = Basic).
+    """
     import base64
+    host = ""
+    if bus_url:
+        host = bus_url.split("://", 1)[-1].split("/", 1)[0].lower()
+    loopback = (not host or host.startswith("127.")
+                or host.split(":", 1)[0] in ("localhost", "127.0.0.1", "::1"))
+    if not loopback and bus_auth:
+        return {"Authorization": "Basic "
+                + base64.b64encode(bus_auth.encode()).decode()}
     if bus_token:
         return {"Authorization": f"Bearer {bus_token}"}
     return {"Authorization": "Basic "
