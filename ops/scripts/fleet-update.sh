@@ -1156,10 +1156,10 @@ restart_langfuse() {
 }
 
 restart_dashboard() {
-  if launchctl list com.hermes.cortex-dashboard &>/dev/null 2>&1; then
+  if launchctl list com.hermes.fleet-dashboard &>/dev/null 2>&1; then
     info "  Restarting Cortex Dashboard…"
-    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>/dev/null || true
-    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.cortex-dashboard.plist" 2>&1 | sed 's/^/    /'
+    launchctl unload "${HOME}/Library/LaunchAgents/com.hermes.fleet-dashboard.plist" 2>/dev/null || true
+    launchctl load "${HOME}/Library/LaunchAgents/com.hermes.fleet-dashboard.plist" 2>&1 | sed 's/^/    /'
   elif [[ -f "/etc/systemd/system/steadfaste-fleet-dashboard.service" ]] || \
        [[ -f "${HOME}/.config/systemd/user/steadfaste-fleet-dashboard.service" ]]; then
     systemctl daemon-reload 2>/dev/null || true

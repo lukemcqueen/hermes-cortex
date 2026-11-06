@@ -18,7 +18,7 @@ docs audit, which both pointed at this file before it existed.
 |---|---|---|---|
 | `com.hermes.fleet-gateway.plist` | `com.hermes.fleet-gateway` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
 | `com.hermes.gateway.plist` | `com.hermes.gateway` | the **Hermes** runtime gateway (`hermes_agent.gateway.run`) | The one service that legitimately uses the Hermes venv (the module lives there). Candidates for decommission as hosts migrate. |
-| `com.hermes.fleet-dashboard.plist` | `com.hermes.cortex-dashboard` | the cortex dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
+| `com.hermes.fleet-dashboard.plist` | `com.hermes.fleet-dashboard` | the fleet dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
 | `com.hermes.health-push.plist` | `com.hermes.health-push` | `ops/scripts/health/health-vector-push.sh` every 10 min | **Client-only agents (Titus, Gisu, Joseph) install this.** Set `AGENT_NAME` per host. |
 | `com.docker.docker.plist` | `com.docker.docker` | Docker Desktop, unattended | So containers with `restart:` policy come back after login. |
 

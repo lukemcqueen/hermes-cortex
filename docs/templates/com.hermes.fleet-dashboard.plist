@@ -29,7 +29,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.hermes.cortex-dashboard</string>
+    <string>com.hermes.fleet-dashboard</string>
 
     <!-- OPTION A: dedicated venv (shown). OPTION B: fleet venv — swap the
          interpreter for "$HOME/.steadfaste-fleet/venv/bin/python3" below. -->
@@ -37,7 +37,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/.steadfaste-fleet/logs"; cd "$HOME/.steadfaste-fleet/dashboard" || exit 78; exec "$HOME/.steadfaste-fleet/dashboard/venv/bin/python3" "$HOME/.steadfaste-fleet/dashboard/server.py" >>"$HOME/.steadfaste-fleet/logs/cortex-dashboard.log" 2>&amp;1</string>
+        <string>mkdir -p "$HOME/.steadfaste-fleet/logs"; cd "$HOME/.steadfaste-fleet/dashboard" || exit 78; exec "$HOME/.steadfaste-fleet/dashboard/venv/bin/python3" "$HOME/.steadfaste-fleet/dashboard/server.py" >>"$HOME/.steadfaste-fleet/logs/fleet-dashboard.log" 2>&amp;1</string>
     </array>
 
     <key>RunAtLoad</key>

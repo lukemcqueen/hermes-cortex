@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.hermes.cortex-dashboard</string>
+    <string>com.hermes.fleet-dashboard</string>
     <key>ProgramArguments</key>
     <array>
         <string>/Users/luke/.steadfaste-fleet/dashboard/venv/bin/python3</string>
@@ -25,8 +25,8 @@
         <string>https://your-domain.com:13002</string>
     </dict>
     <key>StandardOutPath</key>
-    <string>/Users/luke/.steadfaste-fleet/logs/cortex-dashboard.log</string>
+    <string>/Users/luke/.steadfaste-fleet/logs/fleet-dashboard.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/luke/.steadfaste-fleet/logs/cortex-dashboard.log</string>
+    <string>/Users/luke/.steadfaste-fleet/logs/fleet-dashboard.log</string>
 </dict>
 </plist>
