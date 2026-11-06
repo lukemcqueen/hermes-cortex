@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 fleet-context-mcp.py — MCP access layer for the cortex context store (S2c).
+P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-context-mcp.py via
+git mv — token-swap rename only.
 
 Thin transport wrapper. The tool surface lives in
 `ops/services/mycortex-mem/context_tools.py` and is shared with the CLI

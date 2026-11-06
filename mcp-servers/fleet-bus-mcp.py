@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Agent Bus MCP Server — Hermes Cortex agent messaging + task delegation.
+P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-bus-mcp.py via git mv —
+a pure rename whose only content delta is the fleet-* token swap (the MCP
+server's own name string below). History: git log --follow -- mcp-servers/fleet-bus-mcp.py.
+
+Agent Bus MCP Server — Hermes fleet agent messaging + task delegation.
 
 SAME tool interface as the old `inbox-mcp.py` — ZERO agent disruption.
 Backend switched to the Agent Bus (Postgres-native PGMQ on port 8903).

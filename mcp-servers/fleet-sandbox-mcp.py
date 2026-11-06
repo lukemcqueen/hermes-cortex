@@ -1,6 +1,8 @@
 #!/usr/bin/env python3.12
 """
-Cortex Sandbox MCP Server — exposes disk access control as MCP tools.
+Fleet Sandbox MCP Server — exposes disk access control as MCP tools.
+P3 step 3 (2026-11-06): renamed from mcp-servers/cortex-sandbox-mcp.py via
+git mv — token-swap rename only.
 
 Tools:
     sandbox_status     — show current DISK_ACCESS_LEVEL and allowed path
