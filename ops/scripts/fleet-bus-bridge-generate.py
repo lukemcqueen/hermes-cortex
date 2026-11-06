@@ -2,6 +2,8 @@
 r"""
 fleet-bus-bridge-generate.py — generate systemd user timer units for simple
 no_agent cron jobs (component-hermes-separation S2a).
+P3 step 3 (2026-11-06): renamed from ops/scripts/cortex-bus-bridge-generate.py;
+provenance: git log --follow -- ops/scripts/fleet-bus-bridge-generate.py.
 
 Reads ~/.hermes/cron/jobs.json, and for each SIMPLE no_agent job (a pure
 script job with no context_from/continuity chaining and no model pin — i.e. a
@@ -15,7 +17,7 @@ writes a user-scope systemd pair:
 
 The service unit's stdout/stderr are captured by the bridge-run wrapper and
 delivered (non-empty) to the messenger; empty = silent. This removes the
-load-bearing coupling "gateway process down → 60+ no_agent jobs don't run (measured 2026-08 cron-bridge migration)",
+load-bearing coupling "gateway process down → 60+ no_agent jobs don't run (the historical count; see the cron-bridge-migration docs)",
 proving S2a on one job at a time.
 
 KillMode=process (2026-10-24)
@@ -24,7 +26,10 @@ Every generated service unit sets `KillMode=process`. A bridge unit is
 `Type=oneshot`, whose default `KillMode=control-group` makes systemd tear down
 the whole unit cgroup when the tick's ExecStart exits — SIGTERMing any child the
 job deliberately detached (e.g. the UPDATE_REQUEST worker spawned with
-`start_new_session=True` in agent-message-handler.py). With `control-group`,
+`start_new_session=True` in agent-message-handler.py). Without KillMode=process a detached worker can be killed when its
+oneshot unit exits; install-bridge-killmode.sh and the `--repair` mode add it
+to every bridge unit. (Provenance: this rationale is documented in
+docs/runbooks/cron-bridge-migration.md.) With `control-group`,
 that worker died seconds after being spawned and the fleet's UPDATE_REQUEST
 protocol could not update ANY host. `KillMode=process` kills only the tick
 itself and lets detached children finish. See
