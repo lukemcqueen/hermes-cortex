@@ -733,6 +733,9 @@ register "ops/install/hooks/post-merge"   "${CORTEX_DEPLOY_HOME}/hooks/post-merg
 # drift even when content hasn't changed.)
 declare -A MODE_OVERRIDES=(
   ["${CORTEX_DEPLOY_HOME}/hooks/post-merge"]="700"
+  # ONE-RELEASE forwarding shim must stay executable: legacy crons and the
+  # sanctioned gate invoke it via `bash`, but direct invocations exist too.
+  ["${CORTEX_DEPLOY_HOME}/scripts/cortex-update.sh"]="755"
 )
 
 # Deploy scripts (nginx security pipeline) — now deployed to /usr/local/sbin/
