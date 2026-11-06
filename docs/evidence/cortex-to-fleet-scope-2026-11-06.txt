@@ -1,5 +1,5 @@
 ========================================================================
-REPO=/home/esther/steadfaste-fleet
+REPO=$HOME/steadfaste-fleet
 cmd: git ls-files | wc -l   ->  tracked files = 3511
 ========================================================================
 

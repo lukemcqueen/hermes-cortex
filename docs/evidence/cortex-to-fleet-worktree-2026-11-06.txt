@@ -1,4 +1,4 @@
-REPO=/home/esther/steadfaste-fleet
+REPO=$HOME/steadfaste-fleet
 HEAD=3667067875d828b7797a6f1c4838409395cc809d
 origin/main=3667067875d828b7797a6f1c4838409395cc809d
 captured=2026-11-06T07:53:38Z
