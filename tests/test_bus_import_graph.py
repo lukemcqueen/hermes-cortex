@@ -228,6 +228,73 @@ class TestImportGraphFromCoreContext:
         assert r.returncode == 0, r.stderr
         assert "dispatched" in r.stdout, r.stdout
 
+    def test_route_workflow_value_match_opens_gate(self):
+        # ADV-14259 round 6 finding 2: the gate's SECOND branch — the next
+        # step's step_name matching a route VALUE in its own route_if
+        # ("routes" map) — must open the gate so the definition decides.
+        # Here the definition says human_review True -> blocked.
+        r = self._run(
+            "import unittest.mock, json\n"
+            "import fleet_bus.workflow.router as r\n"
+            "wf = {'id': 'wf3', 'state': 'running',\n"
+            "      'workflow_definition': {'steps': [{'name': 'review', 'human_review': True}]},\n"
+            "      'payload': {}}\n"
+            "step = {'id': 's1', 'step_name': 'analyze', 'state': 'completed',\n"
+            "        'route_if': {'success': 'review'}}\n"
+            "nxt = {'id': 'rev3', 'step_name': 'review', 'state': 'pending',\n"
+            "       'assigned_to': 'luke', 'step_order': 2,\n"
+            "       'route_if': {'routes': {'success': 'review'}},  # value-match: 'review' == step_name\n"
+            "       'depends_on': [], 'timeout_seconds': 300, 'max_retries': 2}\n"
+            "uw = unittest.mock.Mock(); wa = unittest.mock.Mock(); uss = unittest.mock.Mock()\n"
+            "with unittest.mock.patch('fleet_bus.workflow.router.get_workflow', return_value=wf), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.get_step', return_value=step), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.update_step_state', uss), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.write_audit', wa), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.get_steps_for_workflow', return_value=[nxt]), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.update_workflow_state', uw):\n"
+            "    out = r.process_step_result({'body': json.dumps({'workflow_id': 'wf3', 'step_id': 's1', 'status': 'success', 'result': {}})})\n"
+            "assert out == 'blocked'\n"
+            "uw.assert_called_once_with('wf3', 'blocked')\n"
+            "print('value-gate-blocked')\n"
+        )
+        assert r.returncode == 0, r.stderr
+        assert "value-gate-blocked" in r.stdout, r.stdout
+
+    def test_route_workflow_value_match_no_definition_flag_dispatches(self):
+        # Same value-match gate, definition human_review False and a step NAME
+        # that deliberately does NOT match any route value on the next row:
+        # gate stays closed -> dispatch without consulting the definition.
+        r = self._run(
+            "import unittest.mock, json\n"
+            "import fleet_bus.workflow.router as r\n"
+            "wf = {'id': 'wf4', 'state': 'running',\n"
+            "      'workflow_definition': {'steps': [{'name': 'review', 'human_review': True}]},\n"
+            "      'payload': {}}\n"
+            "step = {'id': 's1', 'step_name': 'analyze', 'state': 'completed',\n"
+            "        'route_if': {'success': 'review'}}\n"
+            "nxt = {'id': 'rev4', 'step_name': 'review', 'state': 'pending',\n"
+            "       'assigned_to': 'agent-x', 'step_order': 2,\n"
+            "       'route_if': {'routes': {'_fallback': 'elsewhere'}},  # no value matches 'review': gate stays CLOSED\n"
+            "       'depends_on': [], 'timeout_seconds': 300, 'max_retries': 2}\n"
+            "uw = unittest.mock.Mock(); wa = unittest.mock.Mock(); uss = unittest.mock.Mock()\n"
+            "dta = unittest.mock.Mock()\n"
+            "with unittest.mock.patch('fleet_bus.workflow.router.get_workflow', return_value=wf), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.get_step', return_value=step), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.update_step_state', uss), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.write_audit', wa), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.get_steps_for_workflow', return_value=[nxt]), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router.update_workflow_state', uw), \\\n"
+            "     unittest.mock.patch('fleet_bus.workflow.router._dispatch_to_agent', dta):\n"
+            "    out = r.process_step_result({'body': json.dumps({'workflow_id': 'wf4', 'step_id': 's1', 'status': 'success', 'result': {}})})\n"
+            "assert out == 'running'\n"
+            "dta.assert_called_once()\n"
+            "blocked_calls = [c for c in uw.call_args_list if c.args[1] == 'blocked']\n"
+            "assert not blocked_calls\n"
+            "print('gate-closed-dispatched')\n"
+        )
+        assert r.returncode == 0, r.stderr
+        assert "gate-closed-dispatched" in r.stdout, r.stdout
+
     def test_circuit_breaker_exercises_mocked_dependency(self):
         # The reviewer's exact ask: exercise check_and_restore/is_available with
         # fleet_bus.queue.get_queue MOCKED, proving the dotted import resolves
