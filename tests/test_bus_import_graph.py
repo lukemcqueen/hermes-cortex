@@ -125,17 +125,31 @@ class TestImportGraphFromCoreContext:
         assert "exercised" in r.stdout, r.stdout
 
     def test_sla_watchdog_schema_columns_match_ddl(self):
-        # sla_watchdog's queries reference started_at/timeout_seconds/state on
-        # bus.agent_workflow_steps and state on bus.agent_workflows. Assert the
-        # DDL carries them so the query cannot silently drift past the schema.
+        # sla_watchdog's queries reference deadline_at/state on
+        # bus.agent_workflows, started_at/timeout_seconds/state on
+        # bus.agent_workflow_steps, and the 'skipped' transition. Assert the DDL
+        # carries them so the queries cannot silently drift past the schema.
         ddl = (Path(__file__).resolve().parents[1]
                / "core" / "fleet_bus" / "schema" / "workflow.sql").read_text()
         wf = ddl.split("CREATE TABLE IF NOT EXISTS bus.agent_workflows")[1].split(");")[0]
         steps = ddl.split("CREATE TABLE IF NOT EXISTS bus.agent_workflow_steps")[1].split(");")[0]
-        for col in ("state",):
+        for col in ("state", "deadline_at", "workflow_definition"):
             assert col in wf, col
         for col in ("state", "started_at", "timeout_seconds"):
             assert col in steps, col
+        assert "'skipped'" in steps, "step state CHECK must admit 'skipped'"
+
+    def test_workflow_definitions_carry_steps(self):
+        # router.py's HIL decision reads the snapshotted workflow_definition's
+        # `steps` list (workflow.get("workflow_definition", {}).get("steps")).
+        # The definitions the engine snapshots start from these YAMLs — each
+        # must carry a steps list for the router's contract to hold.
+        wf_dir = Path(__file__).resolve().parents[1] / "core" / "fleet_bus" / "workflows"
+        yamls = sorted(wf_dir.glob("*.yaml"))
+        assert yamls, "workflow YAMLs must exist"
+        for y in yamls:
+            text = y.read_text()
+            assert "steps:" in text, f"{y.name} must define steps"
 
     def test_workflow_db_row_to_dict_exists(self):
         # sla_watchdog imports _row_to_dict from fleet_bus.workflow.db inside

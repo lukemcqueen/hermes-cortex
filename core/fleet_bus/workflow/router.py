@@ -142,7 +142,7 @@ def process_step_result(msg: dict) -> Optional[str]:
     update_step_state(next_step_data["id"], "running")
     
     # Build the WorkflowStep object for dispatch
-    from fleet_bus.workflow import WorkflowStep, RouteIf
+    from fleet_bus.workflow import WorkflowStep
     step_obj = WorkflowStep(
         name=next_step_data["step_name"],
         assigned_to=next_step_data.get("assigned_to", "moses"),
