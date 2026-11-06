@@ -19,8 +19,14 @@ HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
 PROFILES_DIR="${HERMES_HOME}/profiles"
 MYCORTEX_CLI="${HOME}/.steadfaste-fleet/scripts/mycortex"
 
-# Resolve absolute path for PROJECT_PATH
-PROJECT_PATH="$(cd "$(dirname "$PROJECT_PATH")" 2>/dev/null && echo "$PWD/$(basename "$PROJECT_PATH")")"
+# Resolve absolute path for PROJECT_PATH — refuse rather than leave it empty
+# (an empty PROJECT_PATH would make mkdir -p operate on ./ and proceed broken).
+_parent="$(dirname "$PROJECT_PATH")"
+if [[ ! -d "$_parent" ]]; then
+  echo "⚠ parent directory does not exist: ${_parent}" >&2
+  exit 1
+fi
+PROJECT_PATH="$(cd "$_parent" && echo "$PWD/$(basename "$PROJECT_PATH")")"
 
 echo "=== Creating project profile: ${PROJECT_NAME} ==="
 echo "  Project path: ${PROJECT_PATH}"
@@ -46,9 +52,14 @@ if [[ -d "$BRAIN_DIR" ]]; then
   echo "  ⏭ Brain source already exists: ${BRAIN_DIR}"
 else
   mkdir -p "$BRAIN_DIR"
-  # Init git — required by mycortex
-  git -C "$BRAIN_DIR" init 2>/dev/null || true
-  cat > "${BRAIN_DIR}/.gitignore" <<GITEOF
+  # Init git — required by mycortex. Fail and say so if git cannot do it
+  # (a silent `git init || true` leaves a non-repo the mycortex brain needs).
+  if ! command -v git >/dev/null 2>&1; then
+    echo "⚠ git is required but not on PATH — brain source not usable by mycortex" >&2
+  elif ! git -C "$BRAIN_DIR" init >/dev/null 2>&1; then
+    echo "⚠ git init failed for ${BRAIN_DIR} — brain source not usable by mycortex" >&2
+  else
+    cat > "${BRAIN_DIR}/.gitignore" <<GITEOF
 MEMORY.md
 USER.md
 .env
@@ -57,32 +68,40 @@ USER.md
 *.key
 *.cert
 GITEOF
-  git -C "$BRAIN_DIR" add -A 2>/dev/null || true
-  git -C "$BRAIN_DIR" commit -m "init: ${PROJECT_NAME} brain source" 2>/dev/null || true
-  echo "  ✅ Brain source: ${BRAIN_DIR}"
+    git -C "$BRAIN_DIR" add -A >/dev/null 2>&1 || \
+      echo "⚠ git add failed (identity unset?) — the initial commit did not land; add it before relying on the brain repo" >&2
+    git -C "$BRAIN_DIR" commit -m "init: ${PROJECT_NAME} brain source" >/dev/null 2>&1 || \
+      echo "⚠ git commit failed (set user.name/user.email?) — brain not committed yet" >&2
+    echo "  ✅ Brain source: ${BRAIN_DIR}"
+  fi
 fi
 
 # 4. Register as mycortex source (isolated, non-federated)
 if [[ -x "$MYCORTEX_CLI" ]]; then
   if "$MYCORTEX_CLI" sources list 2>/dev/null | grep -q "\"name\": \"${PROJECT_NAME}\""; then
     echo "  ⏭ mycortex source '${PROJECT_NAME}' already registered"
-  else
-    "$MYCORTEX_CLI" sources add "${PROJECT_NAME}" "${BRAIN_DIR}" 2>/dev/null || \
-      echo "  ⚠ Could not add mycortex source (mycortex may need re-init)"
+  elif "$MYCORTEX_CLI" sources add "${PROJECT_NAME}" "${BRAIN_DIR}" 2>/dev/null; then
     echo "  ✅ mycortex source: ${PROJECT_NAME} (isolated)"
+  else
+    echo "  ⚠ Could not add mycortex source (mycortex may need re-init)" >&2
   fi
 else
   echo "  ⚠ mycortex not installed — skip source registration"
 fi
 
-# 5. Register in cortex-projects.json
+# 5. Register in cortex-projects.json (legacy host config — kept path)
 PROJECTS_FILE="${HOME}/.cortex-projects.json"
+_registered=0
 if [[ -f "$PROJECTS_FILE" ]]; then
-  python3 -c "
-import json
-with open('${PROJECTS_FILE}') as f:
-    projects = json.load(f)
-# Remove old entry if exists
+  if python3 -c "
+import json, sys
+path='${PROJECTS_FILE}'
+try:
+    with open(path) as f:
+        projects = json.load(f)
+except (json.JSONDecodeError, OSError) as e:
+    print('could not parse ' + path + ': ' + str(e), file=sys.stderr)
+    sys.exit(1)
 projects = [p for p in projects if p.get('project_name') != '${PROJECT_NAME}']
 projects.append({
     'project_name': '${PROJECT_NAME}',
@@ -91,9 +110,13 @@ projects.append({
     'profile': '${PROJECT_NAME}',
     'mycortex_source': '${PROJECT_NAME}'
 })
-with open('${PROJECTS_FILE}', 'w') as f:
+with open(path, 'w') as f:
     json.dump(projects, f, indent=2)
-" 2>/dev/null || true
+"; then
+    _registered=1
+  else
+    echo "  ⚠ could not update ${PROJECTS_FILE} — fix it and re-run" >&2
+  fi
 else
   cat > "$PROJECTS_FILE" <<JSONEOF
 [
@@ -106,8 +129,9 @@ else
   }
 ]
 JSONEOF
+  _registered=1
 fi
-echo "  ✅ Registered in ~/.cortex-projects.json"
+[[ "$_registered" -eq 1 ]] && echo "  ✅ Registered in ${PROJECTS_FILE}"
 
 echo ""
 echo "✅ Profile '${PROJECT_NAME}' ready."

@@ -132,17 +132,17 @@ HAPI_KEY_PUBLIC="pk-lf-$(openssl rand -hex 16)"
 HAPI_KEY_SECRET="sk-lf-$(openssl rand -hex 32)"
 HAPI_KEY_ID="cmqkey-hermes-$(openssl rand -hex 8)"
 
-# Generate bcrypt hash of the secret key
-BCRYPT_HASH="$(env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())" 2>/dev/null || echo "")"
-
+# Generate bcrypt hash of the secret key. A Langfuse API key MUST hold a real
+# bcrypt hash — a truncated/salt-less substitute silently breaks authentication.
+# So this FAILS loudly when bcrypt cannot be produced; no silent fallback.
+BCRYPT_HASH="$(env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())")"
 if [[ -z "$BCRYPT_HASH" ]]; then
-  warn "Could not generate bcrypt hash, trying alternative method..."
-  # Fallback to a simple hash if python3 or bcrypt is not available
-  BCRYPT_HASH='$2a$11$'"$(echo "$HAPI_KEY_SECRET" | openssl sha256 | cut -d' ' -f2 | fold -w32 | head -1)"
+  error "Could not generate a bcrypt hash of the API secret (python3 + bcrypt required) — aborting so auth cannot break silently"
+  exit 1
 fi
 
-# Create or update the API key in Postgres
-PGPASSWORD=postgres psql -h localhost -U postgres -d langfuse -c "
+# Create or update the API key in Postgres (rc is the psql result, surfaced)
+if PGPASSWORD=postgres psql -h localhost -U postgres -d langfuse -c "
   DO $$
   BEGIN
     IF EXISTS (SELECT 1 FROM api_keys WHERE note = 'Hermes Agent') THEN
@@ -155,14 +155,12 @@ PGPASSWORD=postgres psql -h localhost -U postgres -d langfuse -c "
     END IF;
   END
   $$;
-" 2>/dev/null
-
-if [[ $? -eq 0 ]]; then
+"; then
   info "✅ Created/Updated Hermes Agent API key in Langfuse Postgres"
   info "  Public key: $HAPI_KEY_PUBLIC"
   info "  Secret key (save securely): $HAPI_KEY_SECRET"
 else
-  warn "Failed to upsert API key in Postgres - may already exist or table structure differs"
+  warn "Failed to upsert API key in Postgres (psql rc=$?) — check the Langfuse Postgres is up and the table exists"
 fi
 
 # ── Step 6: Write Langfuse env vars to Cortex .env ─────────────────
@@ -173,7 +171,10 @@ mkdir -p "$(dirname "$CORTEX_ENV_FILE")"
 # Remove any existing Langfuse vars to avoid duplicates on re-run
 if [[ -f "$CORTEX_ENV_FILE" ]]; then
     for var in HERMES_LANGFUSE_PUBLIC_KEY HERMES_LANGFUSE_SECRET_KEY HERMES_LANGFUSE_BASE_URL HERMES_LANGFUSE_ENV HERMES_LANGFUSE_RELEASE HERMES_LANGFUSE_SAMPLE_RATE; do
-        sed -i "/^${var}=/d" "$CORTEX_ENV_FILE" 2>/dev/null || true
+        sed -i "/^${var}=/d" "$CORTEX_ENV_FILE" || {
+          error "could not clean old ${var} from ${CORTEX_ENV_FILE}"
+          exit 1
+        }
     done
 fi
 
@@ -199,10 +200,12 @@ if env -u PYTHONPATH -u PYTHONHOME python3 -c "import langfuse" 2>/dev/null; the
 else
   info "Installing Langfuse Python SDK..."
   if command -v pip3 &>/dev/null; then
-    pip3 install langfuse 2>/dev/null || {
+    if ! pip3 install langfuse 2>&1; then
       info "pip3 failed, trying pip..."
-      pip install langfuse 2>/dev/null || warn "Could not install langfuse SDK"
-    }
+      if ! pip install langfuse 2>&1; then
+        warn "Could not install langfuse SDK (see the pip output above) — install manually: pip install langfuse"
+      fi
+    fi
   else
     warn "pip3/pip not found - install manually with: pip install langfuse"
   fi
@@ -211,10 +214,14 @@ fi
 # ── Step 8: Enable Langfuse observability plugin ───────────────────
 info "Checking Langfuse observability plugin..."
 if command -v hermes &>/dev/null; then
-  hermes plugins list 2>/dev/null | grep -q "observability/langfuse" && info "Langfuse plugin already enabled" || {
+  if hermes plugins list 2>&1 | grep -q "observability/langfuse"; then
+    info "Langfuse plugin already enabled"
+  else
     info "Enabling Langfuse observability plugin..."
-    hermes plugins enable observability/langfuse 2>/dev/null || warn "Could not enable Langfuse plugin"
-  }
+    if ! hermes plugins enable observability/langfuse 2>&1; then
+      warn "Could not enable Langfuse plugin (see output above) — enable manually: hermes plugins enable observability/langfuse"
+    fi
+  fi
 else
   warn "hermes not found - enable Langfuse plugin manually: hermes plugins enable observability/langfuse"
 fi

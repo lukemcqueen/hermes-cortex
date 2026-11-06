@@ -41,8 +41,9 @@ LIMITS (deliberate):
   NOT auto-enable. The caller runs `systemctl --user daemon-reload` then
   `systemctl --user enable --now <name>.timer` per job, in the planned sequence.
 - Unit name prefix:  cortex-bridge-  (KEPT: the live bridge units carry this infra name; unit
-  renames are deferred to P5. File/runner names are fleet-*; the unit prefix
-  follows in P5.)  — so `systemctl --user list-timers` groups
+  renames are P5-deferred, authorized in
+  docs/evidence/p3-step3-rename-audit-2026-11-06.md. File/runner names are
+  fleet-*; the unit prefix follows in P5.)  — so `systemctl --user list-timers` groups
   the bridge together and they're unmistakably ours).
 
 Usage:
