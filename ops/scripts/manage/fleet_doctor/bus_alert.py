@@ -9,6 +9,7 @@ import base64
 import json
 import os
 import re
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -33,8 +34,9 @@ def load_repo_owners() -> dict:
             if isinstance(data, dict) and "repos" in data:
                 return data["repos"]
             return {}
-        except Exception:
-            print("expected — silently handled", file=sys.stderr)
+        except Exception as e:
+            print(f"bus_alert: repo-owners load failed for {p} ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     return {}
 
 
@@ -55,8 +57,9 @@ def read_bus_token() -> str:
                 v = re.sub(r"\s+#.*$", "", v).strip()
                 if k == "CORTEX_BUS_TOKEN" and v:
                     return v
-        except OSError:
-            print("expected — silently handled", file=sys.stderr)
+        except OSError as e:
+            print(f"bus_alert: could not read bus config {cfg_path} ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     return ""
 
 
@@ -78,8 +81,9 @@ def read_basic_auth() -> str:
                 v = re.sub(r"\s+#.*$", "", v).strip()
                 if k in ("CORTEX_BUS_AUTH", "CORTEX_BASIC_AUTH", "CORTEX_INBOX_AUTH") and v:
                     return v
-        except OSError:
-            print("expected — silently handled", file=sys.stderr)
+        except OSError as e:
+            print(f"bus_alert: could not read basic-auth config {cfg_path} ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     return ""
 
 
@@ -120,8 +124,11 @@ def send_bus_alert(
             with urllib.request.urlopen(req, timeout=10) as resp:
                 resp.read()
                 return True
-        except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError):
-            pass  # expected — silently handled
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+            # Bearer failed — audible so a bad token vs an unreachable bus is
+            # distinguishable in the doctor log; Basic is the deliberate fallback.
+            print(f"bus_alert: bearer send to {url} failed ({type(e).__name__}: {e}); "
+                  f"falling back to Basic Auth", file=sys.stderr)
         # Bearer failed — try Basic Auth
         basic_auth = read_basic_auth()
         if not basic_auth:
@@ -184,8 +191,9 @@ def dispatch_bus_alerts(res):
                     if k == "CORTEX_BUS_URL" and v:
                         primary_url = v
                         break
-            except OSError:
-                print("expected — silently handled", file=sys.stderr)
+            except OSError as e:
+                print(f"bus_alert: could not read {cfg_path} for CORTEX_BUS_URL "
+                      f"({type(e).__name__}: {e})", file=sys.stderr)
             if primary_url:
                 break
 
@@ -203,8 +211,9 @@ def dispatch_bus_alerts(res):
                     if k == "CORTEX_BUS_FALLBACK_URL" and v:
                         fallback_url = v
                         break
-            except OSError:
-                print("expected — silently handled", file=sys.stderr)
+            except OSError as e:
+                print(f"bus_alert: could not read {cfg_path} for CORTEX_BUS_FALLBACK_URL "
+                      f"({type(e).__name__}: {e})", file=sys.stderr)
             if fallback_url:
                 break
 
