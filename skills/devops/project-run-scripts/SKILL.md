@@ -62,7 +62,7 @@ Every `./run` MUST implement these commands with identical semantics:
 > ⚠️ **Skill-dir assets:** the canonical assets live in the shared repo, NOT inside this skill's directory:
 > - Template → `~/steadfaste-fleet/ops/scripts/project-run-scripts/templates/run.sh`
 > - `check-alembic-heads.py` → `~/steadfaste-fleet/ops/scripts/project-run-scripts/scripts/check-alembic-heads.py`
-> Both deploy to `~/.steadfaste-fleet/scripts/project-run-scripts/...` via `cortex-update.sh`. Check the repo path exists before relying on it. If either is absent, write `./run` from the Template Structure below — every required piece (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
+> Both deploy to `~/.steadfaste-fleet/scripts/project-run-scripts/...` via `fleet-update.sh`. Check the repo path exists before relying on it. If either is absent, write `./run` from the Template Structure below — every required piece (check-alembic-heads.py, entrypoint.sh, test_migrations.py) is fully inlined in this SKILL.md so no external asset is a hard dependency.
 
 ## Migration Head Integrity — Fail-Fast, No Auto-Merge
 

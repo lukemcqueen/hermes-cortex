@@ -70,7 +70,7 @@
         "doctor:check_deploy_checksums",
         "doctor:check_skill_drift",
         "doctor:check_stale_deploys",
-        "cortex-update.sh:register()"
+        "fleet-update.sh:register()"
       ],
       "added": "2026-07-30",
       "restraint": "doctor:check_deploy_checksums",
@@ -92,7 +92,7 @@
     },
     "cross-agent-forgot": {
       "artifacts": [
-        "cortex-update.sh:register_orch()",
+        "fleet-update.sh:register_orch()",
         "docs/fleet-update-protocol.md:UPDATE_REQUEST/RESULT",
         "docs/orchestrator-only-paths.txt"
       ],

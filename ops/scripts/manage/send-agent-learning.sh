@@ -86,7 +86,7 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
     fi
 fi
 
-# From script changes (if this agent runs install.sh/cortex-update.sh)
+# From script changes (if this agent runs install.sh/fleet-update.sh)
 CUSTOM_SCRIPTS="${HOME}/.steadfaste-fleet/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
     # Check for any custom scripts not from the repo

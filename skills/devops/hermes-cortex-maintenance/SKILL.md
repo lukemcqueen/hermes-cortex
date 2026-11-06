@@ -6,7 +6,7 @@ description: >-
   Maintain an installed Hermes Cortex instance — update both the upstream
   Hermes Agent and the cortex repo layer, merge diverged histories, sync
   skills safely, and troubleshoot common issues. Covers the dual-update
-  workflow (hermes update + cortex-update.sh), encrypted brain data backup,
+  workflow (hermes update + fleet-update.sh), encrypted brain data backup,
   mycortex import, and recovery techniques.
 ---
 
@@ -53,7 +53,7 @@ hermes update --yes
 ```bash
 cd ~/steadfaste-fleet
 git pull --ff-only origin main
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 ```
 
 ### 3. Merge diverged histories (if pull fails)
@@ -65,7 +65,7 @@ git fetch origin
 git log --oneline HEAD..origin/main | head    # what's new upstream
 git log --oneline origin/main..HEAD | head    # what's local-only
 git merge origin/main                          # or: git rebase origin/main
-# Resolve conflicts, then re-run cortex-update.sh
+# Resolve conflicts, then re-run fleet-update.sh
 ```
 
 ## Encrypted Brain Data Backup
@@ -120,7 +120,7 @@ API field names in 3.206+: `costDetails`, `calculatedTotalCost` — NOT legacy `
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `cortex-update.sh` purges the governance lock | Known side effect (Pitfall 2) | Re-acquire with `begin_change`; score pending cycles first |
+| `fleet-update.sh` purges the governance lock | Known side effect (Pitfall 2) | Re-acquire with `begin_change`; score pending cycles first |
 | Skills not deploying | Stub guard blocked repo stub → deployed full | Restore full skill content first |
 | Ollama cold-start slow | Model unloaded after idle | `OLLAMA_KEEP_ALIVE >= 5m` in the systemd unit |
 | Doctor checksum mismatch | SOURCE header adds 3 lines to deployed files | Use `_content_md5()` (strips header) |
@@ -128,7 +128,7 @@ API field names in 3.206+: `costDetails`, `calculatedTotalCost` — NOT legacy `
 
 ## Stranded skills — the DEPLOYED copy can be NEWER than the repo
 
-`cortex-update.sh` refuses to overwrite a deployed skill whose copy is newer than the repo source,
+`fleet-update.sh` refuses to overwrite a deployed skill whose copy is newer than the repo source,
 and the doctor reports `⚠️ Skill drift: <path>`. This is usually not drift but a LESSON: the lesson
 pipeline writes into the DEPLOYED copy, so the deployed side often carries knowledge the repo does
 not have. Never resolve it by copying repo → deployed, and never by deleting the deployed copy.
@@ -153,7 +153,7 @@ than land that.
 
 ## Recovery Techniques
 
-- **Corrupted deployed copy** → re-run `cortex-update.sh` (it re-syncs from repo)
+- **Corrupted deployed copy** → re-run `fleet-update.sh` (it re-syncs from repo)
 - **Stuck governance lock** → never force-clear without `end_change` first;
   score the cycle, then `end_change`, then force-clear only if it rejects
 - **Abandoned PENDING cycle after an interrupted session** → score it honestly

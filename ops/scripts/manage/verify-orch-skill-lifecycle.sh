@@ -97,7 +97,7 @@ for f in glob.glob(os.path.expanduser("~/.steadfaste-fleet/state/learning-report
         s=line.strip()
         if not (s.startswith('[MOD]') or s.startswith('[NEW]')): continue
         # The collector's SKILLS_DIR.rglob('SKILL.md') walks INTO ~/.hermes/skills/.archive/
-        # (the manifest generator and cortex-update.sh both skip hidden dirs; it does not),
+        # (the manifest generator and fleet-update.sh both skip hidden dirs; it does not),
         # so retired skills arrive as "[NEW] <name> (.archive)". They are archived on the
         # reporting host and by DESIGN have no repo source — demanding one is a false FAIL.
         # (2026-10-28: 'github' also collided with the CATEGORY dir skills/github, which

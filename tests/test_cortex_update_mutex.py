@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Tests for cortex-update-mutex.py — the single-instance deploy lock.
 
-THE GAP: cortex-update.sh has no mutex, so two concurrent updates to the SAME
+THE GAP: fleet-update.sh has no mutex, so two concurrent updates to the SAME
 repo can run at once, each unlocking the same immutable enforcement files and
-racing on the deploy marker (observed: two `cortex-update.sh --force-all`
+racing on the deploy marker (observed: two `fleet-update.sh --force-all`
 processes in parallel on moses). The lock must:
 
   * REFUSE a second concurrent update to the SAME repo (same lock file).

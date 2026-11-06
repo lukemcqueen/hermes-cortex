@@ -10,7 +10,7 @@ artifacts.
 
 ## Canonical Detection Chain
 
-Every component (doctor, cortex-update.sh, os-config.sh, install-orch-crons.sh)
+Every component (doctor, fleet-update.sh, os-config.sh, install-orch-crons.sh)
 uses this same chain:
 
 1. `AGENT_TYPE=orchestrator|server|dev` env var (primary — set in `.env`)
@@ -37,7 +37,7 @@ Behaviour when agent type doesn't match:
 | Component | File | Behaviour |
 |-----------|------|-----------|
 | os-config.sh | `ops/scripts/install/os-config.sh` | Defines `CORTEX_AGENT_TYPE` and `check_agent_type()` |
-| cortex-update.sh | `ops/scripts/cortex-update.sh` | Installs orch-* crons only if AGENT_TYPE=orchestrator |
+| fleet-update.sh | `ops/scripts/fleet-update.sh` | Installs orch-* crons only if AGENT_TYPE=orchestrator |
 | cortex-doctor | `fleet_doctor/config.py` | `AGENT_ROLE` constant, skips Dashboard/Langfuse/Bus on non-orch |
 | install-orch-crons.sh | `ops/scripts/install/install-orch-crons.sh` | Self-audits: refuses on non-orch, gives uninstall advice |
 

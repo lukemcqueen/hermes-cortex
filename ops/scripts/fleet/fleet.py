@@ -237,7 +237,7 @@ def _record_verification(
 def _get_messages(queue: str, limit: int = 20) -> list[dict]:
     """Get pending messages from a queue (non-destructive read via HTTP peek)."""
     if not _HAS_LIB:
-        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run fleet-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         return bus_peek(queue, limit=limit)
@@ -254,7 +254,7 @@ def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[
     fast-archived EXEC_RESULT is found instead of hanging (2026-08-06).
     """
     if not _HAS_LIB:
-        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run fleet-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         return bus_archives(queue, limit=limit, since_minutes=since_minutes)
@@ -266,7 +266,7 @@ def _get_archives(queue: str, limit: int = 50, since_minutes: int = 60) -> list[
 def _get_queue_depths() -> list[dict]:
     """Get depth of all inbox queues via HTTP (name + depth)."""
     if not _HAS_LIB:
-        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.", file=sys.stderr)
+        print("❌ lib.fleet_bus not importable — run fleet-update.sh to deploy.", file=sys.stderr)
         return []
     try:
         queues = bus_list_queues()
@@ -283,7 +283,7 @@ def _get_queue_depths() -> list[dict]:
 def _send_message(queue: str, body: dict) -> str:
     """Send a message via the bus HTTP API (active bus, fallback on failure)."""
     if not _HAS_LIB:
-        return "❌ lib.fleet_bus not importable — run cortex-update.sh to deploy."
+        return "❌ lib.fleet_bus not importable — run fleet-update.sh to deploy."
     try:
         result = bus_send(queue, body)
         if result is None:
@@ -587,7 +587,7 @@ def cmd_status(cfg: dict, args: list):
         except Exception as e:
             print(f"❌ Bus health: unreachable ({e})")
     else:
-        print("❌ lib.fleet_bus not importable — run cortex-update.sh to deploy.")
+        print("❌ lib.fleet_bus not importable — run fleet-update.sh to deploy.")
 
     # Queue depths
     print()
@@ -993,7 +993,7 @@ def cmd_env(cfg: dict, args: list):
         print(f"   Backend      = HTTP (active bus, fallback on failure)")
         print(f"   Auth         = Bearer → Basic fallback (via lib.fleet_bus)")
     else:
-        print(f"   Backend      = ❌ lib.fleet_bus not importable (run cortex-update.sh)")
+        print(f"   Backend      = ❌ lib.fleet_bus not importable (run fleet-update.sh)")
     print(f"\nTip: Any agent's inbox is readable:")
     print(f"  fleet inbox moses    fleet inbox joseph    fleet inbox esther")
 
@@ -1296,7 +1296,7 @@ def cmd_harness(cfg: dict, args: list):
     ]
     mod_path = next((p for p in candidates if p.is_file()), None)
     if mod_path is None:
-        print("fleet harness: harness.py not found — run cortex-update.sh", file=sys.stderr)
+        print("fleet harness: harness.py not found — run fleet-update.sh", file=sys.stderr)
         sys.exit(1)
     # Run the module as a CHILD, under an interpreter that can import PyYAML. The
     # module needs yaml and the interpreter running THIS CLI is the one `fleet`'s
@@ -1396,7 +1396,7 @@ def cmd_pi(cfg: dict, args: list):
         for name in ("install-pi-mcp.sh", "install-pi-integration.sh"):
             path = _resolve_script(name)
             if path is None:
-                print(f"fleet pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                print(f"fleet pi: {name} not found — run fleet-update.sh", file=sys.stderr)
                 rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
                 continue          # would report an earlier, milder failure
             print(f"── {name} ──")
@@ -1417,7 +1417,7 @@ def cmd_pi(cfg: dict, args: list):
         ):
             path = _resolve_script(name)
             if path is None:
-                print(f"fleet pi: {name} not found — run cortex-update.sh", file=sys.stderr)
+                print(f"fleet pi: {name} not found — run fleet-update.sh", file=sys.stderr)
                 rc = max(rc, 1)   # the WORST rc wins, not the first: `rc or r`
                 continue          # would report an earlier, milder failure
             print(f"── {label} ──")
@@ -1449,7 +1449,7 @@ def cmd_pi(cfg: dict, args: list):
     # delegation is pinned by tests/test_hc_pi.py's skills-delegation cases.
     path = _resolve_script("install-pi-integration.sh")
     if path is None:
-        print("fleet pi: install-pi-integration.sh not found — run cortex-update.sh",
+        print("fleet pi: install-pi-integration.sh not found — run fleet-update.sh",
               file=sys.stderr)
         sys.exit(1)
     print("\n── visibility (delegated to the installer's own check) ──")

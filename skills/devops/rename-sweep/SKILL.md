@@ -138,7 +138,7 @@ Deleting files breaks things that assert their existence:
 - **Test fixtures** asserting paths to deleted files
   (`test_golden_expected_paths_exist_in_repo` FAILs on stale expected_top3 —
   delete the stale query entry, keep count invariants like "25-30 queries").
-- **register() lines** in cortex-update.sh for deleted scripts (remove both
+- **register() lines** in fleet-update.sh for deleted scripts (remove both
   the line and any update/stub functions that call them).
 - **Skills referencing the deleted skill** (governance-sentinel listed
   legacy-system-maintenance) — reword or drop the pointer.
@@ -167,7 +167,7 @@ of them.
 - Adversarial gate A2 on every changed script.
 - Run the test suites that touch deleted paths (parity/golden tests).
 - Live-service tests fail on deploy-order lag: a running service still
-  serves the old label until `cortex-update.sh` redeploys — verify against
+  serves the old label until `fleet-update.sh` redeploys — verify against
   the repo, not the live service, then re-test after deploy.
 - `git grep -i <term>` == 0, doctor clean, deploy via cortex-update,
   then push.
@@ -183,7 +183,7 @@ with the sweep, in the same change:
    script RUN the consolidation (idempotently) before anything reads the moved
    thing, and make the migration script seed the new location from the old one
    rather than failing when it is absent. A host that still has only the old
-   layout must self-heal on the next `cortex-update.sh`.
+   layout must self-heal on the next `fleet-update.sh`.
 2. **An enforcement check in the doctor** — FAIL on the new invariant (target
    exists, right perms, old path absent or a symlink to it, and a `fix:` line
    naming the exact script to run). A sweep with no check silently regresses
@@ -317,7 +317,7 @@ treat that as part of the deliverable, not a follow-up.
   deployment's dirs (`~/hermes-cortex` → `~/steadfaste-fleet`, `~/.hermes-cortex`
   → `~/.steadfaste-fleet`) ships a guarded migration script + a golden-path
   verifier, but deploying the code does not execute the rename. Verify on the
-  host: `CORTEX_DEPLOY_HOME` still unset ⇒ `cortex-update.sh` still defaults to
+  host: `CORTEX_DEPLOY_HOME` still unset ⇒ `fleet-update.sh` still defaults to
   the OLD `~/.hermes-cortex`; no transition symlink yet; the old dirs are real
   dirs, not symlinks. Those symptoms mean "the code landed, the rename has NOT".
   A host that still runs everything off the old paths is not a failed rename —
@@ -328,7 +328,7 @@ treat that as part of the deliverable, not a follow-up.
   <host>.sh`) deliberately does NOT apply to the rest yet. Before "finishing" a
   rename on any non-dogfood host, check the plan's rollout step: it may mandate
   esther-green first and a separate fleet dispatch, with the deploy default in
-  `cortex-update.sh` (`CORTEX_DEPLOY_HOME="${HOME}/.hermes-cortex"`) deliberately
+  `fleet-update.sh` (`CORTEX_DEPLOY_HOME="${HOME}/.hermes-cortex"`) deliberately
   unchanged until every host has migrated (so the 4 agents' next deploys stay
   consistent).
 - **Confirm the repo rename landed by `git ls-remote` on BOTH the old and new
@@ -338,7 +338,7 @@ treat that as part of the deliverable, not a follow-up.
   last pull; pull to current before running any migration script so you deploy
   from the latest version.
 - **Never run a home-dir migration under an in-flight deploy writing to that same
-  dir.** A `cortex-update.sh` mid-run is reading/writing `~/.hermes-cortex`;
+  dir.** A `fleet-update.sh` mid-run is reading/writing `~/.hermes-cortex`;
   moving the directory out from under it breaks both the deploy and the rename.
   Wait for the deploy to finish (poll its log for `UPDATE_EXIT=0` and the doctor
   verdict) before `migrate-home-dirs.sh`. `migrate-home-dirs.sh` also refuses to

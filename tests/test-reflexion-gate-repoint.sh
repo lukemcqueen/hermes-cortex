@@ -178,7 +178,7 @@ cp "$CHECKER" "$NOSEAM/ops/scripts/reflexion-check.py"
 
 # (a) no store module at all
 out=$(HOME="$WORK/home" python3 "$NOSEAM/ops/scripts/reflexion-check.py" --session any 2>&1); rc=$?
-if [[ "$rc" == "3" ]] && echo "$out" | grep -q "cortex-update.sh"; then
+if [[ "$rc" == "3" ]] && echo "$out" | grep -q "fleet-update.sh"; then
   pass "store module missing → rc 3, names the fix"
 else
   fail "missing store module gave rc=$rc (expected 3)" "$out"

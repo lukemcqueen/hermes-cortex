@@ -3,7 +3,7 @@
 #  hermes-nginx-clean-restart — Kill orphaned nginx master
 #  and restart cleanly.
 #
-#  Deployed by cortex-update.sh to /usr/local/sbin/.
+#  Deployed by fleet-update.sh to /usr/local/sbin/.
 #
 #  Usage:
 #    sudo hermes-nginx-clean-restart <PID>

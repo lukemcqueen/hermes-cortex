@@ -20,7 +20,7 @@ demanded by the TDD co-gate for production-code writes).
 ## The four sources of truth (MUST stay in sync)
 
 1. `docs/templates/skills.yaml` `always:` list (deployed `~/.steadfaste-fleet/skills.yaml`
-   syncs from this template in cortex-update.sh)
+   syncs from this template in fleet-update.sh)
 2. `plugins/governance-enforcer/__init__.py`: `_REQUIRED_SKILLS` set,
    `_PATH_CTX_HINTS` (deploy/install → survey-before-action), the block-message
    numbered list (lines ~1690-1710), README "required skills" section
@@ -47,7 +47,7 @@ session-start-discipline text=9. Four different counts for one gate.
 ## Marker-invalidation trap
 
 The enforcer's skills fingerprint = mtimes of the required skills' deployed
-SKILL.md files. Deleting a deployed always-skill OR running cortex-update.sh
+SKILL.md files. Deleting a deployed always-skill OR running fleet-update.sh
 (re-syncs skills → mtimes change) invalidates YOUR OWN session marker. Every
 write tool then blocks with "N/N always-section skills loaded" even though
 you loaded everything; the block message still lists the OLD names because
@@ -56,7 +56,7 @@ the running gateway holds the old in-memory enforcer.
 Fix: `skill_view()` a skill NOT yet loaded this session — a deduped reload
 short-circuits and does NOT trigger the auto-create. A fresh name refreshes
 the marker. May be needed twice: once after deleting deployed skills, once
-after cortex-update.sh re-syncs them.
+after fleet-update.sh re-syncs them.
 
 ## Push/dogfood sequencing
 
@@ -64,7 +64,7 @@ Pre-push hook runs the doctor and blocks until deployed == repo
 ("Push blocked: doctor reports N failures"). Order that worked:
 
 1. Commit (`git commit -F` with detailed message)
-2. `bash ops/scripts/cortex-update.sh` (deploy)
+2. `bash ops/scripts/fleet-update.sh` (deploy)
 3. Score and close the governance cycle (`cycle_query` → `feedback_accept` →
    `end_change`) — a PENDING cycle from a FINISHED task (no live lock, e.g. a
    sibling subagent that begin_change'd but never closed) is a doctor FAIL

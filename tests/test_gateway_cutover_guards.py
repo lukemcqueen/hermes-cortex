@@ -131,7 +131,7 @@ def test_both_shipped_units_carry_the_guard_as_ExecStartPre():
 def test_the_guard_is_registered_for_deploy():
     """A guard that is not registered ships as an ImportError on the host while the
     repo tests stay green — the deploy syncs an explicit list."""
-    src = (_REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+    src = (_REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
     assert "fleet_gateway/guard_distinct_token.py" in src, (
         "guard_distinct_token.py must be in the deploy register, or the unit's "
         "ExecStartPre points at a file the host never receives")

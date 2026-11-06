@@ -5,13 +5,13 @@ Two Luke corrections after TitusClaude's TASK 4b proposal:
 - **"i don't like overrides"**
 
 Generic governance files are ALWAYS the HC root file, deployed fleet-wide
-by cortex-update.sh. Never copied into project repos, never overridden by
+by fleet-update.sh. Never copied into project repos, never overridden by
 repo-local versions. Commits: `cee06a73` (measurer), `5f4a19b6`
 (deployed-only rework), `9f96fffb` (F13 bus wiring).
 
 ## The pattern
 
-1. **Register generic files in the cortex-update.sh deploy MAP** →
+1. **Register generic files in the fleet-update.sh deploy MAP** →
    `~/.steadfaste-fleet/scripts/` fleet-wide. Files that follow this:
    `precommit_test_discovery.py`, `executor_context_builder.py`,
    `change-validate.sh`.
@@ -53,8 +53,8 @@ variable referenced in a later conditional BEFORE the branch that sets it.
 ## Lifecycle-guard false positive on the sanctioned deploy
 
 The Hermes core lifecycle guard statically scans referenced script
-CONTENT for lifecycle commands — cortex-update.sh's macOS `launchctl`
-text (dead on Linux) trips it, blocking `bash ops/scripts/cortex-update.sh`
+CONTENT for lifecycle commands — fleet-update.sh's macOS `launchctl`
+text (dead on Linux) trips it, blocking `bash ops/scripts/fleet-update.sh`
 from inside the gateway. The working sanctioned path:
 `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force` — its
 `"$UPDATE"` variable indirection defeats the static scan, and it runs

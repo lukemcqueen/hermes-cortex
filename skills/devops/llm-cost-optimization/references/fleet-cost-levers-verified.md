@@ -55,7 +55,7 @@ Measured on Esther (13-day audit + state.db):
   installer's fuzzy markers can collide across success/failure paths
   (`"response_silent": False,` appears in both). Verify with grep.
 - **Auto-reapply is the fix for seam rot** — run the installer idempotently
-  in cortex-update.sh after every deploy so patches survive `hermes update`.
+  in fleet-update.sh after every deploy so patches survive `hermes update`.
 
 ## Session economics numbers (cache-aware model)
 

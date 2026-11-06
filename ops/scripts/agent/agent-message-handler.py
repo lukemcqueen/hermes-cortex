@@ -39,7 +39,7 @@ from pathlib import Path
 
 HOME = Path.home()
 CORTEX_REPO = HOME / "steadfaste-fleet"
-CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
+CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 # Derive AGENT_NAME from env (set by cron/launchd) or .env (fleet setup)
 AGENT_NAME = os.environ.get("AGENT_NAME", "")
@@ -531,7 +531,7 @@ def save_state(state: dict):
 
 
 def run_cortex_update() -> dict:
-  """Run git pull then cortex-update.sh, capture output."""
+  """Run git pull then fleet-update.sh, capture output."""
   log("Pulling latest code ...")
   try:
     pull = subprocess.run(
@@ -549,14 +549,14 @@ def run_cortex_update() -> dict:
   except Exception as e:
     log(f"git pull ERROR: {e}")
 
-  log("Running cortex-update.sh ...")
+  log("Running fleet-update.sh ...")
   try:
     r = subprocess.run(
       ["bash", str(CORTEX_UPDATE)],
       capture_output=True, text=True, timeout=300
     )
     result = {
-      # exit=1 is a soft failure (cortex-update.sh uses set -euo pipefail
+      # exit=1 is a soft failure (fleet-update.sh uses set -euo pipefail
       # and needs_update returns 1 for unchanged files). Treat as success
       # when no stderr output indicates a real error.
       "success": r.returncode == 0 or (r.returncode == 1 and not r.stderr),

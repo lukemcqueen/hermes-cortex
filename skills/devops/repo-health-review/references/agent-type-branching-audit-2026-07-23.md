@@ -1,11 +1,11 @@
 # Agent-Type Branching Audit — 2026-07-23
 
 ## Scope
-Audited `install.sh`, `cortex-update.sh`, and `fleet_doctor/` for proper agent-type branching in deploy behavior.
+Audited `install.sh`, `fleet-update.sh`, and `fleet_doctor/` for proper agent-type branching in deploy behavior.
 
 ## Files Examined
 - `ops/install/install.sh` (2652 lines)
-- `ops/scripts/cortex-update.sh` (1501 lines)
+- `ops/scripts/fleet-update.sh` (1501 lines)
 - `ops/scripts/manage/fleet_doctor/` (7 modules)
 - `ops/scripts/install-crons.sh` (979 lines)
 - `ops/scripts/install/install-orch-crons.sh` (482 lines)
@@ -18,7 +18,7 @@ Audited `install.sh`, `cortex-update.sh`, and `fleet_doctor/` for proper agent-t
 - `server` profile installs Langfuse, Dashboard, nginx but cannot distinguish orchestrator from server-agent
 - `core` profile is minimal but deploys all scripts unconditionally
 
-### 2. cortex-update.sh — Only cron install is guarded
+### 2. fleet-update.sh — Only cron install is guarded
 - `IS_ORCHESTRATOR` guard only covers orch cron installation (lines 1412-1438)
 - All `register()` entries for dashboard, cortex-bus server, nginx, orch-bus scripts deploy **unconditionally**
 - `deploy_nginx_configs()` and `deploy_system_scripts()` run unconditionally from `main()`
@@ -41,7 +41,7 @@ Audited `install.sh`, `cortex-update.sh`, and `fleet_doctor/` for proper agent-t
 | # | Gap | Severity |
 |---|-----|----------|
 | 1 | No `--agent-type` flag on install.sh | High |
-| 2 | register() entries unconditional in cortex-update.sh | High |
+| 2 | register() entries unconditional in fleet-update.sh | High |
 | 3 | deploy_nginx_configs()/deploy_system_scripts() unconditional | Medium |
 | 4 | EXTERNAL_SERVICES hardcoded with all services | High |
 | 5 | check_nginx() unconditional | Medium |
@@ -50,6 +50,6 @@ Audited `install.sh`, `cortex-update.sh`, and `fleet_doctor/` for proper agent-t
 | 8 | No dev-agent installer or path | Medium |
 
 ## Hostname Detection Mismatch
-- `cortex-update.sh`: `IS_ORCHESTRATOR` env var + hostname fallback (moses, esther)
+- `fleet-update.sh`: `IS_ORCHESTRATOR` env var + hostname fallback (moses, esther)
 - `install-orch-crons.sh`: `IS_ORCHESTRATOR` env var + hostname fallback (moses, esther)
 - `fleet_doctor/checks.py`: hostname only (moses, esther) — no env var read

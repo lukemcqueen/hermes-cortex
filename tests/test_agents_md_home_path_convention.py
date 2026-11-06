@@ -3,7 +3,7 @@
 
 TWO DIFFERENT DIRECTORIES SHARE THIS NAME:
 
-  ~/.steadfaste-fleet/    The RUNTIME infra dir. Deployed by cortex-update.sh —
+  ~/.steadfaste-fleet/    The RUNTIME infra dir. Deployed by fleet-update.sh —
                        scripts/, state/, sessions/, memory/, hooks/, and the
                        skills.yaml the governance enforcer reads. Always written
                        with the `~/` prefix.

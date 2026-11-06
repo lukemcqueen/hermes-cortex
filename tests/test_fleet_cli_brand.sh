@@ -85,10 +85,10 @@ else
   bad "residual old path refs:"; echo "$left"; fi
 
 # B2. deploy map: every fleet register source must exist; no old hc register may remain
-reg=$(grep -E 'register "ops/scripts/(hc|fleet)' "$REPO/ops/scripts/cortex-update.sh")
+reg=$(grep -E 'register "ops/scripts/(hc|fleet)' "$REPO/ops/scripts/fleet-update.sh")
 # flag ONLY the moved CLI package (ops/scripts/hc/{hc,harness,bin}); the gate tools
 # were renamed off the hc- prefix (reflexion-check.py / plan-review-check.py).
-if echo "$reg" | grep -qE 'register "ops/scripts/hc/(hc|harness|bin)'; then bad "cortex-update.sh still registers an ops/scripts/hc CLI source"; echo "$reg"; else ok "cortex-update.sh registers no old hc CLI source"; fi
+if echo "$reg" | grep -qE 'register "ops/scripts/hc/(hc|harness|bin)'; then bad "fleet-update.sh still registers an ops/scripts/hc CLI source"; echo "$reg"; else ok "fleet-update.sh registers no old hc CLI source"; fi
 while read -r line; do
   src=$(echo "$line" | sed -E 's/.*register "([^"]+)".*/\1/')
   [ -z "$src" ] && continue

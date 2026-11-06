@@ -34,7 +34,7 @@ so `add` printed "✅ Todo added" while the row vanished. Compounded by
 2. `todo-db.py --apply-schema` — applies `core/fleet_bus/schema/todos.sql`
    idempotently (CREATE TABLE IF NOT EXISTS + CREATE OR REPLACE FUNCTION),
    platform-aware: docker exec on Linux, direct psql via mycortex.conf on
-   macOS. cortex-update.sh runs it every update, **WARN not exit** — a fleet
+   macOS. fleet-update.sh runs it every update, **WARN not exit** — a fleet
    update must not be hostage to a peripheral DB; the idempotent schema
    retries next update.
 3. `dream-todo-bridge.py` (`ops/scripts/manage/`) — Option A: knowledge-gap
@@ -63,7 +63,7 @@ bus, unless this is intentional."** (Luke, 2026-08-06)
   false — workers just never had the table to notice.
 
 **Design direction (elicit/party in progress):** dedicated `todos` schema on
-per-host mycortex-postgres, applied by cortex-update.sh on every host,
+per-host mycortex-postgres, applied by fleet-update.sh on every host,
 `todo-db.py` + consumers referencing `todos.*` only. Rule of thumb going
 forward: `todos.*` = fleet-wide, `bus.*` = orchestrators only.
 

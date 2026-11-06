@@ -58,7 +58,7 @@ def test_the_check_is_registered_in_the_doctor_run_list():
 
 def test_the_module_is_registered_for_deploy():
     """An unregistered doctor module is absent on the host → ImportError at startup."""
-    update = (_REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+    update = (_REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
     assert "fleet_doctor/task_integrity.py" in update, (
         "task_integrity.py must be in the deploy register or the deployed doctor "
         "cannot import it")

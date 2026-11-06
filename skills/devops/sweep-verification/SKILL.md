@@ -83,7 +83,7 @@ committing). Prefer the repo's existing artifact extension (`.txt` here) and che
    - **Deleting a file without deleting its `register()` line is a doctor FAIL**
      (`Deploy source missing`). After the sweep, assert every registration still points
      at a real file: parse the `^register(?:_orch)?\s+"<source>"\s+"<dest>"` lines from
-     `ops/scripts/cortex-update.sh` and stat each source path. One missing source means
+     `ops/scripts/fleet-update.sh` and stat each source path. One missing source means
      either a leftover line to drop or a file to restore — never leave it standing, and
      re-run the doctor (it exits FAIL, so the push is blocked too).
    - **Deployed SKILLS are preserved, not pruned.** A skill deleted from the repo stays
@@ -171,7 +171,7 @@ discovering them in a later grep.
 6. **Validation tests exercise the DEPLOYED copy.** L2 fleet tests
    (test-task-fleet.sh, test-mycortex-schema.sh) run against
    `~/.steadfaste-fleet/scripts/`, not the repo. Unit tests pass against repo
-   source while L2 fails → the fix isn't deployed. Run `cortex-update.sh`
+   source while L2 fails → the fix isn't deployed. Run `fleet-update.sh`
    (ops/scripts/) before L2, then re-run.
 12. **A deployed file's frozen `# SOURCE:` header is the stale-file fingerprint.**
     Deployed `.py`/`.sh` carry a generated `# SOURCE: <repo-path>` header from the

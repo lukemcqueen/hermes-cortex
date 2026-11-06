@@ -32,12 +32,12 @@ is unowned and must be resolved by hand, never overwritten.
 
 ## Applying the migration on a host
 
-**You do not need to do this by hand.** `cortex-update.sh` runs the
+**You do not need to do this by hand.** `fleet-update.sh` runs the
 consolidation first, every time:
 
 ```bash
 cd ~/steadfaste-fleet && git pull --ff-only origin main
-bash ops/scripts/cortex-update.sh          # runs consolidate-env.sh, then deploys
+bash ops/scripts/fleet-update.sh          # runs consolidate-env.sh, then deploys
 ```
 
 `consolidate-env.sh` is idempotent and:
@@ -82,7 +82,7 @@ ls -la ~/steadfaste-fleet/.env ~/.steadfaste-fleet/.env
 The doctor reports:
 
 - `✅ cortex env — canonical ~/steadfaste-fleet/.env present (600); ~/.steadfaste-fleet/.env is the sanctioned symlink; cortex-bus.conf retired`
-- `❌ cortex env — <problem>; fix: run cortex-update.sh (it runs consolidate-env.sh)`
+- `❌ cortex env — <problem>; fix: run fleet-update.sh (it runs consolidate-env.sh)`
 
 ## What changed in the refactor (so you can implement it)
 
@@ -113,7 +113,7 @@ The doctor reports:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Doctor: `canonical ~/steadfaste-fleet/.env is MISSING` | fresh or legacy host | `bash ops/scripts/cortex-update.sh` |
+| Doctor: `canonical ~/steadfaste-fleet/.env is MISSING` | fresh or legacy host | `bash ops/scripts/fleet-update.sh` |
 | Doctor: `~/.steadfaste-fleet/.env is a REAL file` | an unowned real `.env` sits at the deploy-symlink path | resolve it by hand (check what it points to / where it came from), then `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh` |
 | Doctor: `~/.steadfaste-fleet/.env symlink is MISSING` | canonical exists but the sanctioned symlink is gone | `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh` |
 | Doctor: `retired cortex-bus.conf … remains` | old host not yet consolidated | `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh` |

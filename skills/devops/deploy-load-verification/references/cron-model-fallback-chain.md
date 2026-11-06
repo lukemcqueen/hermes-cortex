@@ -42,7 +42,7 @@ Target chain:
 Sequence that bit us:
 1. `hermes cron edit <id> --model deepseek-v4-flash-free --provider
    opencode-free` for all 21 LLM jobs → jobs.json correct (21/21).
-2. `cortex-update.sh` ran → **14 repo-managed crons reverted** to
+2. `fleet-update.sh` ran → **14 repo-managed crons reverted** to
    deepseek/deepseek-v4-flash.
 3. Cause: `install-crons.sh` drift-edit path calls `pin_cron_model`, which
    reads `ops/install/cron-manifest.yaml` FIRST; manifest model/provider WIN
@@ -114,7 +114,7 @@ EOF
 ## Fleet propagation gap (answer to "will all agents update?")
 
 - Repo files (manifest, docs) reach all agents via `agent-steadfaste-fleet-sync`
-  (daily pull) + `cortex-update.sh` deploy → their crons DO get repinned on
+  (daily pull) + `fleet-update.sh` deploy → their crons DO get repinned on
   next install-crons run (manifest wins).
 - BUT config.yaml `fallback_providers` is per-host **operator-owned** — it is
   not written by any cortex script (the env-driven writer was removed 2026-09-09),

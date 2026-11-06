@@ -101,7 +101,7 @@ Hermeticity: refuses `TEST_DB == "mycortex"`, scratch DB created/dropped via
 
 ## Deploy-path lesson
 
-cortex-update.sh is a pure file-copier — it CANNOT run DDL. The migrate.py
+fleet-update.sh is a pure file-copier — it CANNOT run DDL. The migrate.py
 runner is registered as a file AND invoked after file sync; a failure there
 fails the whole update loudly (`error` + `exit 1`), because a missing schema
 silently breaks every consumer. Deploying it was the first time the schema

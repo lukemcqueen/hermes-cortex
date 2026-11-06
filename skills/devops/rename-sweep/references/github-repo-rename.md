@@ -67,7 +67,7 @@ Patch URL lines WHOLE with the scheme; a token patch starting at
 
 Enforcement is cached in the process: editing the enforcer source does NOT
 change a running gateway's gate (it compiled the regex at import), and the
-running gate reads the DEPLOYED copy. Make the allowlist change, `cortex-update.sh`
+running gate reads the DEPLOYED copy. Make the allowlist change, `fleet-update.sh`
 to propagate it, then test a representative write — not before the deploy.
 
 The close-review self-adversarial gate judges CLAIMS in comments too: a

@@ -423,7 +423,7 @@ def _require_v2(feature: str) -> None:
     """Refuse a v2 feature when the tasks schema is older than v005."""
     if schema_version() < V2_MIN_SCHEMA:
         print(f"ERROR: {feature} requires tasks schema v{V2_MIN_SCHEMA}+ "
-              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              f"(found v{schema_version()}). Run: bash fleet-update.sh",
               file=sys.stderr)
         sys.exit(2)
 
@@ -432,7 +432,7 @@ def _require_v3(feature: str) -> None:
     """Refuse a v3 (v006-deferred) feature when schema is older than v008."""
     if schema_version() < V3_MIN_SCHEMA:
         print(f"ERROR: {feature} requires tasks schema v{V3_MIN_SCHEMA}+ "
-              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              f"(found v{schema_version()}). Run: bash fleet-update.sh",
               file=sys.stderr)
         sys.exit(2)
 
@@ -441,7 +441,7 @@ def _require_v4(feature: str) -> None:
     """Refuse a v4 (task model v3) feature when schema is older than v009."""
     if schema_version() < V4_MIN_SCHEMA:
         print(f"ERROR: {feature} requires tasks schema v{V4_MIN_SCHEMA}+ "
-              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              f"(found v{schema_version()}). Run: bash fleet-update.sh",
               file=sys.stderr)
         sys.exit(2)
 
@@ -455,7 +455,7 @@ def _require_v5(feature: str) -> None:
     """
     if schema_version() < V5_MIN_SCHEMA:
         print(f"ERROR: {feature} requires tasks schema v{V5_MIN_SCHEMA}+ "
-              f"(found v{schema_version()}). Run: bash cortex-update.sh",
+              f"(found v{schema_version()}). Run: bash fleet-update.sh",
               file=sys.stderr)
         sys.exit(2)
 
@@ -1604,7 +1604,7 @@ def cmd_prune(older_than: str):
 
 
 def _deploy_home() -> Path:
-    """The DEPLOYED tree's root — what cortex-update.sh syncs into."""
+    """The DEPLOYED tree's root — what fleet-update.sh syncs into."""
     return Path(os.environ.get("CORTEX_DEPLOY_HOME")
                 or (Path.home() / ".steadfaste-fleet"))
 
@@ -1621,8 +1621,8 @@ def _migrate_candidates() -> list[Path]:
     """Where the DDL runner may be found, IN PREFERENCE ORDER.
 
     The DEPLOYED tree comes first, and that order is load-bearing rather than
-    cosmetic: `cortex-update.sh:3298` applies `${CORTEX_DEPLOY_HOME}/services/
-    tasks/migrate.py`, and `cortex-update.sh:446` states the contract — "the
+    cosmetic: `fleet-update.sh:3298` applies `${CORTEX_DEPLOY_HOME}/services/
+    tasks/migrate.py`, and `fleet-update.sh:446` states the contract — "the
     register map IS the deploy. migrate.py discovers migrations by FILE — the
     repo applying cleanly proves nothing about any other host." A repo working
     tree is therefore only a FALLBACK for a host with nothing deployed; it must

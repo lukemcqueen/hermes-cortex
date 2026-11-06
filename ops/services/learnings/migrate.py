@@ -8,9 +8,9 @@ DDL-as-owner trust model. Applies SQL migrations from the sibling schema/
 directory to the shared mycortex-postgres database (the same instance that
 hosts the bus.* schema — the "bus Postgres" of the F-001 party doc).
 
-Invoked by cortex-update.sh AFTER file sync (cortex-update itself has no DDL
+Invoked by fleet-update.sh AFTER file sync (cortex-update itself has no DDL
 path — this runner is the DDL path, same as ops/services/tasks/migrate.py).
-Registered via register_orch in cortex-update.sh: only orchestrator hosts
+Registered via register_orch in fleet-update.sh: only orchestrator hosts
 (Moses/Esther) run the bus Postgres, so only they apply the learnings schema.
 Workers never have the bus schema (docs/bus-architecture.md role matrix) and
 write to the ledger via the HTTP collector path instead — they never need

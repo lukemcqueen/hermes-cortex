@@ -142,7 +142,7 @@ corrupts exactly the files that must keep it.
 ### 7. Verify, then commit -> deploy -> push
 
 Run the verification block below. Then the normal shared-repo chain:
-`commit` -> `cortex-update.sh` (deploy) -> `push`. The pre-push gate compares the
+`commit` -> `fleet-update.sh` (deploy) -> `push`. The pre-push gate compares the
 deployed copy against the repo, so **editing a deployed script shows as a
 checksum FAIL until you deploy** — that is a pending deploy, not breakage; do
 not "fix" it by reverting the edit.

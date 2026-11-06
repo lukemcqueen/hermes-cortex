@@ -5,7 +5,7 @@
 # Runs as a pre-commit hook add-on. Checks if staged changes to
 # docs/, ops/scripts/, skills/, ops/install/deploy/nginx/ are accompanied
 # by corresponding updates to DOCS-INDEX.md, SKILLS-MANIFEST.md,
-# or cortex-update.sh MAP.
+# or fleet-update.sh MAP.
 #
 # SILENT ON SUCCESS — only speaks when it finds problems.
 # No_agent watchdog pattern: stay quiet when clean.
@@ -97,12 +97,12 @@ if [[ "$SKILLS_CHANGED" -gt 0 ]]; then
     fi
 fi
 
-# ── Check 3: New/changed scripts should update cortex-update.sh MAP ──
+# ── Check 3: New/changed scripts should update fleet-update.sh MAP ──
 # Fixed 2026-08-24 (TitusClaude finding, verified): the registration check
 # only applies to the steadfaste-fleet repo. In project/client repos (client-av
 # etc.), ops/scripts/*.sh are read DIRECTLY by pre-commit-score from
 # $REPO_ROOT/ops/scripts/ — nothing is deployed fleet-wide, so demanding a
-# cortex-update.sh MAP entry is a false warning.
+# fleet-update.sh MAP entry is a false warning.
 IS_HC_REPO=0
 if [[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "${HOME}/steadfaste-fleet" ]]; then
   IS_HC_REPO=1
@@ -127,14 +127,14 @@ if [[ "$SCRIPTS_CHANGED" -gt 0 && "$MAP_CHANGED" -eq 0 ]]; then
         # a file that is merely MODIFIED is not a new script, and the previous version of this
         # check fired on every edit to any ops/scripts file that had no register() line.
         [[ "$(git diff --cached --name-status -- "$path" 2>/dev/null | cut -f1)" == A* ]] || continue
-        if ! grep -qF "register \"$path\"" ops/scripts/cortex-update.sh \
-           && ! grep -qF "register_orch \"$path\"" ops/scripts/cortex-update.sh; then
+        if ! grep -qF "register \"$path\"" ops/scripts/fleet-update.sh \
+           && ! grep -qF "register_orch \"$path\"" ops/scripts/fleet-update.sh; then
             NEW_SCRIPTS+="$path"$'\n'
         fi
     done < <(echo "$STAGED" | grep '^ops/scripts/' | grep -v '^ops/scripts/cortex-update\.sh$' || true)
     if [[ -n "$NEW_SCRIPTS" ]]; then
-        echo "⚠️  DOCS AUDIT: New scripts staged but cortex-update.sh MAP was not updated."
-        echo "   → Register new scripts in ops/scripts/cortex-update.sh using register()"
+        echo "⚠️  DOCS AUDIT: New scripts staged but fleet-update.sh MAP was not updated."
+        echo "   → Register new scripts in ops/scripts/fleet-update.sh using register()"
         issues=$((issues + 1))
     fi
 fi

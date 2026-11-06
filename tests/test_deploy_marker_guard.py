@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The deploy publishes its unlock window; the auditor must respect it — bounded.
 
-cortex-update.sh unlocks the immutable enforcement files early and relocks them at
+fleet-update.sh unlocks the immutable enforcement files early and relocks them at
 the END of the run, so that tree is legitimately writable for the whole deploy. An
 auditor sampling the flags inside that window reports a break that is not one.
 
@@ -26,7 +26,7 @@ from unittest import mock
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-UPDATE_SH = REPO / "ops/scripts/cortex-update.sh"
+UPDATE_SH = REPO / "ops/scripts/fleet-update.sh"
 AUDITOR_PY = REPO / "ops/scripts/manage/agent-governance-auditor.py"
 MARKER = Path.home() / ".steadfaste-fleet" / "state" / "deploy-in-progress"
 

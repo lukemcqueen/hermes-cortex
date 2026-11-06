@@ -192,7 +192,7 @@ and a merged skill serves better than two overlapping ones.
    the per-host override mechanism, and the harness reports it as a collision
    warning rather than an error. Renaming the local skill's `name:` to match its
    directory makes BOTH load and the override silently stops working.
-   `cortex-update.sh`'s stale pass preserves every `local-*` directory for the same
+   `fleet-update.sh`'s stale pass preserves every `local-*` directory for the same
    reason. A `local-*` skill that carries a real frontmatter defect (a duplicate
    key, a name outside the charset) is still broken, though — the collision is
    expected, the parse failure is not.

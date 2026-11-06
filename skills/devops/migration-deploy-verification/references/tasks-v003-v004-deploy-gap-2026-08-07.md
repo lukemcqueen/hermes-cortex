@@ -5,7 +5,7 @@
 Root-cause chain claimed:
 1. Live DB `task_upsert` still had old `WHEN 'cancelled' THEN 'done'` derivation
    → violates `tasks_check` (only permits 'done' with status='completed').
-2. cortex-update.sh registered only v001+v002 (lines 215-216); v003/v004
+2. fleet-update.sh registered only v001+v002 (lines 215-216); v003/v004
    missing from the deploy map; migrate.py (scanning the deployed dir) never
    applies them. "DB stuck at version 2."
 
@@ -30,7 +30,7 @@ durable fleet-wide bug. Verify the live DB before trusting the narrative.
 
 ```bash
 # Deploy map (link 2):
-grep -n "v00[0-9]" ops/scripts/cortex-update.sh
+grep -n "v00[0-9]" ops/scripts/fleet-update.sh
 # → only v001, v002 for tasks; mycortex had v002/v003/v004 registered (sibling
 #   service registered ALL its migrations — the pattern to copy)
 
@@ -52,7 +52,7 @@ with exact single spaces.
 
 ## The fix
 
-Added to `ops/scripts/cortex-update.sh` after the v002 line:
+Added to `ops/scripts/fleet-update.sh` after the v002 line:
 
 ```bash
 register "ops/services/tasks/schema/v003__cancel-column-null.sql" "${CORTEX_DEPLOY_HOME}/services/tasks/schema/v003__cancel-column-null.sql"
@@ -70,9 +70,9 @@ Also fixed stale "v001+v002" comments in `tests/test-tasks-schema.sh` (header
   → psql row check: `cancelled||` (column NULL, no CHECK violation).
   Cleanup: `task-db.py save-end` archived it; probe rows deleted from
   `tasks.task_archive`.
-- Re-deploy attack test: ran cortex-update.sh twice; v003/v004 persisted in
+- Re-deploy attack test: ran fleet-update.sh twice; v003/v004 persisted in
   the deployed dir; migrate.py reported "version 4 — no-op".
-- A4 adversarial gates passed on both changed files (cortex-update.sh is an
+- A4 adversarial gates passed on both changed files (fleet-update.sh is an
   enforcement script → A4; tests/ → A4). Pre-push gate required
   `adversarial-verifier` skill loaded.
 - Doctor: 303 pass · 2 warn · 0 fail (warns pre-existing: AGENTS.md size,

@@ -97,7 +97,7 @@ def test_scope_guard_rejects_subdirectory_of_foreign_repo():
 # macOS (Darwin) locks via `chflags uchg`, which needs NO root. A bare `sudo`
 # there prompts for a password mid-commit and HANGS the hook. Linux needs root
 # (`chattr +i`) and must use `sudo -n` so a missing NOPASSWD rule fails fast
-# instead of prompting. Same pattern as cortex-update.sh's lock handling.
+# instead of prompting. Same pattern as fleet-update.sh's lock handling.
 
 def test_autodeploy_does_not_use_bare_sudo():
     """A bare interactive `sudo` would hang commits (macOS then, Linux prompts)."""

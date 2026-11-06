@@ -60,7 +60,7 @@ for d in ops/install ops/install/deploy ops/scripts/install ops/scripts/health \
          ops/scripts/agent docs/install; do
   [ -d "$d" ] && grep -rni '<old-name>' "$d" 2>/dev/null
 done
-# also cortex-update.sh register/unregister blocks and
+# also fleet-update.sh register/unregister blocks and
 # fleet_doctor/checks.py (its remediation hints still name old units)
 ```
 
@@ -83,7 +83,7 @@ reference the **systemd unit name**, not the repo file, and are correct to
 keep. Prove the repo file is safe to delete:
 
 ```bash
-grep -rn '<unit>' ops/scripts/cortex-update.sh ops/install/install.sh
+grep -rn '<unit>' ops/scripts/fleet-update.sh ops/install/install.sh
 # if nothing deploys/copies it → git rm is safe
 ```
 
@@ -139,7 +139,7 @@ governance violation. Non-orchestrators:
   running, not reading.
 - **`.tgz` Ollama URLs** are dead — the release format became `.tar.zst`.
 - **Don't grep only `ops/install/`** for a stale name — the same string lives
-  in health scripts, agent orch scripts, doctor checks, and `cortex-update.sh`.
+  in health scripts, agent orch scripts, doctor checks, and `fleet-update.sh`.
 - **Orchestrator-only blocks are not bugs** — expect the commit to refuse on a
   non-orchestrator host and hand off with the stage intact.
 - **Pre-existing test failures** (missing `yaml`, unrelated module import

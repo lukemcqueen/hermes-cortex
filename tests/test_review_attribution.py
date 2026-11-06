@@ -4,7 +4,7 @@
 Luke (2026-10-02): "The adversarial reviewer is structurally misattributing esther's
 upstream work to my cycle" (Titus). His lock window (lock start → HEAD) held commits
 that a pull brought in — MY edits to the always-review paths (mcp-servers/loop-gov-mcp.py,
-ops/scripts/cortex-update.sh). The reviewer read that diff, charged it to him, and
+ops/scripts/fleet-update.sh). The reviewer read that diff, charged it to him, and
 rejected his (real) evidence as fabrication. Retries re-rolled the same verdict.
 
 Two structural causes, both fixed here and both asserted against a REAL git repo:

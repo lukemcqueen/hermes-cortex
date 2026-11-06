@@ -135,7 +135,7 @@ GATE_CHECKS = {
             {"id": "doc_updated", "desc": "All docs referencing changed system updated"},
             {"id": "syntax_valid", "desc": "Syntax check passes"},
             {"id": "doctor_clean", "desc": "cortex-doctor --quiet: 0 failures"},
-            {"id": "pushed_deployed", "desc": "git push + cortex-update.sh deployed"},
+            {"id": "pushed_deployed", "desc": "git push + fleet-update.sh deployed"},
         ],
         "blocking": True,
         "next": "complete",

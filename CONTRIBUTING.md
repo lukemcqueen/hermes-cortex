@@ -22,7 +22,7 @@
 - **Deployment configs** in `deploy/` — nginx, Docker, patches
 - **Service/agent infra** in `ops/services/` (cortex-bus, dashboard) and `mcp-servers/` (cortex-bus-mcp, loop-governance)
 
-When you make an improvement here, every agent running `cortex-update.sh` gets it
+When you make an improvement here, every agent running `fleet-update.sh` gets it
 on their next pull. This is the force multiplier.
 
 ## Before You Start — Load These Skills
@@ -108,7 +108,7 @@ this same turn, you can skip this step.
 
 | Type | Home | Also register in |
 |------|------|-----------------|
-| Source script | `ops/scripts/<kebab-name>.py` or `.sh` | `cortex-update.sh` MAP (see MAP format below) |
+| Source script | `ops/scripts/<kebab-name>.py` or `.sh` | `fleet-update.sh` MAP (see MAP format below) |
 || Canonical skill | `skills/<category>/<name>/SKILL.md` | `docs/SKILLS-MANIFEST.md` |
 | Documentation | `docs/<slug>.md` | `docs/DOCS-INDEX.md` |
 | Config template | `docs/templates/<name>` | — |
@@ -151,7 +151,7 @@ Platform guides: [`docs/linux-service-layer.md`](docs/linux-service-layer.md), [
 #### Cortex-Update.sh MAP Registration
 
 If you add a script that needs deployment to `~/.steadfaste-fleet/scripts/`, register
-it in `cortex-update.sh`:
+it in `fleet-update.sh`:
 
 ```bash
 # Format:
@@ -159,7 +159,7 @@ register "ops/scripts/your-script.py" \
   "${HERMES_HOME}/scripts/your-script.py"
 ```
 
-The MAP is at the top of `cortex-update.sh`, after the `register()` function.
+The MAP is at the top of `fleet-update.sh`, after the `register()` function.
 Entries are grouped by destination directory. Insert your entry in the correct
 alphabetical position within its group.
 
@@ -198,7 +198,7 @@ You must answer **NO** to ALL of these before proceeding:
 
 | Question | If YES → |
 |----------|----------|
-| | Did you create or modify a **file** in `ops/scripts/`, `skills/`, or `deploy/`? | Update `cortex-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
+| | Did you create or modify a **file** in `ops/scripts/`, `skills/`, or `deploy/`? | Update `fleet-update.sh` MAP or `docs/SKILLS-MANIFEST.md` |
 | Did you create or modify a **documentation file** (any `.md` in `docs/`)? | Update `docs/DOCS-INDEX.md` with new/changed entry |
 | Did you add a **new configuration template**? | Add to `docs/DOCS-INDEX.md` under Templates |
 | Did you add a **service or daemon**? | Update `docs/linux-service-layer.md` or `docs/macos-service-layer.md` fleet service map |
@@ -328,7 +328,7 @@ mcp__loop_governance__end_change(task_id="<your-task-id>")
 | Contribution | Where it goes | Agent benefit |
 |-------------|---------------|---------------|
 || **New canonical skill** | `skills/<category>/<name>/SKILL.md` | Every agent can load your workflow |
-| **New script** | `ops/scripts/<name>.py` + MAP in cortex-update.sh | Every agent gets the tool on `cortex-update` |
+| **New script** | `ops/scripts/<name>.py` + MAP in fleet-update.sh | Every agent gets the tool on `cortex-update` |
 | **Docs improvement** | `docs/<slug>.md` + DOCS-INDEX.md | Every agent can discover and read it |
 | **Bug fix** | Same location as the bug | Every agent stops hitting the same bug |
 | **Cron job** | Document in AGENTS.md or as install-crons.sh entry | Shared maintenance automation |
@@ -349,7 +349,7 @@ mcp__loop_governance__end_change(task_id="<your-task-id>")
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
 | **Skipping survey-before-action** | Created `check-agents.py` when `agents-doc-audit.py` already exists | Always search first — 15 seconds saves 15 minutes |
-| **Forgetting cortex-update.sh MAP** | Script exists in repo but never deploys | Register new scripts in the MAP immediately |
+| **Forgetting fleet-update.sh MAP** | Script exists in repo but never deploys | Register new scripts in the MAP immediately |
 | **Not genericizing PII** | Real domain in public repo | Apply genericization transforms before commit |
 | **Skipping end-to-end test** | `$HOME` literal string in cron workdir, cron fails silently | Run the actual CLI to verify before push |
 | **Stale bus instructions** | Told another agent to use a path you just renamed | Audit post-push communications (Step 9) |
@@ -358,9 +358,9 @@ mcp__loop_governance__end_change(task_id="<your-task-id>")
 | **Wrong naming** | Skill directory `my-skill` but SKILL.md has `name: My Skill` | Directory name must match `name:` in frontmatter |
 | **Forgetting DOCS-INDEX.md / SKILLS-MANIFEST.md** | New doc/skill exists but isn't discoverable | Always update the index |
 
-## Reference: File Map (from cortex-update.sh)
+## Reference: File Map (from fleet-update.sh)
 
-The `cortex-update.sh` MAP defines where files are deployed. When adding a file
+The `fleet-update.sh` MAP defines where files are deployed. When adding a file
 that needs to be installed on agent machines, register it here:
 
 | Repo path → | Installed path |
@@ -374,7 +374,7 @@ that needs to be installed on agent machines, register it here:
 | `docs/` | Read from repo (no deployment needed) |
 | `install.sh` | `~/.steadfaste-fleet/install.sh` |
 
-> **Note:** Skills from `skills/` are symlinked during `cortex-update.sh` to
+> **Note:** Skills from `skills/` are symlinked during `fleet-update.sh` to
 > `~/.hermes/skills/<category>/<name>/`. The skill_loader loads from
 > `~/.hermes/skills/` — the symlink makes the repo the source of truth.
 

@@ -14,7 +14,7 @@ Exit codes: 0 = fresh, 1 = would change (stale), 2 = usage error, 3 = COULD NOT
 VERIFY (no interpreter with PyYAML). A caller must never read 3 as "stale" -
 that mistake made the pre-commit doc audit accuse a fresh manifest.
 
-Registered in cortex-update.sh + wired into pre-commit-doc-audit.sh Check 2
+Registered in fleet-update.sh + wired into pre-commit-doc-audit.sh Check 2
 as the freshness gate: any staged skills/ change triggers --check.
 """
 from __future__ import annotations

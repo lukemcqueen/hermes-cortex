@@ -10,7 +10,7 @@ platforms: [linux, macos]
 
 # Cortex Deployment Sync
 
-**Class of task:** any "pull latest", "cortex update", "update from repo", or repo→runtime deployment operation on a Steadfaste Fleet machine. Also covers diagnosing why `cortex-update.sh` FAILED on specific files.
+**Class of task:** any "pull latest", "cortex update", "update from repo", or repo→runtime deployment operation on a Steadfaste Fleet machine. Also covers diagnosing why `fleet-update.sh` FAILED on specific files.
 
 ## ⚡ THE SANCTIONED INVOCATION (2026-08-04 — supersedes 2026-07-31 guidance)
 
@@ -19,8 +19,8 @@ the EXACT deploy invocation through the terminal gate WITHOUT a governance
 lock — this is the lock-free self-recovery that breaks the DOGFOOD deadlock:
 
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh            # canonical (bash prefix OK)
-~/steadfaste-fleet/ops/scripts/cortex-update.sh                  # also sanctioned (no prefix)
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh            # canonical (bash prefix OK)
+~/steadfaste-fleet/ops/scripts/fleet-update.sh                  # also sanctioned (no prefix)
 # allowlisted flags ONLY: --dry-run --status --delta --clean-stale
 ```
 
@@ -47,14 +47,14 @@ restart needed". If a deploy prints the unverifiable banner plus warnings like
 failed`, the check itself is broken (missing tool, wrong ps pattern, weird
 date) — investigate those warnings; do not assume the enforcer is current.
 
-**Use `cortex-update.sh` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
+**Use `fleet-update.sh` only when the delta engine skips files that should re-deploy** — plain run is the safe default.
 
 ## The proper sequence (user directive, 2026-07-31)
 
 > "Whenever there's a governance mechanism change you NEED to cortex update as this is the proper path. no shortcuts."
 
 1. `git pull --rebase origin main` — resolve conflicts (see Pitfall 2). If unstaged changes block the rebase, use `git pull --rebase --autostash origin main`.
-2. **`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`** — the sanctioned lock-free invocation (see ⚡ above)
+2. **`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`** — the sanctioned lock-free invocation (see ⚡ above)
 3. Doctor output is embedded in the update; fix every ❌ (score PENDING cycles, verify governance deployed)
 4. Re-run step 2 if the doctor reported failures, until it's clean (0 fail)
 5. **Triage the warnings — `0 fail` is the bar for the UPDATE, not a licence to ignore the rest.**
@@ -93,7 +93,7 @@ date) — investigate those warnings; do not assume the enforcer is current.
 
 ## Invoke the deploy so it survives the terminal timeout — background + log redirect
 
-A foreground `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh | tail -60`
+A foreground `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh | tail -60`
 can be KILLED by the terminal tool's foreground timeout (300s) mid-deploy: a real
 cortex-update run lasts roughly 5–8 minutes (cron registration + several doctor
 passes), so it crosses the cap long before finishing. The process dies, the `| tail`
@@ -106,7 +106,7 @@ scratch, and append a real rc so you can read the verdict from the log:
 
 ```bash
 # background=true, notify=true
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh \
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh \
   > ~/.hermes/cache/scratch/cortex-update-<stamp>.log 2>&1
 echo "EXIT=$?" >> ~/.hermes/cache/scratch/cortex-update-<stamp>.log
 ```
@@ -130,13 +130,13 @@ Deployed governance files carry `chattr +i` (Linux) / `chflags uchg` (macOS):
 - `~/.steadfaste-fleet/hooks/post-merge`
 - `~/.steadfaste-fleet/scripts/{pre-commit-score,pre-push-pull,post-commit-audit,post-push-audit}`
 
-Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag survives `chmod`. `cortex-update.sh` handles the full **unlock → copy → re-lock** cycle via `sudo hermes-plugin-lock` (requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`).
+Manual `chmod`/`cp` fails with `Operation not permitted` — the `i` flag survives `chmod`. `fleet-update.sh` handles the full **unlock → copy → re-lock** cycle via `sudo hermes-plugin-lock` (requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`).
 
 **Detect:**
 ```bash
 # cortex-update prints "FAILED: <path>" per immutable filelsattr ~/.hermes/plugins/governance-enforcer/__init__.py   # ----i---------e-------  ← immutable
 sudo -n hermes-plugin-lock unlock                          # clears the flags
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh          # deploy — the ONE sanctioned form
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh          # deploy — the ONE sanctioned form
 # verify: diff deployed vs repo = empty, plugin enabled, immutable re-applied
 ```
 
@@ -144,10 +144,10 @@ bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh          # deploy — the O
 
 When the repo's enforcer is newer than the deployed one (Moses pushed), `begin_change` fails with **DOGFOOD REQUIRED** — and the DOGFOOD gate refuses to create a governance lock (it returns BEFORE lock creation). Under the fail-closed terminal policy, every command except the sanctioned one is write-class → blocked without a lock. **Fixed 2026-08-04:** the enforcer's `_is_sanctioned_cortex_update_command()` allows the EXACT deploy command through without a governance lock, so the designed order is:
 
-1. `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (sanctioned lock-free — deploys the new enforcer)
+1. `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` (sanctioned lock-free — deploys the new enforcer)
 2. THEN `begin_change()` (dogfood gate now passes, repo == deployed)
 
-Do NOT try to `cp` the enforcer file manually (blocked + violates the immutable-deploy rule), do NOT loop retrying `sudo hermes-plugin-lock` forms (write-class, needs a lock — the sanctioned exception covers only the exact cortex-update.sh invocation). Symptom on 2026-07-31: 8+ failed attempts across `bash`, `cp`, `python3 -c` before the fix landed; since 2026-08-04 the bare sanctioned command runs clean.
+Do NOT try to `cp` the enforcer file manually (blocked + violates the immutable-deploy rule), do NOT loop retrying `sudo hermes-plugin-lock` forms (write-class, needs a lock — the sanctioned exception covers only the exact fleet-update.sh invocation). Symptom on 2026-07-31: 8+ failed attempts across `bash`, `cp`, `python3 -c` before the fix landed; since 2026-08-04 the bare sanctioned command runs clean.
 
 **⚠️ Deploy ≠ load:** after deploying, the RUNNING gateway keeps the OLD enforcer in memory until `hermes gateway restart` (agent-blocked — the host operator runs it). If the sanctioned command still returns GOVERNANCE LOCK REQUIRED after a deploy, that is a pending restart, not a code bug — do not loop; ask the operator.
 
@@ -183,10 +183,10 @@ Do NOT edit no-verify-log.json (audit tampering). Do NOT `git push --no-verify`.
 The terminal tool's gateway lifecycle guard (`lifecycle_guard.py`) scans **the
 content of referenced shell scripts** — not just the command string — for
 `hermes gateway restart|stop` (case-insensitive regex, code AND comments).
-If you add a banner/echo/message containing that literal to `cortex-update.sh`
+If you add a banner/echo/message containing that literal to `fleet-update.sh`
 (or any script invoked via `bash <script>` from the terminal), the guard
 blocks **every** invocation of that script — including the sanctioned
-lock-free deploy command itself (`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`
+lock-free deploy command itself (`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`
 returns "Blocked: command or referenced script cannot restart or stop the
 gateway"). The script becomes undeployable until the literal is removed.
 Hit 2026-08-05 (Esther): a "loud restart warning" banner embedded
@@ -219,7 +219,7 @@ restart requirements — same rule applies. The regex branches:
 
 ## Pitfall 13: A peer's deploy holds the mutex — stand down, don't fight it
 
-`cortex-update.sh` guards itself with a mutex and prints
+`fleet-update.sh` guards itself with a mutex and prints
 `cortex-update mutex held: another deploy is running (~/.steadfaste-fleet/state/cortex-update.lock)`
 then exits non-zero, followed by `relock ran on a FAILED exit (rc=1) — enforcement files
 re-secured` (the fail-safe doing its job, not a second fault). The lock FILE's mtime is useless
@@ -238,7 +238,7 @@ run.
   interleaved unlock/relock cycles are how enforcement files end up WRITABLE.
 - **Verify the peer's deploy instead of re-running yours** — doctor reads `Deploy sync — deployed
   commit matches HEAD`. Your own source edits then show as
-  `Checksum: <file> — MD5 mismatch … Run: cortex-update.sh to resync`: those FAILs are the pending
+  `Checksum: <file> — MD5 mismatch … Run: fleet-update.sh to resync`: those FAILs are the pending
   resync for YOUR uncommitted work, not a defect you introduced.
 - **Do not commit into a tree a peer is mid-cycle in.** Its close window is `base..HEAD`, so your
   commit lands in its review range as scope drift; commit once it has landed.
@@ -247,7 +247,7 @@ run.
 
 The foreground terminal tool kills a command at its timeout (180s) and returns exit
 124, but the pull itself may have completed the fast-forward while the POST-MERGE
-HOOK was still running cortex-update.sh (5–8 min) in the same call — that is why a
+HOOK was still running fleet-update.sh (5–8 min) in the same call — that is why a
 pull on this repo is slow, and why a timed-out pull is not necessarily a failed one.
 Before re-pulling or diagnosing: `git log --oneline -1` (did HEAD advance to
 origin/main?), `git status -sb` (in sync?), `ps -eo pid,etime,args | grep
@@ -282,7 +282,7 @@ After pulls, local `main` typically carries `auto: block N suspect IPs [pipeline
 ## Pitfall 26: A RENAME leaves the old deployed files behind as `Stale deploy` orphans
 
 When a CLI/script is renamed, the deploy map gains a `register()` for the NEW name
-and drops the old one — but `cortex-update.sh` only deploys what is registered; it
+and drops the old one — but `fleet-update.sh` only deploys what is registered; it
 does NOT remove a previously-deployed file whose `register()` line is gone unless the
 `clean_stale_deploys()` pass recognises it. The result is the doctor reporting both
 the new tool ✅ AND `⚠️  Stale deploy: scripts/<old-name>.py`, permanently, on every
@@ -306,7 +306,7 @@ head -3 ~/.steadfaste-fleet/scripts/<old>.py       # a SOURCE: header with a GON
 git -C ~/steadfaste-fleet ls-files 'ops/scripts/<old>/<old>.py'   # empty = the source moved/vanished
 
 # 3. Is the OLD name still registered anywhere in the deploy map?
-grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # 0 = not registered = orphan
+grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/fleet-update.sh   # 0 = not registered = orphan
 
 # 4. Does anything LIVE still call the old name, or exec it?
 grep -rln '<old>\.py' ~/.steadfaste-fleet/scripts/ ~/.hermes/skills/ ~/steadfaste-fleet/skills/ \
@@ -361,7 +361,7 @@ last UPDATE_REQUEST dispatched to it — so after a run of pushes the whole flee
 **Remediation depends on the ahead count** — classify first:
 
 - `behind > 0, ahead == 0` → fast-forward. `fleet exec <agent> git-main-sync.sh`; its
-  post-merge hook re-runs `cortex-update.sh`, so the stale DEPLOYED tree is repaired in
+  post-merge hook re-runs `fleet-update.sh`, so the stale DEPLOYED tree is repaired in
   the same pass (verified: 53 behind → `0 behind, 0 ahead`, drift audit 31 items → exit 0).
 - `ahead > 0` → DIVERGENT: a pull is a merge, and the local commits may be someone's
   work in progress. Do not pull reflexively; escalate with the exact commands.
@@ -372,7 +372,7 @@ audit — otherwise the audit keeps certifying stale hosts as clean.
 
 ## Pitfall 4: cortex-update cleans stale governance locks
 
-`cortex-update.sh` runs a stale-lock cleanup at the end — it removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`). A **fresh** session-scoped v2 lock survives a deploy (macOS: before 2026-08-10 the GNU-only `date -d` + `|| echo 0` fallback deleted EVERY lock on every deploy; now portable python3 + fail-safe skip). If your lock is gone after a deploy:
+`fleet-update.sh` runs a stale-lock cleanup at the end — it removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`). A **fresh** session-scoped v2 lock survives a deploy (macOS: before 2026-08-10 the GNU-only `date -d` + `|| echo 0` fallback deleted EVERY lock on every deploy; now portable python3 + fail-safe skip). If your lock is gone after a deploy:
 1. Re-acquire: `begin_change()`
 2. Score all PENDING cycles: `cycle_query` → `feedback_accept`
 3. `end_change()`
@@ -381,7 +381,7 @@ Otherwise the doctor FAILs on "PENDING cycles". Note the lock file path reuses t
 
 ## Pitfall 5: Don't over-fix — follow the repo
 
-Doctor warnings that are NOT failures: `SOUL.md reverse drift` (agent profile differs from template — expected), `Skill drift` (a deployed skill carries content the repo lacks) is a STRANDED LESSON, not a warning to wave through: `cortex-update.sh` ends by telling you to copy those changes back and ships no tool to do it, and until they land the fleet never gets the lesson. Resolve it — see "When the update reports stranded deployed-only skills" below. When the user says "DO NOT UPDATE SOURCE", accept warnings as-is and leave repo files untouched. Only ❌ failures (PENDING cycles, missing governance deploy, hook drift) require action.
+Doctor warnings that are NOT failures: `SOUL.md reverse drift` (agent profile differs from template — expected), `Skill drift` (a deployed skill carries content the repo lacks) is a STRANDED LESSON, not a warning to wave through: `fleet-update.sh` ends by telling you to copy those changes back and ships no tool to do it, and until they land the fleet never gets the lesson. Resolve it — see "When the update reports stranded deployed-only skills" below. When the user says "DO NOT UPDATE SOURCE", accept warnings as-is and leave repo files untouched. Only ❌ failures (PENDING cycles, missing governance deploy, hook drift) require action.
 
 ## Pitfall 6: Stash before pull if you hold uncommitted orchestrator-only edits
 
@@ -428,7 +428,7 @@ will land via `hermes update`, not a local patch.
 
 ## When the update reports stranded deployed-only skills
 
-`cortex-update.sh` ends with **"Copy the deployed changes to the repo source first,
+`fleet-update.sh` ends with **"Copy the deployed changes to the repo source first,
 then commit"** for every file the drift detector calls STRANDED: a deployed skill
 whose content appears in neither the repo working tree nor any committed revision — a
 lesson written on this host that the deploy's guardrail refuses to overwrite. The
@@ -572,7 +572,7 @@ servers reload or the gateway restarts mid-run. The log shows `UPDATE_EXIT=143` 
 after the cron-summary block — and the fail-safe re-locks the enforcement files, so
 `lsattr` reads as if it were clean. 143 is not a normal verdict: the deploy reached the
 cron-summary stage but the doctor/verification passes never completed. Re-run the
-sanctioned `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` and read the doctor's OWN
+sanctioned `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` and read the doctor's OWN
 `Overall:` line (504 pass · 8 warn · 0 fail) plus `UPDATE_EXIT=0` before calling it done.
 A SIGTERM'd run's "crons up to date" summary is not a clean deploy.
 
@@ -640,7 +640,7 @@ the deploy verdict you were trying to read. Use a distinct stamp per run
 A plain `diff`/`md5sum` between repo source and the deployed copy is ALWAYS non-empty for the
 files the deploy wraps: it prepends a provenance header (`# SOURCE: <repo path>`, a do-not-edit
 line, and a rewritten interpreter line) before copying. So a checksum mismatch on its own proves
-NOTHING either way, and the doctor's `Checksum: <file> — MD5 mismatch … Run: cortex-update.sh to
+NOTHING either way, and the doctor's `Checksum: <file> — MD5 mismatch … Run: fleet-update.sh to
 resync` line cannot be told from a real pending resync by eye. Compare the body, after stripping
 the header:
 
@@ -702,7 +702,7 @@ ls -la ~/.steadfaste-fleet/<path-to-module>.py           # when the DEPLOYED cop
 
 Deployed governance files are immutable (`chattr +i`); there is no agent-side rollback. If a deploy broke something:
 1. `git checkout HEAD~1 -- <path>` in `~/steadfaste-fleet` to revert repo source
-2. Commit + push, then re-run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` to redeploy the previous version
+2. Commit + push, then re-run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` to redeploy the previous version
 3. If the gateway itself misbehaves, escalate to the host operator for a restart
 
 ## References

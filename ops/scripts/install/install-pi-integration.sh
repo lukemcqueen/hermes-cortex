@@ -139,7 +139,7 @@ if [[ ! -d "$PUBLISHED_SKILLS" ]]; then
   echo "install-pi-integration: the published skills tree is missing." >&2
   echo "  Looked for: ${PUBLISHED_SKILLS/${HOME}/~}" >&2
   echo "  Cortex OWNS the library; the published tree is what every harness reads." >&2
-  echo "  Fix: python3 ops/scripts/manage/publish-agent-skills.py   (or run cortex-update.sh)" >&2
+  echo "  Fix: python3 ops/scripts/manage/publish-agent-skills.py   (or run fleet-update.sh)" >&2
   exit 1
 fi
 
@@ -149,7 +149,7 @@ if [[ "$MODE" != "remove" && ( -z "$EXTENSION" || -z "$GOVERNANCE_EXTENSION" ) ]
   echo "  cortex-governance.ts : ${GOVERNANCE_EXTENSION:-MISSING}" >&2
   echo "  Both are required — the second is what gates pi's native write tools," >&2
   echo "  and registering only one would look wired while leaving writes open." >&2
-  echo "  Fix: run cortex-update.sh, then this script." >&2
+  echo "  Fix: run fleet-update.sh, then this script." >&2
   exit 1
 fi
 

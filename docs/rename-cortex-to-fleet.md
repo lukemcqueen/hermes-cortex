@@ -47,7 +47,7 @@ except the deliberately-repointed artifacts below.
   `docs/evidence/cortex-to-fleet-scope-2026-11-06.*` / `-worktree-2026-11-06.*` artifacts — a
   blanket replace inverts their `old → new` mapping lines to `new → new`.
 - **One-release shims**: the `cortex_<pkg>/__init__.py` re-export shims (P2) and the
-  `cortex-update.sh` forwarding shim (P3) must keep the old token while their release window is
+  `fleet-update.sh` forwarding shim (P3) must keep the old token while their release window is
   open — that is their job.
 - **Detection/report messages** whose subject is the old name (doctor "stray …", enforcer brand
   allow-list entry).

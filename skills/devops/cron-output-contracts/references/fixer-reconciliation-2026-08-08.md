@@ -8,8 +8,8 @@ self-healing loop. The two fixers `agent-remediate-apply` and
 
 | Cron | Input | Handlers | Deploy |
 |------|-------|----------|--------|
-| `agent-remediate-apply` (no_agent, 10m, deliver origin) | Sensor cron output dir `~/.hermes/cron/output/<id>/` | Own `fix_*` functions (nginx, service, disk, ollama, web_cache) | Registered in cortex-update.sh |
-| `agent-apply-fixes` (no_agent, 10m, deliver local) | Marker files `~/.steadfaste-fleet/state/remediate/inbox-*.txt` | **Dynamically imported the SAME `fix_*` functions from agent-remediate-apply.py** | NOT registered in cortex-update.sh |
+| `agent-remediate-apply` (no_agent, 10m, deliver origin) | Sensor cron output dir `~/.hermes/cron/output/<id>/` | Own `fix_*` functions (nginx, service, disk, ollama, web_cache) | Registered in fleet-update.sh |
+| `agent-apply-fixes` (no_agent, 10m, deliver local) | Marker files `~/.steadfaste-fleet/state/remediate/inbox-*.txt` | **Dynamically imported the SAME `fix_*` functions from agent-remediate-apply.py** | NOT registered in fleet-update.sh |
 
 ## Root cause 1 — hardcoded job id (the real bug)
 
@@ -34,7 +34,7 @@ output dir was fresh) so nothing flagged it.
 - Its marker input `~/.steadfaste-fleet/state/remediate/inbox-*.txt` was empty
   since **Jul 20** (dir mtime) — nothing wrote markers anymore.
 - Deployed copy was a **Jul 23** artifact in `~/.hermes/scripts/` — the
-  script had no `register()` in cortex-update.sh, so it never updated.
+  script had no `register()` in fleet-update.sh, so it never updated.
 - It shared the same fix handlers via dynamic import → true duplication.
 
 **Zombie detection checklist used:** (1) producer still writes? no.
@@ -46,7 +46,7 @@ output dir was fresh) so nothing flagged it.
 1. `cronjob action='remove'` (job `2290a7ccc803`)
 2. `install-crons.sh`: removed `create_cron "agent-apply-fixes"` block +
    uninstall-array entry
-3. `cortex-update.sh`: removed the `register(...agent-apply-fixes.py...)` line
+3. `fleet-update.sh`: removed the `register(...agent-apply-fixes.py...)` line
 4. `agent-stale-ref-watchdog.sh`: removed from `CRON_SCRIPTS` array
 5. Deployed copies removed (`~/.hermes/scripts/`, `~/.steadfaste-fleet/scripts/`)
    + `git rm ops/scripts/agent/agent-apply-fixes.py`
@@ -66,7 +66,7 @@ output dir was fresh) so nothing flagged it.
 4. `adversarial-verify.py --file ... --level A2 --gate` → GATE_PASSED
    (3 pre-existing mediums: `shell=True` in run_cmd — accepted cron-runtime
    pattern, not from the edit)
-5. Commit → `cortex-update.sh` (deploy; purges governance lock) →
+5. Commit → `fleet-update.sh` (deploy; purges governance lock) →
    re-acquire lock → push (pre-push needs: doctor clean = deploy sync, and
    `adversarial-verifier` skill loaded)
 6. `cronjob action='run'` on `agent-remediate-apply` → `last_status: ok`

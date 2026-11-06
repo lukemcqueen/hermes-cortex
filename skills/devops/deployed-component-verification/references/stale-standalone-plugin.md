@@ -44,7 +44,7 @@ rm -rf ~/.hermes/plugins/<name>
 ln -sf ~/steadfaste-fleet/plugins/<source-name> ~/.hermes/plugins/<name>
 
 # 4. Re-deploy (converts symlink to locked copy)
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
 ## Prevention

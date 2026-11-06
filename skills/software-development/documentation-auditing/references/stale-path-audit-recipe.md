@@ -48,7 +48,7 @@ ls ~/steadfaste-fleet/ops/install/deploy/nginx/ 2>&1
 
 | Severity | Criteria | Examples |
 |----------|----------|---------|
-| **High** | Command in code block using stale path — will fail if run | `bash src/scripts/cortex-update.sh` in migration doc |
+| **High** | Command in code block using stale path — will fail if run | `bash src/scripts/fleet-update.sh` in migration doc |
 | **Medium** | Reader-directed path reference that resolves to nowhere | ``Edit `deploy/docker-compose.langfuse.yml` `` when deploy/ is gone |
 | **Low** | Template example, user story AC, conceptual placeholder | `src/auth/middleware.py` in task contract template |
 

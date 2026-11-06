@@ -17,7 +17,7 @@ to keep the root agent guidelines focused on general Steadfaste Fleet usage.
 
 | Tool | Min version | Used by (steadfaste-fleet function) | Install |
 |------|-------------|----------------------------------|---------|
-| `bash` | 4.0+ | `cortex-update.sh` (all deploy logic) | Linux: package manager · macOS: `brew install bash` |
+| `bash` | 4.0+ | `fleet-update.sh` (all deploy logic) | Linux: package manager · macOS: `brew install bash` |
 | `python3` | 3.10+ | Everything — `contact-orchestrator.sh`, `agent-message-handler.py`, doctor, all `.py` scripts | Cortex venv (`~/.steadfaste-fleet/venv/bin/python3`) or system |
 | `git` | any | Repo pull/push, hooks, `git show` in scripts | Linux: `apt install git` · macOS: `brew install git` |
 | `curl` | any | `contact-orchestrator.sh`, `lib.fleet_bus`, doctor HTTP checks, health pings | Linux/macOS: package manager (preinstalled on macOS) |

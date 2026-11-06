@@ -520,7 +520,7 @@ function unavailableMessage(repo: string, detail: string): string {
     "",
     "Operator remedy (in order):",
     "  1. python3 ~/steadfaste-fleet/ops/scripts/manage/fix-cortex-venv.py --check",
-    "  2. bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh",
+    "  2. bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh",
     "  3. confirm: python3 ~/.steadfaste-fleet/scripts/loop-gov.py --list",
     "  4. to remove the gate entirely (operator decision, and visible): drop",
     "     cortex-governance.ts from \"extensions\" in ~/.pi/agent/settings.json",

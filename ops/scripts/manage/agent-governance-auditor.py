@@ -264,12 +264,12 @@ def _check_infrastructure() -> list[str]:
       issues.append(
         f" 🛡️ Plugin symlink points to {actual_target}\n"
         f"    (expected {plugin_target}).\n"
-        f"    Fix: cortex-update.sh (converts to copy)"
+        f"    Fix: fleet-update.sh (converts to copy)"
       )
     else:
       issues.append(
         f" 🛡️ Plugin is a symlink — should be a copy for chattr +i safety.\n"
-        f"    Run: cortex-update.sh (converts automatically)"
+        f"    Run: fleet-update.sh (converts automatically)"
       )
   elif os.path.isdir(plugin_link):
     # Already a copy — check it has the files
@@ -277,12 +277,12 @@ def _check_infrastructure() -> list[str]:
     if not os.path.exists(init_py):
       issues.append(
         f" 🛡️ Plugin directory exists but __init__.py missing.\n"
-        f"    Fix: cortex-update.sh "
+        f"    Fix: fleet-update.sh "
       )
   else:
     issues.append(
       f" 🛡️ Governance plugin MISSING at {plugin_link}.\n"
-      f"    Fix: cortex-update.sh "
+      f"    Fix: fleet-update.sh "
     )
 
   # ── 2. Hook symlinks ──
@@ -297,7 +297,7 @@ def _check_infrastructure() -> list[str]:
     if not os.path.islink(hook_path) and not os.path.isfile(hook_path):
       issues.append(
         f" 🔗 {hook_name} hook MISSING at {hook_path}.\n"
-        f"    Fix: Run: cortex-update.sh "
+        f"    Fix: Run: fleet-update.sh "
       )
     elif os.path.islink(hook_path):
       actual = os.readlink(hook_path)

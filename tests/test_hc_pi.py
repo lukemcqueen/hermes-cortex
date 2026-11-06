@@ -131,7 +131,7 @@ def test_install_missing_script_is_a_failure_not_a_pass(fleet, tmp_path, monkeyp
     _pi_agent(tmp_path)
     monkeypatch.setattr(fleet, "_resolve_script", lambda name: None)
     assert _exit_code(lambda: fleet.cmd_pi(_cfg(), ["install"])) == 1
-    assert "cortex-update.sh" in capsys.readouterr().err
+    assert "fleet-update.sh" in capsys.readouterr().err
 
 
 def test_install_passes_extra_args_through(fleet, tmp_path, monkeypatch):
@@ -193,7 +193,7 @@ def test_check_missing_audit_is_a_failure(fleet, tmp_path, monkeypatch, capsys):
                         lambda name: None if "audit" in name else Path("/bin/true"))
     monkeypatch.setattr(fleet, "_run_script", lambda p, a: 0)
     assert _exit_code(lambda: fleet.cmd_pi(_cfg(), ["check"])) == 1
-    assert "cortex-update.sh" in capsys.readouterr().err
+    assert "fleet-update.sh" in capsys.readouterr().err
 
 
 # ── skills: reports the registration, delegates the verdict ───────────────

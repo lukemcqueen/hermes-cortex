@@ -194,7 +194,7 @@ def audit(config_text, expected=None, exists=None, is_orch=True, which=None):
                             f"hermes mcp remove {name} && hermes mcp add {name} "
                             f"--command ~/.steadfaste-fleet/venv/bin/python3 "
                             f"--args ~/steadfaste-fleet/{repo_rel_script(script)}"
-                            "   (or run cortex-update.sh to deploy the missing pieces)"))
+                            "   (or run fleet-update.sh to deploy the missing pieces)"))
             continue
         cmd = re.search(r"^[ \t]*command:[ \t]*(.+?)[ \t]*$", block, re.MULTILINE)
         command = cmd.group(1).strip().strip("'\"") if cmd else ""

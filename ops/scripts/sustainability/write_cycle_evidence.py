@@ -87,10 +87,10 @@ def main(date_str: str, out_dir: Path | None = None) -> int:
 
     add("## 2. The actual diffs the reviewer asked for")
     add("")
-    add("### 2a. ops/scripts/cortex-update.sh register() entries")
+    add("### 2a. ops/scripts/fleet-update.sh register() entries")
     add("")
     add("```diff")
-    add(sh("git", "show", "dd0b8cf4", "--", "ops/scripts/cortex-update.sh"))
+    add(sh("git", "show", "dd0b8cf4", "--", "ops/scripts/fleet-update.sh"))
     add("```")
     add("")
     add("### 2b. docs/DOCS-INDEX.md rows")
@@ -101,10 +101,10 @@ def main(date_str: str, out_dir: Path | None = None) -> int:
     add("")
     add("### 2c. The committed lines, as they exist on disk now")
     add("")
-    cu = REPO / "ops/scripts/cortex-update.sh"
+    cu = REPO / "ops/scripts/fleet-update.sh"
     for i, ln in enumerate(cu.read_text().splitlines(), 1):
         if "sustainability/" in ln:
-            add(f"cortex-update.sh:{i}: {ln}")
+            add(f"fleet-update.sh:{i}: {ln}")
     add("")
 
     add("## 3. Canonical checker output")

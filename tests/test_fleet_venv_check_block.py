@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-DEPLOY = REPO / "ops" / "scripts" / "cortex-update.sh"
+DEPLOY = REPO / "ops" / "scripts" / "fleet-update.sh"
 START = "# ── The fleet venv must EXIST"
 END = "# ── Ensure tasks MCP server registered"
 

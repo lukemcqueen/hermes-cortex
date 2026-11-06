@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression test for _assert_register_dest_safe() in cortex-update.sh.
+# Regression test for _assert_register_dest_safe() in fleet-update.sh.
 #
 # The guard (added 2026-08-05) makes the deploy map fail CLOSED on
 # Hermes-owned user-data targets — a memory seed register clobbered live
@@ -13,7 +13,7 @@
 # Run: bash tests/test-register-guard.sh
 set -u
 
-# ── Replica of the guard's case logic (keep in sync with cortex-update.sh) ──
+# ── Replica of the guard's case logic (keep in sync with fleet-update.sh) ──
 _assert_register_dest_safe() {
   local dest="$1"
   if [[ "${GUARD_DISABLED:-}" == "1" ]]; then return 0; fi  # RED toggle

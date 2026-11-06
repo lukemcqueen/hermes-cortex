@@ -69,7 +69,7 @@ ls -la ~/.steadfaste-fleet/offline/session_mine.py
 python3 -m py_compile ~/.steadfaste-fleet/offline/session_mine.py
 ```
 
-**If missing:** `bash ~/.steadfaste-fleet/scripts/cortex-update.sh`
+**If missing:** `bash ~/.steadfaste-fleet/scripts/fleet-update.sh`
 
 ## Step 2 — Bus Connectivity
 
@@ -111,7 +111,7 @@ grep "LESSONS" ~/.steadfaste-fleet/offline/session_mine.py
 # Wrong:   HOME / "brain" / "<hostname>" / "lessons"
 ```
 
-**If wrong:** run `cortex-update.sh` to get the Jul 27 fix.
+**If wrong:** run `fleet-update.sh` to get the Jul 27 fix.
 
 Make dirs:
 ```bash
@@ -180,6 +180,6 @@ cat ~/.steadfaste-fleet/state/agent-session-mine-state.json
 | Send 401 (collector) while `bus_send` works on same host | Collector prefers stale Basic cred, no token/Basic fallback | Retire stale Basic, add fallback (Step 2 note) |
 | `last_status=ok` but no staged report | 400 swallowed; collector exits 0 on failure | Watch state/learning-reports/ not `last_status` |
 | Lesson count 0 | session_mine.py path | Step 4 |
-| `session-mine: not found` | Not deployed | `cortex-update.sh` |
+| `session-mine: not found` | Not deployed | `fleet-update.sh` |
 | Collector silent | Already sent | Delete state, re-run |
 | ModuleNotFoundError | PYTHONPATH | Export `~/.steadfaste-fleet/scripts` |

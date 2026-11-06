@@ -11,7 +11,7 @@
 #  Checks:
 #   1. Script syntax (bash -n, python compile)
 #   2. OS-agnostic paths (no hardcoded /etc/nginx/ without brew_dir)
-#   3. Registration consistency (files in deploy/nginx/ → cortex-update.sh)
+#   3. Registration consistency (files in deploy/nginx/ → fleet-update.sh)
 #   4. Unsubstituted placeholders in templates
 #   5. Multi-OS markers for platform-specific code
 # ─────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ info()  { echo -e "${CYAN}ℹ${RESET} $*"; }
 
 # ── Config ──────────────────────────────────────────────────
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"
+CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/fleet-update.sh"
 
 # Get staged files (no deletions, no binary/lock)
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
@@ -127,7 +127,7 @@ if [[ -f "$CORTEX_UPDATE" ]]; then
       deploy/*|ops/scripts/*)
         basename_f=$(basename "$f")
         if ! grep -q "$basename_f" "$CORTEX_UPDATE" 2>/dev/null; then
-          warn "NEW file $f is not registered in cortex-update.sh register() —"
+          warn "NEW file $f is not registered in fleet-update.sh register() —"
           info "  Add: register \"$f\" \"\${CORTEX_DEPLOY_HOME}/scripts/$(basename $f)\""
           info "  Or state why it is checkout-only (a run-scoped evidence tool needs no entry)."
           HAS_ISSUES=1

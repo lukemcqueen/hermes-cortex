@@ -3,9 +3,9 @@
 tasks-verify-sweep.py — drain task slices stuck in the `review` state.
 
 SCHEDULING — NOTHING RUNS THIS YET. It is in the deploy map
-(cortex-update.sh) and ships to every host, but install-crons.sh has NO create_cron
+(fleet-update.sh) and ships to every host, but install-crons.sh has NO create_cron
 entry for it, so no host sweeps automatically; today it is invoked by hand. Measured
-2026-10-21: `grep -rn tasks-verify-sweep ops/` names only cortex-update.sh, this file
+2026-10-21: `grep -rn tasks-verify-sweep ops/` names only fleet-update.sh, this file
 and tests/test_tasks_verify_sweep.py. Each host would sweep its OWN tasks DB, and only
 a host whose agent identity maps to 'esther' or 'moses' carries a CRUD role with
 EXECUTE on tasks.verify_slice (the schema grants it to mycortex_reader_esther and

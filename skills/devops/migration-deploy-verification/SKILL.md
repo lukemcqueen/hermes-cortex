@@ -14,7 +14,7 @@ the repo can carry the fix while every host keeps the old broken function.
 
 ```
 ops/services/<svc>/schema/vNNN__*.sql        (1) repo file committed
-  → register() line in cortex-update.sh      (2) deploy map
+  → register() line in fleet-update.sh      (2) deploy map
   → ${CORTEX_DEPLOY_HOME}/services/<svc>/schema/vNNN__*.sql   (3) deployed dir
   → migrate.py (globs the DEPLOYED dir)      (4) migration runner
   → <svc>.schema_version row                 (5) live DB applied
@@ -36,7 +36,7 @@ in the repo and tests pass against the repo path.
 ls ops/services/<svc>/schema/vNNN__*.sql
 
 # 2. Deploy map has it?  (MISSING = the bug)
-grep -n 'register.*vNNN' ops/scripts/cortex-update.sh
+grep -n 'register.*vNNN' ops/scripts/fleet-update.sh
 
 # 3. Deployed dir has it?
 ls ~/.steadfaste-fleet/services/<svc>/schema/
@@ -60,18 +60,18 @@ before trusting the narrative**, then fix the durable gap (link 2).
 
 Real case 2026-08-07: tasks v003 (cancelled→column NULL) and v004 (ON
 CONFLICT column preservation) sat in the repo with their L1 test while
-cortex-update.sh shipped only v001+v002. Local DB was hand-migrated 9
+fleet-update.sh shipped only v001+v002. Local DB was hand-migrated 9
 minutes before the commit; fleet hosts stayed at version 2 with the broken
 `WHEN 'cancelled' THEN 'done'` derivation (any cancel → tasks_check
 violation). The deploy-map gap was the real remaining bug.
 
 ## Fix pattern (orchestrator lane)
 
-1. Add the missing lines to `ops/scripts/cortex-update.sh`:
+1. Add the missing lines to `ops/scripts/fleet-update.sh`:
    ```bash
    register "ops/services/<svc>/schema/vNNN__foo.sql" "${CORTEX_DEPLOY_HOME}/services/<svc>/schema/vNNN__foo.sql"
    ```
-2. Deploy via the sanctioned invocation: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`
+2. Deploy via the sanctioned invocation: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`
 3. Confirm migrate.py on the already-migrated host reports a no-op (idempotent):
    `tasks schema up to date (version N) — no-op`
 4. Commit + push. Every host's next cortex-update deploys the files and
@@ -85,10 +85,10 @@ violation). The deploy-map gap was the real remaining bug.
 - **Live write-probe** through the real CLI: create → update status → verify
   row state via psql → clean up (CLI save-end archives; delete the probe row
   from the archive table).
-- **Re-deploy attack test**: run cortex-update.sh TWICE, confirm the new
+- **Re-deploy attack test**: run fleet-update.sh TWICE, confirm the new
   files persist in the deployed dir — registered files survive re-deploys,
   one-off manual copies get dropped/overwritten.
-- **A4 adversarial gates** on cortex-update.sh (enforcement script) and any
+- **A4 adversarial gates** on fleet-update.sh (enforcement script) and any
   tests/ file before push.
 
 ## Trigger

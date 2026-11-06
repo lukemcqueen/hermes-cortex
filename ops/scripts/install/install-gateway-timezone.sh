@@ -15,7 +15,7 @@
 #            Hermes loads it at start; the cron-timeout pattern)
 #
 # Value: ${HERMES_TIMEZONE:-Asia/Seoul} — override per machine via
-# ~/steadfaste-fleet/.env (sourced by cortex-update.sh before this runs).
+# ~/steadfaste-fleet/.env (sourced by fleet-update.sh before this runs).
 #
 # ⚠️  Activation requires a gateway restart (same contract as
 #     install-gateway-cron-timeout.sh): systemd drop-ins are read at
@@ -26,7 +26,7 @@
 #     HERMES_TIMEZONE on every current fleet host, so no visible gap).
 #
 # Idempotent: silent no-op when the applied value already matches.
-# Safe to run from cortex-update.sh on every update cycle.
+# Safe to run from fleet-update.sh on every update cycle.
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -50,7 +50,7 @@ if [[ -f "${HOME_DIR}/.config/systemd/user/hermes-gateway.service" ]] && command
   UNIT_DIR="${HOME_DIR}/.config/systemd/user/hermes-gateway.service.d"
   mkdir -p "${UNIT_DIR}"
   cat > "${UNIT_DIR}/11-timezone.conf" <<EOF
-# Managed by install-gateway-timezone.sh (cortex-update.sh)
+# Managed by install-gateway-timezone.sh (fleet-update.sh)
 # IANA timezone for cron runtime (HERMES_TIMEZONE). All cron scripts
 # and hermes_tz.py derive displayed timezone from this env var.
 [Service]

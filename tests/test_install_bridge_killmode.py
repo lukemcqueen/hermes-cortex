@@ -2,7 +2,7 @@
 
 The behavioural proof ships INSIDE the installer (`--self-test`), so it travels
 with the file a reviewer holds on its own; this module re-runs it as a
-subprocess, and asserts the deploy wiring that cortex-update.sh carries so a
+subprocess, and asserts the deploy wiring that fleet-update.sh carries so a
 future edit cannot silently drop the repair from the update path.
 
 The installer under test: ops/scripts/install/install-bridge-killmode.sh
@@ -18,7 +18,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 INSTALLER = REPO / "ops" / "scripts" / "install" / "install-bridge-killmode.sh"
-UPDATER = REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATER = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 _SELF_TEST_PASS = "self-test: all cases PASS"
 
@@ -50,7 +50,7 @@ def test_self_test_covers_both_directions():
 
 
 def _shipped_invocation_block() -> str:
-    """The verbatim if/invoke/warn/fi block for this installer in cortex-update.sh.
+    """The verbatim if/invoke/warn/fi block for this installer in fleet-update.sh.
 
     Extracted rather than retyped, so the test drives the shipped text: if the
     invocation is ever rewritten, this block (and the test) changes with it.
@@ -64,16 +64,16 @@ def _shipped_invocation_block() -> str:
 
 
 def test_update_path_surfaces_a_failing_installer(tmp_path):
-    """cortex-update.sh must WARN (not swallow) when the installer exits non-zero.
+    """fleet-update.sh must WARN (not swallow) when the installer exits non-zero.
 
     The invocation pipes the installer through `sed`, whose exit status would
-    hide the installer's own — unless pipefail is set, which cortex-update.sh
+    hide the installer's own — unless pipefail is set, which fleet-update.sh
     does. This runs the shipped block verbatim under the same shell options
     against a stand-in deploy home whose installer exits 1.
     """
     updater = UPDATER.read_text()
     assert "set -euo pipefail" in updater, (
-        "cortex-update.sh must set pipefail for the `| sed || warn` invocation "
+        "fleet-update.sh must set pipefail for the `| sed || warn` invocation "
         "to reflect the installer's exit status"
     )
 
@@ -115,10 +115,10 @@ def test_updater_registers_and_invokes_the_installer():
     assert (
         'register "ops/scripts/install/install-bridge-killmode.sh" '
         '"${CORTEX_DEPLOY_HOME}/scripts/install-bridge-killmode.sh"' in src
-    ), "installer is not registered for deploy by cortex-update.sh"
+    ), "installer is not registered for deploy by fleet-update.sh"
     assert (
         'bash "${CORTEX_DEPLOY_HOME}/scripts/install-bridge-killmode.sh" 2>&1 | sed' in src
-    ), "installer is not invoked from the cortex-update.sh update path"
+    ), "installer is not invoked from the fleet-update.sh update path"
     assert (
         'warn "  install-bridge-killmode.sh failed (non-fatal)"' in src
     ), "installer failure is not surfaced as a warning"

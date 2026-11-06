@@ -52,7 +52,7 @@ grep -rn '<name>' ~/.steadfaste-fleet/scripts/install*.sh ~/steadfaste-fleet/ops
 | `~/.hermes/gateway.*`, `~/.hermes/processes.json`, `session.id`, `auth.json`, `.env` | Live runtime / secrets |
 | `~/.hermes/state/bus-audit-watchdog.json` + `.state` | **LIVE** — the renamed `orch-bus-audit-watchdog` cron uses these EXACT filenames. A renamed cron keeps its old state files |
 | `~/.hermes/state/worker-pending/`, `worker-completed/` | Live `agent-worker.py` machinery (`is_completed()` reads `.done` files; deleting can re-trigger old steps) |
-| `~/.steadfaste-fleet/a2a/` | **DEPRECATED dir, zero consumers** — A2A service merged into cortex-bus (`src/a2a/` → `ops/services/a2a/` → cortex-bus). Bus server serves a HARDCODED card at `/.well-known/agent-card.json`; deployed card is `bus/agent-card.json` (register_orch in cortex-update.sh). `agent-card.json` there was last written 2026-07-27 by a one-off `generate-agent-card.py --output` run — no cron, script, or nginx route reads it. Safe to delete both files (keep the empty dir or remove it; nothing recreates it) |
+| `~/.steadfaste-fleet/a2a/` | **DEPRECATED dir, zero consumers** — A2A service merged into cortex-bus (`src/a2a/` → `ops/services/a2a/` → cortex-bus). Bus server serves a HARDCODED card at `/.well-known/agent-card.json`; deployed card is `bus/agent-card.json` (register_orch in fleet-update.sh). `agent-card.json` there was last written 2026-07-27 by a one-off `generate-agent-card.py --output` run — no cron, script, or nginx route reads it. Safe to delete both files (keep the empty dir or remove it; nothing recreates it) |
 | `~/.steadfaste-fleet/state/_cron_find.py` | LIVE — `install-crons.sh` + `install-orch-crons.sh` call it |
 | `~/.steadfaste-fleet/data/loop-governance.db`, `session-embeddings.db` | Live governance/scoring DBs |
 | `~/.hermes/bin/uv`, `uvx`, `tirith` | Python toolchain + security scanner (tirith referenced in `config.yaml` `security.tirith_*`) |
@@ -83,7 +83,7 @@ grep -rn '<name>' ~/.steadfaste-fleet/scripts/install*.sh ~/steadfaste-fleet/ops
 | `~/.hermes/hooks/post-commit` + `pre-commit` | Pre-migration copies of cortex git hooks (migration-2026-07-08 moved hooks to `~/.steadfaste-fleet/hooks/`). Agent ignores them (not hook dirs); git uses hooksPath → `~/.steadfaste-fleet/hooks`. But the DIRECTORY is agent infrastructure and files may be referenced manually — confirm with owner |
 | `~/.hermes/state/worker-completed/*.done` | Live machinery reads them; old entries look stale but deleting can re-trigger steps in `agent-worker.py` |
 | `~/.hermes/config.yaml.bak.*` | Config backup — "never destroy what you cannot restore." 76 KB, trivial; keep unless disk-critical |
-| `post-commit-notify.sh` wiring | Deployed (registered in cortex-update.sh) but NOT the active post-commit hook (that's `post-commit-audit` via symlink). State files are stale, but the script may be intended to be wired — flag, don't delete |
+| `post-commit-notify.sh` wiring | Deployed (registered in fleet-update.sh) but NOT the active post-commit hook (that's `post-commit-audit` via symlink). State files are stale, but the script may be intended to be wired — flag, don't delete |
 | `~/.steadfaste-fleet/state/.hermes-session-*.id` | Auto-managed: `purge-stale-governance-locks.py` Phase 2 removes markers older than 24 h. Run that script, don't hand-delete |
 | `~/.hermes/models_dev_cache.json` | Regenerable cache BUT `hermes-backup` skill copies it — part of backup surface. Tiny (3 MB); optional |
 
@@ -167,7 +167,7 @@ hermes profile list        # the duplicate-credential warning must be gone
   deployed bytes verbatim. Land the deployed content as its own commit first, then add
   your lesson on top. Use `ops/scripts/manage/reconcile-stranded-skills.py` (reports by
   default, `--apply` copies only the pure-superset class) rather than copying by hand.
-- **cortex-update.sh purges governance locks mid-run** — if you run it during a cleanup session, re-acquire `begin_change` before continuing.
+- **fleet-update.sh purges governance locks mid-run** — if you run it during a cleanup session, re-acquire `begin_change` before continuing.
 
 ## Related
 

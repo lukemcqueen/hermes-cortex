@@ -330,7 +330,7 @@ from fleet_bus.workflow.sla_watchdog import main
 
 | Where | Why |
 |-------|-----|
-| Repo source (`steadfaste-fleet/ops/scripts/...`) | Upstream — survives next `cortex-update.sh` |
+| Repo source (`steadfaste-fleet/ops/scripts/...`) | Upstream — survives next `fleet-update.sh` |
 | Deployed copy (`~/.steadfaste-fleet/scripts/...`) | Runtime — runs right now |
 
 The repo source comes first (upstream before one-off). If the deployed

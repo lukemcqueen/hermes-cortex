@@ -36,7 +36,7 @@ RLS isolates it automatically.
 
 ## What agents must do (migration, per-host)
 
-**Nothing manual — `cortex-update.sh` does it all.** The deploy runs
+**Nothing manual — `fleet-update.sh` does it all.** The deploy runs
 `install-profile-reader-role.sh` which, in one idempotent pass:
 
 1. Creates `mycortex_reader_<profile>` (LOGIN INHERIT mycortex_reader) if missing

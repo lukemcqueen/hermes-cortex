@@ -7,11 +7,11 @@
 
 | Directory | Who writes it | Who reads it |
 |-----------|---------------|--------------|
-| `~/.steadfaste-fleet/scripts/` | `cortex-update.sh` `register()` deploys fresh code here | Doctor checks, `diff` against repo |
+| `~/.steadfaste-fleet/scripts/` | `fleet-update.sh` `register()` deploys fresh code here | Doctor checks, `diff` against repo |
 | `~/.hermes/scripts/` | **NOT updated by deploy** | **The cron runner executes from here** (`HERMES_HOME/scripts`, scheduler.py) |
 
 The intended bridge is a directory symlink `~/.hermes/scripts →
-~/.steadfaste-fleet/scripts/`, created at the end of cortex-update.sh. It is
+~/.steadfaste-fleet/scripts/`, created at the end of fleet-update.sh. It is
 **skipped** when `~/.hermes/scripts/` contains files not present in the
 deploy dir — the script warns `~/.hermes/scripts/ has unique files: ... —
 not replacing`. Local-only scripts routinely block it: `remediation-sensor.py`,
@@ -73,7 +73,7 @@ include active cron scripts and would vanish, breaking those jobs.
 
 ## Governance Side-Effect
 
-`cortex-update.sh` **purges governance locks on every run**. After a deploy:
+`fleet-update.sh` **purges governance locks on every run**. After a deploy:
 1. `begin_change` again before further terminal work
 2. Expect MULTIPLE pending cycles from re-acquires — query `cycle_query`
    and score ALL of them (`feedback_accept`) before `end_change`

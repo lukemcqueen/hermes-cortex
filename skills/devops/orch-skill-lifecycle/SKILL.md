@@ -429,7 +429,7 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   skill whose body is absent from the Learning Report can be retrieved with
   `ssh mosesaaron "cat ~/.hermes/skills/<cat>/<name>/SKILL.md"` and md5-verified
   against the source before upstreaming. Also sync the skill's `references/`
-  tree — `sync_skills()` in cortex-update.sh sweeps SKILL.md + references/ +
+  tree — `sync_skills()` in fleet-update.sh sweeps SKILL.md + references/ +
   scripts/ + templates/ together, so a skill upstreamed without its references/
   deploys partial. Stub guard still applies: read the body first, refuse if it
   holds `(content unavailable)` / `[SKILL_PRUNED]`.
@@ -490,13 +490,13 @@ Result: 3 skills updated, 1 upstreamed, 1 SOUL.md entry.
   whether its reports are RECURRENCES of one commit (`git log -- <path>`) rather than independent
   proposals — and if the content is already committed, there is nothing to merge.
 - **The commit-time ritual gate enumerates always-skills ONE refusal per attempt (2026-11-02)** → the pre-commit reflexion gate refuses `git commit` with NOT-LOADED, one skill per try: this run needed `reflexion-check`, then `survey-before-action`, then `prove-before-create`, then `agent-contract` — 4 blocked commits before the 5th landed. Preload the whole set via `skill_view` BEFORE the first commit attempt of any session that will touch the cortex repo; do not burn a round trip per name.
-- **The parity "absent from repo" class (131 never-committed) is upstream Hermes-bundle references, not fleet work (2026-11-02)** → baoyu-comic/art-styles, pixel-art, agent-health-monitoring and steadfaste-fleet-skill reference files deploy with the Hermes bundle (`hermes update`), never via cortex-update.sh, so the cortex repo does not own them. Do not "fix" the parity FAIL by bulk-committing them — that re-imports upstream bundle content into the fleet repo. Pass bar stays the doctor's own content-based Skill drift check: stranded-in-place = 0; the parity checker's FAIL on the absent class is expected, chronic, and correct.
+- **The parity "absent from repo" class (131 never-committed) is upstream Hermes-bundle references, not fleet work (2026-11-02)** → baoyu-comic/art-styles, pixel-art, agent-health-monitoring and steadfaste-fleet-skill reference files deploy with the Hermes bundle (`hermes update`), never via fleet-update.sh, so the cortex repo does not own them. Do not "fix" the parity FAIL by bulk-committing them — that re-imports upstream bundle content into the fleet repo. Pass bar stays the doctor's own content-based Skill drift check: stranded-in-place = 0; the parity checker's FAIL on the absent class is expected, chronic, and correct.
 - **Don't patch the same skill twice in one run** — deduplicate before acting
 - **The collector walks INTO `skills/.archive/` — retired skills arrive as live deltas (2026-10-28)** →
   `agent-learning-collector._get_skill_delta()` enumerates with
   `SKILLS_DIR.rglob("SKILL.md")`, which descends into `~/.hermes/skills/.archive/`;
   `gen-skills-manifest.py` ("Hidden dirs (.archive) are skipped") and
-  `cortex-update.sh` (staging + stale-prune both `continue` on `.archive/`) both
+  `fleet-update.sh` (staging + stale-prune both `continue` on `.archive/`) both
   exclude it, so the collector is the odd one out. Archived skills therefore
   report as `[NEW] <name> (.archive)` — off-host, so they have NO repo source by
   design. Do not read them as unapplied work and never upstream a retired skill.

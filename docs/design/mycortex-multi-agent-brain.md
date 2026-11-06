@@ -118,7 +118,7 @@ N sources into one.
    provisioning.
 6. Tests: `tests/test-mycortex-schema.sh` (owner RLS cases, isolation test per
    profile, backfill idempotency), a golden isolation case, migration re-run no-op.
-7. Deploy registration (`cortex-update.sh`) + docs (this file + multi-tenancy doc).
+7. Deploy registration (`fleet-update.sh`) + docs (this file + multi-tenancy doc).
 
 ## Verification (what "done" looks like)
 

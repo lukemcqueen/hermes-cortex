@@ -33,7 +33,7 @@ When an issue says "remove the stale X block so the warning stops printing":
   that `exit 0` SHORT-CIRCUITS the hook early, skipping every downstream guard
   (orchestrator-only paths, self-test, adversarial scan). THAT is the bug.
 - Fix: convert the missing-dependency path to **FAIL CLOSED** — `exit 1` with a
-  message pointing at the sanctioned fix (e.g. `cortex-update.sh`). A commit
+  message pointing at the sanctioned fix (e.g. `fleet-update.sh`). A commit
   without a governance record must not land.
 - Luke's hard rule (2026-08-03): "NEVER DECREASE SECURITY TO ENFORCER". "Instead
   of 'skipping', have the logic be FAIL IMMEDIATELY if the binary is gone."
@@ -54,7 +54,7 @@ When an issue says "remove the stale X block so the warning stops printing":
 - [ ] Diff must show ONLY the block changed — zero lines of enforcement removed.
 - [ ] `bash -n` the hook; live-test BOTH branches (dependency present → scoring
       runs; dependency missing → exit 1).
-- [ ] Deploy via the sanctioned path (`cortex-update.sh`), verify deployed copy
+- [ ] Deploy via the sanctioned path (`fleet-update.sh`), verify deployed copy
       byte-identical to repo source, verify fail-closed present in deployed.
 
 ## Rule 1b: macOS Portability of the Fail-Closed Hook
@@ -65,7 +65,7 @@ binary on macOS, or every commit on Titus blocks:
 - **macOS has no `~/.local/bin` in PATH by default** — `command -v score-cycle`
   fails even when installed. Add the canonically-deployed path as a search
   candidate: `$HOME/.steadfaste-fleet/tools/loop-governance/score_cycle.py`
-  (cortex-update.sh registers it there on BOTH Linux and macOS). Test the search
+  (fleet-update.sh registers it there on BOTH Linux and macOS). Test the search
   with an emptied PATH to prove the deployed-path candidate resolves.
 - **macOS has no `timeout` command** (coreutils provides `gtimeout`). Resolve
   the timeout binary portably before the scorer invocation:
@@ -81,7 +81,7 @@ binary on macOS, or every commit on Titus blocks:
   hashes a file or git object must call a `_sha256()` helper (sha256sum first,
   `shasum -a 256` fallback, exit non-zero when neither exists) — macOS has no
   coreutils sha256sum, and the fallback already exists as the pattern to copy
-  in cortex-update.sh (`_sha256_of`). Grep the hook for bare `sha256sum` calls
+  in fleet-update.sh (`_sha256_of`). Grep the hook for bare `sha256sum` calls
   outside the helper before shipping.
 - **Watch the silent-empty pipeline (fail-open trap).** In `producer |
   missing-tool | consumer` the pipeline's exit status is the CONSUMER's — a
@@ -109,7 +109,7 @@ binary on macOS, or every commit on Titus blocks:
   (`chattr +i`), but must use `sudo -n` (non-interactive) so a missing NOPASSWD
   rule fails fast instead of prompting. Branch once on `uname -s`: plain
   `hermes-plugin-lock` on Darwin, `sudo -n hermes-plugin-lock` on Linux — the
-  pattern `cortex-update.sh` already uses for its lock handling. A hook runs on
+  pattern `fleet-update.sh` already uses for its lock handling. A hook runs on
   every commit in every repo, so a prompt here poisons unrelated work.
 
 ## Rule 2: Shared Repo = Check the Staged Set Before Every Commit
@@ -155,10 +155,10 @@ governance lock: `_has_governance_lock()` Phase 3 reads the repo marker
 ### DOGFOOD test contamination (un-deployed enforcer edit)
 
 When you edit `plugins/governance-enforcer/__init__.py` but haven't deployed it
-via `cortex-update.sh`, `test_score_gate.py::test_begin_change_refuses_on_decorated_pending_cycle`
+via `fleet-update.sh`, `test_score_gate.py::test_begin_change_refuses_on_decorated_pending_cycle`
 fails with `"DOGFOOD REQUIRED"` instead of the expected `"Close out your previous task"`.
 This is NOT a regression — the DOGFOOD gate correctly prevents `begin_change` when
-repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
+repo ≠ deployed. Deploy (`fleet-update.sh`), then rerun: the test passes.
 
 ## Rule 4: PENDING Cycles — Yours vs Others
 
@@ -183,7 +183,7 @@ repo ≠ deployed. Deploy (`cortex-update.sh`), then rerun: the test passes.
   (FAIL) that blocks the push. Confirm the cycle's `decision != PENDING` (or
   score it) first. Removing an ORPHANED lock whose cycle is already scored is
   correct cleanup and leaves no leak — check, do not assume either way.
-- **`cortex-update.sh` no longer purges live locks (FIXED 2026-08-05).** The
+- **`fleet-update.sh` no longer purges live locks (FIXED 2026-08-05).** The
   old "deploy purges locks" behavior was a TIMEZONE BUG, not a feature: the
   stale-lock cleanup sliced the heartbeat to `[:19]`, STRIPPING the ISO-8601
   `Z` (UTC) marker, then `date -d` parsed UTC as LOCAL time — on UTC+9 hosts a
@@ -220,7 +220,7 @@ silently. Prefix matching must be `commit*` so amend/no-verify still logs.
 A real bypass must never be silenced to fix a false positive.
 
 **Workaround still needed ONLY on hosts whose deployed post-commit predates
-the fix** (before the next `cortex-update.sh`): `git commit --amend --no-edit`
+the fix** (before the next `fleet-update.sh`): `git commit --amend --no-edit`
 re-runs the full pre-commit hook (sentinel written → consumed cleanly),
 producing a new hash NOT in the log; then push passes. Leave the old dangling
 entry — it can never match a future push range, and deleting audit entries
@@ -266,7 +266,7 @@ if [[ -z "$ADVERSARIAL_SCRIPT" ]]; then
 fi
 ```
 
-- `$HOME/.steadfaste-fleet/scripts/` is where `cortex-update.sh` registers every
+- `$HOME/.steadfaste-fleet/scripts/` is where `fleet-update.sh` registers every
   deployed tool on BOTH Linux and macOS — always include it as the fallback.
 - `$REPO_ROOT` (from `git rev-parse --show-toplevel`) is the repo being
   committed IN — only valid as the FIRST candidate, never the only path.
@@ -326,7 +326,7 @@ refreshed the hook FILES — stale copies predated the mandatory adversarial
 gate (Titus audit 2026-08-05: 9 repos, `grep -c adversarial = 0`). Two things
 are needed together, or the fix breaks commits:
 
-1. **Refresh the files**: `cortex-update.sh` `refresh_pinned_hook_files()`
+1. **Refresh the files**: `fleet-update.sh` `refresh_pinned_hook_files()`
    copies the 4 cortex hooks (pre-commit-score, pre-push-pull,
    post-commit-audit, post-push-audit) from deployed source into the repo's
    own hooks dir. ONLY files carrying the cortex banner (`Git <type> hook`,
@@ -349,7 +349,7 @@ are needed together, or the fix breaks commits:
 3. Doctor `Pinned hooks fresh` check: FAIL on stale → refresh → PASS
 
 **Pitfall:** deployed hook files are chattr +i immutable — you cannot
-overwrite them by hand to test; use `cortex-update.sh` or test with
+overwrite them by hand to test; use `fleet-update.sh` or test with
 repo-source as the simulated deployed source.
 
 ## Rule 10: Leaked PENDING Cycles Must Block the Push — and Doctor-Output Greps Are Traps
@@ -468,7 +468,7 @@ fix belongs to whoever owns the checker script.
 
 **The TZ bug (2026-08-05, Luke: "this lock issue is MISERABLE"):** the "cortex-
 update purges locks every deploy" behavior was NOT a designed purge — it was a
-timezone parse bug in cortex-update.sh's stale-lock cleanup:
+timezone parse bug in fleet-update.sh's stale-lock cleanup:
 
 - The heartbeat is ISO-8601 UTC ending in `Z` (e.g. `2026-08-05T08:42:54Z`).
 - The cleanup sliced it to `[:19]` — **stripping the `Z`** — then ran
@@ -488,7 +488,7 @@ were already correct — but the bash `date -d` had a SECOND, worse bug
 (2026-08-10, Titus): **`date -d` is GNU-only** — macOS BSD date has no `-d`,
 so the `2>/dev/null || echo 0` fallback fired, epoch=0, age = now-0 ≈ 1.78e9s
 > 3600 → **every lock, including fresh v2 session locks, deleted on every
-macOS deploy** (cortex-update.sh:2719). The TZ fix (keep the Z) only addressed
+macOS deploy** (fleet-update.sh:2719). The TZ fix (keep the Z) only addressed
 GNU parse — the `|| echo 0` was the fail-OPEN trap. Fix that shipped:
 portable python3 epoch (`datetime.fromisoformat(hb.replace('Z','+00:00'))`)
 with an EMPTY fallback (`|| echo ""`) + `[[ -n "$epoch" ]]` guard — parse
@@ -526,12 +526,12 @@ A register() dest that is USER-OWNED after install (MEMORY.md, USER.md, any
 seed template the user personalizes) must never ride the generic
 `needs_update()` hash-overwrite path. A personalized MEMORY.md can never match
 its template, so EVERY full-mode deploy (the default; the post-merge hook
-auto-runs cortex-update.sh) clobbers it — 7 clobbers in one day (2026-08-05),
+auto-runs fleet-update.sh) clobbers it — 7 clobbers in one day (2026-08-05),
 saved only by `deploy-backups/*.bak` + manual restore.
 
 The doctor made it worse — an INVERTED check: `check_deploy_checksums`
 Category 1 parses every `register ` line and content-compares deployed vs repo.
-Personalized memory → FAIL + "Run: cortex-update.sh to resync", which is
+Personalized memory → FAIL + "Run: fleet-update.sh to resync", which is
 EXACTLY the destructive action. The broken state (blank seed) PASSED; the
 healthy state (personalized) FAILED. Do NOT "fix" the doctor FAIL by resyncing —
 fix the classification: user-owned files are not repo-managed files.
@@ -611,7 +611,7 @@ candidate list includes `workflow/`. Regression tests: `TestSkillsDirResolution`
 (3 env variants + content-vs-mtime fingerprint).
 
 **14e. The fingerprint hashed MTIMES, so a no-op redeploy wiped session credit
-(2026-09-23).** `cortex-update.sh` rewrites deployed skill files, moving their
+(2026-09-23).** `fleet-update.sh` rewrites deployed skill files, moving their
 mtimes even when the bytes are identical. That changed `_skills_fingerprint()`,
 which discarded the per-session credit journal and invalidated the 7/7 marker
 mid-task: the agent saw "7/7 loaded ✅ but still blocked" with nothing wrong on
@@ -723,7 +723,7 @@ other conclude the system is broken. When touching either block message:
   --force`) → push.** The push gate fails "Deploy sync / Plugin content"
   until deployed == repo, and only dogfood syncs the deploy. Docs-only
   changes skip dogfood, but an enforcer `.py` change never does.
-- **Deploy ≠ loaded — and do not assume WHICH way.** `cortex-update.sh` puts the new
+- **Deploy ≠ loaded — and do not assume WHICH way.** `fleet-update.sh` puts the new
   module on disk; whether the RUNNING gateway already carries it is a separate question,
   and the `GATEWAY RESTART REQUIRED` banner fires when the deploy cannot determine the
   gateway's start time — a banner, not a verdict. MEASURED counter-example: a freshly
@@ -796,7 +796,7 @@ the user chases the wrong problem.
 - **Expect repo≠deployed doctor FAILs mid-change.** After editing a deployed
   script and before running the deploy, the doctor's checksum checks report that
   file as drifting. That is the check WORKING; it clears on the next
-  `cortex-update.sh`. Do not "fix" it by reverting the edit or weakening the
+  `fleet-update.sh`. Do not "fix" it by reverting the edit or weakening the
   check, and do not report it as a regression.
 - Same family as Rule 1 and Rule 15: the goal is never a silent green — it is a
   LOUD failure that does not take the enforcement chain down with it.
@@ -886,7 +886,7 @@ proven live.
 
 ## Rule 21: A Deploy That Dies Mid-Run Leaves the Immutable Layer OPEN
 
-`cortex-update.sh` unlocks the enforcement targets EARLY and relocks them LATE, after
+`fleet-update.sh` unlocks the enforcement targets EARLY and relocks them LATE, after
 the deployment steps, with no EXIT guard. Any run that exits non-zero or is killed in
 between — a `set -euo pipefail` abort like Rule 18 describes, a timeout, a stop —
 leaves the enforcer plugin, the hooks, the gate scripts and `loop-gov-mcp.py`

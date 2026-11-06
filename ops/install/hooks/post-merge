@@ -3,7 +3,7 @@
 #  post-merge — Auto-deploy after every git pull/merge
 #
 #  Fires after git pull (fetch + merge) completes. Runs
-#  cortex-update.sh to sync all deployed files
+#  fleet-update.sh to sync all deployed files
 #  to the new HEAD. This is the structural fix for "I pulled
 #  but forgot to deploy."
 #
@@ -26,9 +26,9 @@ if [[ "${REPO_ROOT}" != "${HOME}/steadfaste-fleet" ]]; then
   exit 0
 fi
 
-UPDATE_SCRIPT="${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"
+UPDATE_SCRIPT="${HOME}/steadfaste-fleet/ops/scripts/fleet-update.sh"
 if [[ ! -f "$UPDATE_SCRIPT" ]]; then
-  echo "⚠️  post-merge: cortex-update.sh not found at $UPDATE_SCRIPT"
+  echo "⚠️  post-merge: fleet-update.sh not found at $UPDATE_SCRIPT"
   echo "   Clone the repo first: cd ~ && git clone https://github.com/lukemcqueen/steadfaste-fleet.git"
   exit 0
 fi

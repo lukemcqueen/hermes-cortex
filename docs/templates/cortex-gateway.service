@@ -53,7 +53,7 @@ EnvironmentFile=-%h/steadfaste-fleet/.env
 # See ops/scripts/fleet_gateway/guard_distinct_token.py.
 #
 # The FLEET venv, not the system python (2026-10-13): it is the interpreter
-# cortex-update.sh registers every MCP server against, and the one the macOS
+# fleet-update.sh registers every MCP server against, and the one the macOS
 # counterpart (docs/templates/com.hermes.cortex-gateway.plist) execs. The shared
 # launcher guard runs first, so a missing venv or daemon is logged as
 # "NO INTERPRETER at <path> … how to fix it" (rc 78) instead of an unexplained

@@ -1,6 +1,6 @@
 # Governance-Gate SRE Review — hermes-plugin-lock unlock gate (2026-07-31)
 
-Case study: an SRE/Domain/QA review of a draft design to make `cortex-update.sh` the ONLY
+Case study: an SRE/Domain/QA review of a draft design to make `fleet-update.sh` the ONLY
 mechanism that updates the immutable enforcement chain (enforcer plugin, pre-commit hook
 scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 
@@ -9,7 +9,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 - `hermes-plugin-lock` gates `unlock`/`update` on `CORTEX_UPDATE=1` OR `AGENT_ID=moses|esther`
   (`lock` and `status` stay open). Callers must use `sudo CORTEX_UPDATE=1 hermes-plugin-lock unlock`
   because sudoers has env_reset.
-- `cortex-update.sh` exports `CORTEX_UPDATE=1` and passes it explicitly through sudo.
+- `fleet-update.sh` exports `CORTEX_UPDATE=1` and passes it explicitly through sudo.
 - Pre-commit DOGFOOD (auto-deploy enforcer on drift) to become a BLOCK instructing cortex-update.
 - Doctor remediation hints to be re-pointed to cortex-update.
 
@@ -17,7 +17,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 
 1. **P0 — `sudo VAR=val cmd` fails under command-specific NOPASSWD + env_reset without SETENV:**
    `sudo -n CORTEX_UPDATE=1 /usr/local/sbin/hermes-plugin-lock unlock` → "sudo: a password is
-   required" even though the bare-path rule exists. Every sudo unlock call in cortex-update.sh
+   required" even though the bare-path rule exists. Every sudo unlock call in fleet-update.sh
    (copy_file ~L613, check_each_mapped_file ~L710/712, deploy_governance_plugin ~L1341) uses this
    form and wraps it in `2>/dev/null || true` → the sanctioned channel silently no-ops → the
    subsequent `cp` fails against `chattr +i` → the enforcement deploy breaks while appearing fine.
@@ -37,8 +37,8 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
    rewrites the helper itself, never the enforcement TARGETS — leave it ungated.
 
 4. **P1 — DOGFOOD→BLOCK is NOT a deadlock, but only if the sanctioned channel works:** the block
-   is recoverable because (a) repo sources are not immutable (agent can always run cortex-update.sh
-   from the repo), and (b) cortex-update.sh does not require a governance lock — the committing
+   is recoverable because (a) repo sources are not immutable (agent can always run fleet-update.sh
+   from the repo), and (b) fleet-update.sh does not require a governance lock — the committing
    agent already holds one. It BECOMES a deadlock if the sanctioned channel is broken (finding 1).
    The blocked agent must also reload the 8 always-skills and re-`begin_change()` after the update
    (cortex-update's purge loop deletes its active `.governance-*.json` lock and re-deploying the
@@ -52,7 +52,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 6. **P1 — doctor remediation hints teach the refused command:** checks.py ~L1617-1625 (`cp
    pre-commit-score → hooks/pre-commit`) and ~L1528-1532 (`rm -rf + ln -sf` enforcer symlink) fail
    against `chattr +i` files even WITHOUT the gate. Re-point all to
-   `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --force-all`. The `Immutable` (lsattr) and
+   `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --force-all`. The `Immutable` (lsattr) and
    `Plugin lock helper` (`sudo -n … status`, bare path) checks are unaffected by gating.
 
 7. **P1 — docs/skills teach the refused command:** `governance-plugin-implementation.md` and
@@ -64,7 +64,7 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
 - Auto-remediation pipeline (agent-remediation-sensor, agent-remediate-apply, agent-fixer crons,
   agent-governance-auditor) has ZERO direct writes to enforcement paths; the auditor is read-only
   and excludes `.hermes*` dirs.
-- Only callers of `hermes-plugin-lock` in the whole repo: cortex-update.sh, pre-commit-score
+- Only callers of `hermes-plugin-lock` in the whole repo: fleet-update.sh, pre-commit-score
   (DOGFOOD), fleet_doctor/checks.py, and docs/skills. Blast radius = exactly the intended surface.
 - `agent-steadfaste-fleet-sync.sh` pulls the repo but does NOT run cortex-update (no gate impact).
 
@@ -78,11 +78,11 @@ scripts, loop-gov-mcp.py), with an orchestrator-only manual exception.
    copy is the CI-safe way to exercise the gate — chattr fails harmlessly as the unprivileged user).
 4. Orchestrator channel: `sudo AGENT_ID=moses hermes-plugin-lock unlock` passes (if env kept).
 5. Ungated ops: `lock` and `status` work with no env.
-6. DOGFOOD block: drifted hash → block message points at cortex-update.sh, exit non-zero;
+6. DOGFOOD block: drifted hash → block message points at fleet-update.sh, exit non-zero;
    retry-after-update completes (skills reload + re-begin_change).
 7. Doctor regression: `Immutable:*` PASS, `Plugin lock helper` PASS, no `cp`-style hints remain.
 8. Self-update: `sudo -n /usr/local/sbin/hermes-plugin-lock update` succeeds (post-fix 3).
-9. E2E: cortex-update.sh run → deployed enforcer hash == repo hash, `+i` on all TARGETS.
+9. E2E: fleet-update.sh run → deployed enforcer hash == repo hash, `+i` on all TARGETS.
 
 ## Live host facts (moses box, 2026-07-31)
 

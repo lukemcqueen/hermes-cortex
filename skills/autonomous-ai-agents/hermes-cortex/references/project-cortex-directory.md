@@ -2,7 +2,7 @@
 
 > **Read this first — two directories share the name, and they are NOT the same.**
 >
-> - `~/.steadfaste-fleet/` is the **runtime infra dir** (deployed by `cortex-update.sh`):
+> - `~/.steadfaste-fleet/` is the **runtime infra dir** (deployed by `fleet-update.sh`):
 >   `scripts/`, `state/`, `sessions/`, `memory/`, `hooks/`, and the `skills.yaml` the
 >   **enforcer** reads. Always write it with the `~/` anchor.
 > - `.hermes-cortex/` (as below) is a **repo-local overlay inside a CONSUMER project**,

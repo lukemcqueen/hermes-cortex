@@ -5,7 +5,7 @@ mycortex-mem migrate.py — schema_version-gated migration runner for mycortex_m
 Applies SQL migrations from the sibling schema/ directory to the shared
 mycortex-postgres database. Idempotent: re-running when current is a no-op.
 
-Invoked by cortex-update.sh AFTER file sync (cortex-update itself has no DDL
+Invoked by fleet-update.sh AFTER file sync (cortex-update itself has no DDL
 path — this runner is the DDL path). New hosts: install.sh runs it once.
 
 Usage:

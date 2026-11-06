@@ -28,7 +28,7 @@ Steadfaste Fleet uses three distinct layers, each with a clear purpose:
 | Layer | Path | Purpose | Backed up? |
 |-------|------|---------|------------|
 | **Repo** | `~/steadfaste-fleet/` | Public source code, skills, docs, installer | ✅ Git (GitHub) |
-| **Consumer overlay** | `<project>/.steadfaste-fleet/` | Per-PROJECT agent data (sessions, memory, skills) for consumer projects seeded by `seed-project.sh`. The Cortex repo itself must NOT carry one (removed 2026-10-07) — `cortex-update.sh` skips it when the repo is the Cortex repo. | ✅ Git (in that project) |
+| **Consumer overlay** | `<project>/.steadfaste-fleet/` | Per-PROJECT agent data (sessions, memory, skills) for consumer projects seeded by `seed-project.sh`. The Cortex repo itself must NOT carry one (removed 2026-10-07) — `fleet-update.sh` skips it when the repo is the Cortex repo. | ✅ Git (in that project) |
 | **Hermes Config** | `~/.hermes/` | Hermes Agent runtime (config, logs, cache, DBs) | ❌ Machine-local |
 
 **Rule:** Never put agent-generated data in the repo root. Never put source code in `~/.hermes/`. Never put logs in the repo.
@@ -120,14 +120,14 @@ steadfaste-fleet/
 | Prefix | Example | When to use |
 |--------|---------|-------------|
 | `agent-*` | `agent-system-alert-watchdog`, `agent-daily-bible-reading` | Runs on **every agent** — both LLM-driven crons and no_agent script crons. `agent-` means "fleet-wide", not "LLM-driven". |
-| `orch-*` | `orch-bus-audit-watchdog`, `orch-fleet-watchdog` | Runs only on **orchestrator** agents (Moses, Esther). Registered in `install-orch-crons.sh` and `register_orch` in `cortex-update.sh`. |
+| `orch-*` | `orch-bus-audit-watchdog`, `orch-fleet-watchdog` | Runs only on **orchestrator** agents (Moses, Esther). Registered in `install-orch-crons.sh` and `register_orch` in `fleet-update.sh`. |
 
 ### Skills
 
 | Pattern | Example | Meaning |
 |---------|---------|---------|
 | `kebab-case` | `code-review`, `change-test-loop` | Skill directory name = `name:` in SKILL.md frontmatter |
-| `local-*` | `local-<name>` (e.g. host-managed copies of `deploy-load-verification`) | Host-managed skill — created per-host, NOT in repo installers. Doctor silently excludes it (no orphan warning), cortex-update.sh never prunes it, but agent-collect-skills.sh still reports it so orch-skill-evaluate can score it for fleet promotion (evaluated at LOW priority — DEFER by default, promote only if it generalizes). Sync the deployed copy to `skills/` if you want it fleet-wide, then drop the `local-` prefix. Never commit the `local-*` copy to the repo when the plain-named version exists — keep exactly one canonical SKILL.md (2026-08-17 consolidation). |
+| `local-*` | `local-<name>` (e.g. host-managed copies of `deploy-load-verification`) | Host-managed skill — created per-host, NOT in repo installers. Doctor silently excludes it (no orphan warning), fleet-update.sh never prunes it, but agent-collect-skills.sh still reports it so orch-skill-evaluate can score it for fleet promotion (evaluated at LOW priority — DEFER by default, promote only if it generalizes). Sync the deployed copy to `skills/` if you want it fleet-wide, then drop the `local-` prefix. Never commit the `local-*` copy to the repo when the plain-named version exists — keep exactly one canonical SKILL.md (2026-08-17 consolidation). |
 
 ---
 

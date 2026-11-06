@@ -114,7 +114,7 @@ launchctl vs brew by host.
 **Phase 3 — multi-role:** hook/enforcer changes tested in a throwaway repo;
 role matrix (Titus/Joseph/Esther/Kustos) — verify none broken.
 **Phase 4 — docs:** never document a command you have not executed; new script
-→ register in cortex-update.sh; new auto-loaded skill → manifest; agent
+→ register in fleet-update.sh; new auto-loaded skill → manifest; agent
 workflow change → AGENTS.md/SOUL.md.
 **Phase 5 — final verification:**
 - No dangling leftovers — DECIDE: land it, or state a decision backed by a

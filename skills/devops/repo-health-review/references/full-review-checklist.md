@@ -21,7 +21,7 @@
 - [ ] Check field names in JSON schemas for consistency
 
 ## Deployment Registration (Pass 4)
-- [ ] Parse all `register('path')` calls from `cortex-update.sh`
+- [ ] Parse all `register('path')` calls from `fleet-update.sh`
 - [ ] Compare against all `.py`/`.sh` files in `ops/scripts/` (exclude `__pycache__`)
 - [ ] Flag unregistered scripts for review (many are intentionally unregistered — deployment via other means)
 
@@ -55,7 +55,7 @@
 
 ## Clean Up
 - [ ] Clean up temp files (test artifacts, temp dirs created during review)
-- [ ] If files moved: update `cortex-update.sh` register/unregister
+- [ ] If files moved: update `fleet-update.sh` register/unregister
 - [ ] If files renamed: update all cross-references
 - [ ] Run doctor: `cortex-doctor.py --quiet` — 0 failures
 - [ ] `git add -A`

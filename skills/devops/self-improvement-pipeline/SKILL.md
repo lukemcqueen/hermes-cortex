@@ -106,7 +106,7 @@ A session where you review the conversation and find nothing to update is a miss
 6. **Session signal examples (2026-07-23):** Signals that fired this session:
    - "No. Refactor. Do it right" → workflow correction → updated **repo-health-review** skill with full-refactor pattern
    - "Make agent know what to clean up" → asked for structural guardrail → added `clean_stale_deploys()` + doctor `check_stale_deploys()`
-   - "Can we have install/update automatically run doctor" → system integration → added auto-doctor to install.sh and cortex-update.sh
+   - "Can we have install/update automatically run doctor" → system integration → added auto-doctor to install.sh and fleet-update.sh
    - "Make it modular" → code architecture → split doctor into 8-module `fleet_doctor/` package
    - Protected `change-checklist` can't be edited → updated `repo-health-review` instead (same task class, editable skill)
 
@@ -125,13 +125,13 @@ A session where you review the conversation and find nothing to update is a miss
 **The rule:** Never silence a doctor warning with a timestamp hack. Always fix the root cause:
 - Warning "SOUL.md is stale" → actual copy/merge from template
 - Warning "skills.yaml template is newer" → actual `diff -q` + content-level copy
-- Warning "AGENTS.md is stale" → run cortex-update.sh which does content-based sync
+- Warning "AGENTS.md is stale" → run fleet-update.sh which does content-based sync
 
 **Checklist:**
 1. Read the doctor message — what exactly is stale/missing?
 2. Fix the actual content — copy, merge, or deploy the right file
 3. Verify — re-run doctor and confirm ⚠️ is gone
-4. Make it permanent — if cortex-update.sh doesn't already auto-sync this file, add it
+4. Make it permanent — if fleet-update.sh doesn't already auto-sync this file, add it
 
 **The litmus test:** If the user saw your fix, would they say "you fixed it" or "you hid it"? If the latter, your fix is wrong.
 

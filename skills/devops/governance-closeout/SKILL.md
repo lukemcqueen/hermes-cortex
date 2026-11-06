@@ -304,7 +304,7 @@ belongs in a NEW cycle, not this one.
 
 A COMPLEX change cannot close without a CLEAN verdict. Complexity is MEASURED from the
 diff (≥50 lines, ≥3 files, or any always-review path such as `plugins/`,
-`mcp-servers/`, `ops/scripts/cortex-update.sh`, `pre-commit-score`) — never
+`mcp-servers/`, `ops/scripts/fleet-update.sh`, `pre-commit-score`) — never
 self-reported, and uncommitted work counts.
 
 **Independence is CONTEXT ISOLATION, not a different model.** The design
@@ -891,7 +891,7 @@ cycle only when the close said it could not write a receipt.
 (the gate checks both): the push is also refused with *"this range touches an
 always-review path and carries no clean review receipt — close the cycle, then push"*.
 `core/governance/` (e.g. `loop_evaluator.py`) is one of those paths alongside `plugins/`,
-`mcp-servers/`, `cortex-update.sh` and `pre-commit-score`. The receipt is WRITTEN BY the
+`mcp-servers/`, `fleet-update.sh` and `pre-commit-score`. The receipt is WRITTEN BY the
 review, and the review runs inside the close — so on such a range the workable order is:
 
 ```text

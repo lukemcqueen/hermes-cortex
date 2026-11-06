@@ -211,7 +211,7 @@ local_only_lines=$(comm -23 <(sort "$dest") <(sort "$src") 2>/dev/null | sed -n 
 
 **The rule:** under `set -euo pipefail`, never truncate a pipeline with `head`/`tail` unless you add `|| true` (which masks the real status). Prefer `sed -n '1,Np'` — it reads everything, so the producer never gets SIGPIPE. This applies in `$(...)` assignments too: the substitution's exit status is the pipeline's under pipefail.
 
-**Real bug (2026-08-04):** `cortex-update.sh`'s AGENTS.md sync used `comm | head -20`. Any deploy where the local `~/.hermes/AGENTS.md` diverged from the repo by >20 lines (e.g. an AGENTS.md trim) silently skipped EVERYTHING after the sync — mycortex migrations, nginx/plugin deploys, soul-merge, the update-commit save, and the lock purge — while `update-commit` stayed stale and the doctor reported "Deploy sync FAIL". The exit was masked entirely when the script was invoked through a pipe (`bash script.sh | tail` returns tail's 0). Same latent pattern fixed in the two `stale-ref-watchdog` scripts (`find | head -20`).
+**Real bug (2026-08-04):** `fleet-update.sh`'s AGENTS.md sync used `comm | head -20`. Any deploy where the local `~/.hermes/AGENTS.md` diverged from the repo by >20 lines (e.g. an AGENTS.md trim) silently skipped EVERYTHING after the sync — mycortex migrations, nginx/plugin deploys, soul-merge, the update-commit save, and the lock purge — while `update-commit` stayed stale and the doctor reported "Deploy sync FAIL". The exit was masked entirely when the script was invoked through a pipe (`bash script.sh | tail` returns tail's 0). Same latent pattern fixed in the two `stale-ref-watchdog` scripts (`find | head -20`).
 
 ### `set -u` + uninitialized counter variable = premature exit
 
@@ -229,7 +229,7 @@ This pattern appears in summary sections where a counter is only incremented con
 
 **Detection:** Any reference to a counter variable outside the loop/section that increments it may be unset if no items matched. Common culprits: `REMOVED`, `DELETED`, `ERRORS`, `MODIFIED`. Run with `bash -u` to catch these before shipping.
 
-**Real bug:** `cortex-update.sh` line 1334 had `[[ "$REMOVED" -gt 0 ]]` — when `cortex-update.sh` found nothing to remove, `REMOVED` was never initialized, and the script exited with code 1 despite a successful deployment. The fix was `${REMOVED:-0}`.
+**Real bug:** `fleet-update.sh` line 1334 had `[[ "$REMOVED" -gt 0 ]]` — when `fleet-update.sh` found nothing to remove, `REMOVED` was never initialized, and the script exited with code 1 despite a successful deployment. The fix was `${REMOVED:-0}`.
 
 ### `trap` with `set -e` — unexpected exits
 
@@ -313,7 +313,7 @@ under test. Trace the FIXTURE before the code: `cat "$file"` first. Summary for 
 
 ## Deploy-Time Mode Overrides — Run AFTER the Unlock, Not at Register Time
 
-When a deploy script (e.g. `cortex-update.sh`) locks enforcement files immutable
+When a deploy script (e.g. `fleet-update.sh`) locks enforcement files immutable
 (chattr +i / uchg) at the end of its run, any `chmod` at **register time** (the
 top-level register block, before the per-file loop unlocks) fails silently on
 the still-immutable file. And a content-only change detector (`needs_update()`
@@ -340,7 +340,7 @@ for _mode_dest in "${!MODE_OVERRIDES[@]}"; do
 done
 ```
 
-- **`declare -A` is safe here** because cortex-update.sh re-execs to brew bash
+- **`declare -A` is safe here** because fleet-update.sh re-execs to brew bash
   ≥4 on macOS (the script has a bash-version guard at the top).
 - **Test the full sequence, not the isolated step.** A lone `chmod 700` on a
   locked file correctly fails with "Operation not permitted" — that failure is
@@ -938,7 +938,7 @@ exit 3
 - The fleet already ships this as
   **`ops/scripts/lib/python-with-module.sh <module> <script> [args]`** (add `--print <module>`
   when a caller only needs the path). Reuse it rather than writing another copy — it is
-  registered in `cortex-update.sh` and deploys to `scripts/lib/`.
+  registered in `fleet-update.sh` and deploys to `scripts/lib/`.
 - `PYTHON=` is the escape hatch an operator reaches for; honour it first.
 - **An interpreter handed to a CHILD must be an ABSOLUTE path when that child manipulates
   `PATH`.** A probe that finds the capable interpreter with `shutil.which("python3")` / `command -v`
@@ -1034,7 +1034,7 @@ missing-prerequisite paths are exercised on any host. That an age gate ran BEFOR
 provable only from the installer stub's own log — source order is not evidence.
 
 **Prefer the CORTEX venv (`~/.steadfaste-fleet/venv/bin/python3`) — it is the venv the fleet runs
-its services with** (`cortex-update.sh` registers every MCP server against it). The Hermes venv
+its services with** (`fleet-update.sh` registers every MCP server against it). The Hermes venv
 is a last resort: fleet tooling should not depend on the tree we are migrating away from.
 Ordering only breaks a *tie* — a candidate must still import the module to be chosen, so a
 module only the Hermes venv has keeps resolving. Measured on esther 2026-10-13: the cortex venv
@@ -1101,7 +1101,7 @@ python3 ops/scripts/manage/fix-cortex-venv.py           # install only the missi
 It decides by **importing** in the TARGET interpreter (a distribution name is not a module
 name: `PyYAML` → `yaml`, `psycopg[binary]` → `psycopg`), prefers `uv`, falls back to the venv's
 own pip, and re-checks by import afterwards rather than trusting the installer's exit code.
-`cortex-update.sh` reports the venv's state on every deploy, so a host that is short says so
+`fleet-update.sh` reports the venv's state on every deploy, so a host that is short says so
 and prints the exact repair command — an agent does not have to discover the gap itself. A
 repair run is a manual operational step: record its command in the evidence and let a verifier
 assert the resulting STATE non-destructively (versions, import check).

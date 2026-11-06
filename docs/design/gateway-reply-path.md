@@ -61,7 +61,7 @@ that knows where a message came from):
   text, and it publishes a signed reply to `out_<agent>`. Any agent that can run a command
   can answer a human through it — CLI coding agents, the shim, a bespoke script — so
   nothing about a particular agent enters the gateway. Registered for deploy in
-  `cortex-update.sh` (next to `agent-shim.py`) so it exists on the DEPLOYED path; a
+  `fleet-update.sh` (next to `agent-shim.py`) so it exists on the DEPLOYED path; a
   repo-only copy leaves the documented reply path unusable on a host.
 - **`ops/scripts/agent-shim.py` (ADR-0005 §8)** — the designed polling shim: poll
   `inbox_<agent>`, hand the message to the agent, `reply()` → `out_<agent>`, `ack()` after

@@ -49,7 +49,7 @@ Every session: read the skills manifest at `~/.steadfaste-fleet/skills.yaml` —
 10. **Use tools, not descriptions** — tool calls or final result in every response.
 11. **Score every change** — logged to loop-governance DB; pre-commit hook auto-cycles + adversarial gate (A2/A4) on staged scripts. `--no-verify` is a logged bypass — never ship a hook-rejected change with it.
 12. **Tests/TDD/scoring are the default** — opt-outs only: `"skip tests"`, `"read-only"`, `"throwaway prototype"`, `"just check/look at"`.
-13. **DOGFOOD EVERY CHANGE (enforced by doctor)** — a script change isn't complete until the DEPLOYED copy ran its REAL invocation: `cortex-update.sh` then `cronjob action='run'` (manual runs don't update `last_status`); prompt changes → LIVE jobs.
+13. **DOGFOOD EVERY CHANGE (enforced by doctor)** — a script change isn't complete until the DEPLOYED copy ran its REAL invocation: `fleet-update.sh` then `cronjob action='run'` (manual runs don't update `last_status`); prompt changes → LIVE jobs.
 14. **Tag follow-ups** — `pending` todo, finish current work, return.
 15. **Pull before push** — `git pull --rebase origin <branch>`.
 16. **Never print secrets** — `$(cat <file>)` subshell only; no inline `printf`/`echo`/`-u "user:pass"`.
@@ -136,11 +136,11 @@ Only orchestrators (Moses, Esther) may modify: **skills** (`skills/`), **cron sc
 
 Non-orchestrators: submit proposals via the orchestrator inbox (`📝 PROPOSAL: <what>`). The pre-commit hook blocks non-orchestrators from staging `docs/orchestrator-only-paths.txt` — the committed list IS the source of truth. Edits to shared infrastructure propagate to every agent without review.
 
-**RULE 7b: ENFORCEMENT CHAIN — cortex-update.sh IS THE ONLY UPDATE PATH.** Enforcement files (enforcer plugin, hooks, loop-gov-mcp.py, hermes-plugin-lock) update ONLY via `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`. Direct `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrators (audit-logged); exceptions: `--cortex-update` / `--orchestrator` (moses|esther). If DOGFOOD blocks you (deployed ≠ repo enforcer): run cortex-update.sh (lock-free), re-acquire, retry. ⚠️ **Deploy ≠ load:** gateway keeps the OLD enforcer until `hermes gateway restart` (agent-blocked — ask the operator; do not loop).
+**RULE 7b: ENFORCEMENT CHAIN — fleet-update.sh IS THE ONLY UPDATE PATH.** Enforcement files (enforcer plugin, hooks, loop-gov-mcp.py, hermes-plugin-lock) update ONLY via `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`. Direct `sudo hermes-plugin-lock unlock` is REFUSED for non-orchestrators (audit-logged); exceptions: `--cortex-update` / `--orchestrator` (moses|esther). If DOGFOOD blocks you (deployed ≠ repo enforcer): run fleet-update.sh (lock-free), re-acquire, retry. ⚠️ **Deploy ≠ load:** gateway keeps the OLD enforcer until `hermes gateway restart` (agent-blocked — ask the operator; do not loop).
 
 **RULE 7c: BUS ACCESS — NON-ORCHESTRATORS USE THE HTTP CLIENT ONLY.** Non-orchestrators have the bus **HTTP client** (`~/steadfaste-fleet/.env` + `contact-orchestrator.sh`) and NOTHING ELSE. Never install the bus server or the `cortex-bus` MCP client — the doctor WARNS on both. Role matrix: `docs/bus-architecture.md`. **Bus ACL:** per queue via `bus.permissions`; `is_admin=true` bypasses (moses). Grants in `core/fleet_bus/schema/auth.sql`.
 
-**RULE 8: "PULL LATEST" = FULL REFRESH.** (1) `git pull origin main`, (2) `cortex-update.sh` — deploy, (3) run the doctor, (4) fix every issue until clean, (5) verify services, crons, skills.
+**RULE 8: "PULL LATEST" = FULL REFRESH.** (1) `git pull origin main`, (2) `fleet-update.sh` — deploy, (3) run the doctor, (4) fix every issue until clean, (5) verify services, crons, skills.
 
 ---
 

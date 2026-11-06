@@ -192,5 +192,5 @@ Tests: `tests/test_non_hermes_session_id.py` (15 assertions incl. A–D,
 temp HOME, never the real config).
 
 **Titus rollout** (no SSH by design — deploy via the bus/fleet notice):
-`git pull` → `cortex-update.sh` → `bash ops/scripts/install/install-claude-governance.sh`
+`git pull` → `fleet-update.sh` → `bash ops/scripts/install/install-claude-governance.sh`
 → restart the Claude Code session → verify with the script's `--check`.

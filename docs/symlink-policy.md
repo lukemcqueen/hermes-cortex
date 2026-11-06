@@ -54,7 +54,7 @@ or files at `~/.hermes/`. **Never replace these with symlinks to
   `~/.hermes/skills/` must be a **symlink to it** (not a real directory). This is the REVERSE
   of the 2026-07-07 direction, deliberately (2026-10-21): the fleet is moving OFF the Hermes
   agent, so Cortex must own the canonical store instead of borrowing the tree that Hermes
-  Agent's `skills_sync.py` manages. `cortex-update.sh` deploys the skills into the real cortex
+  Agent's `skills_sync.py` manages. `fleet-update.sh` deploys the skills into the real cortex
   tree, then publishes the agent-visible view at `~/.agents/skills/` (the cross-client standard
   path read natively by Codex, Cursor, Copilot, OpenCode and Antigravity), so every harness
   reads the same bytes through a pointer. Invert per host with
@@ -83,16 +83,16 @@ These are real directories at `~/.steadfaste-fleet/` with symlinks at `~/.hermes
 Symlinks work because macOS/Linux resolve writes through the symlink
 transparently — no data is lost.
 
-### Read-only content (deployed by cortex-update.sh)
+### Read-only content (deployed by fleet-update.sh)
 
 | Symlink | Content | Managed by | Size |
 |---------|---------|------------|------|
-| `scripts/` | All agent scripts | `cortex-update.sh register()` | — |
-| `offline/` | Code corpus + tools | `cortex-update.sh sync_code_corpus()` | 3.3M |
+| `scripts/` | All agent scripts | `fleet-update.sh register()` | — |
+| `offline/` | Code corpus + tools | `fleet-update.sh sync_code_corpus()` | 3.3M |
 | `memory/` | Agent pointer memory | Agent memory tool | 4K |
 | `memories/` | MEMORY.md, USER.md | Agent session writes | 8K |
 | `hooks/` | Git pre-commit/pre-push hooks | `install-score-hook.sh` | 16K |
-| `mcp-servers/` | MCP server scripts | `cortex-update.sh register()` | 32M |
+| `mcp-servers/` | MCP server scripts | `fleet-update.sh register()` | 32M |
 
 ### Runtime state (writes resolve through symlink)
 
@@ -172,7 +172,7 @@ The exception is container/CI environments with `--read-only` root filesystems
 ### Created during initial setup
 
 The symlinks below are created once during `install.sh` or `cortex-setup.sh`.
-`cortex-update.sh` does NOT manage them — it only deploys content.
+`fleet-update.sh` does NOT manage them — it only deploys content.
 
 ### What to do if a symlink breaks
 

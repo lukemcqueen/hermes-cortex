@@ -1,14 +1,14 @@
 # Memory-Seed Clobber — Root Cause Chain and Fix (2026-08-05)
 
 **Symptom:** on hosts where the deploy target is the live memory file,
-cortex-update.sh overwrote personalized MEMORY.md with the blank seed template
+fleet-update.sh overwrote personalized MEMORY.md with the blank seed template
 on EVERY deploy — 7 clobbers in one day (16:46, 17:02, 19:05 post-merge/manual
 deploys), saved only by the `deploy-backups/MEMORY.md.<ts>.bak` mechanism and
 manual restore. First reported by Joseph (non-orchestrator) with evidence.
 
 ## Root cause chain (all three layers verified by reading the code)
 
-1. **The register comment lied.** `ops/scripts/cortex-update.sh` (~line 512):
+1. **The register comment lied.** `ops/scripts/fleet-update.sh` (~line 512):
    ```bash
    # Templates → ~/.hermes/memories/ (guarded — only if dest missing)
    register "docs/templates/MEMORY.seed.md" "${CORTEX_DEPLOY_HOME}/memories/MEMORY.md"
@@ -19,14 +19,14 @@ manual restore. First reported by Joseph (non-orchestrator) with evidence.
 2. **The hash ALWAYS differs.** The live file is personalized (custom notes
    appended); the seed is a blank template. Once any memory is written, the
    hashes can never match → every full-mode deploy (full mode is the DEFAULT;
-   the post-merge hook runs `bash cortex-update.sh` with no flags → full mode)
+   the post-merge hook runs `bash fleet-update.sh` with no flags → full mode)
    overwrites real memory with the 1283-byte template.
 
 3. **The doctor check was inverted.** `fleet_doctor/checks.py`
    `check_deploy_checksums` Category 1 (line ~3107) parses EVERY `register `
-   line in cortex-update.sh and content-compares deployed vs repo source:
+   line in fleet-update.sh and content-compares deployed vs repo source:
    - Clobbered (blank) → matches seed → doctor ✅ PASSES (broken state = healthy)
-   - Restored (personalized) → differs → doctor ❌ FAILS + "Run: cortex-update.sh
+   - Restored (personalized) → differs → doctor ❌ FAILS + "Run: fleet-update.sh
      to resync" — exactly the destructive action.
 
 ## Topology: which memory file is LIVE? (verified on esther host)
@@ -48,7 +48,7 @@ That wrong path claim is exactly why the topology is confusing.
 
 ## Fix design (agreed, orchestrator-only — esther landed it)
 
-1. **Deploy — `register_seed()` in cortex-update.sh**: new map + function;
+1. **Deploy — `register_seed()` in fleet-update.sh**: new map + function;
    copy ONLY when dest is missing, in BOTH full and delta modes:
    ```bash
    SEED_MAP=()
@@ -68,7 +68,7 @@ That wrong path claim is exactly why the topology is confusing.
    lines, PASS if dest exists, WARN if missing, NEVER content-compare.
 
 3. **Scope (Luke correction mid-session: "We shouldn't touch the hermes one")**:
-   fix stays in the steadfaste-fleet repo (`ops/scripts/cortex-update.sh` +
+   fix stays in the steadfaste-fleet repo (`ops/scripts/fleet-update.sh` +
    `fleet_doctor/checks.py` + docs). Do NOT write to `~/.hermes/memories/`
    (Hermes owns that file) and do NOT patch `~/.hermes/hermes-agent` upstream
    code. Upstream preference unchanged: local workaround + environment
@@ -78,7 +78,7 @@ That wrong path claim is exactly why the topology is confusing.
 
 1. Back up `~/.steadfaste-fleet/memories/MEMORY.md`; write a personalized marker
    line into it (simulating Joseph's state).
-2. Run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (full mode) → assert
+2. Run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` (full mode) → assert
    the personalized file is UNTOUCHED (hash identical), no backup created.
 3. Remove the file → deploy → assert it re-seeds from template (dest-missing
    path still works).

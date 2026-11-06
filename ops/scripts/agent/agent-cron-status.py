@@ -12,7 +12,7 @@ reports -1 on a fleet host. Two sources feed that flag:
      no recency bound, so one historical push failure poisoned the flag
      forever; fixed to require a modification within the last 6h.
 
-Deployed to every agent via cortex-update.sh so the orchestrator can EXEC it
+Deployed to every agent via fleet-update.sh so the orchestrator can EXEC it
 on any fleet host to name the failing source — no guessing or hand-reading
 remote files.
 

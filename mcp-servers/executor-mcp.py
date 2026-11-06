@@ -211,7 +211,7 @@ def _execution_request(args: dict) -> CallToolResult:
     # envelope DETERMINISTICALLY before dispatch so the coding agent spends
     # zero tool round-trips fetching context. Rules + plan + task + git
     # history are knowable in advance. The builder is DEPLOYED fleet-wide
-    # (cortex-update.sh MAP) — direct import, no relative-path hacks.
+    # (fleet-update.sh MAP) — direct import, no relative-path hacks.
     context = ""
     worktree = args.get("worktree", "")
     if worktree:

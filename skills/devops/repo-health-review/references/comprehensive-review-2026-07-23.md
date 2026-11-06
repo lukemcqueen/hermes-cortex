@@ -11,7 +11,7 @@ Used `delegate_task` with 3 parallel subagents:
 
 ## Key Findings
 
-### cortex-update.sh — 14 stale register() entries
+### fleet-update.sh — 14 stale register() entries
 Files registered for deployment that no longer exist on disk:
 - `bus-sensor.py` (2x), `orch-install-bus.sh`, `change-readiness.sh`
 - `inbox-sensor.py`, `inbox-depth-watchdog.sh`, `cortex-bus-monitor.sh`
@@ -39,7 +39,7 @@ Files registered for deployment that no longer exist on disk:
 - `AGENTS.md` doesn't mention orchestrator/server-agent/dev-agent roles
 
 ### Fixes Applied This Session
-- 14 stale register entries removed from cortex-update.sh
+- 14 stale register entries removed from fleet-update.sh
 - legacy-autopilot.service path corrected
 - Doctor --quick mode now includes crons + scripts (35 checks vs 31)
 - 3 root-level test files moved to tests/

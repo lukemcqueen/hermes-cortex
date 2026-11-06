@@ -70,7 +70,7 @@ The installer runs **~30 steps** (exact count varies by OS/profile):
 | 6 | Hermes mycortex plugin | `/brain` slash command (`plugins/mycortex-command`) |
 | 7 | Hermes utility scripts | heartbeat, memory-to-brain-sync, check-memory-budget, etc. |
 | 8 | Cron jobs | Essential crons (auto-remediation, health, memory sync) + orchestrator-only |
-| 9 | Hermes skills | Deploys repo `skills/` → `~/.hermes/skills/` via an inline install loop (`install.sh` step 10, `find ... -name SKILL.md` → copy; **skips existing files** — it never overwrites). Ongoing skill updates flow repo → `cortex-update.sh` `sync_skills()` (delta engine, only changed files), NOT this one-time copy. |
+| 9 | Hermes skills | Deploys repo `skills/` → `~/.hermes/skills/` via an inline install loop (`install.sh` step 10, `find ... -name SKILL.md` → copy; **skips existing files** — it never overwrites). Ongoing skill updates flow repo → `fleet-update.sh` `sync_skills()` (delta engine, only changed files), NOT this one-time copy. |
 | 10 | Hooks | Scoring pre-commit hooks to all projects + post-merge hook |
 | 11 | MCP servers | loop-governance (loop-gov-mcp.py), tasks (task-mcp.py) |
 | 12 | Web Cache | Semantic web result cache |
@@ -98,14 +98,14 @@ Hermes Cortex uses a **two-directory deployment model**:
 
 | Directory | Purpose | Managed by |
 |-----------|---------|-----------|
-| `~/.steadfaste-fleet/scripts/` | **Canonical runtime location** — all cortex scripts deployed here | `cortex-update.sh` register map |
+| `~/.steadfaste-fleet/scripts/` | **Canonical runtime location** — all cortex scripts deployed here | `fleet-update.sh` register map |
 | `~/.hermes/scripts/` | **Cron resolution** — Hermes Agent cron scheduler looks here | Symlinks → `~/.steadfaste-fleet/scripts/` |
 
-**How scripts flow:** Repo source → `cortex-update.sh ` → `~/.steadfaste-fleet/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `cortex-update.sh` to deploy, then create symlinks.
+**How scripts flow:** Repo source → `fleet-update.sh ` → `~/.steadfaste-fleet/scripts/` → symlink → `~/.hermes/scripts/`. Do NOT manually copy scripts to `~/.hermes/scripts/` — always use `fleet-update.sh` to deploy, then create symlinks.
 
 **To add a new cortex script:**
-1. Add `register "ops/path/to/script" "${HERMES_HOME}/scripts/name"` to `cortex-update.sh`
-2. Run `bash ~/.steadfaste-fleet/scripts/cortex-update.sh `
+1. Add `register "ops/path/to/script" "${HERMES_HOME}/scripts/name"` to `fleet-update.sh`
+2. Run `bash ~/.steadfaste-fleet/scripts/fleet-update.sh `
 3. Create symlink: `ln -sf ~/.steadfaste-fleet/scripts/name ~/.hermes/scripts/name`
 4. Register in `install-crons.sh` if it's a cron script
 
@@ -223,9 +223,9 @@ diff <(sed '1,2d' ~/.steadfaste-fleet/scripts/heartbeat.py | sed '/^# SOURCE:/d'
      <(sed '/^# SOURCE:/d' ops/scripts/health/heartbeat.py)
 ```
 
-If they differ, the installed script is stale — run `cortex-update.sh` to redeploy:
+If they differ, the installed script is stale — run `fleet-update.sh` to redeploy:
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 # Verifies: deployed checksum (minus SOURCE header) == repo source
 ```
 
@@ -254,14 +254,14 @@ launchctl bootout gui/$(id -u)/com.legacy-brain.sync-watch 2>/dev/null || true
 rm -f ~/Library/LaunchAgents/com.mycortex.*.plist ~/.legacy-brain/sync-watch.sh
 ```
 
-### 3. Verify cortex-update.sh covers all deployed files
+### 3. Verify fleet-update.sh covers all deployed files
 
 The update script uses a `register()` function to map repo paths → installed paths.
 Only registered files get auto-deployed when changed. See `references/cortex-update-deployment-map.md`
 for the full current map (core scripts, self-remediation, offline tools, dashboard, agent inbox, templates, langfuse).
 
-**New file additions:** When adding a new script to the repo, add a `register()` line to `cortex-update.sh`
-(ops/scripts/cortex-update.sh) so it gets auto-deployed on next update. Source paths
+**New file additions:** When adding a new script to the repo, add a `register()` line to `fleet-update.sh`
+(ops/scripts/fleet-update.sh) so it gets auto-deployed on next update. Source paths
 use the canonical `ops/` prefix, e.g. `register "ops/scripts/health/heartbeat.py"`.
 
 See `references/cortex-update-deployment-map.md` for the complete map, update modes (delta/force/status),
@@ -321,7 +321,7 @@ creates the corpus files but doesn't build the index automatically.
 
 The npm registry has `mycortex@1.3.1` by stormcolor — a dead 2018 GPU JavaScript library with NO CLI binary. This is NOT the knowledge base tool.
 
-**SOLUTION (no longer applicable — the legacy brain was replaced by mycortex):** mycortex is a repo-managed Python CLI, installed via `cortex-update.sh`, never npm/bun.
+**SOLUTION (no longer applicable — the legacy brain was replaced by mycortex):** mycortex is a repo-managed Python CLI, installed via `fleet-update.sh`, never npm/bun.
 
 The real mycortex (garrytan/mycortex, 20.9k stars) was a Postgres-native personal knowledge base with hybrid RAG search, self-wiring knowledge graphs, and synthesis. It must be installed from GitHub, not npm.
 
@@ -386,9 +386,9 @@ now checks for `legacy autopilot` before setting up sync-watch and skips
 it if autopilot is present. Existing installs with both daemons should disable
 sync-watch manually (see Troubleshooting).
 
-### cortex-update.sh restart_legacy_sync — bootout before rm
+### fleet-update.sh restart_legacy_sync — bootout before rm
 
-**PROBLEM:** When `cortex-update.sh` detects a change to `install-legacy-sync.sh`,
+**PROBLEM:** When `fleet-update.sh` detects a change to `install-legacy-sync.sh`,
 it calls the `restart_legacy_sync` function. The original code did:
 
 ```bash
@@ -421,9 +421,9 @@ launchctl list com.legacy-brain.sync-watch | grep PID # should be different from
 grep "skip default" ~/.legacy-brain/sync-watch.sh # confirm --skip default is present
 ```
 
-### cortex-update.sh appending to agent.env — a missing trailing newline concatenates vars
+### fleet-update.sh appending to agent.env — a missing trailing newline concatenates vars
 
-**PROBLEM:** `cortex-update.sh`'s env step PROVISIONs/append `CORTEX_PYTHON=...` to
+**PROBLEM:** `fleet-update.sh`'s env step PROVISIONs/append `CORTEX_PYTHON=...` to
 `~/.steadfaste-fleet/agent.env` via `>>`. If the existing file does not end in a newline,
 the append lands on the SAME line as the prior var (e.g. `AGENT_NAME=mosesCORTEX_PYTHON=...`).
 `task-db.py`'s `_env_agent_name()` reads `line.split("=",1)[1]` and returns the whole
@@ -449,7 +449,7 @@ lines is a corruption waiting for a fix, not a cosmetic style choice.
 
 ### nginx zone-defs duplicate after
 
-**PROBLEM:** Running `cortex-update.sh ` deploys `hermes-zone-defs.conf`
+**PROBLEM:** Running `fleet-update.sh ` deploys `hermes-zone-defs.conf`
 (which defines `limit_req_zone`, `limit_conn_zone`, and `map` blocks). If the main
 `nginx.conf` already defines the same zones from a previous setup, nginx fails with:
 ```
@@ -561,7 +561,7 @@ If the system's decision was wrong, use `loop-feedback override <id> --note "...
 
 **Dogfood your own rules:** When you introduce a new rule or process that mandates scoring, immediately run `score-cycle` on your own changes to validate the tooling works end-to-end. This catches missing shebangs, Python version mismatches, scoring calibration gaps, and feedback CLI tooling issues before they hit production. The user will call you out if you mandate something and don't do it yourself — it erodes trust in the rule.
 
-**Deployment convention:** New enforcement scripts must be registered in `cortex-update.sh` via `register()`. They deploy to `~/.steadfaste-fleet/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `cortex-update.sh ` to deploy properly.
+**Deployment convention:** New enforcement scripts must be registered in `fleet-update.sh` via `register()`. They deploy to `~/.steadfaste-fleet/scripts/` — the cron scheduler resolves scripts from there via `SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"`. Do NOT manually copy to `~/.hermes/scripts/`; use `fleet-update.sh ` to deploy properly.
 
 **Verification:** Run `bash ~/steadfaste-fleet/core/governance/verify.sh` — expects 14/14 passed, 0 warnings, 0 failures.
 
@@ -597,33 +597,33 @@ hermes cron list | grep "inbox-processor\\|inbox-watchdog"
 # Verify prompt/preview doesn't say 127.0.0.1:8903
 ```
 
-### cortex-update.sh offline_knowledge symlink blocks deploy
+### fleet-update.sh offline_knowledge symlink blocks deploy
 
-**PROBLEM:** `cortex-update.sh ` maps `~/.steadfaste-fleet/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.steadfaste-fleet/bin/` directory does not exist, the symlink creation fails with:
+**PROBLEM:** `fleet-update.sh ` maps `~/.steadfaste-fleet/bin/offline_knowledge` from the repo's `ops/offline/offline_knowledge.py`. If the `~/.steadfaste-fleet/bin/` directory does not exist, the symlink creation fails with:
 ```
 ln: $HOME/.steadfaste-fleet/bin/offline_knowledge: No such file or directory
 ```
-This is a **non-fatal error by itself**, but if `cortex-update.sh` runs with `set -e` (exit on error), the script stops immediately. Any `register()` lines AFTER the broken symlink — including newly added scripts — never get deployed.
+This is a **non-fatal error by itself**, but if `fleet-update.sh` runs with `set -e` (exit on error), the script stops immediately. Any `register()` lines AFTER the broken symlink — including newly added scripts — never get deployed.
 
 **FIX:** Ensure the target directory exists before running cortex-update:
 ```bash
 mkdir -p ~/.steadfaste-fleet/bin
-bash ~/.steadfaste-fleet/scripts/cortex-update.sh
+bash ~/.steadfaste-fleet/scripts/fleet-update.sh
 ```
 
-**PREVENT:** When registering a new file that creates a symlink in `cortex-update.sh`, add a `mkdir -p` for the target directory before the `ln -sf` command, or use `ln -sf ... 2>/dev/null || true` to prevent a failed symlink from blocking the rest of the update.
+**PREVENT:** When registering a new file that creates a symlink in `fleet-update.sh`, add a `mkdir -p` for the target directory before the `ln -sf` command, or use `ln -sf ... 2>/dev/null || true` to prevent a failed symlink from blocking the rest of the update.
 
 ### Delta engine skips after manual git pull
-before invoking `cortex-update.sh`, the delta engine sees `old_commit == new_commit`
+before invoking `fleet-update.sh`, the delta engine sees `old_commit == new_commit`
 and exits with "Already up to date". Files that actually changed in the repo don't
 get deployed because the commit comparison passes through.
 
 **FIX:** Use `` to bypass commit comparison and checksum every file:
 ```bash
-bash ~/.hermes/scripts/cortex-update.sh
+bash ~/.hermes/scripts/fleet-update.sh
 ```
 
-**PREVENT:** Either (a) let `cortex-update.sh` handle its own `git pull` instead of
+**PREVENT:** Either (a) let `fleet-update.sh` handle its own `git pull` instead of
 pulling manually, or (b) always use `` after any manual pull.
 
 ### Launchd plist paths — shell/CORTEX_HOME variables NOT expanded
@@ -735,7 +735,7 @@ brew install python@3.12
 3. ✅ `python3 -c "import script"` passes (no NameError, no missing imports)
 4. ✅ `python3 script.py` exits 0 or produces expected output
 5. ✅ All module-level function references resolve before their usage point
-6. ✅ Script is registered in `cortex-update.sh` MAP if deployed via that path
+6. ✅ Script is registered in `fleet-update.sh` MAP if deployed via that path
 
 **What about older scripts?** The repo no longer maintains 3.9 compatibility — scripts that
 still use `Optional[str]` or `Union[int, str]` are legacy and should be updated to PEP 604
@@ -856,20 +856,20 @@ Hermes Cortex uses a three-layer skill model with different purposes per layer. 
 | Layer | Location | Purpose | Managed by |
 |-------|----------|---------|-----------|
 | **Canonical source** | `~/steadfaste-fleet/skills/` | Public reusable skills distributed by the installer. These are the curated set — ~40 skills across devops, software-development, MCP, github, etc. | `git push` to repo |
-| **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `cortex-update.sh sync_skills()` + manual additions |
-| **Project overrides** | `<consumer-project>/.hermes-cortex/skills/` | Project-specific skill overrides tracked in THAT project's repo. This overlay is for CONSUMER projects only — the Cortex repo itself must never carry one (inside `~/steadfaste-fleet` it shadowed the runtime dir name `~/.steadfaste-fleet` and made a stray governance marker indistinguishable from repo state). `cortex-update.sh` skips the overlay when the repo carries `mcp-servers/loop-gov-mcp.py`. | Tracked in the consumer project |
+| **Global installed** | `~/.hermes/skills/` | Hermes Agent's primary skill directory (~150 skills). Contains cortex skills + ecosystem skills (apple/, creative/, gaming/, mlops/, testing/, etc.) | `fleet-update.sh sync_skills()` + manual additions |
+| **Project overrides** | `<consumer-project>/.hermes-cortex/skills/` | Project-specific skill overrides tracked in THAT project's repo. This overlay is for CONSUMER projects only — the Cortex repo itself must never carry one (inside `~/steadfaste-fleet` it shadowed the runtime dir name `~/.steadfaste-fleet` and made a stray governance marker indistinguishable from repo state). `fleet-update.sh` skips the overlay when the repo carries `mcp-servers/loop-gov-mcp.py`. | Tracked in the consumer project |
 
 ### How Skills Flow
 
 ```
 skills/ (canonical, ~40 skills)
-  ↓ cortex-update.sh : sync_skills() checksums each SKILL.md
+  ↓ fleet-update.sh : sync_skills() checksums each SKILL.md
 ~/.steadfaste-fleet/skills/ → (symlink) → ~/.hermes/skills/ (global, ~150 skills)
                           ↑
                       ~110 ecosystem skills untouched by sync
 ```
 
-**Key relationship:** `~/.steadfaste-fleet/skills/` is a symlink → `~/.hermes/skills/`. When `cortex-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.steadfaste-fleet/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
+**Key relationship:** `~/.steadfaste-fleet/skills/` is a symlink → `~/.hermes/skills/`. When `fleet-update.sh` calls `sync_skills()`, it copies from `skills/` to `~/.steadfaste-fleet/skills/`, the write resolves through the symlink to `~/.hermes/skills/`. Non-cortex skills (apple/, creative/, gaming/, etc.) are completely untouched — `sync_skills()` only overwrites files whose checksums differ from the source.
 
 ### Contrast with Script Deployment
 
@@ -881,9 +881,9 @@ Scripts and skills flow in opposite directions:
 Scripts: `~/.steadfaste-fleet/scripts/` is primary, `~/.hermes/scripts/` is the cron-resolution symlink target.
 Skills: `~/.hermes/skills/` is primary (Hermes Agent loads from here), `~/.steadfaste-fleet/skills/` is the symlink pointing back.
 
-### cortex-update.sh sync_skills()
+### fleet-update.sh sync_skills()
 
-The `sync_skills()` function in `cortex-update.sh` uses a checksum-based delta engine:
+The `sync_skills()` function in `fleet-update.sh` uses a checksum-based delta engine:
 
 ```bash
 # Called during every or delta update
@@ -918,11 +918,11 @@ the deployed copy is not, the copy is skipped with a `SKILL STUB GUARD` warning
 source of truth). This prevents the 131 known repo stubs from clobbering full
 copies on agents that still have them. Recovery path:
 `agent-skill-stub-audit.py --send` on source agents restores full content into
-`skills/`, then a normal `cortex-update.sh` syncs it out.
+`skills/`, then a normal `fleet-update.sh` syncs it out.
 
 The delta engine means:
 - Only skills in `skills/` are ever touched — ~110 unique ecosystem skills (apple/, creative/, gaming/, mlops/, testing/) are completely safe
-- New skills added to `skills/` get installed on next `cortex-update.sh `
+- New skills added to `skills/` get installed on next `fleet-update.sh `
 - Updated skill files (checksum changed) get overwritten automatically
 - No manual copying needed — reverse direction (repo ← ~/.hermes/skills/) is for when you create a skill in the agent and want to commit it to the repo
 
@@ -939,7 +939,7 @@ rm -rf ~/.steadfaste-fleet/skills
 ln -s ~/.hermes/skills ~/.steadfaste-fleet/skills
 
 # 3. Verify with cortex-update
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 # Expected output: "Skills: N updated, M unchanged"
 ```
 
@@ -952,7 +952,7 @@ When an agent works inside the hermes-cortex repo:
 
 For agents on other projects (not working in the hermes-cortex repo):
 - Only `~/.hermes/skills/` is used (no `.hermes-cortex/skills/` project override exists)
-- `cortex-update.sh` keeps these current automatically
+- `fleet-update.sh` keeps these current automatically
 
 ## Services (systemd on Linux, launchd on macOS)
 
@@ -1166,21 +1166,21 @@ hermes plugins list | grep langfuse
 
 ## Post-Update Verification
 
-After pulling latest cortex code and running `cortex-update.sh`, verify the update actually took effect:
+After pulling latest cortex code and running `fleet-update.sh`, verify the update actually took effect:
 
 ### 1. Check Deployment Map Completeness
 
-New files in `scripts/` (repo root) are NOT auto-registered unless they have a `register()` line in `cortex-update.sh`. Files in `ops/scripts/` are only registered if explicitly listed. Run:
+New files in `scripts/` (repo root) are NOT auto-registered unless they have a `register()` line in `fleet-update.sh`. Files in `ops/scripts/` are only registered if explicitly listed. Run:
 
 ```bash
 cd ~/steadfaste-fleet
 git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^ops/"
 ```
 
-Then cross-reference against the register map in `cortex-update.sh`:
+Then cross-reference against the register map in `fleet-update.sh`:
 
 ```bash
-grep "^register " ~/.hermes/scripts/cortex-update.sh | grep -o '"[^"]*"' | head -80
+grep "^register " ~/.hermes/scripts/fleet-update.sh | grep -o '"[^"]*"' | head -80
 ```
 
 git diff --name-only HEAD~1..HEAD | grep "^scripts/\|^ops/"
@@ -1208,7 +1208,7 @@ echo "Exit: $?" # Should be 0
 
 ### 3. Verify New Cron Jobs Were Created
 
-New pipelines often need new cron jobs that aren't auto-created by cortex-update.sh:
+New pipelines often need new cron jobs that aren't auto-created by fleet-update.sh:
 
 ```bash
 hermes cron list | grep <pipeline-name>
@@ -1267,7 +1267,7 @@ not a package manager:
 cd ~/steadfaste-fleet && git pull --rebase
 
 # Deploy updated CLI + schema
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # Verify version
 ~/.steadfaste-fleet/scripts/mycortex doctor

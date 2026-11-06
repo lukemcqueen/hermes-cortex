@@ -16,7 +16,7 @@ One host, two sessions, one repo. Observed 2026-10-02:
 - **Identical authorship.** `agent.env` carries a single `AGENT_NAME`, so both
   sessions committed as the same author. The close-gate's author-scoping (which
   decides what a cycle is responsible for) cannot distinguish them.
-- **Deploy collision.** Both ran `cortex-update.sh`. Every run unlocks the
+- **Deploy collision.** Both ran `fleet-update.sh`. Every run unlocks the
   enforcement files then relocks; two concurrent runs interleave, and a run that
   exits non-zero **after** its unlock leaves the files unlocked. The immutable
   flags came off twice in one session, and the auditor rightly alerted.
@@ -29,7 +29,7 @@ One host, two sessions, one repo. Observed 2026-10-02:
 
 | Scoped per session | Serialised per host |
 |---|---|
-| git identity (authorship) | deploy (`cortex-update.sh`) |
+| git identity (authorship) | deploy (`fleet-update.sh`) |
 | working tree + index | immutable enforcement flags |
 | governance lock file (`.governance-<session>.json`) | package installs |
 | loop-gov DB rows (`session_id`) | the deployed enforcement tree itself |
@@ -88,7 +88,7 @@ A commit made in each tree must be authored by its own identity — check with
 - **Do not create a worktree from a dirty tree.** `new` branches from
   `origin/main` deliberately; branching from HEAD would carry a peer's WIP.
 - **Deploy is host-wide.** A worktree isolates your *editing*, not your
-  *deploying*. Only one session should run `cortex-update.sh` at a time; a run
+  *deploying*. Only one session should run `fleet-update.sh` at a time; a run
   that exits non-zero can leave the enforcement files unlocked — re-check with
   `hermes-plugin-lock status` and re-apply `sudo hermes-plugin-lock lock`.
 - **Removing a worktree:** `git worktree remove <path>` — do not `rm -rf` it, or

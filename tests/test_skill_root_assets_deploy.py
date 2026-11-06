@@ -10,7 +10,7 @@ and the playbook is unusable on every host.
 
 This is the same defect class the scripts/templates pass was added for (its own
 comment: "Without this, deployed skill dirs are partial"). The goal test is
-per-file, so it drives the REAL block out of cortex-update.sh with a stub
+per-file, so it drives the REAL block out of fleet-update.sh with a stub
 preamble — the shell-scripting skill's "Testing a Script Block in Isolation".
 A test that re-implemented the traversal would prove nothing about the script
 that ships.
@@ -25,7 +25,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-CORTEX_UPDATE = REPO / "ops" / "scripts" / "cortex-update.sh"
+CORTEX_UPDATE = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 # Faithful stand-ins for the helpers sync_skills() calls. copy_file's real body
 # adds the SOURCE header for .sh/.py; this stub only has to prove the TRAVERSAL

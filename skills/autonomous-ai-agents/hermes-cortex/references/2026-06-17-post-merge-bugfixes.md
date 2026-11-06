@@ -3,7 +3,7 @@
 ## Context
 
 After merging 8 new commits into `~/Developer/AI/hermes-cortex` (HEAD `7641f867`),
-`cortex-update.sh ` was run. Three bugs emerged:
+`fleet-update.sh ` was run. Three bugs emerged:
 
 ## Bug 1: Missing platform_utils.py in Deployment Map
 
@@ -13,10 +13,10 @@ ModuleNotFoundError: No module named 'platform_utils'
 ```
 
 **Root cause:** `platform_utils.py` was added to `ops/scripts/` in the new commits
-but never registered in `cortex-update.sh`'s `register()` MAP. The file existed in
+but never registered in `fleet-update.sh`'s `register()` MAP. The file existed in
 the repo but wasn't copied to `~/.hermes/scripts/`.
 
-**Fix:** Added `register "ops/scripts/platform_utils.py"` to `cortex-update.sh`
+**Fix:** Added `register "ops/scripts/platform_utils.py"` to `fleet-update.sh`
 and manually `cp`'d the file.
 
 ## Bug 2: Python 3.9 Type-Hint Incompatibility
@@ -63,7 +63,7 @@ $ echo $?
 
 ## Upstream Changes Needed
 
-1. `cortex-update.sh` — register `platform_utils.py` in MAP (done)
+1. `fleet-update.sh` — register `platform_utils.py` in MAP (done)
 2. `platform_utils.py` — use `Optional[str]` instead of `str | None` (done)
 3. `service-recovery.py` — strip PEP 604 union + fix function ordering (done)
 4. Process: run `py39-check.sh` on all .py scripts before merging

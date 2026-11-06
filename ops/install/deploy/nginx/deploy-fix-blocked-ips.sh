@@ -130,4 +130,4 @@ echo "        $([ "$IS_MACOS" -eq 1 ] && echo 'ls -lO' || echo 'lsattr') ${DEST}
 echo ""
 echo "IMPORTANT: this script must be re-run AFTER every cortex-update deploy"
 echo "of fix-blocked-ips.py changes (the immutable copy only updates via"
-echo "this script — cortex-update.sh does NOT own /usr/local/sbin|bin)."
+echo "this script — fleet-update.sh does NOT own /usr/local/sbin|bin)."

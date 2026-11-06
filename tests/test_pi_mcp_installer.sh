@@ -36,7 +36,7 @@ check() { # check <name> <0|1>
 # exit 3 = COULD NOT VERIFY: fail loudly, never skip silently.
 PY_MCP="$(bash "$REPO/ops/scripts/lib/python-with-module.sh" --print mcp)" || {
   echo "  FAIL  no interpreter on this host can import mcp — cannot exercise the installer"
-  echo "        (fix: bash ~/.steadfaste-fleet/scripts/cortex-update.sh, or: python3 -m pip install mcp)"
+  echo "        (fix: bash ~/.steadfaste-fleet/scripts/fleet-update.sh, or: python3 -m pip install mcp)"
   exit 3
 }
 
@@ -125,7 +125,7 @@ echo "C. nothing can import mcp -> refuse loudly, leave the config untouched"
 # Hermetic by construction: PATH holds ONLY the coreutils the installer needs plus
 # a python3 that cannot import mcp, so the resolver finds no capable interpreter on
 # ANY host. Waiting for a host that lacks the module would never test this branch.
-# The five deployed servers DO exist here, so the "Run cortex-update.sh first"
+# The five deployed servers DO exist here, so the "Run fleet-update.sh first"
 # warning stays silent and a passing remediation assertion can only come from the
 # interpreter error itself.
 HOME_C="$TD/home_c"; mkdir -p "$HOME_C/.pi/agent" "$HOME_C/.steadfaste-fleet/scripts" \
@@ -152,7 +152,7 @@ cp "$PJC" "$PJC.before"
 OUT_C="$(env PATH="$BIN_C" HOME="$HOME_C" PYTHON="$BIN_C/python3" bash "$SCRIPT" 2>&1)"; RC_C=$?
 check "C: exits non-zero instead of writing a dead config (rc=$RC_C)" "$([ "$RC_C" -ne 0 ] && echo 1 || echo 0)"
 check "C: says the interpreter cannot import mcp" "$([[ "$OUT_C" == *"import mcp"* ]] && echo 1 || echo 0)"
-check "C: names the remediation" "$([[ "$OUT_C" == *"cortex-update.sh"* ]] && echo 1 || echo 0)"
+check "C: names the remediation" "$([[ "$OUT_C" == *"fleet-update.sh"* ]] && echo 1 || echo 0)"
 check "C: existing mcp.json left byte-identical" "$(cmp -s "$PJC" "$PJC.before" && echo 1 || echo 0)"
 
 echo

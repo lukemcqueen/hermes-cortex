@@ -92,7 +92,7 @@ Triage is inert until a model is named. All three steps are required:
 2. **Name the model:** set `ADVERSARIAL_TRIAGE_MODEL` in the host's env
    (`~/steadfaste-fleet/.env`).
 3. **Confirm the class exists:** `review-triage` in `judgment-providers.yaml`
-   (deployed beside `judgment.py` by `cortex-update.sh` — the client resolves it
+   (deployed beside `judgment.py` by `fleet-update.sh` — the client resolves it
    as `Path(__file__).parent/"judgment-providers.yaml"`, or `JUDGMENT_CONFIG_PATH`).
 
 Verify with the host env applied:
@@ -175,7 +175,7 @@ measurement it already uses to decide *whether* to review:
   canonical reviewer for the light tier, and every recorded verdict names the
   model that judged it, so this page and the record cannot diverge silently again.
 - **heavy** — an always-review surface (enforcement/governance paths, incl.
-  `loop-gov-mcp.py` and `cortex-update.sh`) or ≥10 files / ≥200 lines: the deep
+  `loop-gov-mcp.py` and `fleet-update.sh`) or ≥10 files / ≥200 lines: the deep
   configured backend runs unchanged.
 
 **Enforcement is unchanged.** Every complex change still needs an independent

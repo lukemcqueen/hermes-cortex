@@ -2,7 +2,7 @@
 
 ## Self-Referencing Symlinks from rsync -a
 
-**Problem:** After cortex-update.sh --force-all deploys scripts to
+**Problem:** After fleet-update.sh --force-all deploys scripts to
 ~/.steadfaste-fleet/scripts/, syncing to ~/.hermes/scripts/ with rsync -a
 preserves symlinks as-is. When the symlink target path doesn't resolve
 correctly, it creates self-referencing symlinks like

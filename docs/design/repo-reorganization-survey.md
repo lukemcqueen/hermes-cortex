@@ -65,7 +65,7 @@ the whole re-org (see below).
 
 1. **Literal canonical migration** — move `ops/`+`core/`+`tools/` → `src/`
    (scripts/install/services/offline/web-cache under `src/`), per the standard.
-   Massive: rewrites every `ops/...` reference — `cortex-update.sh` register
+   Massive: rewrites every `ops/...` reference — `fleet-update.sh` register
    lines, every script path, deploy maps, cron jobs, tests, docs — plus the
    fleet-side migration + doctor checks + runbook (rename-sweep §6).
 2. **Navigability-first** — keep the existing `ops/` layout, achieve the same

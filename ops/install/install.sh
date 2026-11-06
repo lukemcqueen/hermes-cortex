@@ -176,7 +176,7 @@ source "$(_scripts)/install/os-config.sh"
 source "$(_scripts)/install/service-writer.sh"
 
 # ── Agent identity ──────────────────────────────────────────
-# Provision ~/.steadfaste-fleet/agent.env so the FIRST cortex-update.sh run
+# Provision ~/.steadfaste-fleet/agent.env so the FIRST fleet-update.sh run
 # (which hard-fails without identity) succeeds on fresh installs. Orch hosts
 # self-derive from hostname; non-orch hosts must have AGENT_NAME set or the
 # file created manually. Warn, don't fail — the installer can still finish,
@@ -184,7 +184,7 @@ source "$(_scripts)/install/service-writer.sh"
 if ! ensure_agent_identity; then
   warn "Agent identity not provisioned — set AGENT_NAME=<your-agent> or create:"
   warn "  ${HOME}/.steadfaste-fleet/agent.env  (AGENT_NAME=<your-agent>)"
-  warn "  cortex-update.sh will refuse to run until this is fixed."
+  warn "  fleet-update.sh will refuse to run until this is fixed."
 fi
 
 # ── Python version probe ────────────────────────────────────
@@ -659,7 +659,7 @@ else
   cp "${CORTEX_HOME}/steadfaste-fleet/plugins/mycortex-command/plugin.yaml" "${PLUGIN_DIR}/plugin.yaml"
   info " Plugin copied from repo"
  else
-  warn "Repo plugin not found — run cortex-update.sh to deploy mycortex-command"
+  warn "Repo plugin not found — run fleet-update.sh to deploy mycortex-command"
  fi
  ok
  info "Plugin written to ${PLUGIN_DIR}/"
@@ -985,7 +985,7 @@ if [[ -d "${BRAIN_LESSONS_DIR}" ]]; then
   fi
 fi
 
-# From script changes (if this agent runs install.sh/cortex-update.sh)
+# From script changes (if this agent runs install.sh/fleet-update.sh)
 CUSTOM_SCRIPTS="${HOME}/.steadfaste-fleet/scripts"
 if [[ -d "${CUSTOM_SCRIPTS}" ]]; then
   # Check for any custom scripts not from the repo
@@ -1451,16 +1451,16 @@ else
  fi
 fi
 
-# ── cortex-update.sh ───────────────────────────────────────
-CORTEX_UPDATE_PATH="${SCRIPTS_DIR}/cortex-update.sh"
+# ── fleet-update.sh ───────────────────────────────────────
+CORTEX_UPDATE_PATH="${SCRIPTS_DIR}/fleet-update.sh"
 if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
- skip "cortex-update.sh already exists"
+ skip "fleet-update.sh already exists"
 else
- cp "$(_scripts)/cortex-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
-  warn "cortex-update.sh not available (only from repo)"
+ cp "$(_scripts)/fleet-update.sh" "$CORTEX_UPDATE_PATH" 2>/dev/null || \
+  warn "fleet-update.sh not available (only from repo)"
  if [[ -f "$CORTEX_UPDATE_PATH" ]]; then
   chmod +x "$CORTEX_UPDATE_PATH"
-  info " Installed cortex-update.sh"
+  info " Installed fleet-update.sh"
  fi
 fi
 
@@ -1697,7 +1697,7 @@ if [[ -f "$POST_MERGE_SRC" ]]; then
  step "Installing post-merge hook (auto cortex-update after git pull)…"
  cp "$POST_MERGE_SRC" "$POST_MERGE_DST"
  chmod +x "$POST_MERGE_DST"
- info " Installed: .git/hooks/post-merge → auto-runs cortex-update.sh after every pull"
+ info " Installed: .git/hooks/post-merge → auto-runs fleet-update.sh after every pull"
 else
  skip "post-merge hook not found at ${POST_MERGE_SRC}"
 fi
@@ -2245,7 +2245,7 @@ printf " ${GREEN}•${RESET} bootstrap-brain.sh → post-install brain verificat
 printf " ${GREEN}•${RESET} seed-project-brain.sh → one-command brain seeding from repos\n"
 printf " ${GREEN}•${RESET} cortex-health.sh  → single green-check system readiness\n"
 printf " ${GREEN}•${RESET} cortex-setup-langfuse.sh → standalone Langfuse .env generator\n"
-printf " ${GREEN}•${RESET} cortex-update.sh → git pull + delta-update + service restart\\n"
+printf " ${GREEN}•${RESET} fleet-update.sh → git pull + delta-update + service restart\\n"
 printf " ${GREEN}•${RESET} hermes-update.sh → daily Hermes Agent upgrade (no_agent watchdog)\\n"
 printf " ${GREEN}•${RESET} steadfaste-fleet-sync.sh → daily repo sync + tool re-install\\n"
 printf " ${GREEN}•${RESET} prod-watchdog.sh → production site monitoring with auto-remediation\\n"
@@ -2305,7 +2305,7 @@ I've installed the Steadfaste Fleet system. Please finish the setup by:
 
   f) cortex-update — weekly on Sunday at 3am (auto-pull + delta-update):
    Schedule: 0 3 * * 0
-   Prompt: Run cortex-update to keep the system current: bash ~/.steadfaste-fleet/scripts/cortex-update.sh
+   Prompt: Run cortex-update to keep the system current: bash ~/.steadfaste-fleet/scripts/fleet-update.sh
    no_agent: true
 
   g) daily-lesson-mine — daily at 2am (auto-mining from last 24h):
@@ -2334,7 +2334,7 @@ printf " ${GREEN}•${RESET} Cortex Dashboard: http://localhost:8901 (nginx: :13
 printf " ${GREEN}•${RESET} 🔒 Security:   Read docs/SECURITY.md for firewall + hardening\n"
 printf " ${GREEN}•${RESET} Langfuse setup:  bash cortex-setup-langfuse.sh --start (generates .env + starts)\n"
 printf " ${GREEN}•${RESET} System health:  bash cortex-health.sh (green-check status)\n"
-printf " ${GREEN}•${RESET} System update:  bash cortex-update.sh (pull + delta-update)\n"
+printf " ${GREEN}•${RESET} System update:  bash fleet-update.sh (pull + delta-update)\n"
 fi
 printf " ${GREEN}•${RESET} /brain query   — search your knowledge brain\n"
 printf " ${GREEN}•${RESET} Offline query:  offline_knowledge query \"question\"\n"

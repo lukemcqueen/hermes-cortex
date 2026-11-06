@@ -19,7 +19,7 @@ list itself is assembled at runtime so this generator does not carry the
 literals either.
 
 Registration policy: this is a REPO-LOCAL evidence generator and is
-deliberately NOT registered in cortex-update.sh's register() map, matching its
+deliberately NOT registered in fleet-update.sh's register() map, matching its
 sibling ops/scripts/manage/task-queue-evidence.py. It reads git history with
 ``git show <sha>:<path>`` and resolves the repo root from its own location, so
 a deployed copy under ~/.steadfaste-fleet/scripts/ would resolve the wrong root

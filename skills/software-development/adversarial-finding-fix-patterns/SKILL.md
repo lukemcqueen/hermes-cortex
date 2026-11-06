@@ -183,7 +183,7 @@ mid-list.
 ### 8. Match the LEVEL the hook uses — passing A2 does not mean passing the gate
 
 The pre-commit hook runs A2 by default and **A4 for always-review paths** (the
-enforcer/hooks, `cortex-update.sh`, the adversarial verifier itself, …). So a
+enforcer/hooks, `fleet-update.sh`, the adversarial verifier itself, …). So a
 file can return `rc=0` on `--level A2 --gate` and still block the commit:
 
 ```

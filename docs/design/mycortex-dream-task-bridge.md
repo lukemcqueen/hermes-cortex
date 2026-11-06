@@ -181,7 +181,7 @@ So the implementation shipped MORE than the proposal, in four parts:
    string; added `todo-db.py --apply-schema` (platform-aware: docker exec on
    Linux, direct psql via mycortex.conf on macOS). Errors now exit 1 with
    stderr — no more silent ✅.
-3. **cortex-update.sh:** registers `dream-todo-bridge.py` for deploy and
+3. **fleet-update.sh:** registers `dream-todo-bridge.py` for deploy and
    runs `todo-db.py --apply-schema` every update (WARN on failure, not
    exit — a fleet update must not be hostage to a peripheral DB; the
    idempotent schema retries next update).

@@ -3,7 +3,7 @@ name: hermes-cortex-setup
 version: 1.0.0
 description: Install and configure Hermes Cortex core components — Ollama, mycortex knowledge brain, health server, agent registry, hooks, cron jobs, and profile scaffolding on a target machine.
 behavioral_principles:
- - The knowledge brain is mycortex — install it via the repo's cortex-update.sh (register-based deploy), never via pip/npm/bun. The legacy brain is decommissioned 2026-08-02; do not install or restart it.
+ - The knowledge brain is mycortex — install it via the repo's fleet-update.sh (register-based deploy), never via pip/npm/bun. The legacy brain is decommissioned 2026-08-02; do not install or restart it.
  - When installing Bun, prefer download-inspect-execute over raw curl|bash when the security scanner flags it.
  - Always create a .env file in ~/steadfaste-fleet/ before running install-orch-crons.sh to avoid silent failure.
  - When sudo is unavailable, install Ollama from GitHub releases tarballs (not the official install.sh which requires root).
@@ -34,7 +34,7 @@ behavioral_principles:
  - After running install-orch-crons.sh, always check for stale old-name duplicate crons (bus-* vs orch-bus-*) and remove them. The installer doesn't auto-uninstall renamed crons.
  - When patching a no_agent cron script that uses `docker`, always wrap with `sg docker -c`. The cron runtime doesn't have docker group access even if the agent's shell does.
  - After cortex-update , verify deployed cron scripts in ~/.hermes/scripts/ are real file copies, not symlinks to the repo. Cron runtime rejects symlinks that resolve outside ~/.hermes/scripts/.
- - When running cortex-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/steadfaste-fleet first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
+ - When running fleet-update.sh from its deployed location at ~/.hermes/scripts/, always export REPO_DIR=$HOME/steadfaste-fleet first. The script auto-detects REPO_DIR from $(dirname "${BASH_SOURCE[0]}") which resolves to ~/.hermes/scripts/ — not a git repo — and fails with "✗ Not a git repository".
 trigger: User asks to install, set up, deploy, or bootstrap Hermes Cortex, or mentions 'cortex setup', 'install cortex', 'hermes-cortex components'. The cron health report shows an agent as 🔴 unreachable — the fix is often missing health server + agent registry on that machine.
 ---
 
@@ -168,8 +168,8 @@ sync cron. No bun binary, no daemon, no PGLite.
 **Installs via the repo deploy, not a package manager:**
 
 ```bash
-# The CLI + schema + compose ship in the repo and deploy via cortex-update.sh:
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+# The CLI + schema + compose ship in the repo and deploy via fleet-update.sh:
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # Verify the CLI is deployed
 ~/.steadfaste-fleet/scripts/mycortex --help
@@ -409,9 +409,9 @@ mkdir -p "${HOME}/brain/lessons"
 # Skills + hooks — deploy from the repo source. The Cortex repo no longer
 # carries a .hermes-cortex/ directory (removed 2026-10-07: inside ~/steadfaste-fleet
 # that name shadowed the runtime dir ~/.steadfaste-fleet and made a governance
-# marker indistinguishable from repo state). cortex-update.sh installs both
+# marker indistinguishable from repo state). fleet-update.sh installs both
 # from ops/scripts/ and ops/install/hooks/ into ~/.steadfaste-fleet/hooks/.
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # Governance DB bootstrap (one-time per machine)
 python3 ~/.hermes/scripts/populate-governance-db.py
@@ -507,7 +507,7 @@ File "system-alert-watchdog.py", line 32, in <module>
 ModuleNotFoundError: No module named 'hermes_tz'
 ```
 
-**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `cortex-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.steadfaste-fleet/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.steadfaste-fleet/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
+**Pitfall — scripts called as sibling subprocesses by cron-run handlers are NOT auto-deployed.** `fleet-update.sh ` registers script paths in its internal map and deploys them to `CORTEX_DEPLOY_HOME` (`~/.steadfaste-fleet/scripts/`), but some handler scripts run from the cron path (`~/.hermes/scripts/`) and resolve sibling scripts at runtime via `Path(__file__).resolve().parent / "<sibling>.py"`. For example, `agent-message-handler.py` (every 2 min cron) calls `agent-diagnostic.py` as a subprocess using this sibling-path pattern. If `agent-diagnostic.py` only exists in `~/.steadfaste-fleet/scripts/` but not in `~/.hermes/scripts/`, the handler silently fails at runtime.
 
 After `cortex-update `, check for this pattern and sync siblings:
 
@@ -588,9 +588,9 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-orch-crons.sh
 Changing an LLM cron's model has TWO layers of truth; editing only the live pin is reverted:
 
 1. **Live pin** — per-job `model`/`provider` in `~/.hermes/cron/jobs.json`, set with `hermes cron edit <id> --model X --provider Y` (CLI only — the MCP cronjob tool has NO model/provider params). Takes effect next tick.
-2. **Durable source** — `ops/install/cron-manifest.yaml`. `pin_cron_model()` (in install-crons.sh / install-orch-crons.sh) reads the manifest entry and it WINS over `$LLM_CRON_MODEL`/`$LLM_CRON_PROVIDER` env — and over your live edit — on the next cortex-update drift-edit. **A live-only repin is reverted by the next `cortex-update.sh`** (observed 2026-08-31: 14/21 LLM crons reverted after the first deploy of a repin).
+2. **Durable source** — `ops/install/cron-manifest.yaml`. `pin_cron_model()` (in install-crons.sh / install-orch-crons.sh) reads the manifest entry and it WINS over `$LLM_CRON_MODEL`/`$LLM_CRON_PROVIDER` env — and over your live edit — on the next cortex-update drift-edit. **A live-only repin is reverted by the next `fleet-update.sh`** (observed 2026-08-31: 14/21 LLM crons reverted after the first deploy of a repin).
 
-**Correct order:** (1) patch the manifest entry → (2) repin live via `hermes cron edit` → (3) run `cortex-update.sh` → (4) verify pins survived in jobs.json.
+**Correct order:** (1) patch the manifest entry → (2) repin live via `hermes cron edit` → (3) run `fleet-update.sh` → (4) verify pins survived in jobs.json.
 
 **Fallback chain is GLOBAL, not per-cron** — config.yaml `fallback_providers`, consumed by cron sessions via `get_fallback_chain`. `hermes fallback add/remove/clear` are TTY-interactive only. Non-interactive path: `hermes config set fallback_providers '<json list>'` (current `set_config_value` parses structured list values). This chain is operator-owned — set it directly; no installer script writes it (the env-driven `install-fallback-providers.py` writer was removed 2026-09-09).
 
@@ -598,7 +598,7 @@ Changing an LLM cron's model has TWO layers of truth; editing only the live pin 
 - The deployed dir `~/.steadfaste-fleet/.env` is the **sanctioned back-compat symlink → the canonical env** (kept so legacy readers keep resolving the deploy-dir path). A **real file** (not a symlink) there is unowned — a doctor FAIL. The old `cortex-bus.conf` name was **retired 2026-10-17**; `consolidate-env.sh` migrates any leftover to the `.env` symlink.
 - `~/.hermes/.env` is **Hermes-owned** (provider keys, Telegram) and is never merged.
 - All `cortex-bus.conf` references were swept to `.env`; if you find one, it's a regression — the only legitimate references are `ops/scripts/manage/consolidate-env.sh` (which performs the migration) and the doctor's `check_cortex_env` (which enforces the retirement).
-- Migrating a legacy host: just run `cortex-update.sh` — it runs `consolidate-env.sh` first (idempotent), which seeds the canonical env from the old conf if needed and creates the `.env` symlink. Verify with `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh --check`.
+- Migrating a legacy host: just run `fleet-update.sh` — it runs `consolidate-env.sh` first (idempotent), which seeds the canonical env from the old conf if needed and creates the `.env` symlink. Verify with `bash ~/.steadfaste-fleet/scripts/consolidate-env.sh --check`.
 - The doctor has a `cortex env` check that FAILs on a missing canonical env, a real-file deploy-dir `.env`, a missing/misdirected sanctioned symlink, or a leftover `cortex-bus.conf` — and points at this fix.
 
 **opencode provider tiers** (verified 2026-08-31): `opencode-free` = keyless free tier (aliases `free`, no account needed); `opencode-zen` = paid, needs `OPENCODE_ZEN_API_KEY` (aliases `opencode`/`zen`); `opencode-go` = needs `OPENCODE_GO_API_KEY`. The free tier currently has NO working deepseek: `deepseek-v4-flash-free` was delisted (completion POST → `server_error: "Model is unavailable"`; keys ship as commented+EMPTY placeholders in `~/.hermes/.env`), and no `deepseek-v4-pro-free` exists. The live `GET /zen/v1/models` list can still show delisted models — verify availability with a real chat-completions POST, never trust the list. Full verification recipe: `references/llm-cron-model-fallback.md`.

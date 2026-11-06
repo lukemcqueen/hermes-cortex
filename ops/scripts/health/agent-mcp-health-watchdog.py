@@ -75,7 +75,7 @@ EXPECTED_TOOLS = {
 }
 
 RECOVERY_HINT = (
-    "Recovery: fix repo source -> bash ops/scripts/cortex-update.sh -> restart "
+    "Recovery: fix repo source -> bash ops/scripts/fleet-update.sh -> restart "
     "gateway. See docs/older/reference/mcp-sdk-v2-migration.md. Escalate to the "
     "orchestrator if needed."
 )
@@ -580,7 +580,7 @@ def main() -> int:
                 "UNVERIFIED on this host\n"
                 "  expected at "
                 f"{HOME / SKEW_PROBE_PATHS[0]}\n"
-                "  Recovery: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh "
+                "  Recovery: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh "
                 "(the skill ships the probe)."
             )
     else:

@@ -134,15 +134,15 @@ metadata:
 - **The pre-push DEPLOY-SYNC gate blocks a source change that is not yet deployed:**
   it compares the deployed copy against the repo tree and refuses with
   `❌ Deploy sync / ❌ Script content (<name>)`. The order is therefore
-  commit → **`cortex-update.sh`** → push, not commit → push. (`--delta` does not
+  commit → **`fleet-update.sh`** → push, not commit → push. (`--delta` does not
   deploy an unpushed commit; use the full script.)
 - **`terminal` is refused in a governed repo even for read-only work**
   (`python3 …`, `ls; echo`, compound chains). You cannot check a deployed
   path from the scratch dir — the lock is repo-scoped. Take a
   `begin_change()` before running verification, and use read primitives joined
   by `|`/`&&` plus `read_file`/`search_files` for inspection you want lock-free.
-- **`cortex-update.sh --delta` does NOT deploy an unpushed commit.** Use the
-  full `cortex-update.sh` (or push first), then diff the DEPLOYED copy against
+- **`fleet-update.sh --delta` does NOT deploy an unpushed commit.** Use the
+  full `fleet-update.sh` (or push first), then diff the DEPLOYED copy against
   the repo source — the deploy adds a `# SOURCE:` header, so compare ignoring
   that header rather than trusting the file mtime.
 - **A gate that keys on the NEWEST artifact masks a bad day permanently.**

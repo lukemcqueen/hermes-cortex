@@ -141,7 +141,7 @@ hermes config set fallback_providers.1.model <model-id>   # dotted path indexing
 ## 6. Rollback
 
 Restore the `.env` backup (`.env.bak-<timestamp>`) and re-run
-`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` to redeploy. Re-pin any job
+`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` to redeploy. Re-pin any job
 that was previously pinned with `hermes cron edit <job_id> --pin`.
 
 ## Related

@@ -26,7 +26,7 @@ metadata:
 2. **Role split, not shared superuser** — separate `admin` / `ingest` / `reader` roles. Admin owns registration + grants; ingest does DML on content tables ONLY; reader gets SELECT filtered by RLS.
 3. **PII gate as a DB CHECK constraint** — `CHECK (is_federated = FALSE OR pii_scan_at IS NOT NULL)`. Federation is impossible without a recorded scan, enforced at the DB, not by convention.
 4. **Ownership by superuser** — tables owned by `postgres`/`mycortex` (superuser), never runtime roles. Runtime roles get GRANTs, not ownership.
-5. **Migrate via a runner, never inline DDL in a deploy script** — `cortex-update.sh`-style file copiers have no DDL path. A `schema_version`-gated `migrate.py` invoked AFTER file sync is the DDL path.
+5. **Migrate via a runner, never inline DDL in a deploy script** — `fleet-update.sh`-style file copiers have no DDL path. A `schema_version`-gated `migrate.py` invoked AFTER file sync is the DDL path.
 
 ## ⚠️ RLS Policy Evaluation Semantics (the #1 gotcha)
 

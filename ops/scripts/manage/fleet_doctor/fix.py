@@ -89,7 +89,7 @@ def apply_fixes(res):
     else:
       failed += 1
 
-  # Fix: missing scripts → cortex-update.sh
+  # Fix: missing scripts → fleet-update.sh
   if any(k.startswith("Script") for k in fix_map):
     if _run_fix("Deploying scripts via cortex-update", ["bash", str(CORTEX_UPDATE), ""]):
       fixed += 1

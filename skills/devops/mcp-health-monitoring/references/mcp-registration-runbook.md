@@ -20,7 +20,7 @@ not exist). Exit 0 clean, 1 broken entry, 3 = COULD NOT VERIFY.
 | What the check says | Fix |
 |---|---|
 | entry missing | `hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
-| a registered path does NOT exist | deploy it: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`, re-check |
+| a registered path does NOT exist | deploy it: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`, re-check |
 | the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py` |
 | command is the Hermes venv or bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command …` (there is no `hermes mcp update`) |
 

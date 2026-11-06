@@ -56,7 +56,7 @@ The audit already separates authorship — but only for **presentation**, not fo
   my own note ("No file, config or state changed") was filed as **fabrication** — the material
   beside it showed 11 changed files, and the reviewer cannot tell which were mine.
 - **3129–3140 `ALWAYS_REVIEW_PATHS`**, **5424** — the always-review fail-safe is computed over
-  that same whole window. A peer's commit to `ops/scripts/cortex-update.sh` (3137) or
+  that same whole window. A peer's commit to `ops/scripts/fleet-update.sh` (3137) or
   `mcp-servers/loop-gov-mcp.py` (3131) therefore forces *my* 79-line doc cycle into the
   **heavy/deep** tier — a deep review of someone else's enforcement diff.
 - **3179 `REVIEWER_LIGHT_LINE_THRESHOLD`**, `providers.deepseek.request_timeout_seconds: 300`

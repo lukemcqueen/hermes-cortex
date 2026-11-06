@@ -92,7 +92,7 @@ def _child_imports_all(py, mods=DECLARED_MODULES):
 def candidate_interpreters():
     """Interpreters to try, in preference order, excluding the current one.
 
-    `CORTEX_PYTHON` is the host's own declaration (written by cortex-update.sh
+    `CORTEX_PYTHON` is the host's own declaration (written by fleet-update.sh
     into ~/.steadfaste-fleet/agent.env) and wins — an operator who points it
     somewhere else must not be overruled. The fleet venv is the fallback, and a
     `PYTHON=`-style override is deliberately NOT invented here: one declaration

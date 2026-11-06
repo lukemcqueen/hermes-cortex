@@ -7,7 +7,7 @@ Session: user forwarded the `orch-bus-forwarder-sync` alert
 
 | Time | Event |
 |---|---|
-| 09:22:07 | kustos sends `📝 PROPOSAL: Register tasks schema v003+v004 in cortex-update.sh deploy map` → pending in `inbox_orchestrator` |
+| 09:22:07 | kustos sends `📝 PROPOSAL: Register tasks schema v003+v004 in fleet-update.sh deploy map` → pending in `inbox_orchestrator` |
 | 09:22:58 | forwarder tick: POST to peer (esther `:14004`) fails → alert #1 |
 | 09:24:59 | retry fails again → alert #2 (only 2 of 50 ticks today alerted) |
 | 09:25:09 | esther's message-handler consumes the proposal directly from moses's bus and archives it (`archived_by='esther'`) |

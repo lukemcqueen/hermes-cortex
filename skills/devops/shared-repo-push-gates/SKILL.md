@@ -365,7 +365,7 @@ does not apply.
   construction, and a TTL-released lock is the documented outcome, not a failure to try
   harder. Say which commits are yours and which are the peer's in the issue record.
 - **Splitting a deploy/installer file into its own later commit is legitimate**, not
-  gaming: `ops/scripts/cortex-update.sh` and friends force a receipt for the WHOLE range
+  gaming: `ops/scripts/fleet-update.sh` and friends force a receipt for the WHOLE range
   they sit in, so moving that one file (and its one line) into its own small commit removes
   the requirement and gives it a range a reviewer can actually read.
 - **A deploy purges the session lock, and without a lock EVERY terminal call fails closed**
@@ -541,7 +541,7 @@ does not apply.
    content`, or the checksum form `❌ Checksum: <file>` right after
    committing a changed installer or deployable (install-crons.sh,
    install-orch-crons.sh, registered scripts). The fix is the same for
-   every form: run `bash ops/scripts/cortex-update.sh` (deploy), then push.
+   every form: run `bash ops/scripts/fleet-update.sh` (deploy), then push.
    Order is always commit → cortex-update → push. For the full dogfood
    (pull → deploy → doctor → verify):
    `bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force`.
@@ -557,7 +557,7 @@ does not apply.
      push shape, and the omission surfaces later as `❌ Deploy sync — HEAD ahead of
      last deploy` on the NEXT push. So after any push that touches a deploy-map file,
      compare the deployed copy against repo source and run
-     `bash ops/scripts/cortex-update.sh` when they differ — report the deployed state
+     `bash ops/scripts/fleet-update.sh` when they differ — report the deployed state
      from that comparison, never from the push having succeeded.
    - **A tracked GENERATED file that keeps getting rewritten is committed as its OWN
      commit, naming the generator in the message.** This is what keeps the tree clean
@@ -734,11 +734,11 @@ May need several rounds on active days; each round's dogfood re-runs clean.
 - **`❌ Deploy sync` after a successful dogfood race-recovery**: if you
   commit AGAIN after a deploy ran (the raced push deployed your first
   commit; the second commit is now undeployed), the gate flips to
-  Deploy-sync. Run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`
+  Deploy-sync. Run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`
   (deploy), confirm `Updated: <sha> → <sha>`, then push. Order is always
   commit → deploy → push.
 - **Deploy-sync can LIVELOCK against a peer's commit stream.** On a host where
-  another session keeps committing, every `cortex-update.sh` is invalidated by the
+  another session keeps committing, every `fleet-update.sh` is invalidated by the
   next peer commit and the gate reports `❌ Deploy sync — HEAD (<sha>) ahead of last
   deploy (<sha>)` round after round. Before spending another deploy, check whether
   the peer is still active (`git log -3 --format='%h %ad %s' --date=iso`) — your
@@ -747,7 +747,7 @@ May need several rounds on active days; each round's dogfood re-runs clean.
   mid-stream, report "committed + deployed locally, push rides the peer's next
   push" with the SHA rather than claiming a push that did not land.
 - **Every NEW deployable file needs its own `register` line in
-  `cortex-update.sh`** — a new shared module imported by an already-
+  `fleet-update.sh`** — a new shared module imported by an already-
   registered script (e.g. a doctor helper module) is NOT deployed unless
   registered itself. The deploy "succeeds" on your host only because the
   untracked file already exists in the deployed dir; the next host or the
@@ -812,7 +812,7 @@ age:
    push-only instead of `pull --rebase --autostash` on a tree you can't
    characterize.
 4. If the doctor's only FAIL is `HEAD ahead of last deploy`, just run
-   `cortex-update.sh` and push again — commits must be deployed before the
+   `fleet-update.sh` and push again — commits must be deployed before the
    gate accepts them.
 
 Header pollution trap: after `cp` from a DEPLOYED file into the repo, strip
@@ -927,7 +927,7 @@ written while every code path looked correct.
   and splits it on `;`, `|`, `||`, `&&` and newlines BEFORE looking for the `-- <paths>` separator, so
   a message containing any of those cuts the command at the punctuation and the scan of the tail
   segment — the one carrying `-- path` — never runs the pathspec match
-  (measured 2026-10-23: `git commit -m '…parity can regress same-day; cortex-update.sh lives at
+  (measured 2026-10-23: `git commit -m '…parity can regress same-day; fleet-update.sh lives at
   ops/scripts' -- <path>` was refused twice, identically, while the same command with a `+` instead of
   the `;` committed on the first try). Removing the punctuation from the message is the fix; do NOT
   re-stage or re-diagnose the index, and do not reach for `-o/--only` — the message is what is wrong.

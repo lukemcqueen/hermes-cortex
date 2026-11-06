@@ -152,7 +152,7 @@ def test_the_harness_hint_and_the_deploy_map_name_this_script():
     assert SCRIPT.is_file(), SCRIPT
     assert "ops/scripts/lib/ensure-pytest.sh" in harness, \
         "the no-pytest hint must name the committed create step"
-    updater = (REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+    updater = (REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
     assert "ensure-pytest.sh" in updater, \
         "an unregistered script never reaches a peer host — add it to the deploy map"
     print("  hint + deploy registration both name it ✓")

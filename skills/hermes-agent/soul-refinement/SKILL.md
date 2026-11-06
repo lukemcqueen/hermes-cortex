@@ -223,9 +223,9 @@ removed — the fleet no longer auto-syncs `~/.hermes/SOUL.md`. To land a change
   all three of `ca9de57f`'s drop lines were false positives (deployed side reflowed and extended), and
   the 10-23 `change-checklist` DROP was the same shape, so merge that one addition by hand instead of
   believing the tool. Then regenerate the parity evidence artifact, commit by PATHSpec, deploy, and push.
-- **`cortex-update.sh` is NOT at the repo root — it lives at `ops/scripts/cortex-update.sh`**
-  (`bash cortex-update.sh` gives `rc=127, No such file or directory`, which reads like a broken
-  deploy). Run `bash ops/scripts/cortex-update.sh` from the repo root; `rc=0` is the pass signal.
+- **`fleet-update.sh` is NOT at the repo root — it lives at `ops/scripts/fleet-update.sh`**
+  (`bash fleet-update.sh` gives `rc=127, No such file or directory`, which reads like a broken
+  deploy). Run `bash ops/scripts/fleet-update.sh` from the repo root; `rc=0` is the pass signal.
 
 - **Cron sessions writing SOUL.md — verify the gate for the EXACT path; do not
   assume it.** Hermes core has a protected-instruction gate

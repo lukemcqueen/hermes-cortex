@@ -21,13 +21,13 @@ If you're about to name a new file, pause. Could it be:
 - A new function in an existing file?
 - A new config key in an existing config?
 - A new cron parameter instead of a new cron script?
-- A new `register()` line in `cortex-update.sh` instead of a new script?
+- A new `register()` line in `fleet-update.sh` instead of a new script?
 
 ## Anti-Patterns
 
 | Mistake | Correct Approach |
 |---------|-----------------|
 | Searching once with one term, concluding "nothing exists" | Search 3+ different patterns across files, content, and git history |
-| Creating a parallel system when extending `cortex-update.sh`'s `register()` lines would work | Extend the existing deploy mechanism |
+| Creating a parallel system when extending `fleet-update.sh`'s `register()` lines would work | Extend the existing deploy mechanism |
 | Building a one-off test file instead of running inline tests | Run tests in the terminal — don't create permanent files for ephemeral checks |
 | Creating a new CLI tool when an existing one can absorb the feature | Check if the feature fits as a new command in an existing CLI (e.g., `fleet.py`) |

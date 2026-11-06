@@ -3,7 +3,7 @@
 
 A stranded file is one the DEPLOYED tree has and the repo (working tree or any
 committed revision) does not: a lesson written on this host that the deploy's drift
-guardrail refuses to overwrite, so the fleet never receives it. cortex-update.sh
+guardrail refuses to overwrite, so the fleet never receives it. fleet-update.sh
 tells the operator to "copy the deployed changes to the repo source first, then
 commit" and ships no tool to do it — this is that tool.
 

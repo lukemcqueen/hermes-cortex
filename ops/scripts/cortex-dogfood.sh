@@ -20,7 +20,7 @@
 set -uo pipefail
 
 REPO="${HOME}/steadfaste-fleet"
-UPDATE="${REPO}/ops/scripts/cortex-update.sh"
+UPDATE="${REPO}/ops/scripts/fleet-update.sh"
 DOCTOR="${REPO}/ops/scripts/manage/cortex-doctor.py"
 QUIET=""
 FORCE=""
@@ -64,7 +64,7 @@ done
 echo "━━━ cortex-dogfood ━━━"
 
 # Capture the current governance session's task_id BEFORE deploy: the
-# deploy step (cortex-update.sh) purges governance locks (known
+# deploy step (fleet-update.sh) purges governance locks (known
 # side-effect), which would make THIS session's own cycle look "leaked"
 # to the doctor (no active lock → FAIL). Record it so the verify step
 # can exempt exactly this task — other leaked cycles still fail.
@@ -91,7 +91,7 @@ if [[ -z "$DOCTOR_ONLY" ]]; then
   _DEFAULT_BRANCH=$(git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#refs/remotes/origin/##' || echo "main")
   # ── Fail-closed relock (Luke 2026-10-02) ──
   # This script runs the deploy, which unlocks the immutable enforcement files.
-  # cortex-update.sh relocks via its own EXIT trap now, but the mandated
+  # fleet-update.sh relocks via its own EXIT trap now, but the mandated
   # pre-push gate must not depend on a CHILD script's trap for a security
   # property: if this script dies between the unlock and the deploy, the gate is
   # left tamperable. Belt and braces — relock on OUR exit too. `lock` is

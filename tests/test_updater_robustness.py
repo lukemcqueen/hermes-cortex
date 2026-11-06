@@ -5,11 +5,11 @@ Both changes replace a signal that fires when nothing is wrong, or fails to fire
 something is:
 
   * change-validate.sh §3 warned about any staged file under deploy/ or ops/scripts/
-    whose basename is absent from cortex-update.sh. That is not a missed step for the
+    whose basename is absent from fleet-update.sh. That is not a missed step for the
     19 of 99 manage scripts that are deliberately checkout-only, nor for
     ops/scripts/quality/evidence-*.sh — yet it warned on every edit they received.
     It now considers only NEWLY ADDED files.
-  * cortex-update.sh points MCP-server registrations at ~/.steadfaste-fleet/venv/bin/python3
+  * fleet-update.sh points MCP-server registrations at ~/.steadfaste-fleet/venv/bin/python3
     but never checked that interpreter could import what those servers need. Measured
     2026-10-08: it existed and held only psycopg, so the daily regression gate failed
     every day on PyYAML. It now probes the modules and reports the repair.
@@ -29,7 +29,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 CHANGE_VALIDATE = REPO / "ops" / "scripts" / "change-validate.sh"
-CORTEX_UPDATE = REPO / "ops" / "scripts" / "cortex-update.sh"
+CORTEX_UPDATE = REPO / "ops" / "scripts" / "fleet-update.sh"
 UNREGISTERED_TOOL = "ops/scripts/manage/verify-landed.py"   # checkout-only by design
 
 STUBS = """set -uo pipefail
@@ -39,7 +39,7 @@ error() { echo "ERROR: $*"; }
 _DEFERRED_FAILURES=()
 export CORTEX_DEPLOY_HOME=/nonexistent-deploy-home
 # Set by change-validate.sh before §3; relative to cwd, which is the fixture repo.
-export CORTEX_UPDATE="./ops/scripts/cortex-update.sh"
+export CORTEX_UPDATE="./ops/scripts/fleet-update.sh"
 """
 
 
@@ -73,7 +73,7 @@ def _git(repo: Path, *args) -> None:
 def _temp_repo(tmp: Path) -> Path:
     repo = tmp / "repo"
     (repo / "ops" / "scripts" / "manage").mkdir(parents=True)
-    (repo / "ops" / "scripts" / "cortex-update.sh").write_text("# no register() calls here\n")
+    (repo / "ops" / "scripts" / "fleet-update.sh").write_text("# no register() calls here\n")
     (repo / "ops" / "scripts" / "manage" / "verify-landed.py").write_text("v1\n")
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "config", "user.email", "t@example.com")
@@ -97,7 +97,7 @@ def test_an_ADDED_unregistered_file_still_warns():
         _git(repo, "add", "ops/scripts/brand-new-tool.sh")
         r = _run_block(_registration_block(), repo)
         assert "NEW file ops/scripts/brand-new-tool.sh" in r.stdout, r.stdout + r.stderr
-        assert "not registered in cortex-update.sh" in r.stdout, r.stdout
+        assert "not registered in fleet-update.sh" in r.stdout, r.stdout
         print("  ADDED file -> warns ✓")
 
 
@@ -126,7 +126,7 @@ def test_the_block_reads_the_ADDED_filter_not_every_staged_file():
 
 def _venv_block() -> str:
     return STUBS + _extract(CORTEX_UPDATE,
-                            "── The fleet venv must be able to RUN what we point at it",
+                            "─ The fleet venv must EXIST and be able to RUN what we point at it ─",
                             "── Ensure tasks MCP server registered")
 
 

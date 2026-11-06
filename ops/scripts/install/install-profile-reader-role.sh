@@ -21,7 +21,7 @@
 #
 # Role creation needs superuser (mycortex_admin has no CREATEROLE — verified
 # f/f), so this connects as the `mycortex` superuser inside the container.
-# Runs as a cortex-update.sh step AFTER migrate.py (DDL path), idempotent.
+# Runs as a fleet-update.sh step AFTER migrate.py (DDL path), idempotent.
 #
 # Profile resolution (tenant boundary): HERMES_PROFILE env → AGENT_NAME →
 # fail loudly. macOS uses direct psql (no container).
@@ -74,7 +74,7 @@ EOF
 
 # ── Orchestrator-only fleet-writer grant (task-model-v3, slice ed6055b7) ──
 # v001__tasks.sql grants `todos_fleet_writer` to the esther/moses profile roles
-# ONLY IF those roles already exist at migration time — but cortex-update.sh
+# ONLY IF those roles already exist at migration time — but fleet-update.sh
 # applies migrations BEFORE this installer creates each profile role, and the
 # installer itself granted only the base mycortex_reader membership. So on any
 # host whose reader role was created by the installer, the fleet-writer

@@ -13,7 +13,7 @@ Steadfaste Fleet deploys with **one repository and one explicit file map**:
 ```
 steadfaste-fleet (repo)                        ~/.steadfaste-fleet (deploy)
         │                                            ▲
-        └────── ops/scripts/cortex-update.sh ────────┘
+        └────── ops/scripts/fleet-update.sh ────────┘
                      register() map
 ```
 
@@ -30,26 +30,27 @@ no `brain-*` branches, no `legacy-brain/` directory, and no `private-data/`.
 
 ## The register() map
 
-`ops/scripts/cortex-update.sh` holds the deployment as data: a list of
-`register "<repo path>" "<deployed path>"` calls — **393** of them,
-of which **388** use the `${CORTEX_DEPLOY_HOME}/` deployed shape (the count the doc
+`ops/scripts/fleet-update.sh` holds the deployment as data: a list of
+`register "<repo path>" "<deployed path>"` calls — **394** of them,
+of which **389** use the `${CORTEX_DEPLOY_HOME}/` deployed shape (the count the doc
 test parses) and **5** deploy to `${HOME}/…` paths (four langfuse files and the macOS
-dashboard plist). Reconcile on **393** when editing: 351 `register` + 42
+dashboard plist). Reconcile on **394** when editing: 352 `register` + 42
 `register_orch`. One-release shims each add an entry beside the renamed file they
 re-export (registered: `lib/cortex_bus.py` beside `lib/fleet_bus.py`;
 `manage/cortex_doctor/__init__.py` beside `manage/fleet_doctor/`;
 `ops/scripts/cortex_gateway/__init__.py` beside `ops/scripts/fleet_gateway/` — the
 live gateway unit still ExecStarts the old daemon path until the P5 unit rename; the
 `core/cortex_bus` package shim is NOT registered — nothing deployed imports the
-package, the live gateway runs the repo tree) — the shims' lines are deleted when
-the old name is retired. (Count re-measured 2026-11-06; the previous figures were
+package, the live gateway runs the repo tree; `ops/scripts/cortex-update.sh` is the
+forwarding shim for the renamed `fleet-update.sh` deploy script) — the shims' lines
+are deleted when the old name is retired. (Count re-measured 2026-11-06; the previous figures were
 stale — the doc test now passes against these numbers.
 `tests/test_repo_resource_paths.py` computes the map numbers, so change the doc in
 the same commit as any `register()` edit.)
 
-**The deployed path cannot be derived from the repo path.** Only 135 of the 388
+**The deployed path cannot be derived from the repo path.** Only 136 of the 389
 follow the obvious "strip the leading `ops/`" rule. **253 follow no rule at all**
-(plus the 5 `${HOME}/` shapes = 258 of the full 393),
+(plus the 5 `${HOME}/` shapes = 258 of the full 394),
 and every one of those also drops a subdirectory:
 
 | repo | deployed |
@@ -82,9 +83,9 @@ under `scripts/`, so the orphan sweep does not remove it. Read it with
 ## Adding a file
 
 1. Add the file to the repo.
-2. Add a `register` line in `ops/scripts/cortex-update.sh` — **repo path first,
+2. Add a `register` line in `ops/scripts/fleet-update.sh` — **repo path first,
    then deployed path**.
-3. `bash ops/scripts/cortex-update.sh`
+3. `bash ops/scripts/fleet-update.sh`
 4. Verify on the **deployed** tree, not the repo.
 
 Step 2 is not optional. The deploy syncs an explicit list, so a file that is
@@ -118,7 +119,7 @@ steadfaste-fleet/
 │   ├── deploy/      deploy helpers
 │   ├── install/     installers (cortex-profile.sh, bootstrap-brain.sh, …)
 │   ├── offline/     offline content tooling
-│   ├── scripts/     cortex-update.sh, cortex_lib/, health/, manage/, …
+│   ├── scripts/     fleet-update.sh, cortex_lib/, health/, manage/, …
 │   ├── services/    long-running services (mycortex-mem, …)
 │   └── web-cache/   web cache tooling
 ├── plugins/         Hermes plugins (governance-enforcer)
@@ -136,7 +137,7 @@ pinned `tools/`.
 
 ```bash
 # Deploy — syncs the register map and relocks the enforcement files
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 
 # Pre-push gate: pull → deploy → doctor → verify
 bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force
@@ -146,7 +147,7 @@ cat ~/.steadfaste-fleet/deploy-manifest.tsv
 hermes-plugin-lock status
 ```
 
-`cortex-update.sh` unlocks the immutable enforcement files early and **relocks them
+`fleet-update.sh` unlocks the immutable enforcement files early and **relocks them
 in its EXIT trap**, so even a failed run leaves the gate locked. It also publishes
 `state/deploy-in-progress` for the duration, so a periodic auditor does not mistake
 that legitimate unlock window for a break — see `docs/troubleshooting.md` -> *"Doctor reports PENDING cycles left by other sessions"*.
@@ -168,7 +169,7 @@ server, every `ops/scripts/` tool, every harness adapter.
 
 ### The problem
 
-The repo and the deploy are **not** the same tree. `cortex-update.sh` copies files
+The repo and the deploy are **not** the same tree. `fleet-update.sh` copies files
 to `${CORTEX_DEPLOY_HOME}` (normally `~/.steadfaste-fleet`) and the mapping is
 **per-file**:
 
@@ -179,7 +180,7 @@ to `${CORTEX_DEPLOY_HOME}` (normally `~/.steadfaste-fleet`) and the mapping is
 | `ops/scripts/judgment.py` | `scripts/judgment.py` |
 | `ops/offline/hermes_paths.py` | `offline/hermes_paths.py` |
 
-Of the same 388 `${CORTEX_DEPLOY_HOME}/` `register()` calls (393 in total with the `${HOME}/` shapes), **253 follow no derivable rule** — the first two rows
+Of the same 389 `${CORTEX_DEPLOY_HOME}/` `register()` calls (394 in total with the `${HOME}/` shapes), **253 follow no derivable rule** — the first two rows
 above both live under `ops/scripts/manage/` and deploy to different depths.
 
 So a component that *guesses* — strip `ops/`, strip a subdir, try a short list of
@@ -241,11 +242,11 @@ There is no step 3. It does not strip prefixes, and it does not guess.
 
 ### The manifest
 
-`cortex-update.sh` already holds the mapping as data (its `register()` map), so it
+`fleet-update.sh` already holds the mapping as data (its `register()` map), so it
 **writes it out** to `${CORTEX_DEPLOY_HOME}/deploy-manifest.tsv` on every sync:
 
 ```
-## GENERATED by cortex-update.sh from its register() calls — do not edit.
+## GENERATED by fleet-update.sh from its register() calls — do not edit.
 ## repo-relative path<TAB>deployed path
 ops/scripts/manage/task-db.py	~/.steadfaste-fleet/scripts/task-db.py
 ```

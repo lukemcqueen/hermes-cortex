@@ -3,7 +3,7 @@
 
 2026-09-08: the doctor unconditionally WARNed whenever any
 hermes-*.service existed in /etc/systemd/system/, assuming user-scope
-(~/.config/systemd/user/) is always correct. But cortex-update.sh is
+(~/.config/systemd/user/) is always correct. But fleet-update.sh is
 explicitly SCOPE-AWARE: on migrated hosts, Hermes gateway + cortex-bus +
 dashboard + health-vector run as SYSTEM units (multi-user.target) by
 design (2026-09-01 decision on moses after the user-scope boot

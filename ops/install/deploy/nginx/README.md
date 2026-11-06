@@ -322,7 +322,7 @@ sudo -n ops/install/deploy/nginx/fix-blocked-ips.py
 ### 4. Pull updated scripts
 
 ```bash
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 ```
 
 ### 5. Verify no leftover symlinks

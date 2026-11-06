@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for remove_cost_tracking() — the fleet-wide cost-tracking cleanup.
 
-The function lives in ops/scripts/cortex-update.sh and runs on every deploy, so it
+The function lives in ops/scripts/fleet-update.sh and runs on every deploy, so it
 is exercised here against a THROWAWAY HOME: artifacts (the cron.provider plugin,
 the cost DB, the deployed scripts, the retired skill) plus a config.yaml carrying
 the cost keys. Assertions:
@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-UPDATE_SH = REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATE_SH = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 COST_SCRIPTS = [
     "cost_store.py",
@@ -41,7 +41,7 @@ COST_SCRIPTS = [
 
 
 def function_body(name: str = "remove_cost_tracking") -> str:
-    """Extract the function verbatim from cortex-update.sh (no copy to drift)."""
+    """Extract the function verbatim from fleet-update.sh (no copy to drift)."""
     text = UPDATE_SH.read_text(encoding="utf-8")
     start = text.index(f"{name}() {{")
     end = text.index("\n}\n", start)

@@ -37,7 +37,7 @@ if [ "$EXIT_CODE" -eq 0 ]; then
 fi
 log ""
 
-# 2. Check registered script paths from cortex-update.sh MAP exist in repo
+# 2. Check registered script paths from fleet-update.sh MAP exist in repo
 log "--- Cortex registered scripts ---"
 REGISTER_CHECK=(
   "$HOME/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py"

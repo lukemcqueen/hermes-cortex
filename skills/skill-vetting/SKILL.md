@@ -108,7 +108,7 @@ but upstreaming priority is LOW. Fleet evaluation (orch-skill-evaluate):
    `find <deployed>/<cat>/<name> -type f | wc -l` against the same count in the repo
    and `diff -rq` the two trees; a skill is not installed until the counts match.
    When they disagree, read the deploy's own traversal (`sync_skills()` in
-   `ops/scripts/cortex-update.sh`) before choosing a remedy — the fix may belong in
+   `ops/scripts/fleet-update.sh`) before choosing a remedy — the fix may belong in
    the deploy rather than in how you lay the vendored skill out, and restructuring a
    skill to fit a traversal gap forks its upstream content.
 

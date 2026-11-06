@@ -4,7 +4,7 @@ Both were found in the wild on 2026-10-04, each having hidden real work for week
 while every board looked healthy:
 
 1. SCHEMA DRIFT. The migration runner only sees migrations that are DEPLOYED, and a
-   migration is only deployed if it is in `cortex-update.sh`'s register map (the
+   migration is only deployed if it is in `fleet-update.sh`'s register map (the
    register map IS the deploy). `v009`/`v010` — the entire v3 task model — were never
    registered, so the deployed schema dir stopped at `v008` and no host could ever
    apply them. A repo migration that is not registered is silent, permanent drift.
@@ -55,8 +55,8 @@ def _deploy() -> Path:
 
 
 def _registered_schema() -> set:
-    """Basenames of schema migrations that cortex-update.sh will actually deploy."""
-    update = _repo() / "ops" / "scripts" / "cortex-update.sh"
+    """Basenames of schema migrations that fleet-update.sh will actually deploy."""
+    update = _repo() / "ops" / "scripts" / "fleet-update.sh"
     try:
         text = update.read_text()
     except OSError:
@@ -97,7 +97,7 @@ def check_task_model_integrity(res: "Results") -> None:            # noqa: F821
             f"{len(unregistered)} migration(s) in the repo are NOT in the deploy "
             f"register, so the version-gated runner can never apply them on a host: "
             f"{', '.join(unregistered[:4])}",
-            "Add a register() line per migration to ops/scripts/cortex-update.sh "
+            "Add a register() line per migration to ops/scripts/fleet-update.sh "
             "(the register map IS the deploy)",
         )
     else:
@@ -114,7 +114,7 @@ def check_task_model_integrity(res: "Results") -> None:            # noqa: F821
                 "Task schema deployed", "WARN",
                 f"{len(missing)} registered migration(s) are not on the deployed "
                 f"tree: {', '.join(missing[:4])}",
-                "Run: bash ops/scripts/cortex-update.sh",
+                "Run: bash ops/scripts/fleet-update.sh",
             )
         else:
             res.add("Task schema deployed", "PASS",

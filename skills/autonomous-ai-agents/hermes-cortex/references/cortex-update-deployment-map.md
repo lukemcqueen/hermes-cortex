@@ -1,6 +1,6 @@
-# cortex-update.sh Deployment Map
+# fleet-update.sh Deployment Map
 
-`cortex-update.sh` uses a `register()` function to map repo source paths → installed
+`fleet-update.sh` uses a `register()` function to map repo source paths → installed
 destination paths. Only registered files are auto-deployed when changed.
 
 ## Full Map (as of commit f28552e)
@@ -10,7 +10,7 @@ Sources under `~/steadfaste-fleet/` → dest under `~/.hermes/` or `~/`.
 ### Core scripts
 | Repo source | Installed dest | Notes |
 |-------------|---------------|-------|
-| `ops/scripts/cortex-update.sh` | `~/.hermes/scripts/cortex-update.sh` | Self-updating |
+| `ops/scripts/fleet-update.sh` | `~/.hermes/scripts/fleet-update.sh` | Self-updating |
 | `ops/scripts/health/heartbeat.py` | `~/.hermes/scripts/heartbeat.py` | |
 | `ops/scripts/manage/memory-to-brain-sync.py` | `~/.hermes/scripts/memory-to-brain-sync.py` | |
 | `ops/scripts/install/bootstrap-brain.sh` | `~/.hermes/scripts/bootstrap-brain.sh` | |
@@ -62,7 +62,7 @@ Sources under `~/steadfaste-fleet/` → dest under `~/.hermes/` or `~/`.
 | `ops/services/agent-inbox/com.hermes.agent-inbox.plist` | `~/Library/LaunchAgents/com.hermes.agent-inbox.plist` | |
 | `ops/services/agent-inbox/agent-inbox-monitor.sh` | `~/.hermes/scripts/agent-inbox-monitor.sh` | |
 
-> ⚠️ **server.py is deployed to all agents by cortex-update.sh (having the file on disk is harmless).**
+> ⚠️ **server.py is deployed to all agents by fleet-update.sh (having the file on disk is harmless).**
 > **But it should only be RUN on designated server machines** (Moses, Esther backup).
 > Client agents (Titus, Gisu, Joseph, Kustos) must NOT start server.py. They connect remotely via MCP tools pointed at the server URL in `~/steadfaste-fleet/.env`.
 
@@ -98,7 +98,7 @@ of git history. Copies any file whose hash differs from the installed version.
 
 ## macOS Compatibility — sha256sum Not Found
 
-**PROBLEM:** `cortex-update.sh` uses `sha256sum` for checksum comparison, but macOS (even 14.x) does not ship `sha256sum`. The command returns "not found", causing `needs_update()` to see two empty hashes, which match — so **every existing file is skipped** during full updates. Only brand-new files (destination missing) get copied.
+**PROBLEM:** `fleet-update.sh` uses `sha256sum` for checksum comparison, but macOS (even 14.x) does not ship `sha256sum`. The command returns "not found", causing `needs_update()` to see two empty hashes, which match — so **every existing file is skipped** during full updates. Only brand-new files (destination missing) get copied.
 
 **FIX (applied in commit f28552e):** The `needs_update()` function now detects the available checksum tool:
 
@@ -118,7 +118,7 @@ On macOS, `shasum -a 256` is the equivalent of `sha256sum` and is available nati
 
 **VERIFICATION:**
 ```bash
-bash ~/.hermes/scripts/cortex-update.sh
+bash ~/.hermes/scripts/fleet-update.sh
 diff ~/steadfaste-fleet/ops/scripts/health/system-alert-watchdog.py ~/.hermes/scripts/system-alert-watchdog.py
 # Should be identical (no diff output)
 ```

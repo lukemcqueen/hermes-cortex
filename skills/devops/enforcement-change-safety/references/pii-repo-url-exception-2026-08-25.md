@@ -36,7 +36,7 @@ Write the fixer to a file instead; ast.parse before write.
 
 ## Deploy ≠ in-memory (plugin variant)
 Enforcer hooks load at gateway start. Deploying the fixed file
-(cortex-update.sh / dogfood) updates disk; the RUNNING gateway keeps the
+(fleet-update.sh / dogfood) updates disk; the RUNNING gateway keeps the
 old gate until restart — same-session write-tool calls still see old
 behavior. Commit-time git hooks read the deployed file, so they reflect the
 fix immediately. Verify with importlib on the DEPLOYED path, not just the

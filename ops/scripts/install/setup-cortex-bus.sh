@@ -86,12 +86,12 @@ fi
 # Check bus-watch.sh exists
 WATCH_SCRIPT="${HOME}/.steadfaste-fleet/scripts/bus-watch.sh"
 if [ ! -f "$WATCH_SCRIPT" ]; then
- warn "bus-watch.sh not found — running cortex-update.sh..."
- if [ -f "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh" ]; then
-  bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh" 2>/dev/null || true
+ warn "bus-watch.sh not found — running fleet-update.sh..."
+ if [ -f "${HOME}/steadfaste-fleet/ops/scripts/fleet-update.sh" ]; then
+  bash "${HOME}/steadfaste-fleet/ops/scripts/fleet-update.sh" 2>/dev/null || true
  fi
  if [ ! -f "$WATCH_SCRIPT" ]; then
-  warn "Still not found. Run: cd ~/steadfaste-fleet && git pull && bash ops/scripts/cortex-update.sh "
+  warn "Still not found. Run: cd ~/steadfaste-fleet && git pull && bash ops/scripts/fleet-update.sh "
   exit 1
  fi
 fi

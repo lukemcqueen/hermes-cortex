@@ -92,7 +92,7 @@ Ancestral commits stay even after reset. Only "on top" commits are removed by th
 
 Hook-based operations (commit, push) no longer need `AGENT_ID`. Identity comes from
 `~/.steadfaste-fleet/agent.env` (`AGENT_NAME=<your-agent>`), provisioned by
-`cortex-update.sh` (or the `AGENT_NAME` env var). The hook fails closed with setup
+`fleet-update.sh` (or the `AGENT_NAME` env var). The hook fails closed with setup
 instructions if it is missing. Do NOT hardcode or export `AGENT_ID` — it is obsolete
 and grants no privileges.
 
@@ -106,7 +106,7 @@ infrastructure and stays out of the public repo):
 
 ```bash
 echo 'AGENT_NAME=<your-agent>' > ~/.steadfaste-fleet/agent.env
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
 ## Full Pre-Commit Hook Pipeline

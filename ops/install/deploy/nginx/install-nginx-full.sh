@@ -337,7 +337,7 @@ if ! grep -q "include blocked_ips.conf" "$SERVICES_CONF" 2>/dev/null; then
   echo "  ⚠ blocked_ips.conf not yet included in nginx config — add manually or through install.sh"
 fi
 if ! grep -q "include allow-ips-manual.conf" "$SERVICES_CONF" 2>/dev/null; then
-  echo "  ⚠ allow-ips-manual.conf not included in nginx config — update cortex-update.sh or template"
+  echo "  ⚠ allow-ips-manual.conf not included in nginx config — update fleet-update.sh or template"
 fi
 
 # ── Step 5: Install fail2ban filter ──

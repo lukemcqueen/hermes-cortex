@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def _registered_pairs() -> list[tuple[str, str]]:
-    sh = (REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+    sh = (REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
     return re.findall(r'^register\s+"([^"]+)"\s+"([^"]+)"', sh, re.M)
 
 

@@ -25,10 +25,10 @@ fallback 1 and opencode deepseek flash as fallback 2 — for the LLM crons."
 ## Why the live repin alone was reverted
 
 1. `hermes cron edit <id> --model X --provider Y` updates `~/.hermes/cron/jobs.json` per-job (CLI only — MCP cronjob tool has no model/provider params).
-2. Next `cortex-update.sh` → `install-crons.sh`/`install-orch-crons.sh` → `create_cron()` drift-edit path → `pin_cron_model "$name" "$model" "$provider"` — and `pin_cron_model()` reads `ops/install/cron-manifest.yaml` FIRST; a manifest entry's model/provider **override** the env fallback `$LLM_CRON_MODEL` and the live pin.
+2. Next `fleet-update.sh` → `install-crons.sh`/`install-orch-crons.sh` → `create_cron()` drift-edit path → `pin_cron_model "$name" "$model" "$provider"` — and `pin_cron_model()` reads `ops/install/cron-manifest.yaml` FIRST; a manifest entry's model/provider **override** the env fallback `$LLM_CRON_MODEL` and the live pin.
 3. Result: 14/21 pins silently reverted to the manifest's old values on the first deploy.
 
-**Correct sequence (verified):** patch `ops/install/cron-manifest.yaml` entries → `hermes cron edit` each live job → `cortex-update.sh` → verify `jobs.json` still shows the new pins (0 mispinned).
+**Correct sequence (verified):** patch `ops/install/cron-manifest.yaml` entries → `hermes cron edit` each live job → `fleet-update.sh` → verify `jobs.json` still shows the new pins (0 mispinned).
 
 ## Fallback chain is operator-owned config.yaml (env-driven writer removed 2026-09-09)
 

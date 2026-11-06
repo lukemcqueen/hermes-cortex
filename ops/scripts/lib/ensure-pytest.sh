@@ -10,7 +10,7 @@
 # caller — the harness, a doctor check, a peer host's setup — runs the same three things:
 #
 #   1. the DECLARED dependency set  ops/install/requirements.txt      (pytest>=7.0 is declared there)
-#   2. the canonical fleet venv     ~/.steadfaste-fleet/venv             (the venv cortex-update.sh
+#   2. the canonical fleet venv     ~/.steadfaste-fleet/venv             (the venv fleet-update.sh
 #                                                                      registers every MCP server against)
 #   3. the SUPPLY-CHAIN age gate    ops/scripts/health/check-package-age.py
 #
@@ -65,7 +65,7 @@ fi
 for f in "$AGE_CHECK" "$VENV_FIX"; do
   if [[ ! -f "$f" ]]; then
     echo "ensure-pytest: COULD NOT VERIFY — missing prerequisite: $f" >&2
-    echo "  Deploy the repo first (bash ops/scripts/update.sh or ops/scripts/cortex-update.sh)," >&2
+    echo "  Deploy the repo first (bash ops/scripts/update.sh or ops/scripts/fleet-update.sh)," >&2
     echo "  then re-run. Nothing was installed." >&2
     exit 3
   fi

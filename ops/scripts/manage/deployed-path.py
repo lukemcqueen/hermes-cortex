@@ -4,14 +4,14 @@
 WHY THIS EXISTS
 ---------------
 The deployed path of a repo file CANNOT be derived from the repo path: 192 of the ~289
-register() entries in cortex-update.sh follow no rule (fleet_lib/paths.py documents this in
+register() entries in fleet-update.sh follow no rule (fleet_lib/paths.py documents this in
 its own header, and the repo's deploy skill repeats it). A probe that mirrors the repo
 layout under the deploy home therefore checks NOTHING, and pairing it with
 ``2>/dev/null || echo "<conclusion>"`` prints that failure AS a finding. That is exactly how
 the sentence "0 (deployed copy predates this commit)" reached a committed evidence file
 while the deployed copy in fact carried the change.
 
-The map is DATA, not a convention: cortex-update.sh's register() lines, written out as
+The map is DATA, not a convention: fleet-update.sh's register() lines, written out as
 deploy-manifest.tsv. This tool reads that map and answers one question, so an evidence probe
 can ask instead of assume.
 

@@ -81,7 +81,7 @@ Skills in `~/.hermes/skills/` come from two places. Know which is which:
 
 | Origin | Path check | Action |
 |--------|-----------|--------|
-| Steadfaste Fleet (ours) | In `~/steadfaste-fleet/skills/` | ✅ Edit the repo source, deploy via cortex-update.sh |
+| Steadfaste Fleet (ours) | In `~/steadfaste-fleet/skills/` | ✅ Edit the repo source, deploy via fleet-update.sh |
 | Hermes Agent (upstream) | In `~/.hermes/hermes-agent/skills/` but NOT in repo | ❌ Do not edit — create a supplement instead |
 
 **Hermes Agent upstream skills (do NOT edit):** Any skill at `~/.hermes/hermes-agent/skills/` that does NOT have a matching source in `~/steadfaste-fleet/skills/`. This includes all skills in `apple/`, `creative/`, `email/`, `github/`, `media/`, `note-taking/`, `productivity/`, `research/`, `smart-home/`, `social-media/`, `software-development/spike`, and others shipped by upstream.
@@ -99,10 +99,10 @@ Skills in `~/.hermes/skills/` come from two places. Know which is which:
 ## The Deployed Copy Trap
 
 Files at `~/.steadfaste-fleet/scripts/` and `~/.steadfaste-fleet/skills/` are **deployed copies** from the repo. If you edit them directly:
-1. Your changes will be **lost** on the next `cortex-update.sh`
+1. Your changes will be **lost** on the next `fleet-update.sh`
 2. Other agents won't get your improvements
 
-**Always edit the repo source first**, then run `cortex-update.sh` to sync.
+**Always edit the repo source first**, then run `fleet-update.sh` to sync.
 
 Exception: `~/.steadfaste-fleet/state/*` files are per-machine state, not deployed from repo.
 
@@ -113,7 +113,7 @@ If you need a capability that a Hermes default skill provides but it's missing s
 1. **Don't edit the Hermes default** — it will be overwritten
 2. **Create a complement in our repo** — a new skill at `~/steadfaste-fleet/skills/<category>/<name>/`
 3. **Reference the Hermes default** in your new skill's `related_skills` field
-4. **Deploy via cortex-update.sh** so the fleet gets it
+4. **Deploy via fleet-update.sh** so the fleet gets it
 
 ## Protected agent-instruction files: ownership is not write-consent
 

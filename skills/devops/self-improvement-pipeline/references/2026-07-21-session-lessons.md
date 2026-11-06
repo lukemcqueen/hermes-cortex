@@ -9,7 +9,7 @@ Moses had 3 corrections from the user in a single session, all turning into perm
 ## Correction 1: "I always want you to fix things you need to fix. You never need to ask me."
 
 **Timeline:**
-1. Moses completed a pull-latest sequence (git pull → cortex-update.sh → doctor)
+1. Moses completed a pull-latest sequence (git pull → fleet-update.sh → doctor)
 2. Doctor showed "3 remaining (advisory only)" — SOUL.md stale, extra crons
 3. Moses asked: "Want me to audit the uninstall arrays and fix the expected-list mismatch?"
 4. Luke replied: "Moses... I always want you to fix things you need to fix. You never need to ask me."

@@ -34,7 +34,7 @@ fi
 
 if [ ! -f "$FLEET_PY" ]; then
     echo "fleet: cannot find fleet.py — looked beside $(dirname "$0") and one level up" >&2
-    echo "fleet: run the deployed ~/.steadfaste-fleet/scripts/fleet, or reinstall with cortex-update.sh" >&2
+    echo "fleet: run the deployed ~/.steadfaste-fleet/scripts/fleet, or reinstall with fleet-update.sh" >&2
     exit 3
 fi
 

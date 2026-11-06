@@ -87,7 +87,7 @@ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file <f> --level A2 
 
 `git push` FAILED with "❌ Checksum: AGENTS.md" because deployed
 `~/.hermes/AGENTS.md` hadn't been updated yet. The enforcement chain is:
-commit → `cortex-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
+commit → `fleet-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
 push. Doctor was HEALTHY only AFTER cortex-update ran.
 
 ## Follow-ups left open

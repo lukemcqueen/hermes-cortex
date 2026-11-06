@@ -26,10 +26,10 @@ each host's `cycle_query`/`feedback_accept` reads is that HOST's local DB:
   NOT a failed update** — the SHA moved, the deploy landed, the receipt is
   just honest about the doctor. Fix the cycles, don't re-dispatch.
 
-## 2. Deploy-sync ordering: commit → cortex-update.sh → push
+## 2. Deploy-sync ordering: commit → fleet-update.sh → push
 
 The doctor's `Deploy sync` check compares `~/.steadfaste-fleet/state/update-commit`
-(last deployed commit) against git HEAD. Running `cortex-update.sh` BEFORE
+(last deployed commit) against git HEAD. Running `fleet-update.sh` BEFORE
 committing leaves `update-commit` pointing at the old HEAD, so the pre-push
 dogfood gate blocks with:
 
@@ -42,10 +42,10 @@ The dogfood gate does NOT fix this itself — it reports the failure and
 blocks the push. Correct order for script/config changes in steadfaste-fleet:
 
 1. `git commit` (pre-commit scores + adversarial gate)
-2. `bash ops/scripts/cortex-update.sh` (deploys the committed state, writes
+2. `bash ops/scripts/fleet-update.sh` (deploys the committed state, writes
    `state/update-commit` = new HEAD)
 3. `git push` (dogfood re-verifies; `Deploy sync` PASS)
 
 Deploying pre-commit is the trap: the deploy writes update-commit for the
 OLD head, then the commit moves HEAD → stale. If the gate blocks you, the
-fix is exactly one `cortex-update.sh` run (no code change needed), then push.
+fix is exactly one `fleet-update.sh` run (no code change needed), then push.

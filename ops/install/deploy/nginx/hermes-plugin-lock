@@ -26,7 +26,7 @@
 #    sudo hermes-plugin-lock lock                      → any agent may lock
 #    sudo hermes-plugin-lock status                    → any agent may inspect
 #    sudo hermes-plugin-lock unlock --cortex-update    → SANCTIONED: the only
-#        sanctioned unlock channel. cortex-update.sh passes this token
+#        sanctioned unlock channel. fleet-update.sh passes this token
 #        (it is the designated deploy mechanism for the enforcement chain).
 #        Allowed for every agent — this is the intended update path.
 #    sudo hermes-plugin-lock unlock --orchestrator     → ORCHESTRATOR EXCEPTION:
@@ -75,9 +75,9 @@ TARGETS=(
   "${REAL_HOME}/.steadfaste-fleet/scripts/post-push-audit"
   # hooks/post-merge: immutable (chattr +i) but NOT 444 — git ignores
   # non-executable hooks. Deployed 700 (owner-only, least privilege) via
-  # cortex-update.sh chmod after register, then locked +i so it can't be
+  # fleet-update.sh chmod after register, then locked +i so it can't be
   # swapped/tampered, while staying executable. The chmod-444 loop in
-  # cortex-update.sh must NOT include post-merge (2026-08-03, Titus ISSUE-2).
+  # fleet-update.sh must NOT include post-merge (2026-08-03, Titus ISSUE-2).
   "${REAL_HOME}/.steadfaste-fleet/hooks/post-merge"
   "${REAL_HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
   # hooks DIRECTORY itself — chattr +i on the dir prevents symlink swaps
@@ -141,7 +141,7 @@ _audit() {
 
 # ── Sanctioned-caller gate (2026-07-31) ────────────────────
 # unlock/update mutate the enforcement chain. Valid tokens:
-#   --cortex-update  → cortex-update.sh (the sanctioned deploy path);
+#   --cortex-update  → fleet-update.sh (the sanctioned deploy path);
 #                      allowed for every agent (fleet updates).
 #   --orchestrator   → manual maintenance; REQUIRES the invoking Unix
 #                      account to be an orchestrator (moses|esther).
@@ -164,7 +164,7 @@ _require_sanctioned_caller() {
   _audit "$action" "REFUSED" "${token:-no-token}" 1
   echo "⛔ REFUSED: the enforcement chain may only be updated via the sanctioned path." >&2
   echo "  1. Run the sanctioned update (allowed for every agent):" >&2
-  echo "       bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
+  echo "       bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh" >&2
   echo "     It deploys, relocks, and verifies automatically." >&2
   echo "  2. Or send an inbox PROPOSAL to Moses/Esther to ship the change fleet-wide." >&2
   echo "  This attempt was logged. (token=${token:-none})" >&2
@@ -237,7 +237,7 @@ case "${1:-help}" in
     echo "Usage: $0 {lock|status} | {unlock|update} {--cortex-update|--orchestrator}" >&2
     echo "" >&2
     echo "  lock/status              → any agent" >&2
-    echo "  unlock --cortex-update   → sanctioned (cortex-update.sh)" >&2
+    echo "  unlock --cortex-update   → sanctioned (fleet-update.sh)" >&2
     echo "  unlock --orchestrator    → orchestrator account only (moses|esther)" >&2
     echo "  update (same tokens)     → self-update, gated identically" >&2
     echo "" >&2

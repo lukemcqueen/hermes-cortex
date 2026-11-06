@@ -172,7 +172,7 @@ def skill_loaded(skill: str, session_id: str) -> tuple[int, str]:
     if mod is None:
         return EXIT_STORE_UNREACHABLE, (
             "HC store module not found at ~/.steadfaste-fleet/services/mycortex-mem/store.py "
-            "— run cortex-update.sh")
+            "— run fleet-update.sh")
     try:
         store = mod.Store()
         if not store.available():

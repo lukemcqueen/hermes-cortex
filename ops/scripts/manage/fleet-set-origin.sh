@@ -3,7 +3,7 @@
 #
 # Idempotent: sets origin to the canonical URL only when it currently carries the
 # legacy repo name; a host already on the new URL is a no-op. Does NOT pull or
-# deploy (that belongs to UPDATE_REQUEST / cortex-update.sh) and never touches a
+# deploy (that belongs to UPDATE_REQUEST / fleet-update.sh) and never touches a
 # host whose origin is something unexpected.
 #
 # Run via the agent-message-handler EXEC path (a deployed script in

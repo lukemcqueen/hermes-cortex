@@ -7,7 +7,7 @@
 #   ops/scripts/bus/bus-message-tracker.py     → superseded by orch-bus/orch-bus-confirmation-poller.py
 #   ops/scripts/bus/bus-message-tracker-alert.sh → superseded by orch-bus/orch-bus-confirmation-alert.sh
 #
-# These were never registered in cortex-update.sh and are not deployed
+# These were never registered in fleet-update.sh and are not deployed
 # anywhere. This script:
 #   1. Removes the orphan source files from ops/scripts/bus/
 #   2. Removes any stale bus-* deployed copies from ~/.steadfaste-fleet/scripts/
@@ -28,7 +28,7 @@ ORPHANS["ops/scripts/bus/bus-forwarder.py"]="ops/scripts/orch-bus/orch-bus-forwa
 ORPHANS["ops/scripts/bus/bus-message-tracker.py"]="ops/scripts/orch-bus/orch-bus-confirmation-poller.py"
 
 # Old deploy names that might exist as stale copies (only the 3 orphans
-# that were never registered — bus/bus-* had no register lines in cortex-update.sh)
+# that were never registered — bus/bus-* had no register lines in fleet-update.sh)
 STALE_NAMES=(
     "bus-forwarder.py"
     "bus-message-tracker.py"
@@ -101,7 +101,7 @@ for name in "${REGISTER_RENAMED[@]}"; do
             rm -f "$old_path"
             ((cleaned_deploy++))
         elif [ -f "$old_path" ] && [ ! -f "$new_path" ]; then
-            echo "  ⚠️  Keeping $old_path — no $new_path found (run cortex-update.sh first)"
+            echo "  ⚠️  Keeping $old_path — no $new_path found (run fleet-update.sh first)"
         fi
     done
 done

@@ -3,7 +3,7 @@
 ## The TZ bug — why cortex-update deleted the live session lock every deploy
 
 **Symptom (Luke: "this lock issue is MISERABLE. there needs to be a real
-solution"):** after every `cortex-update.sh`, the next tool call returned
+solution"):** after every `fleet-update.sh`, the next tool call returned
 "GOVERNANCE LOCK REQUIRED" even though the lock file existed and was fresh.
 This forced re-acquiring `begin_change` after every deploy, made the doctor
 classify the current cycle as "leaked" (no lock), and cascaded into the
@@ -12,7 +12,7 @@ dogfood false-positive chain.
 **Root cause — a timezone parse bug, not a designed purge:**
 
 ```bash
-# BEFORE (buggy) — cortex-update.sh stale-lock cleanup, first pass:
+# BEFORE (buggy) — fleet-update.sh stale-lock cleanup, first pass:
 _lock_heartbeat=$(python3 -c "...get('heartbeat_at','')[:19]")   # strips 'Z'!
 _heartbeat_epoch=$(date -d "$_lock_heartbeat" +%s)               # parses as LOCAL
 if [[ $(( _now - _heartbeat_epoch )) -gt 3600 ]]; then rm -f "$_lock"; fi
@@ -100,7 +100,7 @@ Only THIS task's cycle is exempted — other leaked cycles still fail dogfood.
 
 ### Skill reloads are NOT lock-coupled
 Luke asked whether the lock purge existed to force agents to reload skills.
-Verification: `cortex-update.sh` has ZERO references to skills-loaded markers;
+Verification: `fleet-update.sh` has ZERO references to skills-loaded markers;
 the enforcer never deletes them; the marker check is existence + exact content
 (`session:<session_id>`), not a version comparison. The reload trigger is
 deployed-skill drift → doctor's skill-drift check → agent re-`skill_view()`.
@@ -109,7 +109,7 @@ marker (`state/skills-loaded/<session_id>`) — do NOT delete locks.
 
 ## Verification evidence (all done live)
 - TZ age math: full-Z → 137s; sliced → 32,537s (the bug, reproduced).
-- After fix: lock file survived `cortex-update.sh`; only current-task cycle
+- After fix: lock file survived `fleet-update.sh`; only current-task cycle
   PENDING; doctor clean.
 - Mandatory dogfood: 7-case trigger matrix (HC script/rename/config fire;
   HC doc exempt; client-repo-a + client-web-app NEVER fire); RED test (drifted

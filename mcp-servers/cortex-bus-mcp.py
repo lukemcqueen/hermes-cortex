@@ -796,7 +796,7 @@ def _enrich_task_with_context(body: dict, worktree: str = "",
     slice plan, the task, and recent git history — zero tool round-trips
     fetching context. Fail-open: bad worktree or missing builder → body
     unchanged (context is a bonus, never a blocker). The builder is
-    DEPLOYED fleet-wide (cortex-update.sh MAP) — direct import.
+    DEPLOYED fleet-wide (fleet-update.sh MAP) — direct import.
     """
     if not worktree:
         return body

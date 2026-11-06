@@ -34,12 +34,12 @@ Three properties, and a change to any of them must preserve all three:
    taken from git rather than from the worker's note, and never state or imply that
    the range was narrowed when it was not. An UNLABELLED window is read as the
    worker's own change, so a peer's enforcement edits (enforcer, `loop-gov-mcp.py`,
-   hooks, `cortex-update.sh`) pulled in by a rebase get charged to this worker — which
+   hooks, `fleet-update.sh`) pulled in by a rebase get charged to this worker — which
    then has its real evidence rejected as fabrication and cannot fix it from its own
    side. Share one formatter between the narrowed and unnarrowed paths so the two
    disclosures cannot drift apart.
 3. **Fail SAFE against escape.** A window commit the session did NOT author but which
-   touches an always-review path (enforcer, `loop-gov-mcp.py`, hooks, `cortex-update.sh`)
+   touches an always-review path (enforcer, `loop-gov-mcp.py`, hooks, `fleet-update.sh`)
    still FORCES review. Non-authored commits also stay in the material, in full, as
    provenance — hidden context is where an escape attempt would live.
 

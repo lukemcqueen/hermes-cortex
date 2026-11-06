@@ -602,7 +602,7 @@ python3 ~/steadfaste-fleet/deploy/extract_langfuse_env.py > ~/steadfaste-fleet/.
 **Step 3 — Deploy the script:**
 
 ```bash
-# Scripts auto-deploy via cortex-update.sh
+# Scripts auto-deploy via fleet-update.sh
 # Or copy manually:
 cp ~/steadfaste-fleet/ops/scripts/manage/llm-judge-scorer.py ~/.steadfaste-fleet/scripts/
 chmod +x ~/.steadfaste-fleet/scripts/llm-judge-scorer.py
@@ -718,7 +718,7 @@ ClickHouse's default 50GB drop protection.
 
 **Belt-and-suspenders — nightly truncate cron:**
 
-The `ch-truncate-system-logs.sh` script (deployed via cortex-update.sh) runs
+The `ch-truncate-system-logs.sh` script (deployed via fleet-update.sh) runs
 as a `local-clickhouse-log-cleanup` cron — uses thresholds (10-25MB) and
 auto-targets only oversized tables. Silent when healthy.
 

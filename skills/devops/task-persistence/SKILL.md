@@ -26,7 +26,7 @@ bus-commands-as-tasks, and Telegram visibility.
 **History:** the old system (bus.todos + todo-db.py) was retired 2026-08-06 —
 `bus.todos` never existed on workers (bus schema is orchestrator-only), and
 todo-db.py silently no-op'd (stdin-mode psql rc=0). The tasks schema is
-applied on EVERY host by cortex-update.sh via the version-gated runner.
+applied on EVERY host by fleet-update.sh via the version-gated runner.
 
 ## Architecture
 
@@ -71,7 +71,7 @@ instead of silently writing rows as the machine name. Same rule in
 
 ### CLI + MCP
 
-- **Deployed to:** `~/.steadfaste-fleet/scripts/task-db.py` (register in cortex-update.sh)
+- **Deployed to:** `~/.steadfaste-fleet/scripts/task-db.py` (register in fleet-update.sh)
 - **MCP server:** `mcp-servers/task-mcp.py`, registered as `todos`
   (tools: task_add, task_list, task_pending, task_update, task_switch,
   task_save_end, task_prune). All agents — not orchestrator-only.

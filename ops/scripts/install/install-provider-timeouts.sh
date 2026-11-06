@@ -22,7 +22,7 @@
 # This is per-request, applied via `hermes config set`.
 #
 # Idempotent: silent no-op when the value already matches.
-# Safe to run from cortex-update.sh on every update cycle.
+# Safe to run from fleet-update.sh on every update cycle.
 # No restart needed — config.yaml is read per-request.
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail

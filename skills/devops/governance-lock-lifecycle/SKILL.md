@@ -14,11 +14,11 @@ metadata:
 
 # Governance Lock Lifecycle During Deploy Operations
 
-**Class of task:** any session that runs `cortex-update.sh` (or any deploy that triggers `purge-stale-governance-locks.py`), then hits `GOVERNANCE LOCK REQUIRED` on a subsequent tool call, or finds `end_change` rejecting with "no scored cycle". Also covers the "pull latest → update → doctor → fix" loop.
+**Class of task:** any session that runs `fleet-update.sh` (or any deploy that triggers `purge-stale-governance-locks.py`), then hits `GOVERNANCE LOCK REQUIRED` on a subsequent tool call, or finds `end_change` rejecting with "no scored cycle". Also covers the "pull latest → update → doctor → fix" loop.
 
 ## The Core Mechanic
 
-`cortex-update.sh` runs `purge-stale-governance-locks.py` at the **END of EVERY run** — it removes **every** `.governance-*.json` lock file, **including your active session's lock**. This is by design (Pitfall 4 in `cortex-deployment-sync`), but the blast radius is bigger than most agents expect:
+`fleet-update.sh` runs `purge-stale-governance-locks.py` at the **END of EVERY run** — it removes **every** `.governance-*.json` lock file, **including your active session's lock**. This is by design (Pitfall 4 in `cortex-deployment-sync`), but the blast radius is bigger than most agents expect:
 
 1. **ALL terminal is gated, not just writes.** The enforcer's `GOVERNANCE LOCK REQUIRED` fires on ANY `terminal()` call without an active lock — even a read-only `grep` of the update log. `ls`, `grep`, `cat`, `git status` all blocked until you re-acquire.
 2. **`read_file` / `search_files` / `skill_view` are NOT gated.** These are the escape hatch for inspecting output between the purge and your re-acquire.
@@ -29,7 +29,7 @@ metadata:
 ```text
 begin_change(task_id="pull-latest-cortex-update")     # cycle #1
 git pull --rebase --autostash origin main
-cortex-update.sh > /tmp/update-full.log 2>&1          # redirect UNDER the lock
+fleet-update.sh > /tmp/update-full.log 2>&1          # redirect UNDER the lock
                                                       #   ← purge fires, lock GONE
 # terminal() now blocked — use read_file on /tmp/update-full.log
 check_lock → active: false                            # confirm
@@ -48,7 +48,7 @@ end_change(task_id=...)                               # only now succeeds
 
 ### Pitfall 1: Redirect capture must happen UNDER the lock
 
-`cortex-update.sh > /tmp/log 2>&1` is fine **while the lock is active** (the redirect is the point — it survives the purge). But a `;`-chained command like `cortex-update.sh > log 2>&1; grep ...` can be classified as a write by the enforcer and blocked **before** it runs if the lock was already purged. Pattern to avoid: run the update, then try to grep the log in the same command — the grep half dies.
+`fleet-update.sh > /tmp/log 2>&1` is fine **while the lock is active** (the redirect is the point — it survives the purge). But a `;`-chained command like `fleet-update.sh > log 2>&1; grep ...` can be classified as a write by the enforcer and blocked **before** it runs if the lock was already purged. Pattern to avoid: run the update, then try to grep the log in the same command — the grep half dies.
 
 ### Pitfall 2: `| tail -60` truncates the embedded doctor report
 
@@ -101,7 +101,7 @@ Writing `/tmp/inspect.py` triggers the domain-skill gate: "write blocked until `
 The deploy unlocks each immutable enforcement file before overwriting it. Two
 guarantees make a leftover unlocked state self-correcting:
 
-1. **Relock on error.** `cortex-update.sh` installs `_relock_enforcement` as an
+1. **Relock on error.** `fleet-update.sh` installs `_relock_enforcement` as an
    `EXIT` trap — and `cortex-dogfood.sh` has its own, so the mandated pre-push
    gate does not depend on a CHILD script's trap for a security property. The
    relock runs on success, on error and on signal alike; a FAILED deploy no

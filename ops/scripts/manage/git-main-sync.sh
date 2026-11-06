@@ -9,7 +9,7 @@
 # rather than changing daily sync behaviour (a fleet-wide auto-checkout
 # would yank dev agents off their work branches).
 #
-# After the pull, the repo's post-merge hook auto-runs cortex-update.sh, so
+# After the pull, the repo's post-merge hook auto-runs fleet-update.sh, so
 # the new commit is deployed in the same pass.
 #
 # Usage:

@@ -75,7 +75,7 @@ the same file from memory while claiming to compress; byte count never changed.
    it must shrink; there is no fleet-side sync to refresh it (soul-merge
    removed 2026-11-04).
 6. **Commit + push** — pre-push hook requires deployed == repo checksum, so run
-   `cortex-update.sh` BEFORE `git push` (doc changes: the enforcement chain is
+   `fleet-update.sh` BEFORE `git push` (doc changes: the enforcement chain is
    commit → deploy → push).
 
 ## Always-Loaded Skill Budget (the budget nothing enforces)

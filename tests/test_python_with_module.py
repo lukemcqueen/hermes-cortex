@@ -9,7 +9,7 @@ fallback is usually the interpreter that lacks it. Measured on this host (2026-1
 failed every day with "PyYAML is not installed".
 
 RE-MEASURED 2026-10-13: that premise is now STALE — the cortex venv imports yaml and mcp
-(pytest after installing it there), and it is the fleet venv cortex-update.sh registers
+(pytest after installing it there), and it is the fleet venv fleet-update.sh registers
 every MCP server against. So the resolver prefers the CORTEX venv and treats the Hermes
 venv as the second candidate; capability still decides, the order only breaks a tie.
 

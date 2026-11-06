@@ -31,7 +31,7 @@ don't silently skip it.
 ```bash
 cd ~/steadfaste-fleet
 git pull --ff-only origin main
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 python3 ops/scripts/manage/cortex-doctor.py --quiet
 ```
 

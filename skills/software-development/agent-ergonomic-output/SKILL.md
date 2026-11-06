@@ -67,7 +67,7 @@ Full detail + examples: `references/axi-ten-principles.md`.
 8. **Conformance checks warn first:** new doctor checks ship as ⚠️, promote
    to ❌ only after a soak proving zero false positives; scope to registered
    agent-facing scripts so unrelated deploys are never gated.
-9. **Deploy-sync safety:** any new shared lib registers in cortex-update.sh
+9. **Deploy-sync safety:** any new shared lib registers in fleet-update.sh
    + a post-deploy import smoke test (`python3 -c 'import ...'` on the
    deployed path) so a partial deploy fails at deploy time, not at cron
    runtime.

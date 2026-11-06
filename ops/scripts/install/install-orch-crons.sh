@@ -32,7 +32,7 @@ for candidate in "${SCRIPT_DIR}/os-config.sh" "${SCRIPT_DIR}/install/os-config.s
   fi
 done
 if [[ -z "$OS_CONFIG" ]]; then
-  echo "ERROR: os-config.sh not found (needed for check_agent_type). Run cortex-update.sh to deploy." >&2
+  echo "ERROR: os-config.sh not found (needed for check_agent_type). Run fleet-update.sh to deploy." >&2
   exit 1
 fi
 source "$OS_CONFIG"

@@ -40,7 +40,7 @@
 #    repo; they WARN elsewhere so client/project repos are never
 #    broken. PII_PUBLIC_REPO env override enables scope testing.
 #
-#  Installed as part of cortex-update.sh verify step.
+#  Installed as part of fleet-update.sh verify step.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 

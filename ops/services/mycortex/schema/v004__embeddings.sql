@@ -2,7 +2,7 @@
 -- mycortex schema v004 — v1.1 semantic slice (S-014): pgvector embeddings
 -- Source: docs/design/mycortex-DESIGN.md §1.2 "Embedding metadata (v1.1)"
 --         docs/elicit/2026-08-01_mycortex-stories.md S-014
--- Applied by: ops/services/mycortex/migrate.py (NOT by cortex-update.sh directly)
+-- Applied by: ops/services/mycortex/migrate.py (NOT by fleet-update.sh directly)
 -- Target: mycortex-postgres, database `mycortex`, schema `mycortex`
 --
 -- Adds three columns to content_chunks:

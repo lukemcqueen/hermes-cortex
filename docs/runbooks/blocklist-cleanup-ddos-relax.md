@@ -11,8 +11,8 @@ kicked off after refreshing a dashboard a few times in a minute.
 | # | Change | Commit | Agent action |
 |---|--------|--------|--------------|
 | 1 | DDoS rate-limit bursts relaxed (rates kept) | `dc8d47f2` | Manually apply nginx templates (anti-tamper — agents CANNOT) |
-| 2 | Scanner adds ONLY fail2ban-confirmed abusers | `1bb98896` | `cortex-update.sh` deploys the new scanner |
-| 3 | Scanner never re-adds allow-listed IPs | `95933111` | `cortex-update.sh` deploys |
+| 2 | Scanner adds ONLY fail2ban-confirmed abusers | `1bb98896` | `fleet-update.sh` deploys the new scanner |
+| 3 | Scanner never re-adds allow-listed IPs | `95933111` | `fleet-update.sh` deploys |
 | 4 | Evidence-based blocklist classifier (new tool) | `95933111` | Run on Joseph (primary discovery host) |
 
 **Template changes are MANUAL-only** (Luke 2026-08-08: all templates are
@@ -41,7 +41,7 @@ burst; `nodelay` converts excess to instant 503 = "kicked off."
 ```bash
 sudo cp ~/steadfaste-fleet/ops/install/deploy/nginx/hermes-zone-defs.conf /etc/nginx/hermes-zone-defs.conf
 sudo cp /tmp/hermes-services-processed.conf /etc/nginx/sites-available/hermes-services.conf
-# or re-run cortex-update.sh to regenerate, then:
+# or re-run fleet-update.sh to regenerate, then:
 sudo nginx -t && sudo nginx -s reload
 ```
 `nodelay` is kept deliberately — excess past the (larger) burst still 503s,
@@ -62,7 +62,7 @@ discrimination. One legit dashboard refresh = 15-30 requests = tripped it.
 - Allow-list guard: reads `/etc/nginx/allow-ips-manual.conf` (exact + CIDR)
   and skips allow-listed IPs before appending
 
-**Agent action:** none beyond normal `cortex-update.sh`. Verify after deploy:
+**Agent action:** none beyond normal `fleet-update.sh`. Verify after deploy:
 ```bash
 grep -c "volume" ~/.steadfaste-fleet/scripts/nginx-security-scanner.sh  # expect 0 hits on old code
 grep -c "_is_allowed_ip" ~/.steadfaste-fleet/scripts/nginx-security-scanner.sh  # expect 1
@@ -88,7 +88,7 @@ the four entries that had been allow-listed (see `/etc/nginx/allow-ips-manual.co
 volume false-positives?" WITHOUT deleting the bad ones.
 
 **New script:** `ops/scripts/manage/classify-blocked-ips.sh`
-(registered in cortex-update.sh, deploys to `~/.steadfaste-fleet/scripts/`)
+(registered in fleet-update.sh, deploys to `~/.steadfaste-fleet/scripts/`)
 
 **Run on the host with the fail2ban ban evidence — Joseph is primary
 discovery, Gisu/Kustos second/third** (Luke 2026-08-08):
@@ -131,7 +131,7 @@ static list should hold only confirmed abusers; fail2ban handles the rest.
 
 ## Agent implementation checklist (per host)
 
-- [ ] `git pull origin main` + `cortex-update.sh` (deploys scanner + classifier)
+- [ ] `git pull origin main` + `fleet-update.sh` (deploys scanner + classifier)
 - [ ] Verify scanner no longer has volume path (grep above)
 - [ ] Run `classify-blocked-ips.sh` — review output, do NOT auto-delete
 - [ ] NEVER edit nginx templates or allow-ips-manual.conf (manual domain)

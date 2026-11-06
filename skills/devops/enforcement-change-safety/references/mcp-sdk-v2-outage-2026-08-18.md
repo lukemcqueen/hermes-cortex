@@ -119,11 +119,11 @@ Doctor `Deploy sync` = HEAD vs the last-deploy commit marker. Committing
 after a deploy without re-deploying → the push's dogfood reports
 `❌ Deploy sync — HEAD ahead of last deploy — N commit(s) not deployed`
 even when content is already deployed. Fix: run the sanctioned
-`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` (prints
+`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` (prints
 `State saved: <sha>`) immediately before pushing, then push.
 
 ## Fleet rollout (other hosts)
 
-`git pull --rebase` → `bash ops/scripts/cortex-update.sh` → `hermes config
+`git pull --rebase` → `bash ops/scripts/fleet-update.sh` → `hermes config
 set mcp_servers.*` ×3 → restart gateway → verify mcp-stderr clean +
 doctor `✅ MCP server (...)` ×3.

@@ -53,7 +53,7 @@ declared_python() {
 
 candidates() {
   # An explicit choice wins, then the DECLARED fleet interpreter — the fleet venv this host runs
-  # its services with (cortex-update.sh points every MCP registration at it) — then the Hermes
+  # its services with (fleet-update.sh points every MCP registration at it) — then the Hermes
   # venv, then whatever is on PATH, then versioned names.
   #
   # Measured on esther 2026-10-13: ~/.steadfaste-fleet/venv imports yaml + mcp (and pytest once

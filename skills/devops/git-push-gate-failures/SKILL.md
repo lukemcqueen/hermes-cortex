@@ -18,23 +18,23 @@ your commit is usually fine.
 ## 1. "Deploy sync FAIL" that survives repeated cortex-update runs
 
 **Symptom:** `cortex-doctor.py` shows `❌ Deploy sync` with "HEAD ahead of
-last deploy" even after `cortex-update.sh` runs "cleanly" (rc 0 or rc 1
+last deploy" even after `fleet-update.sh` runs "cleanly" (rc 0 or rc 1
 with a normal-looking log tail). The pre-push gate then blocks every push.
 
 **Mechanism:** the doctor compares `git rev-parse HEAD` against
-`~/.steadfaste-fleet/state/update-commit`, which cortex-update.sh writes near
+`~/.steadfaste-fleet/state/update-commit`, which fleet-update.sh writes near
 the END of its run. If ANY earlier step dies under `set -euo pipefail`, the
 record never advances. The log tail looks fine because the failing section
 (service restarts) is adjacent to the end.
 
 **Simplest cause — check this before `bash -x`:** the deploy was never run.
 Manually `cp`-ing changed files to `~/.steadfaste-fleet/scripts/` (e.g. to work
-around a slow `cortex-update.sh --force` timeout) does NOT advance
-`state/update-commit` — only cortex-update.sh writes it, so a manual copy
+around a slow `fleet-update.sh --force` timeout) does NOT advance
+`state/update-commit` — only fleet-update.sh writes it, so a manual copy
 leaves the marker behind HEAD and the dogfood gate blocks every push. Tell:
 `git log --oneline -1 origin/main` shows your commit while
 `cat ~/.steadfaste-fleet/state/update-commit` is an older SHA, and `bash -x`
-finds no dying step because none ran. Fix: `bash ops/scripts/cortex-update.sh
+finds no dying step because none ran. Fix: `bash ops/scripts/fleet-update.sh
 --force`, confirm `cat state/update-commit` == `git rev-parse HEAD`, push.
 
 **Diagnosis (the tell):**
@@ -44,7 +44,7 @@ stat -c '%y' ~/.steadfaste-fleet/state/update-commit 2>/dev/null || stat -f '%Sm
 ```
 
 An old mtime while deploys "run clean" = the deploy is dying before the
-record write. Find the dying step: `bash -x ops/scripts/cortex-update.sh
+record write. Find the dying step: `bash -x ops/scripts/fleet-update.sh
 --force` and read the trace around the last output. Fix that step, re-deploy,
 and confirm the record advanced ("State saved: <hash>" + fresh mtime).
 `rc` of a piped run (`bash script.sh | tail`) is NOT completion proof.
@@ -152,7 +152,7 @@ deployed. Verify with `git log --oneline origin/main -1` vs
 `cat ~/.steadfaste-fleet/state/update-commit`: tip-ahead-of-deploy confirms the
 stale-deploy reading, and the fix is the same re-deploy + push below.
 
-**Fix:** re-run `bash ops/scripts/cortex-update.sh` (deploys the rebased repo
+**Fix:** re-run `bash ops/scripts/fleet-update.sh` (deploys the rebased repo
 state, including the peer's version), verify the deployed file matches repo
 (`diff <(grep -v '^# SOURCE:' ops/scripts/X.sh) <(grep -v '^# SOURCE:'
 ~/.steadfaste-fleet/scripts/X.sh)`), then push.
@@ -164,7 +164,7 @@ rejected as non-fast-forward. `git pull --rebase` again and retry; once the
 push shows `A..B  main -> main` it has landed even if a later line in the same
 chain printed an earlier failure. Verify with `git log --oneline -1
 origin/main` == your commit before reporting success. Also re-run
-`cortex-update.sh` one final time AFTER the push so the deployed tree carries
+`fleet-update.sh` one final time AFTER the push so the deployed tree carries
 the just-pushed commit — the push gate's internal deploy can trail the newest
 commit.
 

@@ -366,7 +366,7 @@ def selfheal_enforcement_relock() -> str | None:
     """Re-lock enforcement files that lost the immutable flag.
 
     Luke 2026-10-02: the lock must survive inactivity. A deploy unlocks these
-    files before overwriting them; cortex-update.sh now relocks in an EXIT trap
+    files before overwriting them; fleet-update.sh now relocks in an EXIT trap
     and the doctor's --fix path remediates too, but a crash, a kill -9, a manual
     unlock or an interrupted dogfood can still leave the gate tamperable. This
     runs on EVERY apply cycle (10 min), probes FIRST via the helper's own

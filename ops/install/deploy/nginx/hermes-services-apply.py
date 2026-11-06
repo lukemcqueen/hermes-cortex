@@ -499,7 +499,7 @@ def main():
         output_path = available_dir / "hermes-services.conf"
         symlink_path = config_dir / "hermes-services.conf" if config_dir != available_dir else None
 
-    # ── Preserve live port prefix (like cortex-update.sh does) ──
+    # ── Preserve live port prefix (like fleet-update.sh does) ──
     if not args.dry_run:
         live_path = symlink_path or output_path
         if live_path.is_file():

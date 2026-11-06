@@ -8,7 +8,7 @@ so it is skipped unless explicitly requested:
     HERMES_RUN_DEPLOY_TEST=1 python3 -m pytest tests/test_dogfood_pipeline.py -q -s
 
 What it asserts (the two markers the green claims rest on):
-  1. `ops/scripts/cortex-update.sh` exits 0 AND its doctor summary reports **0 fail**;
+  1. `ops/scripts/fleet-update.sh` exits 0 AND its doctor summary reports **0 fail**;
   2. `ops/scripts/cortex-dogfood.sh` exits 0 AND prints `DOGFOOD PASSED`.
 
 A later reviewer re-executes one command and sees the same verdict; a hand-edited
@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-DEPLOY = REPO / "ops" / "scripts" / "cortex-update.sh"
+DEPLOY = REPO / "ops" / "scripts" / "fleet-update.sh"
 DOGFOOD = REPO / "ops" / "scripts" / "cortex-dogfood.sh"
 
 pytestmark = pytest.mark.skipif(

@@ -124,7 +124,7 @@ TOOLS["auto_apply.py"]="auto-apply"
 TOOLS["loop_config.py"]="loop-config"
 
 # session-cache-build points at the CANONICAL session cache builder, which is
-# deployed by cortex-update.sh to ~/.steadfaste-fleet/scripts/ and is the same
+# deployed by fleet-update.sh to ~/.steadfaste-fleet/scripts/ and is the same
 # script the agent-session-cache-build cron invokes. It used to point at a stale
 # tools/loop-governance/session_cache.py duplicate that was never in the deploy
 # register: its module-level `from hermes_models import get_model` raised

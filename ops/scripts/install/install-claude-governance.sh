@@ -25,7 +25,7 @@ set -euo pipefail
 
 CLAUDE_JSON="${HOME}/.claude.json"
 PYTHON="${PYTHON:-$(command -v python3)}"
-# Resolve deployed MCP server paths (cortex-update.sh deploys here on both
+# Resolve deployed MCP server paths (fleet-update.sh deploys here on both
 # macOS and Linux). Fall back to the repo source when not deployed.
 LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
 TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
@@ -39,7 +39,7 @@ PY_CMD="${HOME}/.steadfaste-fleet/venv/bin/python3"
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP"; do
   if [[ ! -f "$f" ]]; then
     echo "Warning: governance MCP server not found: $f"
-    echo "  Run cortex-update.sh first, then this script."
+    echo "  Run fleet-update.sh first, then this script."
   fi
 done
 

@@ -283,7 +283,7 @@ Then:
 **Other repos are NOT the fleet constitution.** `steadfaste-fleet/AGENTS.md` is
 the canonical template, seeded per-repo via `seed-project.sh` from
 `docs/templates/AGENTS.seed.md` — there is NO global `~/.hermes/AGENTS.md`
-copy (the cortex-update.sh sync was removed 2026-11-04; AGENTS lives in each
+copy (the fleet-update.sh sync was removed 2026-11-04; AGENTS lives in each
 repo). The fleet constitution is orchestrator-owned
 (`docs/orchestrator-only-paths.txt`). Every other repo's AGENTS.md = the
 **mandatory core** (the `hook_sections` below) **plus repo-specific content** —

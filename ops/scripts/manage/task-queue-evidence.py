@@ -208,7 +208,7 @@ def main() -> int:
 
     # 5 — registered AND deployed
     local = sorted(p.name for p in SCHEMA.glob("v0*.sql"))
-    update = (REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+    update = (REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
     registered = {Path(m.group(1)).name for m in
                   re.finditer(r'register\s+"([^"]*tasks/schema/[^"]+)"', update)}
     unreg = [n for n in local if n not in registered]

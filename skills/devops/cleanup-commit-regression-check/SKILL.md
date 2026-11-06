@@ -94,7 +94,7 @@ grep -rn "_resolve_var(" ops/scripts/ 2>/dev/null | grep -v "def _resolve_var"
 3. Verify with a REAL run, not just `python3 -m py_compile` — execute the
    script or import it so the module-level code exercises the restored
    function
-4. Commit, push, deploy via cortex-update.sh
+4. Commit, push, deploy via fleet-update.sh
 5. Confirm via the cron's output file (`~/.hermes/cron/output/<job>/`)
    that the next tick flips to `silent`
 

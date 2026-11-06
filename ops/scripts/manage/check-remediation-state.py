@@ -60,7 +60,7 @@ def check_task_mcp_matches_repo() -> str:
     repo = (REPO / "mcp-servers" / "task-mcp.py").read_text(encoding="utf-8")
     if _strip_deploy_banner(deployed) != repo:
         return ("FAIL deployed task-mcp.py differs from the repo source beyond the "
-                "deploy banner - run: bash ops/scripts/cortex-update.sh")
+                "deploy banner - run: bash ops/scripts/fleet-update.sh")
     return "PASS deployed task-mcp.py == repo source"
 
 
@@ -72,7 +72,7 @@ def check_split_board_is_deployed() -> str:
                if b not in deployed]
     if missing:
         return ("FAIL deployed task-db.py lacks the split board buckets: "
-                + ", ".join(missing) + " - run: bash ops/scripts/cortex-update.sh")
+                + ", ".join(missing) + " - run: bash ops/scripts/fleet-update.sh")
     return "PASS deployed task-db.py carries the split pending board"
 
 

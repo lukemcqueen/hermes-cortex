@@ -25,7 +25,7 @@ from typing import Any, Callable
 # ── Paths ──
 HOME = Path.home()
 CORTEX_REPO = HOME / "steadfaste-fleet"
-CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
+CORTEX_UPDATE = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
 DOCTOR_PATH = CORTEX_REPO / "ops" / "scripts" / "manage" / "cortex-doctor.py"
 SCRIPTS_DIR = HOME / ".steadfaste-fleet" / "scripts"
 COLLECTOR_SCRIPT = SCRIPTS_DIR / "agent-learning-collector.py"
@@ -169,7 +169,7 @@ def _git_sha(path: Path) -> str:
 
 
 def _run_cortex_update() -> dict:
-    """Run git pull then cortex-update.sh, return result dict."""
+    """Run git pull then fleet-update.sh, return result dict."""
     log("Pulling latest code ...")
     try:
         pull = subprocess.run(
@@ -187,7 +187,7 @@ def _run_cortex_update() -> dict:
     except Exception as e:
         log(f"git pull ERROR: {e}")
 
-    log("Running cortex-update.sh ...")
+    log("Running fleet-update.sh ...")
     try:
         r = subprocess.run(
             ["bash", str(CORTEX_UPDATE)],
@@ -223,7 +223,7 @@ def _run_cortex_update() -> dict:
 
 # ── UPDATE_REQUEST → UPDATE_RESULT ──
 
-@command("UPDATE_RESULT", "Run cortex-update.sh and doctor, report result")
+@command("UPDATE_RESULT", "Run fleet-update.sh and doctor, report result")
 def handle_update(msg_body: dict, msg_raw: dict) -> dict:
     request = _parse_body(msg_body.get("body", {}))
     correlation_id = (msg_raw.get("correlation_id") or "") if isinstance(msg_raw, dict) else ""

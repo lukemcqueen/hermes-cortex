@@ -57,7 +57,7 @@ remains.
 | `ops/scripts/health/agent-system-alert-watchdog.py`, `agent-model-health-watchdog.py` | label/comment refs only (embeddings = mycortex too) |
 | `ops/scripts/manage/fleet_doctor/checks.py` | gbrain daemon check (decommission-aware PASS/WARN — keep); remediation hints ~3119/3129 still say `docker exec gbrain-postgres psql -U gbrain -d gbrain` |
 | `ops/offline/offline_knowledge.py` | `gbrain_search()` cascade: `bun gbrain query` — **live functional path** |
-| `ops/scripts/cortex-update.sh` | still `register()`s dead `gbrain-wrapper.sh`, `gbrain-doctor-summary.py`, `install-gbrain-sync.sh`; `update_gbrain_binary()` no-op stub |
+| `ops/scripts/fleet-update.sh` | still `register()`s dead `gbrain-wrapper.sh`, `gbrain-doctor-summary.py`, `install-gbrain-sync.sh`; `update_gbrain_binary()` no-op stub |
 | `ops/install/install.sh` | installs gbrain binary (`bun install -g garrytan/gbrain`), `gbrain init --url`, gbrain sources/sync — **new hosts still get gbrain** |
 | `ops/scripts/install/bootstrap-brain.sh`, `seed-project-brain.sh`, `cortex-profile.sh` | `$GBRAIN_CMD` sources add/sync |
 | `dashboard/server.py` | `_find_pid(["gbrain autopilot", ...])` |

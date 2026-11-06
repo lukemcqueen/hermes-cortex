@@ -1,11 +1,11 @@
-# The fleet's python dependency set for ~/.steadfaste-fleet/venv — the venv cortex-update.sh
+# The fleet's python dependency set for ~/.steadfaste-fleet/venv — the venv fleet-update.sh
 # registers every MCP server against.
 #
 # Declared because nothing was: the set was only knowable by grepping the repo, so a host
 # with a broken venv had no way to know what "fixed" meant. Measured from what the repo
 # actually imports (2026-10-13):
 #   mcp      -> mcp-servers/*.py, ops/scripts/orch-bus/orch-bus-mcp.py
-#   PyYAML   -> cortex-update.sh, install-*.sh, health watchdogs, core/fleet_bus/workflow/
+#   PyYAML   -> fleet-update.sh, install-*.sh, health watchdogs, core/fleet_bus/workflow/
 #   fastapi  -> core/fleet_bus/server.py
 #   uvicorn  -> core/fleet_bus/server.py (the ASGI server it runs under)
 #   psycopg  -> core/fleet_bus/queue.py, ops/scripts/bus/workflow-inspector.py

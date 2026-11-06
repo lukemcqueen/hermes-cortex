@@ -27,7 +27,7 @@ import fleet_gateway.agents as AGENTS      # noqa: E402
 import fleet_gateway.daemon as DAEMON      # noqa: E402
 import fleet_gateway.sessions as SESSIONS  # noqa: E402
 
-UPDATE_SH = _REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATE_SH = _REPO / "ops" / "scripts" / "fleet-update.sh"
 CHAT = "12345"
 
 

@@ -3,7 +3,7 @@
 # P1-A hardening (2026-07-31): exec the IMMUTABLE deployed copy
 # (~/.steadfaste-fleet/tools/loop-governance/), NOT the user-writable repo
 # working tree. Editing the repo copy must not disable begin_change
-# enforcement. The deployed copy is kept current by cortex-update.sh
+# enforcement. The deployed copy is kept current by fleet-update.sh
 # (register entry) and locked by hermes-plugin-lock.
 #
 # The MISSING-PATH diagnosis is SHARED, not local (kustos, 2026-10-13). This was a bare exec,
@@ -30,7 +30,7 @@ done
 if [[ -z "$_guard" ]]; then
   echo "loop-gov-mcp: the venv guard is NOT DEPLOYED at ${HOME}/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh" >&2
   echo "  HOME=${HOME}  (a different HOME in the caller is a cause)" >&2
-  echo "  deploy it: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
+  echo "  deploy it: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh" >&2
   exit 78   # EX_CONFIG: the configuration this needs is absent
 fi
 

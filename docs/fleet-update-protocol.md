@@ -65,7 +65,7 @@ Fleet-Wide Changes".
 
 When an agent receives `UPDATE_REQUEST`, it:
 1. **`git pull origin main`** — pulls the latest code (so agents stuck on an old SHA get up to date)
-2. **`cortex-update.sh`** — deploys all registered files to disk
+2. **`fleet-update.sh`** — deploys all registered files to disk
 3. **Runs doctor** (if `run_doctor: true`) — verifies all services are healthy
 4. **Sends `UPDATE_RESULT`** — reports success/fail, git SHA before/after, and doctor output
 
@@ -160,7 +160,7 @@ Sent by each agent after processing UPDATE_REQUEST.
 | `git_sha_before` | string | SHA before update |
 | `git_sha_after` | string | SHA after update |
 | `version` | string | VERSION file content |
-| `update_output` | string | Raw cortex-update.sh output |
+| `update_output` | string | Raw fleet-update.sh output |
 | `doctor` | object | Full doctor --json output (if run_doctor was true) |
 | `errors` | string[] | Any errors encountered |
 | `duration_seconds` | float | Wall-clock time for the update |

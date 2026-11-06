@@ -57,7 +57,7 @@ a shape the matcher cannot prove is a refusal (`_git_push_repo_hint`). With no r
 named, the enforcer resolves it from the tool args, then the session's repo hint, and
 refuses when it cannot.
 
-**When it goes live.** The hook half is immediate: `cortex-update.sh` (and the
+**When it goes live.** The hook half is immediate: `fleet-update.sh` (and the
 pre-commit DOGFOOD) copy it, and git forks the hook on every push, so the deployed
 file is what runs. The enforcer half must be IN FORCE in the running gateway, and
 that is measurable rather than assumed — esther, 2026-10-10: with NO active lock the
@@ -120,7 +120,7 @@ host. Both directions skip (and say so) when nothing is unpushed.
 The receipt is written by `loop-gov-mcp.py`. A running MCP child that started
 before that file changed **cannot write receipts** — it holds the old revision
 in memory. After deploying `loop-gov-mcp.py`, the gateway must restart.
-`cortex-update.sh` watches this file (`_restart_pending`, commit `a19dcd8c`) and
+`fleet-update.sh` watches this file (`_restart_pending`, commit `a19dcd8c`) and
 prints a loud banner when a restart is pending. **Agents cannot restart the
 gateway** (lifecycle guard) — if the banner fires, the operator restarts it.
 

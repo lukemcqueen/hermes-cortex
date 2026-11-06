@@ -6,7 +6,7 @@
 #   - PASS  → empty stdout, exit 0  → silent, nothing delivered
 #   - FAIL  → report on stdout, exit 1 → error alert delivered to Telegram
 #
-# Orchestrator-only. Deployed via register_orch in cortex-update.sh.
+# Orchestrator-only. Deployed via register_orch in fleet-update.sh.
 # Cron registered in install-orch-crons.sh (orch-daily-regression-gate).
 
 set -uo pipefail
@@ -74,7 +74,7 @@ fi
 # the canonical verify_briefing; it is SILENT when this host does not run the
 # briefing cron, so worker hosts without it are unaffected.
 #
-# PATHS: this gate is deployed by cortex-update.sh to
+# PATHS: this gate is deployed by fleet-update.sh to
 #   ${CORTEX_DEPLOY_HOME}/scripts/orch-daily-regression-gate.sh  ->  SCRIPT_DIR = <deploy>/scripts
 # and the checker it calls is registered two lines below verify_briefing.py, i.e.
 #   ${CORTEX_DEPLOY_HOME}/scripts/manage/check-latest-briefing.py  ->  ${SCRIPT_DIR}/manage/...

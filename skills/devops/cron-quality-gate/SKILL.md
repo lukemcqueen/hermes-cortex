@@ -66,7 +66,7 @@ Location: `~/.steadfaste-fleet/scripts/agent-cron-quality-watchdog.py`
 
 If you edit the script, edit the REPO SOURCE first:
 `~/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py`, commit,
-then run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` to redeploy.
+then run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` to redeploy.
 Editing the deployed copy directly gets overwritten on the next update.
 (The script is also mirrored at `~/.hermes/scripts/agent-cron-quality-watchdog.py`; if only that copy differs from the repo, redeploy rather than hand-editing.)
 
@@ -140,10 +140,10 @@ To update the watchdog script (edit REPO SOURCE first, then deploy):
 ```bash
 $EDITOR ~/steadfaste-fleet/ops/scripts/health/agent-cron-quality-watchdog.py
 git -C ~/steadfaste-fleet add -A && git -C ~/steadfaste-fleet commit -m "update quality watchdog"
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
-Rollback if a watchdog change breaks alerts: `git -C ~/steadfaste-fleet revert HEAD` + re-run `cortex-update.sh`.
+Rollback if a watchdog change breaks alerts: `git -C ~/steadfaste-fleet revert HEAD` + re-run `fleet-update.sh`.
 
 To check watchdog health (manual smoke run — note this does NOT update the cron scheduler's `last_status`):
 ```bash

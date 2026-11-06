@@ -8,7 +8,7 @@ pitfalls in the umbrella SKILL.md.
 **Symptom:** the capture hooks report OK, yet every
 new `usage_audit.jsonl` line lacks `cache_read_tokens`/`cache_write_tokens`.
 
-**Root cause:** `hermes update` replaces scheduler.py (and cortex-update.sh
+**Root cause:** `hermes update` replaces scheduler.py (and fleet-update.sh
 auto-reapplies the cost patch), but the RUNNING gateway is a long-lived daemon
 that keeps the OLD module in memory until a real process restart. Observed:
 scheduler.py mtime 22:23, daemon started 16:52 — the 22:23 update patched the

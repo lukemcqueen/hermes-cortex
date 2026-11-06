@@ -2,7 +2,7 @@
 """One resolver for repo-vs-deployed paths — and the MCP servers must use it.
 
 The bug this guards: the deployed path of a repo file CANNOT be derived from the
-repo path. cortex-update.sh's register() map is per-file — 192 of 289 entries
+repo path. fleet-update.sh's register() map is per-file — 192 of 289 entries
 follow no rule (ops/scripts/manage/task-db.py → scripts/task-db.py, but
 ops/scripts/manage/agent-no-verify-audit.py → scripts/manage/…). So every
 component that guessed looked in a directory that exists in only ONE layout, and
@@ -10,7 +10,7 @@ a guess that resolved in the repo failed AFTER a deploy, on a host, far from the
 edit. loop-gov-mcp's judgment lookup was one such guess: its first candidate,
 <deploy>/tools/ops/scripts/judgment.py, exists in NEITHER layout.
 
-The fix: cortex-update.sh writes its own map out as `deploy-manifest.tsv`, and
+The fix: fleet-update.sh writes its own map out as `deploy-manifest.tsv`, and
 fleet_lib.paths.resolve_repo_resource() READS it. These tests hold that line.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 PATHS_PY = REPO / "ops/scripts/fleet_lib/paths.py"
-UPDATE_SH = REPO / "ops/scripts/cortex-update.sh"
+UPDATE_SH = REPO / "ops/scripts/fleet-update.sh"
 MCP_DIR = REPO / "mcp-servers"
 
 # The repo-relative resources the MCP servers resolve. Add a row here when a
@@ -92,7 +92,7 @@ def test_resolver_never_guesses_a_deployed_path():
 
 def test_cortex_update_emits_the_manifest():
     src = UPDATE_SH.read_text()
-    assert "_write_deploy_manifest()" in src, "cortex-update.sh must define the emitter"
+    assert "_write_deploy_manifest()" in src, "fleet-update.sh must define the emitter"
     assert "_write_deploy_manifest \"${entries[@]}\"" in src, \
         "the emitter must be called with the real register() map"
     assert "deploy-manifest.tsv" in src, "the manifest name must be the documented one"
@@ -231,7 +231,7 @@ def test_deploy_registry_doc_counts_match_the_register_map():
 def test_every_registered_file_is_tracked_by_git():
     """A registered file that git IGNORES deploys from the working tree and nowhere else.
 
-    `cortex-update.sh` reads the WORKING TREE, so a gitignored source file still
+    `fleet-update.sh` reads the WORKING TREE, so a gitignored source file still
     deploys on the machine where it was written — while every other host, and any
     fresh clone, never receives it. `.gitignore` carries broad secret patterns
     (`*token*`, `*secret*`, `*cred*`), so a source file whose NAME trips one of them

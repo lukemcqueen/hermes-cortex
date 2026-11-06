@@ -149,7 +149,7 @@ def main() -> int:
     hcrc = _load_hcrc()
     if hcrc is None:
         print("plan-review-check: cannot load reflexion-check.py "
-              "(session resolution) — run cortex-update.sh", file=sys.stderr)
+              "(session resolution) — run fleet-update.sh", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
 
     repo_sl = a.repo_root.strip() or _git_toplevel()
@@ -181,7 +181,7 @@ def main() -> int:
         cycle_id = active_cycle_id(Path(a.db).expanduser(), session_id)
     except Exception as exc:  # noqa: BLE001
         print(f"plan-review-check: cannot read loop-governance DB "
-              f"({exc}) — run cortex-update.sh", file=sys.stderr)
+              f"({exc}) — run fleet-update.sh", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
 
     if cycle_id is None:
@@ -193,7 +193,7 @@ def main() -> int:
         reviewed = cycle_reviewed(Path(a.db).expanduser(), cycle_id)
     except Exception as exc:  # noqa: BLE001
         print(f"plan-review-check: cannot read adversarial_reviews "
-              f"({exc}) — run cortex-update.sh", file=sys.stderr)
+              f"({exc}) — run fleet-update.sh", file=sys.stderr)
         return EXIT_CANNOT_VERIFY
 
     if reviewed:

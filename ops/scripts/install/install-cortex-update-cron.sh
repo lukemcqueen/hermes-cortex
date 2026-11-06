@@ -3,7 +3,7 @@
 #  install-cortex-update-cron.sh — Register daily auto-update
 #
 #  Creates a system-level cron job (launchd / systemd timer /
-#  crontab) that runs cortex-update.sh daily at 3am.
+#  crontab) that runs fleet-update.sh daily at 3am.
 #  The job is silent when nothing changed and writes
 #  ~/.steadfaste-fleet/state/last-update.{json,txt} on changes.
 #
@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/os-config.sh"
 
 SERVICE_NAME="com.hermes.cortex-update"
-UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/cortex-update.sh"
+UPDATE_SCRIPT="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/scripts/fleet-update.sh"
 STATE_DIR="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state"
 mkdir -p "$STATE_DIR"
 
@@ -33,7 +33,7 @@ error() { printf "${RED}✗${RESET} %s\n" "$*"; }
 
 install_cron() {
   if [[ ! -f "$UPDATE_SCRIPT" ]]; then
-    error "cortex-update.sh not found at ${UPDATE_SCRIPT}"
+    error "fleet-update.sh not found at ${UPDATE_SCRIPT}"
     error "Install Steadfaste Fleet first, then run this script."
     return 1
   fi

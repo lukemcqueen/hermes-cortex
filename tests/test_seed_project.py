@@ -13,7 +13,7 @@ SEED_PROJECT = (
     Path(__file__).resolve().parents[1] / "ops" / "scripts" / "install" / "seed-project.sh"
 )
 CORTEX_UPDATE = (
-    Path(__file__).resolve().parents[1] / "ops" / "scripts" / "cortex-update.sh"
+    Path(__file__).resolve().parents[1] / "ops" / "scripts" / "fleet-update.sh"
 )
 
 
@@ -79,7 +79,7 @@ class TestSeedProject:
         assert rc == 0, f"bash -n failed:\n{stderr}"
 
     def test_syntax_cortex_update(self):
-        """cortex-update.sh also parses cleanly (MAP registration)."""
+        """fleet-update.sh also parses cleanly (MAP registration)."""
         rc, _, stderr = _run("bash", "-n", str(CORTEX_UPDATE))
         assert rc == 0, f"bash -n failed:\n{stderr}"
 

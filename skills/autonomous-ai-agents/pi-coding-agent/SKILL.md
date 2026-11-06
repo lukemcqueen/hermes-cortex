@@ -252,7 +252,7 @@ and `"skills": ["~/.agents/skills"]` — and RETIRES a pre-existing `~/.pi/agent
 link farm when one is found: a stale farm keeps Pi loading a curated subset beside the whole
 tree. Idempotent, and it preserves the user's other keys. It no longer reads `skills.yaml` at
 all — the manifest is cortex-owned at the REPO ROOT (`skills.yaml`, synced to
-`~/.steadfaste-fleet/skills.yaml` by `cortex-update.sh`) and is the record of Hermes's ritual set,
+`~/.steadfaste-fleet/skills.yaml` by `fleet-update.sh`) and is the record of Hermes's ritual set,
 not the source of a coding agent's exposure.
 
 **Drive it with `fleet pi` instead of remembering script names** (a thin driver over the same
@@ -521,7 +521,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   cortex deps. Repoint both `ExecStartPre`/`ExecStart` at
   `<host>/.steadfaste-fleet/venv/bin/python3`, and make sure `psycopg[binary]` is
   installed in that venv (the fleet venv historically lacks it — the same gap that
-  keeps `cortex-update.sh` from exiting clean). `pg_isready -h 127.0.0.1 -p <pg-port>`
+  keeps `fleet-update.sh` from exiting clean). `pg_isready -h 127.0.0.1 -p <pg-port>`
   confirms the bus Postgres is reachable before blaming psycopg. The venv's dashes
   `mcp`/`jsonschema`/`idna` are present; psycopg is the usual missing one.
 

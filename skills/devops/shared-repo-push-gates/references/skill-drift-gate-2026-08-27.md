@@ -3,13 +3,13 @@
 ## Symptom
 
 After patching a repo-managed skill via `skill_manage`, the next
-`cortex-update.sh` run prints:
+`fleet-update.sh` run prints:
 
 ```
 ⚠   SKILL DRIFT: devops/<skill> — deployed copy is newer than repo source!
 ⚠     → Repo: $HOME/steadfaste-fleet/skills/devops/<skill>/SKILL.md
 ⚠     → Deployed: $HOME/.steadfaste-fleet/skills/devops/<skill>/SKILL.md
-⚠     → Copy the deployed changes to the repo source, then cortex-update.sh will sync.
+⚠     → Copy the deployed changes to the repo source, then fleet-update.sh will sync.
 ```
 
 ## Root cause

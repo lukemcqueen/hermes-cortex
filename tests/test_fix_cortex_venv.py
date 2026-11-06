@@ -169,7 +169,7 @@ def test_the_json_report_has_the_fields_a_hook_needs(tmp_path):
 # fleet's MCP servers construct `Server(name, on_list_tools=..., on_call_tool=...)`, the
 # 2.0 constructor API. On such a host `--check` printed
 #     ok: <python> imports all 6 declared requirements
-# while the governance CLI exited 3 on every write gate, and cortex-update.sh — which
+# while the governance CLI exited 3 on every write gate, and fleet-update.sh — which
 # gates its install on exactly this check (line ~3235) — therefore silently left the venv
 # alone. Importability is necessary and NOT sufficient, so a declared requirement may
 # carry a CAPABILITY probe too.
@@ -223,7 +223,7 @@ def _mcp_requirements(tmp_path: Path) -> Path:
 
 def test_check_flags_an_importable_but_incompatible_sdk(tmp_path):
     """A too-old-but-importable SDK must be reported as a GAP (rc=3), not as ok — this is
-    the check cortex-update.sh gates its repair on."""
+    the check fleet-update.sh gates its repair on."""
     sdk = _stub_sdk(tmp_path / "old-sdk", accepts_constructor_handlers=False)
     venv_root = _venv_pointing_at(tmp_path, sdk)
 

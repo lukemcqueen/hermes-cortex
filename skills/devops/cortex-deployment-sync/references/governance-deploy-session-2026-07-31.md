@@ -1,9 +1,9 @@
 # Governance Deploy Session Trace — 2026-07-31
 
 > ⚠️ **PARTIALLY SUPERSEDED (2026-08-04).** The immutable unlock→copy→re-lock
-> cycle below still runs inside `cortex-update.sh` itself, but the
+> cycle below still runs inside `fleet-update.sh` itself, but the
 > agent-facing recovery claims are OUTDATED: today the enforcer sanctions the
-> EXACT `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` invocation
+> EXACT `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` invocation
 > (allowlisted flags only) WITHOUT a governance lock — that is the
 > self-recovery path. Manual `sudo hermes-plugin-lock unlock` without the
 > `--orchestrator` token, chained forms (`cd … && bash …`), and direct `cp` of
@@ -24,7 +24,7 @@ User: "pull latest and cortex update!" → `git pull --rebase origin main` faile
    git stash push -m "gisu: POSTHOG_HOST fix (orchestrator-only, pending Moses)" -- ops/install/deploy/docker-compose.langfuse.yml
    ```
 2. **Pull conflict on `blocked_ips.add`** — auto-generated pipeline IP list, conflicted twice in the same session (two separate pulls). Resolved both with `--theirs`.
-3. **`cortex-update.sh` printed 7 FAILED lines:**
+3. **`fleet-update.sh` printed 7 FAILED lines:**
    ```
    FAILED: /home/user/.hermes/plugins/governance-enforcer/__init__.py
    FAILED: /home/user/.steadfaste-fleet/scripts/pre-commit-score
@@ -40,7 +40,7 @@ User: "pull latest and cortex update!" → `git pull --rebase origin main` faile
 
 All 7 files carry `chattr +i` (immutable). The `i` flag survives `chmod` — files show mode `-r--r--r--` but lsattr reveals `----i---------e-------`. A plain `cp` cannot open them for writing.
 
-`cortex-update.sh` has the full unlock→copy→re-lock cycle in `deploy_governance_plugin()` — it calls `sudo hermes-plugin-lock unlock` before copying. This requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`, which EXISTS on this host (`(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock`). The first `cortex-update.sh` run had failed before reaching the plugin deploy; the register loop that handles the other 6 files has no unlock step of its own.
+`fleet-update.sh` has the full unlock→copy→re-lock cycle in `deploy_governance_plugin()` — it calls `sudo hermes-plugin-lock unlock` before copying. This requires a NOPASSWD sudoers rule for `/usr/local/sbin/hermes-plugin-lock`, which EXISTS on this host (`(root) NOPASSWD: /usr/local/sbin/hermes-plugin-lock`). The first `fleet-update.sh` run had failed before reaching the plugin deploy; the register loop that handles the other 6 files has no unlock step of its own.
 
 ## Recovery (the proper path)
 
@@ -58,7 +58,7 @@ sudo -n hermes-plugin-lock unlock
 #    UNLOCKED: ...pre-commit-score  (etc.)
 
 # 4. Re-run deploy
-cd ~/steadfaste-fleet && bash ops/scripts/cortex-update.sh
+cd ~/steadfaste-fleet && bash ops/scripts/fleet-update.sh
 
 # 5. Verify
 diff ~/steadfaste-fleet/plugins/governance-enforcer/__init__.py ~/.hermes/plugins/governance-enforcer/__init__.py   # empty
@@ -69,7 +69,7 @@ grep -n "adversarial\|pycache" ~/.hermes/plugins/governance-enforcer/__init__.py
 
 ## Post-deploy fallout: lock purge + PENDING cycles
 
-`cortex-update.sh` runs `purge-stale-governance-locks.py` at the end, deleting EVERY `.governance-*.json` lock — including the session's own. Consequences:
+`fleet-update.sh` runs `purge-stale-governance-locks.py` at the end, deleting EVERY `.governance-*.json` lock — including the session's own. Consequences:
 
 - `end_change()` after the update says "No governance session active. Nothing to release."
 - The doctor reports `❌ PENDING cycles` — cycles created by `begin_change()` calls that were never scored
@@ -81,7 +81,7 @@ grep -n "adversarial\|pycache" ~/.hermes/plugins/governance-enforcer/__init__.py
 
 1. "whenever there's a governance mechanism change you NEED to cortex update as this is the proper path. no shortcuts." — the immutable-file deploy is the canonical example.
 2. "DO NOT UPDATE SOURCE" — during pull-latest/doctor-fix, don't modify repo source to silence warnings. Accept non-failure warnings (SOUL.md reverse drift, skill drift) as-is.
-3. "rerun simply" / "just run it simply!" — for the doctor re-run, use the plain `cortex-update.sh` invocation, not repeated `cortex-update.sh` cycles.
+3. "rerun simply" / "just run it simply!" — for the doctor re-run, use the plain `fleet-update.sh` invocation, not repeated `fleet-update.sh` cycles.
 
 ## Related
 

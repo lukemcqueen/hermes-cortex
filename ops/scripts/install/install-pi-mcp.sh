@@ -62,7 +62,7 @@ set -euo pipefail
 PI_MCP="${PI_MCP_FILE:-${HOME}/.pi/agent/mcp.json}"
 PYTHON="${PYTHON:-$(command -v python3)}"
 
-# Deployed MCP server paths (cortex-update.sh deploys here on both macOS
+# Deployed MCP server paths (fleet-update.sh deploys here on both macOS
 # and Linux). Fall back to the repo source when not deployed.
 LOOP_GOV="${HOME}/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py"
 TASK_MCP="${HOME}/.steadfaste-fleet/scripts/task-mcp.py"
@@ -81,7 +81,7 @@ AGENT_NAME="${AGENT_NAME:-${DEFAULT_AGENT:-pi}}"
 for f in "$LOOP_GOV" "$TASK_MCP" "$EXECUTOR_MCP" "$BUS_MCP" "$CONTEXT_MCP"; do
   if [[ ! -f "$f" ]]; then
     echo "Warning: cortex MCP server not found: $f"
-    echo "  Run cortex-update.sh first, then this script."
+    echo "  Run fleet-update.sh first, then this script."
   fi
 done
 
@@ -386,7 +386,7 @@ if [[ -z "$PY_CMD" ]]; then
     echo "  (begin_change, tasks, bus and the memory tools unreachable), so your"
     echo "  existing mcp.json is left exactly as it is. Fix one, then re-run:"
     echo "    ${PYTHON:-python3} -m pip install mcp"
-    echo "    bash ${HOME}/.steadfaste-fleet/scripts/cortex-update.sh   # rebuild the cortex venv"
+    echo "    bash ${HOME}/.steadfaste-fleet/scripts/fleet-update.sh   # rebuild the cortex venv"
   } >&2
   exit 1
 fi

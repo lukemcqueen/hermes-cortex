@@ -35,7 +35,7 @@ ARTIFACT = REPO / "tests" / "artifacts" / "loop-gov-regression.txt"
 # committed. `ops/scripts/lib/ensure-pytest.sh` is that step — idempotent, verified by import, and
 # age-gated through `ops/scripts/health/check-package-age.py` — and it installs the declared set in
 # `ops/install/requirements.txt` (pytest is declared there) into the fleet venv, which is the venv
-# cortex-update.sh registers every MCP server against. The resolver knows about every other capable
+# fleet-update.sh registers every MCP server against. The resolver knows about every other capable
 # interpreter on the host.
 RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
 ENSURE_PYTEST = "ops/scripts/lib/ensure-pytest.sh"

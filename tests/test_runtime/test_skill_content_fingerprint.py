@@ -1,7 +1,7 @@
 """Skill credit survives a no-op redeploy; invalidation is per-skill (2026-09-23).
 
 Root cause of the fleet's "7/7 loaded ✅ but still blocked" complaint:
-`_skills_fingerprint()` hashed skill-file **mtimes**, so a `cortex-update.sh`
+`_skills_fingerprint()` hashed skill-file **mtimes**, so a `fleet-update.sh`
 deploy that rewrote BYTE-IDENTICAL skill files moved the fingerprint, discarded
 the per-session credit journal, and invalidated the 7/7 marker mid-task.
 

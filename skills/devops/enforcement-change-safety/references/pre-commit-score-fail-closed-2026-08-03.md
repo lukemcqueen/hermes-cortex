@@ -36,7 +36,7 @@ run after the scoring section. Fix = keep ALL scoring, change the branch to
 -  echo "   Current governance is MCP-based (begin_change → cycle_query → feedback_accept → end_change)"
 -  exit 0
 +  echo "❌  score-cycle not found — cannot record governance cycle."
-+  echo "    Install it via the sanctioned path: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
++  echo "    Install it via the sanctioned path: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh"
 +  echo "    No bypass flags — do NOT use --no-verify."
 +  exit 1
  fi

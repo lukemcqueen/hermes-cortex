@@ -22,19 +22,19 @@
 #            the langfuse-fleet-script pattern; Hermes loads it at start)
 #
 # Value: ${HERMES_CRON_TIMEOUT:-600} — override per machine via
-# ~/steadfaste-fleet/.env (sourced by cortex-update.sh before this runs).
+# ~/steadfaste-fleet/.env (sourced by fleet-update.sh before this runs).
 # 0 = unlimited.
 #
 # ⚠️  Activation requires a gateway restart: systemd drop-ins are read
 #     at process exec, so this script intentionally does NOT issue a
 #     restart command — the gateway lifecycle guard scans cron scripts
 #     AND every script they reference for gateway restart patterns,
-#     and cortex-update.sh runs from inside the gateway (agent cron).
+#     and fleet-update.sh runs from inside the gateway (agent cron).
 #     The gateway restarts routinely via `hermes update` or operator
 #     restart; this script prints RESTART PENDING when one is needed.
 #
 # Idempotent: silent no-op when the applied value already matches.
-# Safe to run from cortex-update.sh on every update cycle.
+# Safe to run from fleet-update.sh on every update cycle.
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -58,7 +58,7 @@ if [[ -f "${HOME_DIR}/.config/systemd/user/hermes-gateway.service" ]] && command
   UNIT_DIR="${HOME_DIR}/.config/systemd/user/hermes-gateway.service.d"
   mkdir -p "${UNIT_DIR}"
   cat > "${UNIT_DIR}/10-cron-timeout.conf" <<EOF
-# Managed by install-gateway-cron-timeout.sh (cortex-update.sh)
+# Managed by install-gateway-cron-timeout.sh (fleet-update.sh)
 # LLM cron inactivity timeout in seconds. 0 = unlimited.
 [Service]
 Environment="HERMES_CRON_TIMEOUT=${VALUE}"

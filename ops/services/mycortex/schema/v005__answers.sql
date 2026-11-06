@@ -1,7 +1,7 @@
 -- ============================================================================
 -- mycortex schema v005 — agent answer cache (S-017)
 -- Source: docs/design/mycortex-answers-DESIGN.md
--- Applied by: ops/services/mycortex/migrate.py (NOT by cortex-update.sh directly)
+-- Applied by: ops/services/mycortex/migrate.py (NOT by fleet-update.sh directly)
 -- Target: mycortex-postgres, database `mycortex`, schema `mycortex`
 --
 -- Adds an `answers` table storing cached LLM responses keyed by query + source

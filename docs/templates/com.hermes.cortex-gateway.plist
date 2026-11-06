@@ -15,7 +15,7 @@
   WorkingDirectory and both log paths (so another Mac's job pointed at a path
   that does not exist), and it exec'd the SYSTEM python. Now:
     * every path is $HOME-expanded by /bin/bash -lc (launchd expands nothing);
-    * the interpreter is the FLEET venv, the one cortex-update.sh registers
+    * the interpreter is the FLEET venv, the one fleet-update.sh registers
       every MCP server against;
     * the shared launcher guard runs first, so a missing venv or payload lands
       in the log as "NO INTERPRETER at <path> … how to fix it" (rc 78) instead

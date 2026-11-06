@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Emit the skills-ownership evidence for a cycle. Re-runnable; mutates NOTHING.
 #
-# CHECKOUT-ONLY — deliberately not in cortex-update.sh register(): this is a run-scoped
+# CHECKOUT-ONLY — deliberately not in fleet-update.sh register(): this is a run-scoped
 # evidence emitter invoked by an agent from the checkout, not something a host needs to stay
 # healthy. The two tools it EXERCISES are registered and deployed:
 # ops/scripts/manage/migrate-skills-ownership.py and ops/scripts/manage/publish-agent-skills.py.

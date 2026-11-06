@@ -2,7 +2,7 @@
 
 > **ORCHESTRATOR-ONLY PATH.** This file is the reviewer's *entire* instruction
 > set. The reviewed agent cannot edit it (pre-commit hook blocks non-orch
-> edits; `cortex-update.sh` overwrites local drift). The review script reads
+> edits; `fleet-update.sh` overwrites local drift). The review script reads
 > this file verbatim and appends ONLY the reviewed material below the marker.
 > Any change here is a change to the evaluator's constitution.
 

@@ -2,7 +2,7 @@
 
 ## The Problem
 
-`cortex-update.sh` uses `register()` to map repo source files to deploy
+`fleet-update.sh` uses `register()` to map repo source files to deploy
 destinations. When a `register()` line is removed (file renamed, deleted,
 or consolidated), the deployed copy stays on disk at the old path as an
 orphan. Over time these accumulate — 34 orphans were found in one scan
@@ -17,7 +17,7 @@ python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep -E "S
 ```
 
 The doctor's `check_stale_deploys()` function:
-1. Parses every `register()` call from cortex-update.sh
+1. Parses every `register()` call from fleet-update.sh
 2. Resolves `${CORTEX_DEPLOY_HOME}` and `${HOME}` in destination paths
 3. Scans `~/.steadfaste-fleet/scripts/` for `.py` and `.sh` files not in any mapping
 4. Reports each orphan as a WARN with file path and size
@@ -30,13 +30,13 @@ Also checks:
 
 After any deploy, `clean_stale_deploys()` auto-runs:
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
 Or manually:
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --clean-stale
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --dry-run
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --clean-stale
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --dry-run
 ```
 
 ## Fix
@@ -57,23 +57,23 @@ Some deploy targets are NOT auto-scanned:
 For these, check and remove manually:
 ```bash
 # Check what's in the deploy dir vs what's registered
-grep "CORTEX_DEPLOY_HOME.*dashboard" ~/steadfaste-fleet/ops/scripts/cortex-update.sh
-grep "CORTEX_DEPLOY_HOME.*bus" ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+grep "CORTEX_DEPLOY_HOME.*dashboard" ~/steadfaste-fleet/ops/scripts/fleet-update.sh
+grep "CORTEX_DEPLOY_HOME.*bus" ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ls ~/.steadfaste-fleet/dashboard/
 ls ~/.steadfaste-fleet/bus/
 ```
 
 ## Prevention
 
-When you remove a `register()` line from cortex-update.sh:
-1. Run `cortex-update.sh` to trigger auto-cleanup
+When you remove a `register()` line from fleet-update.sh:
+1. Run `fleet-update.sh` to trigger auto-cleanup
 2. Run the doctor to confirm no stale warnings remain
 3. If removing a systemd unit or launchd plist, check `systemctl --user` or
    `launchctl list` for stale service entries too
 
 ## History
 
-- **2026-07-23:** 14 stale register entries removed from cortex-update.sh
+- **2026-07-23:** 14 stale register entries removed from fleet-update.sh
   (bus-sensor.py ×2, orch-install-bus.sh, change-readiness.sh, inbox-sensor.py,
   inbox-depth-watchdog.sh, cortex-bus-monitor.sh, inbox_watcher.py, mcp-inbox-proxy,
   agent-inbox server+plist, old offline_code_index_cron.sh path)

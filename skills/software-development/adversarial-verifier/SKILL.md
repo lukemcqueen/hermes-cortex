@@ -71,7 +71,7 @@ For every function/endpoint parameter, list:
 | `amount` | integer | 0 < amount < 1000000 | negative, zero, overflow, float, NaN |
 | `email` | string | valid email format | empty, no-at-sign, too long, unicode, null |
 
-**Run the `adversarial-verify.py` script** for automated boundary analysis (script lives at `~/.steadfaste-fleet/scripts/adversarial-verify.py`, deployed from the repo at `ops/scripts/quality/adversarial-verify.py` — if the deployed copy is missing, run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh` or use the repo path directly):
+**Run the `adversarial-verify.py` script** for automated boundary analysis (script lives at `~/.steadfaste-fleet/scripts/adversarial-verify.py`, deployed from the repo at `ops/scripts/quality/adversarial-verify.py` — if the deployed copy is missing, run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` or use the repo path directly):
 ```bash
 python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file src/handler.py --level A1
 ```
@@ -89,7 +89,7 @@ python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file src/handler.py 
 ```
 
 **Recovery if the script itself fails:**
-- `No such file or directory` → deployed copy missing: run `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`, or fall back to `python3 ~/steadfaste-fleet/ops/scripts/quality/adversarial-verify.py ...`
+- `No such file or directory` → deployed copy missing: run `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`, or fall back to `python3 ~/steadfaste-fleet/ops/scripts/quality/adversarial-verify.py ...`
 - `unrecognized arguments` → your CLI is too old for `--gate`/`--level A6`: use the repo copy at `ops/scripts/quality/adversarial-verify.py`, which is the newest
 - Non-zero exit with findings at `--gate` → treat as a blocked commit; fix the findings (or add inline `# adversarial-ignore: <pattern>` exemptions) — never `--no-verify`
 
@@ -352,7 +352,7 @@ Run the gate on every changed script file:
 python3 ~/.steadfaste-fleet/scripts/adversarial-verify.py --file ops/scripts/health/my-changed-script.py --level A2 --gate
 # A4 for anything under plugins/, hooks/, mcp-servers/, ops/scripts/manage/,
 # ops/scripts/fleet_doctor/, ops/scripts/quality/, tests/, and the
-# enforcement scripts themselves (pre-commit-score, cortex-update.sh)
+# enforcement scripts themselves (pre-commit-score, fleet-update.sh)
 ```
 
 If findings are critical/high: block the release.

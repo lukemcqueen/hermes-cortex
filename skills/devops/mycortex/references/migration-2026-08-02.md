@@ -14,7 +14,7 @@ Continuation of the legacy → mycortex migration (stories S-001..S-016 in
   15% overlap + mass-deletion guardrail >10%), `search` (FTS + title/relpath
   ILIKE, `websearch_to_tsquery` per source `search_config`), `list`, `stats`,
   `doctor`. 25.7KB single file, follows migrate.py's `sg docker` psql pattern.
-- **Registered in cortex-update.sh** — `legacy import.py` and the CLI were NOT
+- **Registered in fleet-update.sh** — `legacy import.py` and the CLI were NOT
   registered when Titus committed them (deployment gap); added both to the
   register map.
 - **Schema fixes** (applied to both `mycortex_test` and `mycortex`, and to the
@@ -52,14 +52,14 @@ Continuation of the legacy → mycortex migration (stories S-001..S-016 in
 - Enforcer blocks `git` writes to ungoverned /tmp test repos — create test
   fixtures with `write_file`, test `--mode local`; test git mode against
   `~/steadfaste-fleet` itself.
-- Each `cortex-update.sh` run purges the governance lock AND accumulates a
+- Each `fleet-update.sh` run purges the governance lock AND accumulates a
   PENDING cycle per `begin_change`; score promptly and re-acquire before the
   next write call.
 
 ## Remaining (as of session end)
 
 1. ~~`orch-mycortex-sync` cron~~ → **DONE, renamed `agent-mycortex-sync`** — registered in `install-crons.sh` (create line 665 + uninstall line 494), running every 15 min. The `orch-` variant was a stale orphan (per-host design D4 is NOT orchestrator-only); removed 2026-08-02.
-2. Run `cortex-update.sh` to deploy CLI + legacy import; then prod import
+2. Run `fleet-update.sh` to deploy CLI + legacy import; then prod import
    (`legacy import.py`) and `sources add` for real brain dirs on esther.
 3. Score PENDING cycles #1252/#1254/#1255 and `end_change` the open
    `pull-latest-update-cortex` lock.

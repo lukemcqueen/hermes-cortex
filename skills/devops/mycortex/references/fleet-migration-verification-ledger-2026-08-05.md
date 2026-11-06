@@ -7,7 +7,7 @@ that fell out AFTER the main migration landed.
 ## 1. Fleet rollout: `migrate-gbrain-postgres-to-mycortex.sh`
 
 `ops/scripts/manage/migrate-gbrain-postgres-to-mycortex.sh` (registered in
-cortex-update.sh) is the repeatable per-host migration. Design rules worth
+fleet-update.sh) is the repeatable per-host migration. Design rules worth
 preserving in any similar fleet migration:
 
 - **Idempotent re-run**: detects "new container healthy AND pages > 0" →
@@ -43,7 +43,7 @@ bus.record_dispatch(...) does not exist` — but the message DOES land
 `core/fleet_bus/schema/command-verifications.sql` was **never applied to any
 live bus DB**. Bus schema files (queue.sql, auth.sql, todos.sql,
 command-verifications.sql) are applied MANUALLY at bus setup — none are
-registered in cortex-update.sh or install.sh. The migration to a fresh
+registered in fleet-update.sh or install.sh. The migration to a fresh
 container surfaced it because the new DB was born without the whole bus
 schema layer; the old DB had it only because setup predated the file.
 

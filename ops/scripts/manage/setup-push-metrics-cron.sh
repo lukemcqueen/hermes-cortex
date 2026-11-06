@@ -6,7 +6,7 @@
 # VictoriaMetrics every 5 minutes.
 #
 # Must be run on the agent machine after push-metrics.sh has
-# been deployed (via cortex-update.sh).
+# been deployed (via fleet-update.sh).
 #
 # Pre-flight check: verifies VictoriaMetrics is reachable before
 # creating the cron. Silent skip if unreachable (harmless for

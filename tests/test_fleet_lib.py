@@ -165,13 +165,13 @@ def test_analyze_failures_uses_fleet_lib_not_hermes_tools():
 
 
 # ── Deploy-map contract (S1a–S1c: package + shims deploy together) ──────────
-# cortex-update.sh deploys shims (hermes_tz/hermes_paths) to the runtime copy.
+# fleet-update.sh deploys shims (hermes_tz/hermes_paths) to the runtime copy.
 # If a fleet_lib member is NOT registered, the deployed shims point at a
 # missing package and every import breaks at runtime. This test proves every
-# fleet_lib source file is in cortex-update.sh's register map — the deploy
+# fleet_lib source file is in fleet-update.sh's register map — the deploy
 # half of the S1a done-proof (the push/dogfood checksum gate enforces it live).
 def test_fleet_lib_files_registered_in_cortex_update_sh():
-    updater = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "cortex-update.sh"
+    updater = Path(__file__).resolve().parents[1] / "ops" / "scripts" / "fleet-update.sh"
     text = updater.read_text()
     unregistered = []
     for src in sorted((SCRIPTS_DIR / "fleet_lib").glob("*.py")):
@@ -180,7 +180,7 @@ def test_fleet_lib_files_registered_in_cortex_update_sh():
         if f'register "{rel}"' not in text:
             unregistered.append(rel)
     assert not unregistered, (
-        f"fleet_lib members not registered in cortex-update.sh deploy map — "
+        f"fleet_lib members not registered in fleet-update.sh deploy map — "
         f"the deployed shims would break (component-hermes-separation S1a): "
         f"{unregistered}"
     )

@@ -19,7 +19,7 @@ Sends a compact structured Learning Report to inbox_orchestrator (the shared
 orchestrator inbox) via PGMQ.
 Silent (exit 0) when nothing new to report.
 
-Deployed to fleet agents via cortex-update.sh.
+Deployed to fleet agents via fleet-update.sh.
 
 Usage:
     python3 agent-learning-collector.py              # collect and send

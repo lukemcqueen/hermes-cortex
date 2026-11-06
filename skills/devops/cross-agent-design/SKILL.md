@@ -374,8 +374,8 @@ When a new cross-agent feature needs every agent to support it:
 1. **Add handler to `agent-message-handler.py`** — add a new `subject` case
    (e.g. `subject == "EXEC"`) to the existing dispatch chain. This is the
    only consumer that exists on every agent in the fleet.
-2. **Register** new or updated files in `cortex-update.sh`
-3. **Deploy** via `cortex-update.sh` on each agent
+2. **Register** new or updated files in `fleet-update.sh`
+3. **Deploy** via `fleet-update.sh` on each agent
 4. **~5 min response time** (handler polls every 5 min)
 5. **No LLM cost** (no_agent script — subprocess only)
 

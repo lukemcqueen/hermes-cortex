@@ -93,7 +93,7 @@ Exit code: 0 = all pass, 1 = issues found.
 1. Add entry to the registry JSON with all 3 layers (core, capabilities, fleet_concerns)
 2. Run `fleet-audit --level F1` to validate
 3. Run `python3 ~/.steadfaste-fleet/scripts/generate-bus-wrappers.py --apply-crons`
-4. Register any new scripts in `cortex-update.sh` via `register()`
+4. Register any new scripts in `fleet-update.sh` via `register()`
 
 ## Multi-Slice Fleet Upgrades (S Pattern)
 

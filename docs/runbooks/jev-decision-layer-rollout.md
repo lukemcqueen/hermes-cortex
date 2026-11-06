@@ -34,7 +34,7 @@ revision, runs the upstream installer, runs `jev doctor`, and writes cost-ordere
 exist (`--force-pools` to reorder an existing set, `--commit <sha>` to move the pin).
 
 The deployed copy is at `~/.steadfaste-fleet/scripts/manage/install-jev-layer.sh`, so a host that has
-run `cortex-update.sh` can use it without the repo checkout.
+run `fleet-update.sh` can use it without the repo checkout.
 
 What it changes, so nothing surprises you: plugins into `$HERMES_HOME/plugins/`, 13 skills into
 `$HERMES_HOME/skills/jev/`, one script, a `jev` symlink in `~/.local/bin` and `$HERMES_HOME/bin`,

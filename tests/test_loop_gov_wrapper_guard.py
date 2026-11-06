@@ -67,7 +67,7 @@ def test_missing_server_points_at_the_deploy():
         assert r.returncode == EX_CONFIG, f"expected rc={EX_CONFIG}, got {r.returncode}"
         assert "NOT DEPLOYED" in r.stderr, r.stderr
         assert str(home / ".steadfaste-fleet" / "tools" / "loop-governance" / "loop-gov-mcp.py") in r.stderr
-        assert "cortex-update.sh" in r.stderr, "it must name the deploy that installs it"
+        assert "fleet-update.sh" in r.stderr, "it must name the deploy that installs it"
         print("  B: absent server -> named path, deploy command, rc=78 ✓")
 
 

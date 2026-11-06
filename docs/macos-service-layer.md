@@ -43,7 +43,7 @@ docs audit, which both pointed at this file before it existed.
 ## Interpreter convention
 
 - Cortex-side services run the **fleet venv** (`~/.steadfaste-fleet/venv/bin/python3`), the
-  interpreter `cortex-update.sh` registers every MCP server against. **Never `/usr/bin/python3`**
+  interpreter `fleet-update.sh` registers every MCP server against. **Never `/usr/bin/python3`**
   for a cortex service, and never the Hermes venv.
 - A service that needs the fleet venv sources the shared launcher guard first, so a missing
   venv/daemon lands in its log as `NO INTERPRETER at <path> …` with the fix (rc 78) instead of
@@ -52,7 +52,7 @@ docs audit, which both pointed at this file before it existed.
   . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"
   require_fleet_venv "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py"
   ```
-  If the venv is missing, `cortex-update.sh` now creates and fills it on the host's next
+  If the venv is missing, `fleet-update.sh` now creates and fills it on the host's next
   update. See `docs/troubleshooting.md` ("The fleet venv: a launcher dies with …").
 
 ## Install / check / remove

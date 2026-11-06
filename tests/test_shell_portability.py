@@ -20,7 +20,7 @@ Two checks, because a lesson in prose does not stop the next agent:
    that silently reports nothing is worse than no check.
 
 Scope: shell scripts that can EXECUTE on a host — every shell script in the deploy map
-(`register "..."` in cortex-update.sh), the git hook symlinks in `hooks/`, and the hook
+(`register "..."` in fleet-update.sh), the git hook symlinks in `hooks/`, and the hook
 IMPLEMENTATIONS those symlinks point at in `ops/scripts/`. Repo-only
 tooling (ops/evidence one-off record scripts, cutover artefacts) is deliberately out
 of scope: it never leaves this repo, so a macOS parser never sees it. Widening the
@@ -39,7 +39,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-UPDATE_SH = REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATE_SH = REPO / "ops" / "scripts" / "fleet-update.sh"
 # Hook IMPLEMENTATIONS — the files the git hooks symlink to (hooks/pre-commit →
 # scripts/pre-commit-score, etc.). They are not hook NAMES; the hooks/ directory scan
 # covers the symlinks themselves, and these names cover their targets in ops/scripts/.
@@ -148,7 +148,7 @@ def test_detector_sees_the_known_bad_shape() -> None:
 
 
 def _registered_shell_scripts() -> list[Path]:
-    """The shell scripts the deploy map ships — read from cortex-update.sh itself."""
+    """The shell scripts the deploy map ships — read from fleet-update.sh itself."""
     try:
         registered = re.findall(r'^(?:register|register_orch)\s+"([^"]+)"',
                                 UPDATE_SH.read_text(), re.M)

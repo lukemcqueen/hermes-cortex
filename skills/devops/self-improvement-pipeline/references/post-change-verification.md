@@ -12,12 +12,12 @@ The doctor showed `⚠️ AGENTS.md sync` and `⚠️ Skills manifest: template`
 
 - Doctor warnings were mentally categorized as "advisory" vs "failures"
 - No systematic enforcement that every ⚠️ must be fixed before end_change()
-- cortex-update.sh had no step to sync AGENTS.md to ~/.hermes/ — so it drifted with every change
+- fleet-update.sh had no step to sync AGENTS.md to ~/.hermes/ — so it drifted with every change
 - skills.yaml mtime wasn't synced with template — so doctor false-warned every time
 
 ## The Fix
 
-1. **cortex-update.sh** now syncs AGENTS.md and skills.yaml timestamp automatically (commit d780e87)
+1. **fleet-update.sh** now syncs AGENTS.md and skills.yaml timestamp automatically (commit d780e87)
 2. **Self-improvement-pipeline** Tenet 2 already says "Doctor warnings are required" but cortex-preflight needed the post-change verification section (blocked by curator)
 3. **SOUL.md** already has the doctor-warnings tenet
 

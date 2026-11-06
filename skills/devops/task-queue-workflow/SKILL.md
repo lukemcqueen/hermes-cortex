@@ -272,7 +272,7 @@ derivation CHECK and RLS path, and every orchestrator plan restates the rule.
   that UTC day — a 09:00 KST change lands on the previous UTC date. Filter on a UTC
   date or compare the timestamp, and check the boundary before believing a 0-row
   result (a cutoff only hours away from the data is the failure shape).
-- **A migration that is not in `cortex-update.sh`'s `register()` map is NEVER
+- **A migration that is not in `fleet-update.sh`'s `register()` map is NEVER
   deployed** — the register map IS the deploy. The version-gated runner only sees
   migrations present in the DEPLOYED schema dir, so an unregistered one leaves every
   host silently behind while the repo looks correct. Register each migration in the
@@ -303,7 +303,7 @@ derivation CHECK and RLS path, and every orchestrator plan restates the rule.
 - **Unclaim/claim/report work on YOUR OWN rows** — `created_by` must match the
   caller; you can't unclaim or report someone else's work.
 - **Schema v009+ required** — these commands `_require_v4` (schema 9). On an
-  older host, run `bash cortex-update.sh` first; the version-gated runner applies
+  older host, run `bash fleet-update.sh` first; the version-gated runner applies
   the pending migrations, and a migration missing from `register()` is never
   carried (see the migration pitfall below).
 - **report/verify set the derivation column too** — the functions keep the

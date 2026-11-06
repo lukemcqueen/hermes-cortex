@@ -4,7 +4,7 @@
 
 ### Fix 1: Visibility timeout 30s → 120s (commit `feb8ef1`)
 
-**Problem:** `bus_read(queue, vt=30)` gave a 30-second visibility timeout. When processing an UPDATE_REQUEST, `cortex-update.sh` takes ~43 seconds. The VT expired mid-update, the message went back to `pending`, the handler lost its lock, and it couldn't archive or send the UPDATE_RESULT. The message stayed stuck: every 30s it reappeared pending, the handler re-read it, same thing happened.
+**Problem:** `bus_read(queue, vt=30)` gave a 30-second visibility timeout. When processing an UPDATE_REQUEST, `fleet-update.sh` takes ~43 seconds. The VT expired mid-update, the message went back to `pending`, the handler lost its lock, and it couldn't archive or send the UPDATE_RESULT. The message stayed stuck: every 30s it reappeared pending, the handler re-read it, same thing happened.
 
 **Diagnostic signature:** Messages in `pending` that the handler reads but never archives. Querying audit log shows `read` but no corresponding `archive`. Checking `timeout_at` shows VT expired while handler was mid-processing.
 
@@ -20,7 +20,7 @@
 
 ### Fix 3: Logging in run_cortex_update() (commit `32a473b`)
 
-**Problem:** `run_cortex_update()` logged only "Running cortex-update.sh..." before execution and nothing after. When the update failed, there was no diagnostic output in handler logs — you had to dig into the bus archives to find the UPDATE_RESULT body.
+**Problem:** `run_cortex_update()` logged only "Running fleet-update.sh..." before execution and nothing after. When the update failed, there was no diagnostic output in handler logs — you had to dig into the bus archives to find the UPDATE_RESULT body.
 
 **Fix:** Added logging of exit code, stdout tail (200 chars), and stderr tail (200 chars) after every update run. Timeout and exception cases also log.
 
@@ -35,4 +35,4 @@
 | Gisu | ✅ exit=0 | Not tested |
 | Titus | ✅ exit=0 ×2 | Not tested |
 
-All agents on the shared Postgres bus are reachable via EXEC. UPDATE_REQUEST works for the round-trip but `cortex-update.sh` fails consistently when run from the cron handler (not from interactive shell). Root cause not yet determined — likely an environment variable difference or working directory issue in the cron context.
+All agents on the shared Postgres bus are reachable via EXEC. UPDATE_REQUEST works for the round-trip but `fleet-update.sh` fails consistently when run from the cron handler (not from interactive shell). Root cause not yet determined — likely an environment variable difference or working directory issue in the cron context.

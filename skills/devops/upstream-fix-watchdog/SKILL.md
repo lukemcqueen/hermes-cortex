@@ -180,9 +180,9 @@ to restore. Decide by content, not by default:
   `ops/scripts/install/install-*.py` (lean index, cron cost-tracking, mcp-tool
   watch). When upstream refactors the seam, the installer's marker anchor no
   longer matches → it prints `FAIL ... anchor not found` and exits 2, which
-  aborts `cortex-update.sh` under `set -euo pipefail` BEFORE the state-save
+  aborts `fleet-update.sh` under `set -euo pipefail` BEFORE the state-save
   writes `state/update-commit`. Net: the deploy looks normal but the doctor's
-  `Deploy sync` stays red forever. Diagnose by mechanism (`cortex-update.sh`
+  `Deploy sync` stays red forever. Diagnose by mechanism (`fleet-update.sh`
   exit 0 is NOT clean — grep the log for `[<installer>] FAIL ... anchor not
   found`, compare `state/update-commit` to `git rev-parse HEAD`). Distinguish
   load-bearing (re-target the anchor — e.g. keeping `coding_context: lean`

@@ -670,7 +670,7 @@ their domain.
 |-------|---------|---------|-----------|
 | `yuanbao` | 1.0.0 | Yuanbao (元宝) groups: @mention users, query info/members. | `skill_view(name='yuanbao')` |
 
-## Infrastructure Scripts (deployed via cortex-update.sh)
+## Infrastructure Scripts (deployed via fleet-update.sh)
 
 | Script | Type | Purpose | Schedule |
 |--------|------|---------|----------|

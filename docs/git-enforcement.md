@@ -90,7 +90,7 @@ bash ops/scripts/install/install-score-hook.sh --check
 bash ops/scripts/install/install-score-hook.sh --remove
 ```
 
-The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `cortex-update.sh` creates symlinks from `~/.steadfaste-fleet/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
+The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `fleet-update.sh` creates symlinks from `~/.steadfaste-fleet/hooks/` to those scripts. This means git pull + cortex-update keeps hooks current without manual re-install.
 
 ---
 
@@ -98,7 +98,7 @@ The installer deploys the source scripts to `~/.steadfaste-fleet/scripts/` and `
 
 There is **no sanctioned bypass**. The pre-commit hook runs scoring **and** the mandatory adversarial verification gate (A2 default, A4 for security/guard/hook/enforcer files) on every staged script. `--no-verify` is a **logged, audited bypass** (`agent-no-verify-audit` cron) — it is not a conscious choice, it is an audit event, and it must never be used to ship a hook-rejected change. Pre-commit `SKIP_SCORE=1`, `SKIP_ADVERSARIAL`, and pre-push `SKIP_PRE_PUSH=1` bypass flags have all been removed — no env-var bypasses.
 
-**When the hook blocks you:** fix the finding (the gate prints what it found), then commit normally through the hook. If the scoring stack itself is broken, repair via the sanctioned path: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`.
+**When the hook blocks you:** fix the finding (the gate prints what it found), then commit normally through the hook. If the scoring stack itself is broken, repair via the sanctioned path: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`.
 
 These are documented in AGENTS.md rule #13 and mentioned in each hook's header comment.
 
@@ -121,7 +121,7 @@ If you're an agent working on this repo:
 |---------|-------|-----|
 | Push blocked even though I just pulled | Remote received new commits since your last fetch | `git pull --rebase origin main` |
 | `score-cycle` not found warning | `loop-governance` tools not installed | `bash ~/steadfaste-fleet/core/governance/setup.sh` |
-| Hook not running at all | Hook not symlinked into `~/.steadfaste-fleet/hooks/` | Re-run `cortex-update.sh ` |
+| Hook not running at all | Hook not symlinked into `~/.steadfaste-fleet/hooks/` | Re-run `fleet-update.sh ` |
 | `❌ $file — syntax error` | `.py` file has a Python syntax error | Fix the error and re-push |
 | `❌ $file — shell syntax error` | `.sh` file has a shell syntax error | Fix the error and re-push |
 
@@ -146,7 +146,7 @@ If you're an agent working on this repo:
 
 ### Problem
 
-`pin_repos_with_own_hooks()` (cortex-update.sh) preserves repos that ship
+`pin_repos_with_own_hooks()` (fleet-update.sh) preserves repos that ship
 their own git hooks by setting a repo-local `core.hooksPath` to the repo's
 own `.git/hooks`. It pinned the path but **never refreshed the hook files** —
 pinned repos kept stale copies (Jul 24 generation) that predated the
@@ -172,7 +172,7 @@ repos on macOS, `grep -c adversarial = 0`).
 3. **Doctor check `Pinned hooks fresh`** (7c) — for every repo with a local
    `core.hooksPath`, compares each cortex hook file against the deployed
    source with `_content_md5()` (strips the SOURCE header). FAIL on drift
-   with remediation hint `cortex-update.sh --force`. Foreign hooks skipped.
+   with remediation hint `fleet-update.sh --force`. Foreign hooks skipped.
 
 4. **⚠️ Guard carve-out (critical — discovered during verify)** — the
    deployed pre-commit/pre-push hooks fail CLOSED when `core.hooksPath !=
@@ -201,7 +201,7 @@ attacker-controlled dir with no cortex hooks still blocks.
 
 ### Rollout
 
-Deployed via `cortex-update.sh`; the refresh runs automatically on every
+Deployed via `fleet-update.sh`; the refresh runs automatically on every
 deploy for all pinned repos on every host (Linux + macOS). No manual action
 per repo.
 
@@ -322,7 +322,7 @@ rm -rf /tmp/test-hook
 
 There is **no bypass** — `SKIP_SCORE=1` has been removed, and `git commit --no-verify` is a **logged, audited bypass** (see `agent-no-verify-audit` cron), never a workflow. The pre-commit hook also runs the **mandatory adversarial verification gate** on every staged script (A2 default, A4 for security/guard/hook/enforcer files) — a hook-rejected change must be **fixed, not bypassed**.
 
-When the scoring stack itself needs repair, fix it via the sanctioned path (`cortex-update.sh` — it deploys the scorer on Linux and macOS), then commit normally through the hook. If you are mid-rebase-conflict-resolution, resolve the conflict — rebase replays do not run pre-commit, so the commit will already pass; there is no reason to bypass.
+When the scoring stack itself needs repair, fix it via the sanctioned path (`fleet-update.sh` — it deploys the scorer on Linux and macOS), then commit normally through the hook. If you are mid-rebase-conflict-resolution, resolve the conflict — rebase replays do not run pre-commit, so the commit will already pass; there is no reason to bypass.
 
 **The bypass is not a workflow.** If `--no-verify` appears more than once per month in the audit log, something is wrong — fix the tooling, don't learn to live around it.
 
@@ -395,7 +395,7 @@ applies to all agent sessions automatically.
 > being committed IN) breaks every commit there — regression `faa0e929`, fix
 > `72d6cdc3` (2026-08-04). Hooks must resolve shared tools with a candidate
 > loop: repo-local first, then the canonically-deployed copy at
-> `$HOME/.steadfaste-fleet/scripts/` (registered by cortex-update.sh on both
+> `$HOME/.steadfaste-fleet/scripts/` (registered by fleet-update.sh on both
 > Linux and macOS). See `enforcement-change-safety` Rule 6.
 
 ---
@@ -432,7 +432,7 @@ git config core.hooksPath      # should show global path
 #### score-cycle not found
 The hook **blocks the commit** (exit 1 — fail closed). Scoring is part of the
 enforcement chain: a commit without a cycle record is invisible to governance.
-Fix by running `cortex-update.sh` to deploy the scorer (installs
+Fix by running `fleet-update.sh` to deploy the scorer (installs
 `~/.steadfaste-fleet/tools/loop-governance/score_cycle.py` on Linux and macOS),
 then re-commit. Do NOT use `--no-verify`.
 
@@ -443,5 +443,5 @@ then re-commit. Do NOT use `--no-verify`.
 - [Adoption Enforcement (loop-governance skill)](../skills/devops/loop-governance/SKILL.md#section-adoption-enforcement) — the four-layer enforcement model
 - `ops/scripts/pre-commit-score` — the hook script
 - `mcp-servers/loop-gov-mcp.py` — the primary enforcer MCP server
-- `ops/scripts/cortex-update.sh` — deploys the hook via `install_precommit_hook()`
-- `core/governance/setup.sh` — legacy CLI installer (not deployed; MCP-based governance replaces CLI tools). The scorer stack (`score_cycle.py` etc.) IS deployed to `tools/loop-governance/` by `cortex-update.sh` and invoked by the pre-commit hook.
+- `ops/scripts/fleet-update.sh` — deploys the hook via `install_precommit_hook()`
+- `core/governance/setup.sh` — legacy CLI installer (not deployed; MCP-based governance replaces CLI tools). The scorer stack (`score_cycle.py` etc.) IS deployed to `tools/loop-governance/` by `fleet-update.sh` and invoked by the pre-commit hook.

@@ -177,7 +177,7 @@ build the checkpoint from `toolResults` + `message`.
 > host cannot drive a `.ts` extension without a TS loader. Prefer running the
 > guard on a host with the npm-managed layout. The extension source is
 > layout-agnostic and still deploys to
-> `~/.steadfaste-fleet/harnesses/pi/extensions/` via `cortex-update.sh`.
+> `~/.steadfaste-fleet/harnesses/pi/extensions/` via `fleet-update.sh`.
 
 ---
 

@@ -148,16 +148,16 @@ export CORTEX_HOME="$HOME"              # User home directory
 ```bash
 cd ~/steadfaste-fleet
 git pull --ff-only
-bash ops/scripts/cortex-update.sh     # delta update (changed files only)
+bash ops/scripts/fleet-update.sh     # delta update (changed files only)
 ```
 
-`cortex-update.sh` auto-detects changed files and deploys only the deltas. After a major version upgrade, agents should `/reset` their sessions to pick up new skills and plugin configurations.
+`fleet-update.sh` auto-detects changed files and deploys only the deltas. After a major version upgrade, agents should `/reset` their sessions to pick up new skills and plugin configurations.
 
 ---
 
 ## 🚚 Fleet Update Pipeline
 
-The fleet update pipeline orchestrates coordinated rollouts across all agents using the Agent Bus. Pre-flight checks verify bus health and git state; orchestrators dispatch `UPDATE_REQUEST` to each agent's inbox; agents poll, run `cortex-update.sh`, and post `UPDATE_RESULT` back; a rollback script re-dispatches `ROLLBACK_REQUEST` to failed agents. All fleet scripts use the shared `ops/scripts/lib/cortex_bus.py` library.
+The fleet update pipeline orchestrates coordinated rollouts across all agents using the Agent Bus. Pre-flight checks verify bus health and git state; orchestrators dispatch `UPDATE_REQUEST` to each agent's inbox; agents poll, run `fleet-update.sh`, and post `UPDATE_RESULT` back; a rollback script re-dispatches `ROLLBACK_REQUEST` to failed agents. All fleet scripts use the shared `ops/scripts/lib/cortex_bus.py` library.
 
 ---
 
@@ -194,7 +194,7 @@ offline_knowledge query "symptoms of malaria"
 | Script | Purpose |
 |--------|---------|
 | `ops/install/install.sh` | **Main installer** |
-| `ops/scripts/cortex-update.sh` | Deploy scripts from repo — run after every `git pull` |
+| `ops/scripts/fleet-update.sh` | Deploy scripts from repo — run after every `git pull` |
 | `ops/scripts/manage/cortex-doctor.py` | System diagnostics, fix common issues |
 | `ops/scripts/install/install-score-hook.sh` | Install/remove pre-commit scoring hooks |
 | `ops/scripts/install-crons.sh` | Install/remove agent cron jobs |

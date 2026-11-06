@@ -215,7 +215,7 @@ def cmd_list(reg: dict, as_json: bool = False) -> int:
     if as_json:
         # Machine-readable view, so a CONSUMER never has to parse the registry itself.
         # The doctor reads the harness list through this command because it may run under
-        # an interpreter without PyYAML (cortex-update.sh invokes it as a bare `python3`),
+        # an interpreter without PyYAML (fleet-update.sh invokes it as a bare `python3`),
         # and `fleet` already resolves a capable interpreter for the registry. One source,
         # one capability resolution: a consumer that imported yaml here would be a second
         # copy of both.

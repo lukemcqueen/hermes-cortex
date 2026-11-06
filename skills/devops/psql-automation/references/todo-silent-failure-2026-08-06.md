@@ -36,9 +36,9 @@ Both had to be fixed for errors to surface.
    `docker exec` (rc propagates) with `sg` fallback that embeds the query in
    the command string (`_build_query_cmd`)
 3. Added `todo-db.py --apply-schema` (platform-aware: Linux docker exec,
-   macOS direct psql via mycortex.conf) wired into `cortex-update.sh` so all
+   macOS direct psql via mycortex.conf) wired into `fleet-update.sh` so all
    hosts converge on update
-4. New `dream-todo-bridge.py` (registered in cortex-update.sh): enforces
+4. New `dream-todo-bridge.py` (registered in fleet-update.sh): enforces
    caps (4 gaps / 2 insights per run) + dedup + tenant-scoping in code, so
    the LLM only judges actionability
 5. `install-dream-crons.sh`: all three dream prompts gained bridge steps

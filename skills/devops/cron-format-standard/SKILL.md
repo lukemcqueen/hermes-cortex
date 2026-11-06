@@ -190,15 +190,15 @@ For pushes from no_agent cron scripts, see the temp governance lock pattern in `
 
 ## Step 5 — Propagate to other agents
 
-The skill at `skills/` is synced automatically to all agents on the next `cortex-update.sh` run. The `sync_skills()` function in `cortex-update.sh` copies `skills/` → `~/.hermes/skills/` incrementally (only changed files). You do NOT need to manually copy anything.
+The skill at `skills/` is synced automatically to all agents on the next `fleet-update.sh` run. The `sync_skills()` function in `fleet-update.sh` copies `skills/` → `~/.hermes/skills/` incrementally (only changed files). You do NOT need to manually copy anything.
 
 To force an immediate sync on another agent:
 ```bash
 # On the target agent's machine:
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
-(`cortex-update.sh` is idempotent and safe to re-run — default mode deploys all changed files. There is no `--skip-existing` flag on `install.sh`; do not use one.)
+(`fleet-update.sh` is idempotent and safe to re-run — default mode deploys all changed files. There is no `--skip-existing` flag on `install.sh`; do not use one.)
 
 ## Step 6 — Score the change (loop governance)
 

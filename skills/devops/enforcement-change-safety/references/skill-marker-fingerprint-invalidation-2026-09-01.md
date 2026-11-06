@@ -15,7 +15,7 @@ fingerprint change when nothing the agent had to read had changed — see
 "Why the fingerprint was rewritten" below. Consequences:
 
 1. **Only a real CONTENT change to a skill file changes the fingerprint.** A
-   deploy that rewrites byte-identical files (`cortex-update.sh`, the dogfood
+   deploy that rewrites byte-identical files (`fleet-update.sh`, the dogfood
    deploy inside `git push`) no longer invalidates anyone's marker. When a skill
    body genuinely changes, the marker goes stale for every session — including
    the session doing the pushing — and the block message names the exact skills
@@ -56,7 +56,7 @@ the old all-or-nothing rule — fail closed.
   always-skills via `skill_view()` — they are read-only, so the gate does not
   block them; the 7th call regenerates the marker with the new fingerprint.
 
-This bit a real session 3× in ~40 min: initial `cortex-update.sh`, then the
+This bit a real session 3× in ~40 min: initial `fleet-update.sh`, then the
 dogfood deploy inside the first (raced) push, then again after the successful
 push's dogfood. Expect it whenever your change touches skills/ or AGENTS.md.
 

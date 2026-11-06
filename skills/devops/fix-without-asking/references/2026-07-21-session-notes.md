@@ -52,7 +52,7 @@ sg docker -c 'docker exec legacy Postgres psql -U mycortex -d mycortex -c "SELEC
 | Subject | Action | Response Subject |
 |---------|--------|-----------------|
 | EXEC | Run script under `~/.steadfaste-fleet/scripts/` | EXEC_RESULT |
-| UPDATE_REQUEST | `cortex-update.sh` | UPDATE_RESULT |
+| UPDATE_REQUEST | `fleet-update.sh` | UPDATE_RESULT |
 | ROLLBACK_REQUEST | `git checkout <sha>` then update | ROLLBACK_RESULT |
 | GIT_AUTH_CHECK | `git ls-remote` verification | GIT_AUTH_RESULT |
 | DIAGNOSTIC_REQUEST | Run agent-diagnostic.py | DIAGNOSTIC_RESULT |

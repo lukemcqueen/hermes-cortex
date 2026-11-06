@@ -139,7 +139,7 @@ _skills_loaded_in_session: set = set()
 
 # ── Per-session skill-credit journal (2026-09-23) ─────────────────────────
 # `_session_skills_loaded` lives in PROCESS memory, so it is wiped every time
-# the plugin is reloaded — notably on every `cortex-update.sh` deploy. Result:
+# the plugin is reloaded — notably on every `fleet-update.sh` deploy. Result:
 # a session that loaded `codebase-design` or `adversarial-verifier` an hour ago
 # got blocked mid-task ("DOMAIN SKILL SUGGESTION" / "ADVERSARIAL VERIFICATION
 # REQUIRED") for a skill it had provably loaded, and weak agents burned turns
@@ -232,7 +232,7 @@ def _hc_store_module():
             if not path.is_file():
                 logging.getLogger("governance-enforcer").warning(
                     "tool-event store not deployed at %s — the reflexion gate cannot see "
-                    "this session's skill loads until cortex-update.sh runs", path)
+                    "this session's skill loads until fleet-update.sh runs", path)
                 return None
             spec = importlib.util.spec_from_file_location("hc_store_tool_events", path)
             if spec is None or spec.loader is None:
@@ -826,7 +826,7 @@ def _skills_fingerprint() -> str:
     """Fingerprint of the deployed always-skills (skills-before-task gate).
 
     Computed from the mtimes of the 8 required skills' deployed SKILL.md
-    files. When cortex-update.sh deploys new skill versions, the mtimes
+    files. When fleet-update.sh deploys new skill versions, the mtimes
     change → the fingerprint changes → previously-issued skills markers
     go stale → the agent MUST re-skill_view before write tools unblock.
 
@@ -1997,11 +1997,11 @@ def _is_readonly_terminal_command(command: str) -> bool:
 # The DOGFOOD gate (loop-gov-mcp.py _require_dogfood) blocks begin_change()
 # until the deployed governance enforcer matches the repo source. That
 # leaves the agent with NO governance lock, and the fail-closed terminal
-# policy classifies cortex-update.sh as write-class — so the sanctioned
+# policy classifies fleet-update.sh as write-class — so the sanctioned
 # recovery command was itself blocked: a structural deadlock.
 #
 # This EXACT-PATH exception is the single carve-out that breaks it:
-#   - only the literal cortex-update.sh invocation (optional leading `bash`,
+#   - only the literal fleet-update.sh invocation (optional leading `bash`,
 #     `~` or absolute HOME path, allowlisted flags) is exempt from the
 #     governance-lock requirement
 #   - the skills gate, domain gate, and adversarial gate all still apply
@@ -2017,10 +2017,10 @@ _SANCTIONED_CORTEX_UPDATE_RE = re.compile(
 )
 
 
-def _is_sanctioned_cortex_update_command(command: str) -> bool:
+def _is_sanctioned_fleet_update_command(command: str) -> bool:
     """Exact-match check for the ONE lock-free recovery command.
 
-    Returns True only for the literal cortex-update.sh deploy invocation
+    Returns True only for the literal fleet-update.sh deploy invocation
     (with optional `bash` prefix, `~`/absolute home, and allowlisted flags).
     Anything else — other scripts, sudo, `-c`, chained commands, redirects,
     pipes — is NOT sanctioned and still requires a governance lock.
@@ -3311,17 +3311,17 @@ def register(ctx):
             # The DOGFOOD gate (loop-gov-mcp.py _require_dogfood) blocks
             # begin_change() until repo == deployed, so a DOGFOOD-blocked
             # agent holds NO governance lock AND may have no skills marker
-            # (cortex-update.sh invalidates it on deploy; AGENTS.md RULE 7b
-            # order: run cortex-update.sh → reload 8 skills → re-acquire
+            # (fleet-update.sh invalidates it on deploy; AGENTS.md RULE 7b
+            # order: run fleet-update.sh → reload 8 skills → re-acquire
             # lock). The ONLY sanctioned way to deploy the enforcement
-            # chain is cortex-update.sh — this EXACT invocation (exact
+            # chain is fleet-update.sh — this EXACT invocation (exact
             # path, allowlisted flags, no metacharacters, no sudo, no
             # chaining) is allowed lock-free and skill-free so the agent
             # can self-recover. Everything else still requires the skills
-            # gate + governance lock. Enforced by _is_sanctioned_cortex_update_command.
+            # gate + governance lock. Enforced by _is_sanctioned_fleet_update_command.
             if (
                 tool_name == "terminal"
-                and _is_sanctioned_cortex_update_command(args.get("command", ""))
+                and _is_sanctioned_fleet_update_command(args.get("command", ""))
             ):
                 return None
 

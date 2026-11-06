@@ -50,7 +50,7 @@ scenarios). Run it against the deployed copy with
    Different keys = fresh state = no RECOVERED notice (test bug, not code).
 
 6. **Prove deploy parity:** run the SAME suite against the deployed copy via
-   an env override — it should FAIL there until `cortex-update.sh` runs.
+   an env override — it should FAIL there until `fleet-update.sh` runs.
    That green-on-deployed result is the evidence the cron actually runs the
    fixed code (the doctor's checksum check compares repo vs deployed, but a
    suite run against `~/.steadfaste-fleet/scripts/...` proves behavior).

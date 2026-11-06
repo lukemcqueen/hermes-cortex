@@ -1,7 +1,7 @@
 -- ============================================================================
 -- mycortex schema v001 — knowledge index for the fleet 
 -- Source: docs/design/mycortex-DESIGN.md §2 (v2)
--- Applied by: ops/services/mycortex/migrate.py (NOT by cortex-update.sh directly)
+-- Applied by: ops/services/mycortex/migrate.py (NOT by fleet-update.sh directly)
 -- Target: mycortex-postgres, database `mycortex`, schema `mycortex`
 --
 -- v001 ships FAIL-CLOSED: RLS enabled + FORCE on pages/content_chunks, policies

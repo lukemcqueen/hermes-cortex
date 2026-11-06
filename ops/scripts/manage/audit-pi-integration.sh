@@ -94,7 +94,7 @@ elif [[ "$MCP_CAPABLE" == "1" ]]; then
         [[ -f "$f" ]] || srv_missing="$srv_missing $(basename "$f")"
       done
       if [[ -n "$srv_missing" ]]; then
-        _failed 1 "mcp.json requires ${REQUIRED// /, } but the deployed files are missing:$srv_missing — run cortex-update.sh"
+        _failed 1 "mcp.json requires ${REQUIRED// /, } but the deployed files are missing:$srv_missing — run fleet-update.sh"
       else
         # Presence of a name is not a working server: verify each entry actually points
         # at a runnable command, an existing script, and THIS agent's name (a stale or
@@ -282,14 +282,14 @@ done
 if [[ "$EXT_OK" == "1" ]]; then
   _line 3 PASS "cortex-context extension present (native mem_*/session_* tools are visible to the agent itself)"
 else
-  _failed 3 "cortex-context.ts not found (deployed or repo) — run cortex-update.sh"
+  _failed 3 "cortex-context.ts not found (deployed or repo) — run fleet-update.sh"
 fi
 
 # ── Layer 4: governance wiring ──
 if [[ -f "$DEPLOY/tools/loop-governance/loop-gov-mcp.py" ]]; then
   _line 4 PASS "review gate deployed (a cycle test is the agent's own check: begin_change -> feedback_accept -> end_change)"
 else
-  _failed 4 "loop-governance gate not deployed at $DEPLOY/tools/loop-governance/ — run cortex-update.sh"
+  _failed 4 "loop-governance gate not deployed at $DEPLOY/tools/loop-governance/ — run fleet-update.sh"
 fi
 
 # ── Layer 5: failsafes ──

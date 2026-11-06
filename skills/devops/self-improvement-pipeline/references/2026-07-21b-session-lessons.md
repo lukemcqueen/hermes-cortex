@@ -15,7 +15,7 @@
 **Permanent fix:**
 - `docs/templates/SOUL.md` restored to 12 principles
 - Added to both template and moses profile: cortex-preflight reference, Integration Completeness Requirement
-- cortex-update.sh now syncs SOUL.md from template (not profile) to ~/.hermes/
+- fleet-update.sh now syncs SOUL.md from template (not profile) to ~/.hermes/
 - self-improvement-pipeline Tenet #7: Template is the single source of truth
 
 ### Correction 2: Suppressing instead of fixing
@@ -27,7 +27,7 @@
 4. Moses replaced with `diff -q` + actual copy
 
 **Permanent fix:**
-- cortex-update.sh: replaced `touch -r` with `diff -q` + copy_file
+- fleet-update.sh: replaced `touch -r` with `diff -q` + copy_file
 - self-improvement-pipeline: added "Anti-Pattern: Suppressing Instead of Fixing" section
 
 ### Correction 3: Integration completeness

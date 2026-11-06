@@ -96,13 +96,13 @@ ensure_agent_identity() {
     echo "    Set AGENT_NAME=<your-agent> in the environment, or create:" >&2
     echo "      $AGENT_ENV_FILE" >&2
     echo "    containing: AGENT_NAME=<your-agent>" >&2
-    echo "    Then re-run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
+    echo "    Then re-run: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh" >&2
     return 1
   fi
   export AGENT_NAME
 }
 
-# Git author identity derived from AGENT_NAME — set by cortex-update.sh
+# Git author identity derived from AGENT_NAME — set by fleet-update.sh
 # into the repo's git config so commits carry the agent's identity.
 # Both fail closed when AGENT_NAME is unset (never emit "unknown-agent").
 git_author_name()  { [[ -n "${AGENT_NAME:-}" && "$AGENT_NAME" != "unknown" ]] || { echo "❌ AGENT_NAME not provisioned" >&2; return 1; }; echo "${AGENT_NAME}-agent"; }

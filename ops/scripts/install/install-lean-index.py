@@ -10,7 +10,7 @@ O8-S3 (HC gaps party 2026-08-21). Two marker patches:
   3. _LEAN_INDEX_CATEGORIES constant definition
 
 The patch is marker-based and idempotent — re-runs after every hermes
-update via cortex-update.sh.
+update via fleet-update.sh.
 
 Usage:
     install-lean-index.py          # apply (SKIPs if already applied)

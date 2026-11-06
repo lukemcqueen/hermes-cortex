@@ -8,7 +8,7 @@ S1c). `hermes_models` remains as a thin re-export shim.
 
 All Ollama model names used across the project are configured in
 ~/steadfaste-fleet/.env (preferred) or ~/.hermes/models.env (legacy fallback),
-which survive cortex-update.sh (they're outside the repo).
+which survive fleet-update.sh (they're outside the repo).
 This module provides a single importable function that every script uses,
 replacing scattered hardcoded constants with a unified lookup.
 

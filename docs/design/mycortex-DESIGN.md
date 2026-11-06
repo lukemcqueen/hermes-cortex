@@ -32,7 +32,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape leg
 
 | # | Pass-2 showstopper | Resolution (v2) |
 |---|---|---|
-| P2-SS1 (Arch/SRE) | Deployment bootstrap unimplementable — `cortex-update.sh` is a pure file-copier with **zero DDL path**; schema cannot reach existing agents | **Add `ops/services/mycortex/migrate.py`** — a psql runner invoked by cortex-update.sh after file sync. `schema_version`-gated, `DO $$` blocks for role creation (PG has no `CREATE ROLE IF NOT EXISTS`), explicit target DB (`mycortex`), `search_path=mycortex` pinned. New hosts: install.sh applies v001. Existing hosts: migrate.py upgrades. |
+| P2-SS1 (Arch/SRE) | Deployment bootstrap unimplementable — `fleet-update.sh` is a pure file-copier with **zero DDL path**; schema cannot reach existing agents | **Add `ops/services/mycortex/migrate.py`** — a psql runner invoked by fleet-update.sh after file sync. `schema_version`-gated, `DO $$` blocks for role creation (PG has no `CREATE ROLE IF NOT EXISTS`), explicit target DB (`mycortex`), `search_path=mycortex` pinned. New hosts: install.sh applies v001. Existing hosts: migrate.py upgrades. |
 | P2-SS2 (Arch/Sec) | RLS grant model has no backing mechanism — no grants table, no policy SQL, no ownership statement | **Add `mycortex.source_grants(role_name, source_id)` table** + concrete policy DDL (see §2). Tables owned by `postgres`/`mycortex` superuser, **never runtime roles**. `FORCE ROW LEVEL SECURITY` on pages/content_chunks. Policy created in v001 (fail-closed), not deferred. |
 | P2-SS3 (Sec) | Ingest role can self-grant federation (`UPDATE mycortex.sources` in blanket DML) — defeats PII gate at DB level | **Role split:** `mycortex_admin` (orchestrator-only: UPDATE `sources`, `is_federated`, grants) vs `mycortex_ingest` (DML on pages/content_chunks ONLY; **REVOKE on sources**). Add `sources.pii_scan_at` + `CHECK (is_federated = FALSE OR pii_scan_at IS NOT NULL)` — federation impossible without a recorded PII scan. |
 | P2-SS4 (Sec) | query_log can't detect exfiltration (no result content, self-reported agent, readable by readers) | **v1 query_log:** log top-K result relpaths + latency + `application_name` (not self-reported agent). Written via **SECURITY DEFINER `log_query()`** (append-only; REVOKE SELECT from readers). Alert cron on isolated-source probes / zero-result scans. |
@@ -87,7 +87,7 @@ This is not a rearchitecture of the knowledge model — it is the same shape leg
 
 ```sql
 -- Schema: mycortex (v001) — applied by ops/services/mycortex/migrate.py
--- (NOT by cortex-update.sh directly — that script is a file-copier with no DDL path)
+-- (NOT by fleet-update.sh directly — that script is a file-copier with no DDL path)
 CREATE SCHEMA IF NOT EXISTS mycortex;
 
 CREATE TABLE IF NOT EXISTS mycortex.sources (
@@ -241,14 +241,14 @@ CREATE POLICY mycortex_chunks_select ON mycortex.content_chunks
 - **Mass-deletion guardrail:** if `pages_archived > 10%` of the source's active corpus in one sync → abort + log error (no catastrophic soft-purge from a walk/parse bug).
 - **Search:** `websearch_to_tsquery(search_config, :query)` + `title ILIKE '%q%'` + trigram fallback; RLS applies automatically; `--source` filter = allowlisted source_ids; isolated sources require the reader to hold a grant in `source_grants` (DB-enforced, not CLI convention).
 - **DB access:** psycopg, `search_path=mycortex`, parameterized, `statement_timeout=30s`, `work_mem` capped for sync txn. Credentials via `.pgpass` (0600) — `mycortex_reader` for queries, `mycortex_ingest` for sync, `mycortex_admin` for registration (orchestrators only).
-- **Migration runner:** `ops/services/mycortex/migrate.py` invoked by cortex-update.sh after file sync — schema_version-gated (applies v001, later v002…), `DO $$` blocks for role creation, explicit DB `mycortex`, `search_path` pinned. New hosts: install.sh runs it once. Existing hosts: cortex-update runs it each update (no-op when current).
+- **Migration runner:** `ops/services/mycortex/migrate.py` invoked by fleet-update.sh after file sync — schema_version-gated (applies v001, later v002…), `DO $$` blocks for role creation, explicit DB `mycortex`, `search_path` pinned. New hosts: install.sh runs it once. Existing hosts: cortex-update runs it each update (no-op when current).
 - **Multi-OS psql wrapper:** reuse todo-db.py's `psql()` abstraction pattern (sg docker on Linux; direct psql on macOS).
 - **Alert wiring:** sync failures + `sources.last_sync_at` staleness (> 2× interval) → existing agent-system-alert-watchdog / Telegram channel (no silent failure).
 - **Retention:** query_log + ingest_log pruned by cron (> 90 days); archived pages hard-purged after 7-day window + on `sources remove`.
 
 ### 3.2 Deployment
 
-- **cortex-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh`.
+- **fleet-update.sh register():** `ops/services/mycortex/migrate.py` (invoked after file sync — the DDL path) + `ops/scripts/manage/mycortex` (CLI) + `ops/services/mycortex/schema/mycortex.sql` (v001 source) + `agent-mycortex-sync.sh`.
 - **Cron:** `agent-mycortex-sync` — every 15 min, jittered per host, **per-host (NOT orchestrator-only — D4)**: shared sources sync from the orchestrator host, host-local sources sync on their own host (advisory lock makes multi-host safe). Registered in `install-crons.sh` (+ uninstall array).
 - **/brain command:** rewrite `legacy brain command` plugin → `mycortex-command` (name + aliases), presets rebuilt from `mycortex sources list` (fixes the NameError/broken-presets bug), output delimited as data + source cited, instruction-shaped content neutralized in code (not prose) — prompt-injection guardrail with a failure-mode test.
 - **install.sh:** step 3 legacy → mycortex (copy CLI, run migrate.py v001, register default sources: steadfaste-fleet + local brain dirs).
@@ -362,7 +362,7 @@ Phase 9  VERIFY      bible/lessons/memory-sync crons healthy; bus schema intact;
 | D7 | Semantic timing | v1.1 hard date ≤30 days after v1 GA; pre-sliced stories | Pass 1 + 2 (Prod) |
 | D8 | Dream/synthesis | Not built | Pass 1 + 2 (no consumer) |
 | D9 | links table | Deferred to v1.2 (v005 migration) — no extractor in v1 | Pass 2 (Arch/Prod) |
-| D10 | Deployment DDL | `migrate.py` runner invoked by cortex-update.sh (cortex-update itself has no psql path) | Pass 2 (SRE) |
+| D10 | Deployment DDL | `migrate.py` runner invoked by fleet-update.sh (cortex-update itself has no psql path) | Pass 2 (SRE) |
 | D11 | RLS timing | Fail-closed policies in v001, same transaction; FORCE RLS; tables owned by superuser | Pass 2 (Sec/QA) |
 
 ---

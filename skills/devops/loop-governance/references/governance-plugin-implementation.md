@@ -290,11 +290,11 @@ Before the plugin existed, a **loop-gov-mcp.py** script was written to provide `
 # Create the plugins directory if it doesn't exist
 mkdir -p ~/.hermes/plugins
 
-# The plugin deploys as a COPY via cortex-update.sh (not symlink — enables chattr +i).
-# cortex-update.sh is the ONLY sanctioned way to update the enforcement chain
+# The plugin deploys as a COPY via fleet-update.sh (not symlink — enables chattr +i).
+# fleet-update.sh is the ONLY sanctioned way to update the enforcement chain
 # (hermes-plugin-lock unlock/update require the --cortex-update token or an
 # orchestrator account since 2026-07-31):
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # Manual maintenance (ORCHESTRATOR ACCOUNT ONLY — moses|esther):
 sudo hermes-plugin-lock unlock --orchestrator   # remove old immutability if set
@@ -325,11 +325,11 @@ The plugin source lives in the Steadfaste Fleet repo. To deploy to all agents:
 # Source of truth (commit and push first if modified)
 ls ~/steadfaste-fleet/plugins/governance-enforcer/
 
-# Deployed via cortex-update.sh as a copy (not symlink):
+# Deployed via fleet-update.sh as a copy (not symlink):
 #   plugins/governance-enforcer/ → ~/.hermes/plugins/governance-enforcer/
 # Run cortex-update to ensure repo is current:
 cd ~/steadfaste-fleet && git pull origin main
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 
 # Then /reset the agent session
 ```
@@ -344,7 +344,7 @@ bash ops/scripts/cortex-update.sh
 | Kustos | Work production | `~/steadfaste-fleet/plugins/governance-enforcer/` |
 | Joseph | Personal production | `~/steadfaste-fleet/plugins/governance-enforcer/` |
 
-The pattern is the same for all: plugin source in the Cortex repo → copy into `~/.hermes/plugins/` via cortex-update.sh (not symlink — uses chattr +i for immutability). The old `plugins/governance-enforcer` symlink has been removed — always use `plugins/governance-enforcer/`.
+The pattern is the same for all: plugin source in the Cortex repo → copy into `~/.hermes/plugins/` via fleet-update.sh (not symlink — uses chattr +i for immutability). The old `plugins/governance-enforcer` symlink has been removed — always use `plugins/governance-enforcer/`.
 
 ### Deploy Script (automated)
 

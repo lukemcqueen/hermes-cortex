@@ -12,7 +12,7 @@ ops/scripts/pre-commit-score
 ops/scripts/pre-push-pull
 ops/scripts/post-commit-audit
 ops/scripts/post-push-audit
-ops/scripts/cortex-update.sh
+ops/scripts/fleet-update.sh
 ops/scripts/quality/adversarial-verify.py
 ops/install/hooks/
 

@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-UPDATE = REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATE = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 # Sources that are deliberately orchestrator-only, WITH the reason. Adding to this
 # list is a decision, and it is visible in review.
@@ -91,12 +91,12 @@ def test_mcp_servers_are_deployed_everywhere() -> None:
 
 
 def _with_modified_update(replacement: tuple[str, str]) -> None:
-    """Run the guard against a modified COPY of cortex-update.sh."""
+    """Run the guard against a modified COPY of fleet-update.sh."""
     global UPDATE
     orig = UPDATE
     try:
         import tempfile
-        tmp = Path(tempfile.mkdtemp()) / "cortex-update.sh"
+        tmp = Path(tempfile.mkdtemp()) / "fleet-update.sh"
         tmp.write_text(orig.read_text().replace(*replacement))
         UPDATE = tmp
         test_mcp_servers_are_deployed_everywhere()

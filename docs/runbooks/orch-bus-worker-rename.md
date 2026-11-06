@@ -30,7 +30,7 @@ The old cron `orch-backlog-driver` is removed; the new one is scheduled at
 
 A host converges by pulling origin and running cortex-update (deploys the renamed
 skill + installer). On orchestrators (moses/esther), the live cron was already
-recreated; if a host shows the old name, `cortex-update.sh` recreates it from the
+recreated; if a host shows the old name, `fleet-update.sh` recreates it from the
 installer's create block (the old paused job is removed by the uninstall array).
 
 macOS hosts: no systemd cron — the Hermes cron scheduler handles it; pull + update.
@@ -47,6 +47,6 @@ grep -rn "orch-backlog-driver" ops/ tests/  # only historical-prose mentions rem
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `orch-bus-worker` not in cron list | old paused job removed, new not recreated | run `cortex-update.sh` (installer recreates it) |
+| `orch-bus-worker` not in cron list | old paused job removed, new not recreated | run `fleet-update.sh` (installer recreates it) |
 | STRANDED_SKILL_LAND message not tracked | handler not wired for the subject | deploy handler; it now creates a task row + leaves it queued |
 | New cron auto-paused shortly after start | stale `NEVER_RESUME` id | remove the id from the resumed job's set (done) |

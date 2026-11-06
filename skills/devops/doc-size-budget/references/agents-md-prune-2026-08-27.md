@@ -28,7 +28,7 @@ agents file?" — the deployed `~/.hermes/SOUL.md` AND the shared
 
 `git push` FAILED with "❌ Deploy sync" after committing the AGENTS.md trim:
 deployed `~/.hermes/AGENTS.md` still had the old bytes. The chain is:
-commit → `cortex-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
+commit → `fleet-update.sh` (deploys AGENTS.md + SOUL.md to ~/.hermes) →
 push. If already committed, run `cortex-dogfood.sh --force`
 (pull → deploy → doctor → verify) to converge, then push.
 

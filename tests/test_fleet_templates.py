@@ -93,7 +93,7 @@ def test_every_plist_template_parses():
 
 def test_shipped_shell_is_bash_32_safe():
     """macOS ships bash 3.2 — Titus's host. declare -A / mapfile / ${var,,} die there with
-    'invalid option' on a host we cannot test on. cortex-update.sh is excluded: it re-execs
+    'invalid option' on a host we cannot test on. fleet-update.sh is excluded: it re-execs
     brew bash >= 4 by design."""
     checked = [(r, (REPO / r).read_text(errors="replace")) for r in SHIPPED_SHELL
                if (REPO / r).is_file()]

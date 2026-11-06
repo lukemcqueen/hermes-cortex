@@ -41,15 +41,15 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `cron-auto-remediate.sh` | `CORTEX_SCRIPTS="${CORTEX_REPO}/src/scripts"` | `CORTEX_SCRIPTS="${CORTEX_REPO}/ops/scripts"` |
 | `cron-auto-remediate.sh` | `git status --porcelain -- ops/scripts/` | `git status --porcelain -- ops/scripts/` |
 | `send-agent-learning.sh` | `REPO_SCRIPTS="${HOME}/steadfaste-fleet/src/scripts"` | `REPO_SCRIPTS="${HOME}/steadfaste-fleet/ops/scripts"` |
-| `setup-agent-inbox.sh` | `bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"` | `bash "${HOME}/steadfaste-fleet/ops/scripts/cortex-update.sh"` |
+| `setup-agent-inbox.sh` | `bash "${HOME}/steadfaste-fleet/ops/scripts/fleet-update.sh"` | `bash "${HOME}/steadfaste-fleet/ops/scripts/fleet-update.sh"` |
 | `install-post-commit-hook.sh` | `NOTIFY_SCRIPT="${REPO_DIR}/ops/scripts/post-commit-notify.sh"` | `NOTIFY_SCRIPT="${REPO_DIR}/ops/scripts/post-commit-notify.sh"` |
 | `pre-commit-doc-audit.sh` | `grep -c '^ops/scripts/'` | `grep -c '^ops/scripts/'` |
-| `change-validate.sh` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/cortex-update.sh"` |
+| `change-validate.sh` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/fleet-update.sh"` | `CORTEX_UPDATE="${REPO_ROOT}/ops/scripts/fleet-update.sh"` |
 | `seed-project.sh` | `${REPO_DIR}/ops/scripts/install/merge-agents-md.py` | `${REPO_DIR}/ops/scripts/install/merge-agents-md.py` |
 | `seed-project.sh` | `${REPO_DIR}/ops/scripts/pre-commit-score` | `${REPO_DIR}/ops/scripts/pre-commit-score` |
 | `nginx-security-scanner.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` | `${CORTEX_REPO}/ops/scripts/manage/deploy-blocked-ips.sh` |
 | `cortex-profile.sh` | `Usage: bash ops/scripts/cortex-profile.sh` | `Usage: bash ops/scripts/cortex-profile.sh` |
-| `cortex-update.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` |
+| `fleet-update.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` | `${REPO_DIR}/ops/scripts/install/os-config.sh` |
 
 ### `deploy/nginx/` → `ops/install/deploy/nginx/`
 | File | Specific old ref | Specific new ref |
@@ -63,26 +63,26 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `nginx-security-scanner.sh` | `BLOCKED_IPS="${CORTEX_REPO}/deploy/nginx/blocked_ips.add"` | `BLOCKED_IPS="${CORTEX_REPO}/ops/install/deploy/nginx/blocked_ips.add"` |
 | `install-nginx.sh` | `${SCRIPT_DIR}/../deploy/nginx/hermes-zone-defs.conf` | `${SCRIPT_DIR}/../ops/install/deploy/nginx/hermes-zone-defs.conf` |
 | `install-nginx.sh` | `${SCRIPT_DIR}/../deploy/nginx/hermes-services.conf` | `${SCRIPT_DIR}/../ops/install/deploy/nginx/hermes-services.conf` |
-| `cortex-update.sh` | `local nginx_src_dir="${REPO_DIR}/deploy/nginx"` | `local nginx_src_dir="${REPO_DIR}/ops/install/deploy/nginx"` |
-| `cortex-update.sh` | `local src_dir="${REPO_DIR}/deploy/nginx"` | `local src_dir="${REPO_DIR}/ops/install/deploy/nginx"` |
+| `fleet-update.sh` | `local nginx_src_dir="${REPO_DIR}/deploy/nginx"` | `local nginx_src_dir="${REPO_DIR}/ops/install/deploy/nginx"` |
+| `fleet-update.sh` | `local src_dir="${REPO_DIR}/deploy/nginx"` | `local src_dir="${REPO_DIR}/ops/install/deploy/nginx"` |
 | `change-validate.sh` | `deploy/nginx/hermes-services.conf` | `ops/install/deploy/nginx/hermes-services.conf` |
-| `cortex-update.sh` | `register "deploy/docker-compose.langfuse.yml"` | `register "ops/install/deploy/docker-compose.langfuse.yml"` |
+| `fleet-update.sh` | `register "deploy/docker-compose.langfuse.yml"` | `register "ops/install/deploy/docker-compose.langfuse.yml"` |
 | `cortex-setup-langfuse.sh` | `${SCRIPT_DIR}/../../deploy/docker-compose.langfuse.yml` | `${SCRIPT_DIR}/../../ops/install/deploy/docker-compose.langfuse.yml` |
-| `cortex-update.sh` | `deploy/hermes-services.env`, `deploy/nginx/hermes-services.env` | `ops/install/deploy/hermes-services.env`, `ops/install/deploy/nginx/hermes-services.env` |
+| `fleet-update.sh` | `deploy/hermes-services.env`, `deploy/nginx/hermes-services.env` | `ops/install/deploy/hermes-services.env`, `ops/install/deploy/nginx/hermes-services.env` |
 
 ### `skills/` → `runtime/skills/`
 | File | Specific old ref | Specific new ref |
 |------|-----------------|------------------|
 | `collect-agent-skills.sh` | `REPO_SKILLS_DIR="$REPO_DIR/src/skills"` | `REPO_SKILLS_DIR="$REPO_DIR/runtime/skills"` |
 | `pre-commit-doc-audit.sh` | `grep -c '^skills/'` | `grep -c '^runtime/skills/'` |
-| `cortex-update.sh` | `local skill_repo="${REPO_DIR}/src/skills"` | `local skill_repo="${REPO_DIR}/runtime/skills"` |
+| `fleet-update.sh` | `local skill_repo="${REPO_DIR}/src/skills"` | `local skill_repo="${REPO_DIR}/runtime/skills"` |
 
 ### `src/offline/` → `ops/offline/`
 | File | Specific old ref | Specific new ref |
 |------|-----------------|------------------|
 | `daily-lesson-mine.sh` | `"${CORTEX_REPO:-}/src/offline/session_mine.py"` | `"${CORTEX_REPO:-}/ops/offline/session_mine.py"` |
 | `offline_code_index_cron.sh` | `~/steadfaste-fleet/ops/offline/offline_code.sh` | `~/steadfaste-fleet/ops/offline/offline_code.sh` |
-| `cortex-update.sh` | `local corpus_src="${REPO_DIR}/src/offline/code-corpus"` | `local corpus_src="${REPO_DIR}/ops/offline/code-corpus"` |
+| `fleet-update.sh` | `local corpus_src="${REPO_DIR}/src/offline/code-corpus"` | `local corpus_src="${REPO_DIR}/ops/offline/code-corpus"` |
 
 ### `src/mcp-servers/` → `ops/services/` (loop-gov-mcp.sh)
 | Path component | Old | New |
@@ -97,7 +97,7 @@ under `ops/install/deploy/`. All path references in deployed cron scripts
 | `update.sh` | `"${HOME}/steadfaste-fleet/src/loop-governance"` (2 occurrences) | `"${HOME}/steadfaste-fleet/core/governance"` |
 | `update.sh` | GitHub URL `main/core/governance/VERSION` | `main/core/governance/VERSION` |
 | `update.sh` | tarball extract `steadfaste-fleet-main/core/governance/` | `steadfaste-fleet-main/core/governance/` |
-| `cortex-update.sh` | `$HOME/src/steadfaste-fleet` (typo) | `$HOME/steadfaste-fleet` |
+| `fleet-update.sh` | `$HOME/src/steadfaste-fleet` (typo) | `$HOME/steadfaste-fleet` |
 
 ### Comment/Docs-only paths (in message bodies sent to agents)
 | File | Old instruction | New instruction |

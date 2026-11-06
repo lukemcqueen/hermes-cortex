@@ -59,7 +59,7 @@ except Exception:  # noqa: BLE001 — git unavailable; fall back to walk-up
     REPO = _SCRIPT_DIR.parents[2]
 TEMPLATE = REPO / "docs" / "templates" / "adversarial-reviewer-prompt.md"
 # Deployed hosts have no git clone — the template is deployed alongside this
-# script by cortex-update.sh. Prefer the deployed copy when present (it is the
+# script by fleet-update.sh. Prefer the deployed copy when present (it is the
 # version the deploy put there); fall back to the repo copy when running from
 # a source checkout (dev/test).
 _DEPLOYED_TEMPLATE = _SCRIPT_DIR.parent / "templates" / "adversarial-reviewer-prompt.md"

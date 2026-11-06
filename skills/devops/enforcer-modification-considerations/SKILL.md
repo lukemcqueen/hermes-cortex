@@ -58,7 +58,7 @@ The `begin_change()` MCP tool has a DOGFOOD check: if the deployed enforcer (`~/
 1. Run the sanctioned recovery — the enforcer allows this EXACT command
    without a governance lock:
    ```bash
-   bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+   bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
    ```
    (No sudo, no chaining, no other flags beyond
    `--dry-run/--status/--delta/--clean-stale` — the
@@ -83,7 +83,7 @@ being committed IN) and assuming cortex layout will break every commit there.
 hard-resolved to `$REPO_ROOT/ops/scripts/quality/adversarial-verify.py` —
 project repos lack that path, so ALL their commits failed fail-closed.
 Fix pattern: candidate loop, repo-local first, then the canonically-deployed
-copy at `$HOME/.steadfaste-fleet/scripts/` (registered by cortex-update.sh on
+copy at `$HOME/.steadfaste-fleet/scripts/` (registered by fleet-update.sh on
 both Linux and macOS). Fail closed only if BOTH are missing. See
 `enforcement-change-safety` Rule 6 for the full pattern and the 3-branch
 verification (cortex repo / project repo / tool-missing).
@@ -94,7 +94,7 @@ before shipping — a cortex-repo-only test proves nothing about project repos.
 
 ## 2b. Deploy ≠ Load — Settle It by OBSERVATION, Not by Assumption
 
-`cortex-update.sh` copies the new enforcer to
+`fleet-update.sh` copies the new enforcer to
 `~/.hermes/plugins/governance-enforcer/` and re-locks it. Whether the RUNNING
 gateway already executes it is a separate question, and the deploy's own
 `GATEWAY RESTART REQUIRED` banner is emitted when the deploy CANNOT determine the
@@ -108,12 +108,12 @@ allowed, with no restart) while the banner still read restart-required.
   that the process loaded it.
 - **The symptom that a restart really IS needed:** repo == deployed (SHA256 match)
   yet the changed behaviour simply never appears — the sanctioned
-  `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --status` still returns
+  `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --status` still returns
   `GOVERNANCE LOCK REQUIRED`, or a new block-message string never shows.
 - **Fix when it is needed:** `hermes gateway restart` — agents cannot run it
   (lifecycle guard); the host operator must. Verify with the positive control
   (`--status` passes lock-free) and a negative control (`... && echo hi` blocked).
-- **Don't** re-run cortex-update.sh repeatedly or hand-edit the deployed copy to
+- **Don't** re-run fleet-update.sh repeatedly or hand-edit the deployed copy to
   force activation, and never write "a restart is required" into a doc, note or issue
   without the observation behind it: a doc that makes the next agent wait for a restart
   it does not need costs more than the restart would have.
@@ -179,11 +179,11 @@ grep -rn '"repo_slug"' ops/scripts/ plugins/
 
 ## 5. Stale Hooks Allow Orchestrator Path Bypass
 
-The pre-commit hook enforces orchestrator-only paths (from `docs/orchestrator-only-paths.txt`). If an agent has stale hooks (hasn't run `cortex-update.sh` after the guard was added), non-orchestrators can modify restricted paths like `plugins/`, `skills/`, `ops/scripts/`.
+The pre-commit hook enforces orchestrator-only paths (from `docs/orchestrator-only-paths.txt`). If an agent has stale hooks (hasn't run `fleet-update.sh` after the guard was added), non-orchestrators can modify restricted paths like `plugins/`, `skills/`, `ops/scripts/`.
 
 **The fix chain:**
 1. Doctor's `check_hook_drift()` detects deployed hooks that differ from repo source
-2. Agent runs `cortex-update.sh` to redeploy hooks
+2. Agent runs `fleet-update.sh` to redeploy hooks
 3. Pre-commit hook now blocks non-orch modifications to restricted paths
 
 **If you're adding a new restricted path:**
@@ -193,16 +193,16 @@ The pre-commit hook enforces orchestrator-only paths (from `docs/orchestrator-on
 
 ---
 
-## 6. DOGFOOD Auto-Deploy vs `cortex-update.sh`
+## 6. DOGFOOD Auto-Deploy vs `fleet-update.sh`
 
 Two mechanisms deploy the enforcer:
 
 | Mechanism | Trigger | How | Caveat |
 |-----------|---------|-----|--------|
 | Pre-commit DOGFOOD | `git commit` | Copies repo → deployed + unlock/lock | Only runs during commits |
-| `cortex-update.sh` | Manual run | `deploy_governance_plugin()` function | Runs at end of deploy cycle |
+| `fleet-update.sh` | Manual run | `deploy_governance_plugin()` function | Runs at end of deploy cycle |
 
-**The DOGFOOD auto-deploy is faster but only works during commits.** If another agent's enforcer change arrives via `git pull`, the DOGFOOD check in `begin_change()` blocks you because the deployed copy is stale. Run `cortex-update.sh` to sync.
+**The DOGFOOD auto-deploy is faster but only works during commits.** If another agent's enforcer change arrives via `git pull`, the DOGFOOD check in `begin_change()` blocks you because the deployed copy is stale. Run `fleet-update.sh` to sync.
 
 ---
 
@@ -215,7 +215,7 @@ When modifying the enforcer, test these scenarios:
 - [ ] **Cron session:** bootstrap creates its OWN marker without touching interactive sessions
 - [ ] **Background session (`bg_`):** owns its own marker
 - [ ] **Touch bypass closed:** empty/whitespace marker file → rejected
-- [ ] **DOGFOOD sync:** deploy via `cortex-update.sh` — does `begin_change()` work?
+- [ ] **DOGFOOD sync:** deploy via `fleet-update.sh` — does `begin_change()` work?
 - [ ] **Cross-machine pull:** another agent's enforcer commit arrives via pull — does DOGFOOD handle it?
 
 ### Test a gate predicate against the REAL payload, not a fixture you wrote
@@ -411,5 +411,5 @@ HEAD — new mediums are your change's fault, an unchanged count is pre-existing
 - `docs/orchestrator-only-paths.txt` — restricted paths
 - `ops/scripts/pre-commit-score` — pre-commit hook with orchestrator guard
 - `ops/scripts/manage/fleet_doctor/checks.py` — doctor checks (hook drift, enforcer permissions)
-- `ops/scripts/cortex-update.sh` — deploy script with `deploy_governance_plugin()`
+- `ops/scripts/fleet-update.sh` — deploy script with `deploy_governance_plugin()`
 - `skills/devops/cortex-preflight/SKILL.md` — Pitfall 3 covers skills-loaded marker

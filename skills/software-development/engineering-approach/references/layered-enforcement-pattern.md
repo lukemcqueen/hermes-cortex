@@ -55,9 +55,9 @@ Any time you need to enforce a new rule across all agent sessions and projects:
 2. **Pre-commit hook** — Create a hook script, deploy via `install-score-hook.sh --all`
 3. **SOUL.md** — Add a `## Mandatory Directives` section to `~/.hermes/SOUL.md`
 4. **Cron auditor** — Create a no_agent watchdog script, register in `install-crons.sh`
-5. **Register** — Add new files to `cortex-update.sh` for auto-deployment
+5. **Register** — Add new files to `fleet-update.sh` for auto-deployment
 6. **Commit + push** — Push to origin/main so future installs get it
-7. **Deploy** — Run `cortex-update.sh ` then `install-score-hook.sh --all`
+7. **Deploy** — Run `fleet-update.sh ` then `install-score-hook.sh --all`
 
 ## Files (from steadfaste-fleet repo)
 

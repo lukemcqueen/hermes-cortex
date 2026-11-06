@@ -74,7 +74,7 @@ to inspect, prefer `read_file` / `search_files`: those are never gated.
 ```bash
 python3 ops/scripts/quality/adversarial-verify.py --file <changed> --level A2 --gate
 # A4 for plugins/, hooks/, mcp-servers/, ops/scripts/manage/, tests/,
-# ops/scripts/quality/, cortex-update.sh, pre-commit-score
+# ops/scripts/quality/, fleet-update.sh, pre-commit-score
 ```
 
 Critical/high findings **block**. Fix them with real handling; an inline
@@ -107,7 +107,7 @@ in the same commit) → **reflexion gate** → adversarial → score-cycle.
 ## 5. Push — the doctor and dogfood
 
 The pre-push gate runs the doctor. If deployed state ≠ repo source (i.e. you changed
-anything `cortex-update.sh` deploys), the push is **rejected** until you run:
+anything `fleet-update.sh` deploys), the push is **rejected** until you run:
 
 ```bash
 bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force   # pull → deploy → doctor → verify
@@ -116,7 +116,7 @@ bash ~/.steadfaste-fleet/scripts/cortex-dogfood.sh --force   # pull → deploy �
 Then push, and verify the **deployed** copy afterwards — a committed file is not a
 running service.
 
-> One caveat that bites: `cortex-update.sh` purges governance locks at the end of
+> One caveat that bites: `fleet-update.sh` purges governance locks at the end of
 > its run, including yours. Be ready to re-acquire with `begin_change` and to score
 > any PENDING cycles before `end_change`.
 

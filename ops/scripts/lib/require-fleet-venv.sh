@@ -28,7 +28,7 @@ fleet_venv_python() { printf '%s' "$(fleet_venv_dir)/bin/python3"; }
 fleet_venv_fix_hint() {
   echo "  create: python3 -m venv \"$(fleet_venv_dir)\""
   echo "  fill:   \"$(fleet_venv_python)\" \"${HOME}/.steadfaste-fleet/scripts/fix-cortex-venv.py\""
-  echo "  (fixer not deployed yet? bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh)"
+  echo "  (fixer not deployed yet? bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh)"
 }
 
 require_fleet_venv() {
@@ -49,7 +49,7 @@ require_fleet_venv() {
     [[ -f "$payload" ]] && continue
     echo "${0##*/}: NOT DEPLOYED at $payload" >&2
     echo "  HOME=${HOME}  (check this FIRST — a different HOME makes a present file look absent)" >&2
-    echo "  deploy it: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh" >&2
+    echo "  deploy it: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh" >&2
     exit 78
   done
 }

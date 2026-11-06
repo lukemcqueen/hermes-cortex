@@ -241,7 +241,7 @@ the hosts that must use it.
 **Rule (Luke directive 2026-08-06):** features ALL agents should have must
 not depend on bus infrastructure or bus nomenclature. Give them a dedicated
 schema (`todos.*`, not `bus.*`) applied on every host's mycortex-postgres
-via cortex-update.sh, with a platform-aware apply path — docker exec on
+via fleet-update.sh, with a platform-aware apply path — docker exec on
 Linux, direct psql via mycortex.conf/config.json on macOS.
 
 ## Inspect a stopped container's data volume

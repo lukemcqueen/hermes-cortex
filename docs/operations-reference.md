@@ -269,7 +269,7 @@ Also accepts `CORTEX_BUS_FALLBACK_URL` and `CORTEX_BUS_AUTH` (primary names). De
 > If you upgrade the worker from an older version that used `vt=120`, you MUST
 > pull the latest code and restart:
 > ```bash
-> cd ~/steadfaste-fleet && git pull && bash ops/scripts/cortex-update.sh
+> cd ~/steadfaste-fleet && git pull && bash ops/scripts/fleet-update.sh
 > systemctl --user restart hermes-agent-worker
 >```
 > Run `cortex-doctor` after to verify no warnings.

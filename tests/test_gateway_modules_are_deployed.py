@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every module in fleet_gateway/ must actually be DEPLOYED, not just committed.
 
-The failure this exists for: `cortex-update.sh` syncs an EXPLICIT list of files, so a new
+The failure this exists for: `fleet-update.sh` syncs an EXPLICIT list of files, so a new
 module (agents.py, pairing.py) sat in the repo, was imported by the deployed daemon, and was
 never copied to the host. The tests stayed green because they import the REPO tree, while the
 host's gateway would die with ImportError on start — a green suite hiding a broken deploy.
@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 PKG = REPO / "ops" / "scripts" / "fleet_gateway"
-UPDATE = REPO / "ops" / "scripts" / "cortex-update.sh"
+UPDATE = REPO / "ops" / "scripts" / "fleet-update.sh"
 
 
 def _registered() -> set:
@@ -67,7 +67,7 @@ def test_every_module_is_registered_for_deploy():
     assert not missing, (
         f"these fleet_gateway modules are NOT in the deploy register, so the host will get "
         f"an ImportError while the repo tests pass: {missing}. Add a register line to "
-        f"ops/scripts/cortex-update.sh next to the others.")
+        f"ops/scripts/fleet-update.sh next to the others.")
     print(f"  all {len(_modules())} modules are registered for deploy ✓")
 
 

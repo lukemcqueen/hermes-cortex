@@ -7,7 +7,7 @@ mycortex-postgres database. Idempotent: re-running when current is a no-op.
 Connects as the DB owner (mycortex) for DDL — same trust level as the mycortex
 migrate.py; task-db.py CRUD never touches superuser (party fix B-2).
 
-Invoked by cortex-update.sh AFTER file sync (cortex-update itself has no DDL
+Invoked by fleet-update.sh AFTER file sync (cortex-update itself has no DDL
 path — this runner is the DDL path, same as ops/services/mycortex/migrate.py).
 
 Usage:

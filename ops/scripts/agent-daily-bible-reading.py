@@ -172,7 +172,7 @@ def detect_agent_name() -> str:
                 if val:
                     return val
 
-    # 1c. agent.env — canonical per-host identity written by cortex-update.sh
+    # 1c. agent.env — canonical per-host identity written by fleet-update.sh
     agent_env = HOME / ".steadfaste-fleet" / "agent.env"
     if agent_env.exists():
         for line in agent_env.read_text().splitlines():

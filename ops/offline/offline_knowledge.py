@@ -88,7 +88,7 @@ def _find_bun():
     return candidates[-1]  # return default anyway, will fail gracefully later
 
 def _find_mycortex_cli():
-    """Locate the mycortex CLI (deployed by cortex-update.sh)."""
+    """Locate the mycortex CLI (deployed by fleet-update.sh)."""
     candidate = HOME / ".steadfaste-fleet" / "scripts" / "mycortex"
     if candidate.exists():
         return candidate

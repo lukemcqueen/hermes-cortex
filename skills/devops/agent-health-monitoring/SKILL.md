@@ -779,7 +779,7 @@ red at 13:00/14:00/15:00, green at 15:03.)
      health-server.py mycortex cache)
    - single-threaded server → `ThreadingHTTPServer`
    - short poller timeout → 3s → 5s
-8. **Verify through the scheduler, not manually**: `bash cortex-update.sh`
+8. **Verify through the scheduler, not manually**: `bash fleet-update.sh`
    (deploy; purges gov locks — re-acquire), `systemctl --user restart
    health-vector.service` (unit runs the repo file; running process needs a
    restart to load new code), `cronjob action='run' job_id=<id>`, then confirm

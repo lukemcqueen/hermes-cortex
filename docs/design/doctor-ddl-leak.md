@@ -37,8 +37,8 @@ Transcript produced by `docs/evidence/doctor-ddl-leak/probe-doctor-apply-schema.
 | Candidate 1 is **`Path(os.environ.get("CORTEX_REPO", ""))/…`** | With `CORTEX_REPO` unset (measured: `CORTEX_REPO env = None`) that expression is the **relative** path `ops/services/tasks/migrate.py`. The probe reported `1. exists=True` only because its **cwd** was the repo. So the resolved migration authority depends on the *caller's working directory* — a second defect in the same function, independent of the repo-vs-deployed question. |
 | Candidate 2 is the repo working tree (home prefix shown as `$HOME`, normalized for PII hygiene per commit 93029175) | `exists=True  $HOME/steadfaste-fleet/ops/services/tasks/migrate.py` — picked whenever candidate 1 misses (the doctor's own cwd). |
 | Candidate 4 is the DEPLOYED tree | `exists=True  $HOME/.steadfaste-fleet/services/tasks/migrate.py` — **last**, so it is never reached while a repo tree exists. |
-| `cortex-update.sh` applies the DEPLOYED copy | `cortex-update.sh:3298`: `local tasks_migrate="${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"`. The deploy path and the doctor path resolve to *different* files. |
-| The register map IS the deploy (stated contract) | `cortex-update.sh:446`: *"The register map IS the deploy. migrate.py discovers migrations by FILE — the repo applying cleanly proves nothing about any other host."* |
+| `fleet-update.sh` applies the DEPLOYED copy | `fleet-update.sh:3298`: `local tasks_migrate="${CORTEX_DEPLOY_HOME}/services/tasks/migrate.py"`. The deploy path and the doctor path resolve to *different* files. |
+| The register map IS the deploy (stated contract) | `fleet-update.sh:446`: *"The register map IS the deploy. migrate.py discovers migrations by FILE — the repo applying cleanly proves nothing about any other host."* |
 | Currently latent on this host, not active | live `tasks.schema_version` = **16**; deployed schema dir also reaches **v016**; `task_upsert` count = **1**, 21 args (`p_plan` last). The 10-27 deploy repaired the *state*; the code path that caused it is unchanged, so a **new uncommitted** migration file would still reach the live `mycortex` DB within ~5 minutes. |
 
 Harm, stated plainly: an unattended health check, running every 5 minutes,
@@ -80,7 +80,7 @@ ver_out = tdb.psql("SELECT COALESCE(MAX(version), 0) FROM tasks.schema_version;"
 the live version against the **deployed** schema dir's highest migration number
 (`CORTEX_HOME/services/tasks/schema/vNNN__*.sql`). If the deployed tree is ahead
 of the live DB, the check reports **WARN** with the exact remedy —
-`bash cortex-update.sh` — instead of silently applying the difference. If the
+`bash fleet-update.sh` — instead of silently applying the difference. If the
 deployed schema dir is absent, the comparison is skipped (no claim).
 
 Why this is stronger than today, not weaker: today the check *heals* the
@@ -105,7 +105,7 @@ candidates = [
 
 Two fixes in that list, both measured in §2:
 
-1. **Order:** the deployed copy is what `cortex-update.sh:3298` runs and what the
+1. **Order:** the deployed copy is what `fleet-update.sh:3298` runs and what the
    register map maintains; the repo tree is only a fallback for a host with
    nothing deployed.
 2. **The relative-path defect:** `or (Path.home() / "steadfaste-fleet")` replaces
@@ -143,7 +143,7 @@ apply an *undeployed* tree.
   `task_upsert` before and after the doctor run — unchanged.
 - `python3 -m py_compile` on both changed files, and the existing
   `tests/test_task_db_unit.py` + `tests/test_task_db_v4.py` suites still pass.
-- Deployed via `cortex-update.sh` and the **DEPLOYED** copies diffed against the
+- Deployed via `fleet-update.sh` and the **DEPLOYED** copies diffed against the
   repo source (ignoring the `# SOURCE:` header), because a green run on the repo
   copy proves nothing about the deployed one.
 
@@ -156,7 +156,7 @@ apply an *undeployed* tree.
 | Compare against the repo tree's max version instead of the deployed one | The repo tree is exactly the authority this row removes; comparing against it would re-import the defect as a warning. |
 | Make the doctor call `migrate.py --dry-run` | It prints what it would apply but still resolves `migrate.py` by the same broken candidate order — it moves the defect, not fixes it. |
 | `CREATE OR REPLACE` / reach into the migration files | Nothing in the schema is wrong. The defect is *who is allowed to pick the runner*. |
-| Raise `V5_MIN_SCHEMA` in the CLI to refuse `--apply-schema` outright | Would break the legitimate deploy path (`cortex-update.sh` applies via `migrate.py`, not via this CLI) and any installer that relies on `--apply-schema` as the documented DDL entry point. Out of scope; not needed. |
+| Raise `V5_MIN_SCHEMA` in the CLI to refuse `--apply-schema` outright | Would break the legitimate deploy path (`fleet-update.sh` applies via `migrate.py`, not via this CLI) and any installer that relies on `--apply-schema` as the documented DDL entry point. Out of scope; not needed. |
 
 ## 6. Out of scope (reported, not silently dropped)
 

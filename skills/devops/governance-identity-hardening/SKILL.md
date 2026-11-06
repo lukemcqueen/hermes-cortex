@@ -57,12 +57,12 @@ signal alone is sufficient.
 | File | Gate |
 |------|------|
 | `pre-commit-score` | DOGFOOD block, orchestrator-only paths guard, ORCHESTRATOR_ONLY_PATHS block, self-test |
-| `cortex-update.sh` | ORCH_MAP merge (~725), ORCH_MAP protect (~795), orch-cron install (~1900) |
+| `fleet-update.sh` | ORCH_MAP merge (~725), ORCH_MAP protect (~795), orch-cron install (~1900) |
 | `os-config.sh` | `CORTEX_AGENT_TYPE` detection (shared — propagates via `check_agent_type`) |
 | doctor `config.py` | hostname fallback (already correct for orch hosts) |
 
 **Missed-gate check:** after patching the hook, grep for the same env-var
-pattern across the whole tree — `grep -rn "IS_ORCHESTRATOR\|AGENT_TYPE.*orchestrator" ops/scripts/` — the same spoof hole usually exists in 3-5 sibling locations (install-orch-crons.sh, os-config.sh, multiple cortex-update.sh gates).
+pattern across the whole tree — `grep -rn "IS_ORCHESTRATOR\|AGENT_TYPE.*orchestrator" ops/scripts/` — the same spoof hole usually exists in 3-5 sibling locations (install-orch-crons.sh, os-config.sh, multiple fleet-update.sh gates).
 
 ## Impersonation Watchtower
 
@@ -92,10 +92,10 @@ Pattern:
 1. `~/.steadfaste-fleet/agent.env` holds `AGENT_NAME=<agent>` — **gitignored**,
    per-host (each machine's `/home/<user>` is a separate physical box, so the
    file is distinct even though the home path string is shared).
-2. `cortex-update.sh` calls `ensure_agent_identity()` (in os-config.sh) which
+2. `fleet-update.sh` calls `ensure_agent_identity()` (in os-config.sh) which
    reads agent.env; orch hosts derive AGENT_NAME from hostname and write it;
    non-orch hosts must provision it once.
-3. cortex-update.sh sets `git config user.name "AGENT_NAME-agent"` /
+3. fleet-update.sh sets `git config user.name "AGENT_NAME-agent"` /
    `user.email "AGENT_NAME@hermes.local"` — commits now carry the agent.
 4. pre-commit hook verifies agent.env exists (fails closed with setup
    instructions) and AGENT_NAME matches hostname on orch hosts.
@@ -108,7 +108,7 @@ committed to the public repo — provision agent.env per machine instead.
 `hermes-plugin-lock unlock --cortex-update` historically accepted the token
 from ANY account with zero caller proof. The token was a string, not a caller.
 
-Fix pattern: **fresh root-owned marker file** created inside cortex-update.sh
+Fix pattern: **fresh root-owned marker file** created inside fleet-update.sh
 immediately before unlocking; the helper requires the marker to exist, be
 root-owned, and be <60s old. `--orchestrator` stays account-bound
 (SUDO_USER/USER must be moses|esther — an account boundary, not an env var).
@@ -126,7 +126,7 @@ root-owned, and be <60s old. `--orchestrator` stays account-bound
   rewrite the hook's self-test (e.g. "AGENT_ID controls orchestrator
   identity") to assert the hostname+home-dir behavior and env-independence —
   a stale self-test fails every commit.
-- **Deploy ordering:** cortex-update.sh sources os-config.sh at runtime; on
+- **Deploy ordering:** fleet-update.sh sources os-config.sh at runtime; on
   the FIRST run after a fix it sources the OLD deployed copy. Re-run the
   deploy once to confirm the identity line self-heals.
 

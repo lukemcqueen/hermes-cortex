@@ -61,7 +61,7 @@ install/install-dream-crons.sh.
 - `ops/scripts/install/install-gateway-timezone.sh` (new) — systemd user
   drop-in `11-timezone.conf` on Linux; `~/.hermes/.env` append on macOS.
   Mirrors install-gateway-cron-timeout.sh contract (no self-restart; prints
-  RESTART PENDING). Registered + invoked from cortex-update.sh.
+  RESTART PENDING). Registered + invoked from fleet-update.sh.
 
 ## Notable sub-findings
 
@@ -83,6 +83,6 @@ install/install-dream-crons.sh.
 
 ## Left as follow-up (session hit iteration cap)
 
-- Deploy (`cortex-update.sh`) + gateway restart for the drop-in to activate
+- Deploy (`fleet-update.sh`) + gateway restart for the drop-in to activate
 - Commit/push repo changes; notify fleet (moses etc.)
 - `orch-skill-lifecycle/SKILL.md` example header still shows KST (cosmetic; live prompt has no KST template)

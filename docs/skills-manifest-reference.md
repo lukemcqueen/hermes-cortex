@@ -4,7 +4,7 @@
 >
 > | Directory | What it is | Written as |
 > |-----------|-----------|------------|
-> | `~/.steadfaste-fleet/` | The **runtime infra dir**, deployed by `cortex-update.sh`: `scripts/`, `state/`, `sessions/`, `memory/`, `hooks/`, and the `skills.yaml` the governance **enforcer** reads. | Always with the home anchor — `~/.steadfaste-fleet/…` |
+> | `~/.steadfaste-fleet/` | The **runtime infra dir**, deployed by `fleet-update.sh`: `scripts/`, `state/`, `sessions/`, `memory/`, `hooks/`, and the `skills.yaml` the governance **enforcer** reads. | Always with the home anchor — `~/.steadfaste-fleet/…` |
 > | `./.steadfaste-fleet/` | A **repo-local overlay inside a consumer project**, created by `seed-project.sh`. Only this page describes it. | Qualified — "repo-local", or a project path |
 >
 > A bare `.steadfaste-fleet/` in a doc that means the runtime dir is a bug: agents read it as this project overlay, then look for the infra dir inside the project and report it as "the Hermes agent infra directory". **Operator report, 2026-10-30** (source: a seeded project AGENTS.md on a dev host; not re-measured here): that convention table listed `.steadfaste-fleet/sessions/`, `.steadfaste-fleet/memory/` and `.steadfaste-fleet/skills.yaml` as the infra dir. Verified on this host instead: all three live in `~/.steadfaste-fleet/` — see the counts and the deployed-copy check in `docs/evidence/steadfaste-fleet-path-anchor-2026-10-30.txt`. The Cortex repo itself must carry **no** repo-local overlay (doctor check `Repo-local .steadfaste-fleet`).

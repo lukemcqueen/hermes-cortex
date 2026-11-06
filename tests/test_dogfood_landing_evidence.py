@@ -8,7 +8,7 @@ relies on (ADV-4916-1):
     assert no other 'fail' with a nonzero count)
   - DOGFOOD_EXIT=0
   - Key deploy-mapped checksums present (content-matches lines for loop-gov.py,
-    loop-gov-mcp.py, cortex-update.sh, cortex-dogfood.sh, verify-stamp-repo-tuple.py)
+    loop-gov-mcp.py, fleet-update.sh, cortex-dogfood.sh, verify-stamp-repo-tuple.py)
 A later reviewer re-executes this check rather than trusting prose.
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ REQUIRED = [
     "deployed commit matches HEAD",
     "Checksum: loop-gov.py",
     "Checksum: loop-gov-mcp.py",
-    "Checksum: cortex-update.sh",
+    "Checksum: fleet-update.sh",
     "Checksum: cortex-dogfood.sh",
     "Checksum: verify-stamp-repo-tuple.py",
 ]

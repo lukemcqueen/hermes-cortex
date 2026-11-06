@@ -22,7 +22,7 @@ import subprocess
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_UPDATE = (_REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
+_UPDATE = (_REPO / "ops" / "scripts" / "fleet-update.sh").read_text()
 _LINES = _UPDATE.splitlines()
 
 # The four schema migrations and the message each emits on failure.

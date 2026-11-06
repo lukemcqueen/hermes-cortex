@@ -236,7 +236,7 @@ stays importable, the handlers stay drivable, and stderr carries a warning namin
 and the API required. It declines to serve rather than degrading in silence, because a gate that
 quietly disables itself hides the wrong interpreter. The declared floor is `mcp>=2.0` (it was
 `>=1.0`, which admitted exactly the version that breaks), and `fix-cortex-venv.py --check` probes
-that capability rather than only importing — the check `cortex-update.sh` gates its repair on, so
+that capability rather than only importing — the check `fleet-update.sh` gates its repair on, so
 without it a broken host was told `ok: … imports all 6 declared requirements` and repaired
 nothing. Evidence: `docs/evidence/verify-mcp-sdk-guard.sh` beside its captured run (the pinned
 baseline reproduces the reported `TypeError`; this tree imports, warns, and keeps the CLI

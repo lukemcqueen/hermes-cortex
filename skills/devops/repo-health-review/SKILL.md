@@ -34,7 +34,7 @@ delegate_task(tasks=[{
     "context": "Check docs/ for stale src/, deploy/, runtime/ references..."
 }, {
     "goal": "Audit install/update/doctor pipeline",
-    "context": "Check cortex-update.sh register() validity, doctor --quick..."
+    "context": "Check fleet-update.sh register() validity, doctor --quick..."
 }, {
     "goal": "Audit Linux vs macOS platform support and agent types",
     "context": "Check platform-specific code, SOUL.md profiles..."
@@ -71,20 +71,20 @@ find ops/scripts/ -name '*_*' -not -path '*/__pycache__/*' -not -name '__*'
 ### Pass 4: Registration Check (Bi-Directional)
 
 Check BOTH directions:
-- Scripts in `ops/scripts/` that are NOT registered in `cortex-update.sh`
-- `register()` entries in `cortex-update.sh` that point to NON-EXISTENT files
+- Scripts in `ops/scripts/` that are NOT registered in `fleet-update.sh`
+- `register()` entries in `fleet-update.sh` that point to NON-EXISTENT files
 
 ```bash
 # Direction A: Which scripts are NOT registered?
-grep -oP 'register\s+"[^"]+' ops/scripts/cortex-update.sh | sed 's/register "//'
+grep -oP 'register\s+"[^"]+' ops/scripts/fleet-update.sh | sed 's/register "//'
 
 # Direction B: Which registered files are MISSING on disk?
-grep -oP 'register\s+"[^"]+' ops/scripts/cortex-update.sh | sed 's/register "//' | while read f; do [ -f "$f" ] || echo "MISSING: $f"; done
+grep -oP 'register\s+"[^"]+' ops/scripts/fleet-update.sh | sed 's/register "//' | while read f; do [ -f "$f" ] || echo "MISSING: $f"; done
 ```
 
 Stale `register()` entries silently fail during deploy — the file simply
 doesn't get copied. Over time this causes the deployed state to diverge
-from expectations. Fix by removing the stale line from cortex-update.sh.
+from expectations. Fix by removing the stale line from fleet-update.sh.
 
 Also check for **duplicate registrations** (same file registered twice)
 and **path drift** (file was renamed but register wasn't updated, e.g.
@@ -92,7 +92,7 @@ and **path drift** (file was renamed but register wasn't updated, e.g.
 
 ### Pass 4b: Stale Deploy Check
 
-Check for deployed files that are no longer registered in `cortex-update.sh`.
+Check for deployed files that are no longer registered in `fleet-update.sh`.
 When a `register()` line is removed, the deployed copy stays on disk as
 an orphan. The doctor detects these:
 
@@ -102,10 +102,10 @@ python3 ~/steadfaste-fleet/ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stal
 
 Fix with:
 ```bash
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --clean-stale
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --clean-stale
 ```
 
-Or run `cortex-update.sh` (auto-cleans stales after deploy). For non-scripts
+Or run `fleet-update.sh` (auto-cleans stales after deploy). For non-scripts
 deploy targets (dashboard/, bus/, systemd units, launchd plists), manual
 cleanup may be needed.
 
@@ -172,7 +172,7 @@ Check agent-type coverage in docs:
 
 ### Pass 8b: Cross-Script Deploy/Install/Doctor Consistency Audit
 
-**Purpose:** Verify that the three core lifecycle scripts — `install.sh`, `cortex-update.sh`, and `fleet_doctor/` — agree on agent-type branching. If they diverge, agents get false-positive doctor failures, wrong cron expectations, or orphan deploy artifacts.
+**Purpose:** Verify that the three core lifecycle scripts — `install.sh`, `fleet-update.sh`, and `fleet_doctor/` — agree on agent-type branching. If they diverge, agents get false-positive doctor failures, wrong cron expectations, or orphan deploy artifacts.
 
 **Run when:** User asks to audit agent-type branching, fix doctor false positives on non-orch agents, or verify deploy/install/doctor pipeline consistency. Also run before adding a new agent type.
 
@@ -193,19 +193,19 @@ grep -n 'is_orch\|IS_ORCH\|hostname\|agent.type' ops/scripts/manage/fleet_doctor
 
 **Gap to detect:** A capability model (CORTEX_PROFILE) cannot distinguish between an orchestrator (needs bus server + dashboard + nginx) and a server-agent (needs bus client + crons, NOT dashboard/nginx). When both map to `server`, orchestrator-only services get deployed to server-agents and produce doctor false positives.
 
-#### 8b-2: register() Guard Coverage in cortex-update.sh
+#### 8b-2: register() Guard Coverage in fleet-update.sh
 
 Check whether orchestrator-only service files (dashboard, cortex-bus server, nginx configs) are **conditionally registered** or deployed to every agent:
 
 ```bash
 # Are dashboard/bus/nginx files registered unconditionally?
-grep -n 'register.*dashboard\|register.*bus\|register.*nginx' ops/scripts/cortex-update.sh
+grep -n 'register.*dashboard\|register.*bus\|register.*nginx' ops/scripts/fleet-update.sh
 
 # Is deploy_nginx_configs() guarded?
-grep -B3 -A3 'deploy_nginx_configs' ops/scripts/cortex-update.sh
+grep -B3 -A3 'deploy_nginx_configs' ops/scripts/fleet-update.sh
 
 # Is deploy_system_scripts() guarded?
-grep -B3 -A3 'deploy_system_scripts' ops/scripts/cortex-update.sh
+grep -B3 -A3 'deploy_system_scripts' ops/scripts/fleet-update.sh
 ```
 
 **Check:** Is there an `IS_ORCHESTRATOR`, `IS_SERVER`, or `CORTEX_PROFILE` guard on these? If they run unconditionally, server-agents and dev-agents get files they don't need. The only guard is `CORTEX_SKIP_NGINX` env var — optional, not default.
@@ -247,7 +247,7 @@ grep -A15 'parse_expected_crons' ops/scripts/manage/fleet_doctor/config.py
 grep -A15 'orch_crons_list' ops/scripts/manage/fleet_doctor/checks.py
 ```
 
-**Check path 3:** Does `check_crons()` check the `IS_ORCHESTRATOR` env var (like cortex-update.sh does), or only hostname? Hostname-only is brittle — won't match fresh installs or custom hostnames.
+**Check path 3:** Does `check_crons()` check the `IS_ORCHESTRATOR` env var (like fleet-update.sh does), or only hostname? Hostname-only is brittle — won't match fresh installs or custom hostnames.
 
 **Gap to detect:** If `parse_expected_crons()` doesn't match `install-orch-crons.sh`, or if `check_crons()` hostname detection differs from `install-orch-crons.sh`, the doctor will produce inconsistent results.
 
@@ -262,8 +262,8 @@ find ops/ -name '*local*' 2>/dev/null
 # Does install.sh --agent-type dev exist?
 grep 'dev\|titus' ops/install/install.sh
 
-# Does cortex-update.sh skip dashboard/bus/nginx for dev agents?
-grep 'IS_DEV\|agent.dev\|dev.minimal\|skip.*dev' ops/scripts/cortex-update.sh
+# Does fleet-update.sh skip dashboard/bus/nginx for dev agents?
+grep 'IS_DEV\|agent.dev\|dev.minimal\|skip.*dev' ops/scripts/fleet-update.sh
 ```
 
 **Gap to detect:** Dev agents with no automated installer must create `local-*` crons manually. If the `local-*` prefix is documented in comments but no scaffolding exists (no installer, no doctor awareness, no update guard), the dev-agent path is incomplete.
@@ -271,7 +271,7 @@ grep 'IS_DEV\|agent.dev\|dev.minimal\|skip.*dev' ops/scripts/cortex-update.sh
 #### 8b-6: Verify Hostname Detection Uniformity
 
 The same hostname/orch-detection logic should appear in:
-1. `cortex-update.sh` (lines ~1412-1438) — `IS_ORCHESTRATOR` env var + hostname fallback
+1. `fleet-update.sh` (lines ~1412-1438) — `IS_ORCHESTRATOR` env var + hostname fallback
 2. `fleet_doctor/checks.py` (lines ~407-421) — hostname only
 3. `install-orch-crons.sh` (lines ~29-39) — `IS_ORCHESTRATOR` env var + hostname fallback
 
@@ -282,7 +282,7 @@ The same hostname/orch-detection logic should appear in:
 After checking all 5 dimensions, produce a table showing which files branch on what:
 
 ```markdown
-| Dimension | install.sh | cortex-update.sh | fleet_doctor/ |
+| Dimension | install.sh | fleet-update.sh | fleet_doctor/ |
 |-----------|-----------|-----------------|----------------|
 | Service install guard | CORTEX_PROFILE=server | none (unconditional deploy) | none (hardcoded EXTERNAL_SERVICES) |
 | Nginx deploy guard | CORTEX_PROFILE=server | CORTEX_SKIP_NGINX (optional) | none (always checks) |

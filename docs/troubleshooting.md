@@ -307,11 +307,11 @@ See `docs/agent-memory-pointer-pattern.md` for the full guide.
 **Symptom (2026-08-05):** `MEMORY.md`/`USER.md` lost all custom notes after
 every deploy (7 clobbers in one day). The doctor showed `❌ Checksum:
 MEMORY.seed.md — MD5 mismatch — deployed copy differs from repo source` and
-recommended "Run: cortex-update.sh to resync" — which was exactly the
+recommended "Run: fleet-update.sh to resync" — which was exactly the
 destructive action.
 
 **Root cause:** Memory files were registered as deploy targets in
-`cortex-update.sh` (seed templates → deployed copy). The live file is
+`fleet-update.sh` (seed templates → deployed copy). The live file is
 personalized, so its hash always differed from the blank template, and the
 generic `needs_update()` hash path overwrote it on every run. The doctor's
 checksum sweep then FAILed on the healthy personalized state (inverted
@@ -320,7 +320,7 @@ check).
 **Resolution:** Memory is Hermes-owned — `~/.hermes/memories/MEMORY.md` is
 read directly by Hermes and created on first memory write. Cortex no longer
 seeds, registers, or checksums memory files at all (removed 2026-08-05):
-- `cortex-update.sh` has no register entry for memory files — and now
+- `fleet-update.sh` has no register entry for memory files — and now
   **fails CLOSED** on any register target under `/memories/` or `~/.hermes/`
   (physical guard in `_assert_register_dest_safe()`), so a re-add aborts the
   deploy with a clear error instead of silently overwriting user data.
@@ -792,7 +792,7 @@ the shared daemon's cwd.
 
 ```bash
 # The harness runs the DEPLOYED copy, so the fix needs a deploy, not just a pull:
-bash ~/.steadfaste-fleet/scripts/cortex-update.sh   # deploys tools/loop-governance/loop-gov-mcp.py
+bash ~/.steadfaste-fleet/scripts/fleet-update.sh   # deploys tools/loop-governance/loop-gov-mcp.py
 ```
 
 - A lock mis-tagged by the OLD code: the deploy purges lock files (stale-lock
@@ -946,7 +946,7 @@ diff ~/.hermes/SOUL.md ~/steadfaste-fleet/docs/templates/SOUL.md
 **Root cause:** the tool was RENAMED (measured: `hc` → `fleet`, commit `aa2de1ee`;
 `ops/scripts/hc/hc.py` → `ops/scripts/fleet/fleet.py`). The deploy map registered the
 new paths, so `scripts/fleet.py` + `scripts/fleet-harness.py` deploy fine — but the
-OLD deployed copies are no longer registered and `cortex-update.sh` never removes them.
+OLD deployed copies are no longer registered and `fleet-update.sh` never removes them.
 A `bin/hc` transition-compat ALIAS stays registered and keeps working; only the old
 `.py` files are dead.
 
@@ -955,7 +955,7 @@ A `bin/hc` transition-compat ALIAS stays registered and keeps working; only the 
 ```bash
 head -3 ~/.steadfaste-fleet/scripts/<old>.py          # SOURCE: header points at a GONE repo path
 git -C ~/steadfaste-fleet ls-files 'ops/scripts/<old>/<old>.py'   # empty = source moved/vanished
-grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/cortex-update.sh   # 0 = not registered
+grep -c '<old>\.py' ~/steadfaste-fleet/ops/scripts/fleet-update.sh   # 0 = not registered
 ```
 
 **Fix:** delete the orphaned deployed copies (keep the no-`.py` alias):
@@ -970,13 +970,13 @@ See the `cortex-deployment-sync` skill, **Pitfall 26**, for the full diagnosis
 
 ## 🍎 macOS-Specific Cortex Update Issues
 
-Issues that appear when running `pull latest` + `cortex-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). **Titus is the fleet's only macOS host** (`LAM2`, the developer machine), so this section is his — every other host is Linux. These are distinct from the Linux service-layer differences — they break the update **script itself**.
+Issues that appear when running `pull latest` + `fleet-update.sh` on a macOS host (all verified on macOS 14, arm64, 2026-07-31). **Titus is the fleet's only macOS host** (`LAM2`, the developer machine), so this section is his — every other host is Linux. These are distinct from the Linux service-layer differences — they break the update **script itself**.
 
-### 20. `cortex-update.sh` aborts: `getent: command not found`
+### 20. `fleet-update.sh` aborts: `getent: command not found`
 
 **Symptom:** The update exits early with `getent: command not found` (or silently fails under `set -euo pipefail`) on macOS.
 
-**Root cause:** macOS has no `getent(1)`. `cortex-update.sh` (and `ops/scripts/install/os-config.sh`) resolve the real user's home with:
+**Root cause:** macOS has no `getent(1)`. `fleet-update.sh` (and `ops/scripts/install/os-config.sh`) resolve the real user's home with:
 
 ```bash
 _home=$(getent passwd "$_user" 2>/dev/null | cut -d: -f6)
@@ -993,7 +993,7 @@ fi
 _home="${_home:-$HOME}"
 ```
 
-**Status:** ✅ **Fixed in repo (2026-08-01)** — the `command -v getent` guard + `$HOME` fallback now ships in all 5 `cortex-update.sh` sites and `ops/scripts/install/os-config.sh`. Pull latest + run cortex-update to get it; no manual patch needed.
+**Status:** ✅ **Fixed in repo (2026-08-01)** — the `command -v getent` guard + `$HOME` fallback now ships in all 5 `fleet-update.sh` sites and `ops/scripts/install/os-config.sh`. Pull latest + run cortex-update to get it; no manual patch needed.
 
 ### 21. `sudo hermes-plugin-lock lock` hangs/fails on macOS
 
@@ -1031,7 +1031,7 @@ The doctor still passes this check (`Plugin lock helper ✅`) — it is cosmetic
 
 ```bash
 sudo chown "$USER":staff /usr/local/bin/hermes-plugin-lock
-~/steadfaste-fleet/ops/scripts/cortex-update.sh   # direct path — re-locks cleanly
+~/steadfaste-fleet/ops/scripts/fleet-update.sh   # direct path — re-locks cleanly
 ```
 
 Or accept the `FAILED:` line; the home copy is the protected one.
@@ -1042,7 +1042,7 @@ Or accept the `FAILED:` line; the home copy is the protected one.
 
 **Symptom:** The update finishes, then your next `terminal`/`patch` call is refused with `GOVERNANCE LOCK REQUIRED`.
 
-**Root cause:** `cortex-update.sh` runs a stale-lock cleanup at the end which removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`, upgrade from v1→v2). A **fresh** session-scoped v2 lock survives a deploy. (macOS note: pre-2026-08-10 the cleanup used GNU-only `date -d` with a `|| echo 0` fallback — on BSD/macOS it failed and deleted **every** lock on every deploy; fixed with a portable python3 epoch + fail-safe skip.)
+**Root cause:** `fleet-update.sh` runs a stale-lock cleanup at the end which removes `.governance-*.json` locks whose heartbeat exceeded TTL (>1h) plus legacy v1 locks (no `session_id`, upgrade from v1→v2). A **fresh** session-scoped v2 lock survives a deploy. (macOS note: pre-2026-08-10 the cleanup used GNU-only `date -d` with a `|| echo 0` fallback — on BSD/macOS it failed and deleted **every** lock on every deploy; fixed with a portable python3 epoch + fail-safe skip.)
 
 **Fix:** re-acquire after every deploy:
 
@@ -1068,12 +1068,12 @@ Then score all PENDING cycles (`cycle_query` → `feedback_accept`) and `end_cha
 
 ### 25. Deploy ≠ load — enforcement chain needs a gateway restart to activate
 
-**Symptom:** you ran `cortex-update.sh`, repo and deployed copies match
+**Symptom:** you ran `fleet-update.sh`, repo and deployed copies match
 (`sha256sum` equal), yet the sanctioned
-`bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh --status` still returns
+`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --status` still returns
 `GOVERNANCE LOCK REQUIRED` — the OLD behavior.
 
-**Root cause:** `cortex-update.sh` copies the new enforcer to disk, but the
+**Root cause:** `fleet-update.sh` copies the new enforcer to disk, but the
 RUNNING gateway process loaded the OLD module at startup. The plugin manager
 is a process-global singleton — `hermes plugins disable/enable` only writes
 `config.yaml`, it does NOT hot-reload. **Deploy ≠ load.**
@@ -1194,7 +1194,7 @@ The MCP server (`loop-gov-mcp.py`) was also fixed to sync both slug-specific + g
 ```
 Always three, always the same three: `~/.hermes/plugins/governance-enforcer/__init__.py`, `hooks/pre-commit`, `hooks/pre-push`.
 
-**Root cause:** a RACE, not a break. `cortex-update.sh` unlocks the immutable enforcement files early in its run and relocks them at the END, so that tree is legitimately writable for the whole deploy — and those three files are exactly the three the auditor samples. An auditor run landing inside that window reports an unlocked gate that the deploy is about to relock itself. Observed 2026-10-03: the deploy wrote its manifest at 16:30:04, the alert is stamped 16:30.
+**Root cause:** a RACE, not a break. `fleet-update.sh` unlocks the immutable enforcement files early in its run and relocks them at the END, so that tree is legitimately writable for the whole deploy — and those three files are exactly the three the auditor samples. An auditor run landing inside that window reports an unlocked gate that the deploy is about to relock itself. Observed 2026-10-03: the deploy wrote its manifest at 16:30:04, the alert is stamped 16:30.
 
 Confirm before touching anything: compare the alert timestamp with the deploy's writes (`stat -c '%y %n' ~/.steadfaste-fleet/deploy-manifest.tsv`) and check `hermes-plugin-lock status`. If every target shows `----i`, nothing is broken and the "fix" the auditor printed is the relock that already ran.
 
@@ -1234,9 +1234,9 @@ ls -l ~/.steadfaste-fleet/tools/loop-governance/loop-gov-mcp.py    # 2. the payl
 python3 -m venv ~/.steadfaste-fleet/venv
 ~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py   # declared set
 ```
-If the payload is missing instead, run `cortex-update.sh` (its register entry installs it).
+If the payload is missing instead, run `fleet-update.sh` (its register entry installs it).
 
-**Why this cannot recur silently.** `cortex-update.sh` now CREATES an absent fleet venv and
+**Why this cannot recur silently.** `fleet-update.sh` now CREATES an absent fleet venv and
 FILLS it from `install/requirements.txt`, deferring a failure if it cannot (a host that cannot
 run its MCP servers is never reported "clean"). Every launcher sources
 `scripts/lib/require-fleet-venv.sh`, which names the missing piece and exits **78 (EX_CONFIG)**
@@ -1274,7 +1274,7 @@ ls -l ~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/tools/loop-govern
 | What the check says | Fix |
 |---|---|
 | the entry is missing | `hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
-| paths do NOT exist | deploy them: `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`, then re-check |
+| paths do NOT exist | deploy them: `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`, then re-check |
 | the fleet venv cannot import `mcp` | `~/.steadfaste-fleet/venv/bin/python3 ~/.steadfaste-fleet/scripts/fix-cortex-venv.py` |
 | command is the HERMES venv or a bare `python3` | `hermes mcp remove <name> && hermes mcp add <name> --command ~/.steadfaste-fleet/venv/bin/python3 --args ~/steadfaste-fleet/mcp-servers/<script>` |
 

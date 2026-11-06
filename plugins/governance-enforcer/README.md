@@ -618,7 +618,7 @@ ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/
 
 # Run cortex-update to ensure repo is current:
 cd ~/steadfaste-fleet && git pull origin main
-bash ops/scripts/cortex-update.sh
+bash ops/scripts/fleet-update.sh
 
 # Then /reset the agent session
 ```
@@ -808,7 +808,7 @@ python3 script.py, node app.js, bash setup.sh (interpreter + .py/.js/.rb/.pl/.sh
 
 ## Upgrade: v1 (slug-based locks) → v2 (session-scoped locks)
 
-The upgrade is handled automatically by `cortex-update.sh`, but here's what
+The upgrade is handled automatically by `fleet-update.sh`, but here's what
 happens and how to verify a clean upgrade.
 
 ### What changed
@@ -823,7 +823,7 @@ happens and how to verify a clean upgrade.
 
 ### Upgrade steps
 
-1. `git pull && bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh `
+1. `git pull && bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh `
   - Cleans all stale slug-based lock files automatically
   - Ensures the new enforcer source is deployed
 2. `/reset` (new Hermes session)
@@ -913,7 +913,7 @@ ls ~/.steadfaste-fleet/state/.governance-*.json
 
 # If the filename (sess_<id>) doesn't match the bridge file content,
 # the handoff is broken. Run cortex-update to clear pycache and fix.
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
 ### Root causes of drift
@@ -922,4 +922,4 @@ bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
 |-------|---------|-----|
 | Stale .pyc cache | Old enforcer code runs with old session ID logic | `rm -rf __pycache__ && /reset` |
 | Bridge file not written | MCP falls back to PID scan, finds wrong session | Check OSError logs in enforcer |
-| Old MCP code (pre b26ea929) without args injection | MCP ignores args["session_id"], uses bridge → wrong session on concurrent sessions | `cortex-update.sh` to deploy new loop-gov-mcp.py, then restart MCP server |
+| Old MCP code (pre b26ea929) without args injection | MCP ignores args["session_id"], uses bridge → wrong session on concurrent sessions | `fleet-update.sh` to deploy new loop-gov-mcp.py, then restart MCP server |

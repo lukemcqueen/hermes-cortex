@@ -37,7 +37,7 @@ CORTEX_REPO = CORTEX_REPO.resolve()
 
 SCRIPTS_SRC = CORTEX_REPO / "ops" / "scripts"
 INSTALL_CRONS = SCRIPTS_SRC / "install-crons.sh"
-CORTEX_UPDATE = SCRIPTS_SRC / "cortex-update.sh"
+CORTEX_UPDATE = SCRIPTS_SRC / "fleet-update.sh"
 INSTALL_ORCH_CRONS = SCRIPTS_SRC / "install" / "install-orch-crons.sh"
 INSTALL_DREAM_CRONS = SCRIPTS_SRC / "install" / "install-dream-crons.sh"
 # Marker created by install-dream-crons.sh when the optional dream layer is
@@ -72,7 +72,7 @@ def resolve_external_base() -> str:
     if base:
         return base.rstrip("/")
 
-    # Also check .env file (sourced by cortex-update.sh but not always in env)
+    # Also check .env file (sourced by fleet-update.sh but not always in env)
     _env_file = Path.home() / "steadfaste-fleet" / ".env"
     try:
         for _line in _env_file.read_text().splitlines():
@@ -142,7 +142,7 @@ EXPECTED_MCP_SERVERS = {
 }
 
 # MCP servers deployed only on orchestrator hosts (register_orch in
-# cortex-update.sh). The doctor must not FAIL non-orchestrator hosts for
+# fleet-update.sh). The doctor must not FAIL non-orchestrator hosts for
 # missing these, and must not auto-add them via --fix.
 ORCH_ONLY_MCP_SERVERS = {"agent-bus", "executor"}
 

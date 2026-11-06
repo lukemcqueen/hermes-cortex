@@ -371,12 +371,12 @@ made *after* a deploy leaves HEAD ahead of it and the next check reports
 next deploy.** The cron-model chain is the canonical example (2026-08-31):
 
 - `hermes cron edit <id> --model X --provider Y` pins the LIVE job in
-  `jobs.json` — but `cortex-update.sh` → `install-crons.sh` drift-edit calls
+  `jobs.json` — but `fleet-update.sh` → `install-crons.sh` drift-edit calls
   `pin_cron_model`, which reads `ops/install/cron-manifest.yaml` and the
   manifest's model/provider WIN over the env default AND over the live pin.
   Symptom: repinned 21 crons, ran cortex-update, 14 were back to the old model.
 - **Durable-change recipe:** patch the manifest FIRST, then re-apply the live
-  pins, then run `cortex-update.sh` and RE-VERIFY pins survived
+  pins, then run `fleet-update.sh` and RE-VERIFY pins survived
   (`python3 -c "import json; [print(j['name'], j.get('model'), j.get('provider'))
   for j in json.load(open('$HOME/.hermes/cron/jobs.json'))['jobs']
   if not j.get('no_agent')]"`). A pin that survives a deploy is real; one that
@@ -452,7 +452,7 @@ The deployed tree (`~/.hermes/skills/…`) and the repo source
 (`skills/…/*/SKILL.md`) drift independently; the repo is the source of truth and
 the only copy that reaches other hosts. A lesson appended to the deployed copy
 alone is therefore invisible to the fleet AND is **clobbered by the next
-`cortex-update.sh` deploy**, which copies the repo source over it.
+`fleet-update.sh` deploy**, which copies the repo source over it.
 
 - **Write the lesson into the REPO source**, then deploy. Verify by grepping the
   repo path, not `~/.hermes/skills/`.

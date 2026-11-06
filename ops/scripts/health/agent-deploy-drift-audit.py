@@ -18,7 +18,7 @@ Checks (identical semantics to the doctor's checks):
      mapping (non local-*, non preserve list)       -> WARN (stale deploy)
 
 register_orch entries are only expected on orchestrator hosts (hostname
-moses|esther or IS_ORCHESTRATOR=true), mirroring cortex-update.sh's
+moses|esther or IS_ORCHESTRATOR=true), mirroring fleet-update.sh's
 deployment gate.
 
 Watchdog pattern (state-transition gate, same as the other no_agent
@@ -57,7 +57,7 @@ CORTEX_REPO = Path(os.environ.get("CORTEX_REPO", str(Path.home() / "steadfaste-f
 CORTEX_HOME = Path(os.environ.get("CORTEX_HOME", str(Path.home() / ".steadfaste-fleet")))
 
 # Local-only no_agent cron scripts — deployed per-host, intentionally absent
-# from register() mappings. Mirrors check_stale_deploys() + cortex-update.sh
+# from register() mappings. Mirrors check_stale_deploys() + fleet-update.sh
 # clean_stale_deploys().
 PRESERVE = {
     "agent-daily-bible-reading.py",
@@ -92,7 +92,7 @@ def _md5(path: Path) -> str | None:
 def _content_md5(path: Path) -> str | None:
     """MD5 of file content with the cortex SOURCE header stripped.
 
-    cortex-update.sh adds a 2-line SOURCE header + blank to deployed .sh/.py
+    fleet-update.sh adds a 2-line SOURCE header + blank to deployed .sh/.py
     files. Since 2026-08-02 the header sits BELOW the shebang; legacy deployed
     files have the header at the top. Layouts stripped (identical to
     fleet_doctor/checks.py _content_md5):
@@ -151,9 +151,9 @@ def _parse_registrations(cortex_update: Path) -> list[tuple[str, str, Path, str]
 
 
 def main() -> int:
-    cortex_update = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
+    cortex_update = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
     if not cortex_update.exists():
-        print(f"{_cron_ts('deploy-drift-audit')} cortex-update.sh not found at {cortex_update}")
+        print(f"{_cron_ts('deploy-drift-audit')} fleet-update.sh not found at {cortex_update}")
         return 1
 
     orch = _is_orch()
@@ -180,11 +180,11 @@ def main() -> int:
             findings.append(("WARN", f"deploy symlink to unknown target: {dest} -> {resolved} (should be a copy)"))
             continue
         if not dest.exists():
-            findings.append(("WARN", f"deployed copy missing: {src_rel} -> {dest_str} (run cortex-update.sh)"))
+            findings.append(("WARN", f"deployed copy missing: {src_rel} -> {dest_str} (run fleet-update.sh)"))
             continue
 
         # Content drift: compare repo source vs deployed copy, tolerating the
-        # SOURCE header cortex-update.sh prepends.
+        # SOURCE header fleet-update.sh prepends.
         src_md5 = _md5(src)
         dst_md5 = _md5(dest)
         if src_md5 is None or dst_md5 is None:
@@ -193,7 +193,7 @@ def main() -> int:
             continue  # byte-identical
         if _content_md5(dest) == src_md5:
             continue  # matches after stripping SOURCE header
-        findings.append(("FAIL", f"content drift: {dest} differs from repo source {src_rel} (run cortex-update.sh)"))
+        findings.append(("FAIL", f"content drift: {dest} differs from repo source {src_rel} (run fleet-update.sh)"))
 
     # Orphan scan of the deployed scripts dir (mirrors check_stale_deploys).
     scripts_dir = CORTEX_HOME / "scripts"

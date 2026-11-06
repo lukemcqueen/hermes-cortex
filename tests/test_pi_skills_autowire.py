@@ -8,7 +8,7 @@
      skipping the skills half on a host that had everything it needed. It must
      resolve an interpreter that can IMPORT yaml, not one that merely exists.
 
-  B. `cortex-update.sh` registered the installer and never ran it, with no
+  B. `fleet-update.sh` registered the installer and never ran it, with no
      Pi-presence check anywhere in the deploy: a host with Pi installed could sit
      unwired with nothing reporting it. The deploy must run the adapters WHEN PI IS
      PRESENT, and leave a host without Pi alone.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 ADAPTER = REPO / "ops" / "scripts" / "install" / "install-pi-integration.sh"
-DEPLOY = REPO / "ops" / "scripts" / "cortex-update.sh"
+DEPLOY = REPO / "ops" / "scripts" / "fleet-update.sh"
 RESOLVER = REPO / "ops" / "scripts" / "lib" / "python-with-module.sh"
 
 

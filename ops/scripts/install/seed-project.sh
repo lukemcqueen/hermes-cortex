@@ -109,7 +109,7 @@ case "$MODE" in
   *) die "Invalid mode: $MODE (use merge, overwrite, or diff)" ;;
 esac
 
-# ── Delta engine (same as cortex-update.sh) ──────────────────
+# ── Delta engine (same as fleet-update.sh) ──────────────────
 needs_update() {
   local src="$1" dest="$2"
   [[ ! -f "$dest" ]] && return 0

@@ -13,7 +13,7 @@ And the file doesn't exist anywhere in the repo either.
 
 The script was referenced in one or more of these locations but **never written**:
 
-- `cortex-update.sh` — has a `register` line mapping the repo path to deploy path
+- `fleet-update.sh` — has a `register` line mapping the repo path to deploy path
 - A wrapper script (`agent-card-daily.py`, etc.) — calls the missing script
 - `docs/cron-schedules.md` — lists it as the cron's script
 - `jobs.json` — the cron config references the wrapper

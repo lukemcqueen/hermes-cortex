@@ -45,7 +45,7 @@ def ensure_scripts_path() -> None:
 # ── Resolving a REPO-RELATIVE resource, in-repo or deployed ──────────────
 #
 # The deployed path of a repo file CANNOT be derived from the repo path. The
-# deploy map is per-file: of 289 register() calls in cortex-update.sh, 192 follow
+# deploy map is per-file: of 289 register() calls in fleet-update.sh, 192 follow
 # no rule —
 #
 #     ops/scripts/manage/task-db.py            -> scripts/task-db.py
@@ -58,7 +58,7 @@ def ensure_scripts_path() -> None:
 # first of which, <deploy>/tools/ops/scripts/judgment.py, exists in NEITHER
 # layout), cortex-context-mcp two.
 #
-# The fix is to stop guessing. cortex-update.sh already holds the mapping as data
+# The fix is to stop guessing. fleet-update.sh already holds the mapping as data
 # (its register() map), so it WRITES it out as `deploy-manifest.tsv` and these
 # functions READ it. One source of truth: the register() lines.
 #
@@ -89,7 +89,7 @@ def read_manifest(path) -> dict:
 def deploy_manifest():
     """The generated repo-path → deployed-path map, or {} when absent.
 
-    Written by cortex-update.sh. Absent in the repo (where the paths are already
+    Written by fleet-update.sh. Absent in the repo (where the paths are already
     correct) and on a host that has never been deployed.
     """
     for parent in Path(__file__).resolve().parents:

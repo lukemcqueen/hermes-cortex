@@ -6,8 +6,8 @@ an incoming commit introduces such a pair — or when the working tree already
 has a file whose on-disk case differs from the tracked name.
 
 Fleet symptom (Titus 2026-08-25): "can't update hermes at the moment (macos
-case-insensitive apfs conflicts with hermes repo somehow)". `cortex-update.sh`
-ran fine but the checkout stayed at the old commit — because `cortex-update.sh`
+case-insensitive apfs conflicts with hermes repo somehow)". `fleet-update.sh`
+ran fine but the checkout stayed at the old commit — because `fleet-update.sh`
 DEPLOYS, it does not pull. The pull is what the case conflict blocks.
 
 ## Detection (run on a Linux/CI host — case-sensitive FS can hold the pair)
@@ -52,7 +52,7 @@ whose originals differ.
 
 ## The 18-commit-behind trap (same session)
 
-`cortex-update.sh` output "Updated: 0932eef5 → 0932eef5" — the SAME SHA means
+`fleet-update.sh` output "Updated: 0932eef5 → 0932eef5" — the SAME SHA means
 the checkout never advanced; the deploy ran from a stale checkout. Always check
 `git merge-base --is-ancestor <local> origin/main` and `git log --oneline
 <local>..origin/main` to see what a pull would bring. A stale checkout silently

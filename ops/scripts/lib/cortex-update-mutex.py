@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Single-instance lock for cortex-update.sh.
+"""Single-instance lock for fleet-update.sh.
 
 Prevents two concurrent deploys of the SAME repo: both would unlock the same
 immutable enforcement files, race on the deploy marker, and interleave copies,
 leaving a half-deployed state or an unlocked gate (observed: two
-`cortex-update.sh --force-all` processes in parallel on moses).
+`fleet-update.sh --force-all` processes in parallel on moses).
 
 This is a WRAPPER, not a boilerplate you paste into the deploy script: the lock
 must be held for the WHOLE deploy, and a short-lived subprocess acquires-and-
@@ -30,7 +30,7 @@ Properties (what the fleet needs):
 Exit codes: 0 = guard ran the deploy to completion (child rc 0); 1 = lock
 already held by another deploy (refuse); 2 = usage error.
 
-Invoked from cortex-update.sh ``main()`` (once, after CORTEX_DEPLOY_HOME and the
+Invoked from fleet-update.sh ``main()`` (once, after CORTEX_DEPLOY_HOME and the
 venv python are resolved), guarded so the inner run skips the wrapper:
 
     if [[ -z "${CORTEX_UPDATE_INNER:-}" ]]; then

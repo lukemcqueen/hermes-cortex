@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Regression test: cortex-update.sh must not trip the gateway lifecycle guard.
+"""Regression test: fleet-update.sh must not trip the gateway lifecycle guard.
 
 2026-08-24 fleet-wide block (kustos report): every agent's `bash
-cortex-update.sh` was hard-blocked by the Hermes gateway lifecycle guard
+fleet-update.sh` was hard-blocked by the Hermes gateway lifecycle guard
 because the file contained BOTH:
   - launchctl lifecycle verbs (legit macOS service management) AND
   - a contiguous hermes-gateway label (com.hermes.gateway loop / systemctl
@@ -22,12 +22,19 @@ import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_SCRIPT = _REPO / "ops" / "scripts" / "cortex-update.sh"
+_SCRIPT = _REPO / "ops" / "scripts" / "fleet-update.sh"
 
 _GUARD = Path.home() / ".hermes" / "hermes-agent" / "cron" / "lifecycle_guard.py"
 
 
 def _load_guard():
+    # The guard imports tools.shell_heredoc — its sibling package in the Hermes
+    # agent tree — which is NOT on the fleet-venv sys.path by default. Add the
+    # hermes-agent root (parents[1]: .hermes/hermes-agent, NOT .hermes) so the
+    # import resolves (the guard itself lives under it).
+    _HERMES = _GUARD.parents[1]
+    if str(_HERMES) not in sys.path:
+        sys.path.insert(0, str(_HERMES))
     if not _GUARD.exists():
         return None
     spec = importlib.util.spec_from_file_location("lifecycle_guard", str(_GUARD))
@@ -37,19 +44,19 @@ def _load_guard():
     return mod
 
 
-def test_cortex_update_sh_passes_guard_scan():
+def test_fleet_update_sh_passes_guard_scan():
     lg = _load_guard()
     if lg is None:
         import pytest
         pytest.skip("Hermes lifecycle_guard.py not present")
     text = _SCRIPT.read_text()
     assert not lg.contains_gateway_lifecycle_command(text), (
-        "cortex-update.sh trips the gateway lifecycle guard — a contiguous "
+        "fleet-update.sh trips the gateway lifecycle guard — a contiguous "
         "hermes-gateway label or reassembled restart verb is present. "
         "Build labels/verbs from variables (see 2026-08-24 fix).")
 
 
-def test_cortex_update_sh_passes_referenced_script_scan():
+def test_fleet_update_sh_passes_referenced_script_scan():
     lg = _load_guard()
     if lg is None or not hasattr(lg, "contains_gateway_lifecycle_command_or_referenced_script"):
         import pytest
@@ -57,5 +64,5 @@ def test_cortex_update_sh_passes_referenced_script_scan():
     result = lg.contains_gateway_lifecycle_command_or_referenced_script(
         f"bash {_SCRIPT}")
     assert not result, (
-        "referenced-script scan blocks cortex-update.sh — deploy is broken "
+        "referenced-script scan blocks fleet-update.sh — deploy is broken "
         "for every agent")

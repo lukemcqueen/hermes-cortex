@@ -3,7 +3,7 @@
 ## Context
 
 The `hermes-plugin-lock` restricted helper script is deployed to
-`/usr/local/sbin/hermes-plugin-lock` by `cortex-update.sh`'s
+`/usr/local/sbin/hermes-plugin-lock` by `fleet-update.sh`'s
 `deploy_system_scripts()` function. It enables the governance enforcer
 plugin's immutability lifecycle (lock/unlock via `chattr +i` on Linux,
 `chflags uchg` on macOS).
@@ -40,7 +40,7 @@ def _check_plugin_lock_helper(res):
     if not helper_path.exists():
         res.add("Plugin lock helper", "FAIL",
                 "hermes-plugin-lock not found at /usr/local/sbin",
-                "Run: sudo cortex-update.sh or deploy manually from the repo")
+                "Run: sudo fleet-update.sh or deploy manually from the repo")
         return
     if not os.access(str(helper_path), os.X_OK):
         res.add("Plugin lock helper", "FAIL",
@@ -85,7 +85,7 @@ _check_plugin_lock_helper(res)
 
 ### Sudoers File Naming
 
-The warning in `cortex-update.sh` previously said to create
+The warning in `fleet-update.sh` previously said to create
 `/etc/sudoers.d/hermes-plugin-lock`. This was wrong — the convention
 is `/etc/sudoers.d/hermes` (a single multi-rule file). Fixed the
 warning path in the same commit.
@@ -94,7 +94,7 @@ warning path in the same commit.
 
 - `fleet_doctor/checks.py` — `_check_plugin_lock_helper()` function
 - `fleet_doctor/checks.py` — `check_governance()` invocation
-- `cortex-update.sh` — deploy warning (line 1154)
+- `fleet-update.sh` — deploy warning (line 1154)
 - `ops/install/deploy/nginx/hermes-plugin-lock` — the helper script
 
 ### Verification

@@ -44,7 +44,7 @@ Every improvement you make that benefits other agents MUST go into the `steadfas
 | What you built | Where it goes |
 |---------------|---------------|
 | A skill | `skills/<category>/<name>/` |
-| A script | `ops/scripts/` + register in `cortex-update.sh` MAP |
+| A script | `ops/scripts/` + register in `fleet-update.sh` MAP |
 | A workflow pattern | `docs/templates/` or shared skill |
 | A config improvement | Update the template/defaults |
 | A doc improvement | Update the relevant `.md` file |
@@ -68,7 +68,7 @@ Every improvement you make that benefits other agents MUST go into the `steadfas
 - **Adversarial verify** — The pre-commit scanner checks for issues. **Correct:** Fix what it reports.
   **Wrong:** Remove the check from the hook.
 - **Dogfood gate** — The pre-commit hook enforces that deployed code matches the repo source.
-  **Correct:** `bash ops/scripts/cortex-update.sh`, run doctor, fix issues, commit.
+  **Correct:** `bash ops/scripts/fleet-update.sh`, run doctor, fix issues, commit.
   **Wrong:** Push without testing.
 - **Rule 2** is enforced by per-repo **AGENTS.md** checks (`agents-doc-audit.py`) — the SOUL.md auto-sync gates (template-diff-check / soul-merge) were removed 2026-11-04 and are no longer enforced
 - **Both rules** are embedded in every agent-facing document: AGENTS.md, fleet-reference.md, SOUL.md templates, loop-governance skill, troubleshooting guide, git-enforcement docs, and install.sh
@@ -85,7 +85,7 @@ say 'are you bypassing governance?'" If yes, you're about to make a mistake.
 | Lock required | begin_change() | task_id + description | MCP tool |
 | Reflexion check | Load reflexion-check | Answer 8 questions | skill_view() |
 | Adversarial verify | Fix issues | What failed | Fix them |
-| Dogfood | Deploy + test | cortex-update.sh | Run it |
+| Dogfood | Deploy + test | fleet-update.sh | Run it |
 
 ### Two independent gates — expect the second block
 

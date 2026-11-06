@@ -1,8 +1,8 @@
-# Guard Content-Scan False Positive — cortex-update.sh case (2026-08-24)
+# Guard Content-Scan False Positive — fleet-update.sh case (2026-08-24)
 
 ## Incident
 
-Kustos reported a fleet-wide deploy block: `bash cortex-update.sh` was
+Kustos reported a fleet-wide deploy block: `bash fleet-update.sh` was
 hard-blocked on his host by the Hermes gateway lifecycle guard. Diagnosis
 showed the repo + origin were already fine — the problem was the DEPLOYED
 script's content tripping the guard's **order-independent launchctl branch**:
@@ -13,7 +13,7 @@ _HERMES_GATEWAY_LABEL_RE       = \bhermes[.\-]?gateway\b
 _contains_launchctl_gateway_lifecycle = verbs_re.search(text) AND label_re.search(text)
 ```
 
-cortex-update.sh legitimately contains BOTH halves:
+fleet-update.sh legitimately contains BOTH halves:
 - Verb half: `launchctl unload/load` for com.hermes.cortex-bus / cortex-dashboard
   plists, `launchctl kickstart` for com.hermes.health-server (real macOS service
   management, lines ~623-670)
@@ -71,12 +71,12 @@ spec = importlib.util.spec_from_file_location(
     "lifecycle_guard", str(Path.home() / ".hermes/hermes-agent/cron/lifecycle_guard.py"))
 lg = importlib.util.module_from_spec(spec); spec.loader.exec_module(lg)
 assert not lg.contains_gateway_lifecycle_command(script_text)
-assert not lg.contains_gateway_lifecycle_command_or_referenced_script("bash .../cortex-update.sh")
+assert not lg.contains_gateway_lifecycle_command_or_referenced_script("bash .../fleet-update.sh")
 ```
 
 ## Verification checklist (all passed for d2de94d9)
 
-- [ ] `bash -n ops/scripts/cortex-update.sh`
+- [ ] `bash -n ops/scripts/fleet-update.sh`
 - [ ] Guard scan PASS on repo source AND deployed copy (`~/.steadfaste-fleet/scripts/`)
 - [ ] Referenced-script scan PASS (`contains_gateway_lifecycle_command_or_referenced_script`)
 - [ ] Zero splice artifacts remain (grep `re""start`, `hermes""`, `gw_verb` etc.)

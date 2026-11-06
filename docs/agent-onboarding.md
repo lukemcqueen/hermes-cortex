@@ -587,7 +587,7 @@ Every fleet agent has its own **mycortex-postgres** running locally. It provides
 - **`tasks` schema** — durable cross-session task persistence (via `task-db.py` / `task_*` MCP tools). RLS isolates each profile's personal tasks; fleet rows are writable only by orchestrators and stored locally until transport ships (docs/design/task-workflow.md)
 - **loop-governance** — cycle scoring (orchestrators; bus schema on orch hosts)
 
-You don't need to install or manage Postgres yourself — your `cortex-update.sh` deploys the schemas automatically as part of the full stack (version-gated migrations).
+You don't need to install or manage Postgres yourself — your `fleet-update.sh` deploys the schemas automatically as part of the full stack (version-gated migrations).
 
 **Verify your DB connectivity:** The doctor checks this:
 

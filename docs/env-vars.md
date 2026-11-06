@@ -8,7 +8,7 @@ and related scripts. New variables should be added here with all fields.
 ## Env File
 
 The env file lives at `~/steadfaste-fleet/.env` (gitignored) — the single source of truth
-for all Cortex environment variables. It's auto-sourced by deploy scripts and `cortex-update.sh`.
+for all Cortex environment variables. It's auto-sourced by deploy scripts and `fleet-update.sh`.
 Every reference now points here. The deploy dir carries a **sanctioned back-compat symlink**,
 `~/.steadfaste-fleet/.env → ~/steadfaste-fleet/.env`, so legacy readers resolving the deploy-dir
 path keep working; the old `~/.steadfaste-fleet/cortex-bus.conf` name was retired 2026-10-17
@@ -34,14 +34,14 @@ bash ~/.steadfaste-fleet/scripts/consolidate-env.sh
 
 | Variable | Default | Scripts | Purpose |
 |----------|---------|---------|---------|
-| `CORTEX_PYTHON` | `~/.steadfaste-fleet/venv/bin/python3` (declared in `~/.steadfaste-fleet/agent.env` by `cortex-update.sh`) | `python-with-module.sh`, every caller that needs "the fleet python" | **The ONE named fleet interpreter.** Callers read this instead of re-deriving a path, so a wrong one is visible in one place instead of seven. `python-with-module.sh` consults it first (after `PYTHON=`) and still requires the CAPABILITY to import the module it was asked for — a declaration that cannot import is NAMED, not silently skipped. Never overwritten by a deploy: an operator may legitimately point a host elsewhere. |
-| `CORTEX_REPO` | `$HOME/steadfaste-fleet` | `cortex-update.sh`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
-|| `CORTEX_SKIP_NGINX` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. ||
-|| `CORTEX_FORCE_DEPLOY` | _(unset)_ | `cortex-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |
-|| `CORTEX_NGINX_PORT_PREFIX` | `13` | `cortex-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. |
-|| `CORTEX_SSL_CERT_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `cortex-update.sh` | Explicit SSL certificate path. Overrides all auto-detection. |
-|| `CORTEX_SSL_CERT_KEY_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `cortex-update.sh` | Explicit SSL certificate key path. Overrides all auto-detection. |
-|| `CORTEX_SSL_DOMAIN` | *(auto-scan)* | `hermes-services-apply.py`, `cortex-update.sh` | Domain name for Let's Encrypt cert lookup at `/etc/letsencrypt/live/<domain>`. When unset, scans all directories under `/etc/letsencrypt/live/`. |
+| `CORTEX_PYTHON` | `~/.steadfaste-fleet/venv/bin/python3` (declared in `~/.steadfaste-fleet/agent.env` by `fleet-update.sh`) | `python-with-module.sh`, every caller that needs "the fleet python" | **The ONE named fleet interpreter.** Callers read this instead of re-deriving a path, so a wrong one is visible in one place instead of seven. `python-with-module.sh` consults it first (after `PYTHON=`) and still requires the CAPABILITY to import the module it was asked for — a declaration that cannot import is NAMED, not silently skipped. Never overwritten by a deploy: an operator may legitimately point a host elsewhere. |
+| `CORTEX_REPO` | `$HOME/steadfaste-fleet` | `fleet-update.sh`, `hermes-services-apply.py` | Path to the hermec-cortex repo. Multiple scripts source templates and configs from here. |
+|| `CORTEX_SKIP_NGINX` | _(unset)_ | `fleet-update.sh`, `hermes-services-apply.py` | When set to any value, skip nginx config deploy, test, and reload. ||
+|| `CORTEX_FORCE_DEPLOY` | _(unset)_ | `fleet-update.sh`, `hermes-services-apply.py` | When set to `1`, re-resolve SSL certs and port prefix from env/auto-detect instead of preserving existing values from the live config. |
+|| `CORTEX_NGINX_PORT_PREFIX` | `13` | `fleet-update.sh`, `hermes-services-apply.py` | Two-digit port prefix for nginx server blocks. Template ships as `13xxx`; set to `12` (Joseph), `14` (Esther), etc. |
+|| `CORTEX_SSL_CERT_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `fleet-update.sh` | Explicit SSL certificate path. Overrides all auto-detection. |
+|| `CORTEX_SSL_CERT_KEY_PATH` | *(auto-detect)* | `hermes-services-apply.py`, `fleet-update.sh` | Explicit SSL certificate key path. Overrides all auto-detection. |
+|| `CORTEX_SSL_DOMAIN` | *(auto-scan)* | `hermes-services-apply.py`, `fleet-update.sh` | Domain name for Let's Encrypt cert lookup at `/etc/letsencrypt/live/<domain>`. When unset, scans all directories under `/etc/letsencrypt/live/`. |
 | `HERMES_SERVICES` | _(unset ⇒ auto)_ | `hermes-services-apply.py`, `install-nginx-full.sh` | Comma-separated nginx service opt-ins: `dashboard,langfuse,health,grafana,bus,metrics` (or `all` / `extra`). The extras bundle is grafana (xx003) + bus (xx004). **Unset is the default**: extras stay off, while the push-metrics sink (xx005, `metrics-sink.conf`) deploys automatically wherever a local VictoriaMetrics answers — that default exists because the push client is universal but the sink used to be opt-in and defaulted off. Set it explicitly to override; a list without `metrics` keeps xx005 off. |
 | `CORTEX_VM_HEALTH_URL` | `http://127.0.0.1:8428/-/healthy` | `hermes-services-apply.py`, `install-nginx-full.sh` | Backend health probe behind the push-metrics auto-detect gate. Repoint it if VictoriaMetrics runs on a non-default address. |
 | `CORTEX_VM_QUERY_URL` | _(derived)_ | `cortex-doctor` (Metrics arrival age) | Pin the sink the arrival check queries. Unset, it derives from this host's `VICTORIA_METRICS_URL`/`_FALLBACK_URL` in push order (local backend last), so it asks the sink that actually receives. |
@@ -166,10 +166,10 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ## Deploy Script Comparison
 
-||| Feature | `cortex-update.sh` | `install-nginx-full.sh` | `hermes-services-apply.py` |
+||| Feature | `fleet-update.sh` | `install-nginx-full.sh` | `hermes-services-apply.py` |
 ||---------|-------------------|------------------------|---------------------------|
 || Language | Bash | Bash **(legacy, deprecated)** | **Python (primary — use this)** |
-| Run by | `cortex-update.sh` (auto-update) | sudo / cron | Manual or script pipeline |
+| Run by | `fleet-update.sh` (auto-update) | sudo / cron | Manual or script pipeline |
 | OS-aware paths | ✓ (via `os-config.sh`) | ✓ (inline) | ✓ (inline) |
 | `__NGINX_CONFIG_DIR__` | ✓ | ✓ | ✓ |
 | `__NGINX_LOG_DIR__` | ✓ | ✓ | ✓ |
@@ -188,20 +188,20 @@ valid cert paths are provided — this is intentional. SSL is mandatory, not opt
 
 ## Script Usage
 
-### cortex-update.sh (auto-deploy)
+### fleet-update.sh (auto-deploy)
 
 ```bash
 # Defaults — auto-detects everything
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # With custom SSL and port prefix
 CORTEX_SSL_CERT_PATH=/etc/letsencrypt/live/mydomain.com/fullchain.pem \
 CORTEX_SSL_CERT_KEY_PATH=/etc/letsencrypt/live/mydomain.com/privkey.pem \
 CORTEX_NGINX_PORT_PREFIX=12 \
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 
 # Skip nginx entirely (scripts-only update)
-CORTEX_SKIP_NGINX=1 bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh
+CORTEX_SKIP_NGINX=1 bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh
 ```
 
 > ⚠ **Legacy script:** `install-nginx-full.sh` is deprecated. Use `hermes-services-apply.py` above instead.

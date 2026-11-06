@@ -37,7 +37,7 @@ subsystem, no new service. The pieces already exist and are only wired together.
 |---|---|---|
 | Schedule the reviewer | `cronjob` MCP (orchestrator-only) + `ops/scripts/install-orch-crons.sh` | an `orch-adversarial-review` cron the worker cannot create or edit |
 | Pin the reviewer model | `LLM_CRON_PROVIDER` + fallback chain (the single control point) | the review cron's provider is set to `deepseek-v4-pro` — the *same* provider/model family as the worker; independence is context isolation, not model difference (§5.1) |
-| Fixed, un-editable prompt | `docs/templates/` (orchestrator-only path; pre-commit hook blocks non-orchestrator edits; `cortex-update.sh` overwrites local drift) | the reviewer prompt lives there and is read by the cron at run time |
+| Fixed, un-editable prompt | `docs/templates/` (orchestrator-only path; pre-commit hook blocks non-orchestrator edits; `fleet-update.sh` overwrites local drift) | the reviewer prompt lives there and is read by the cron at run time |
 | Where findings land | the loop-governance DB (already tracks cycles/notes) | a new `adversarial_reviews` table — or the existing bus `REVIEW_FINDINGS` message to the orchestrator inbox |
 | Deterministic first pass | the pre-commit hook + `adversarial-verify.py` | kept as-is: the static gate runs first, the semantic reviewer runs second |
 
@@ -69,7 +69,7 @@ worker agent ── does work ──► loop-governance DB (cycles + notes + out
   doctor check asserts it is not the worker's session.
 - *Fixed prompt* — the reviewer prompt is a committed file in
   `docs/templates/`, an orchestrator-only path: the pre-commit hook refuses a
-  non-orchestrator's edit, and `cortex-update.sh` overwrites any local drift on
+  non-orchestrator's edit, and `fleet-update.sh` overwrites any local drift on
   deploy. The cron reads the prompt from that file at run time — never from the
   worker's session, never from the reviewed output.
 - *Orchestrator-triggered* — the cron is created by the orchestrator via

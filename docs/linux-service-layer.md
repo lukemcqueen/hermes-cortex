@@ -27,14 +27,14 @@ docs audit, which both pointed at this file before it existed.
    `/home/<user>/`. systemd expands `%h` inside `ExecStart`/`ExecStartPre` arguments, including
    inside the shell string below.
 3. **Interpreter: the fleet venv**, `%h/.steadfaste-fleet/venv/bin/python3` — the venv
-   `cortex-update.sh` registers every MCP server against. **Not `/usr/bin/python3`** (it lacks
+   `fleet-update.sh` registers every MCP server against. **Not `/usr/bin/python3`** (it lacks
    the declared set) and not the Hermes venv.
 4. **Source the launcher guard before exec'ing**, so a missing venv or payload is named in the
    journal instead of dying as `No such file or directory`:
    ```ini
    ExecStart=/bin/bash -lc '. %h/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh; require_fleet_venv <payload>; exec "%h/.steadfaste-fleet/venv/bin/python3" <payload> <args>'
    ```
-   If the venv is absent, `cortex-update.sh` creates and fills it on the host's next update
+   If the venv is absent, `fleet-update.sh` creates and fills it on the host's next update
    (see `docs/troubleshooting.md`).
 
 ## `/restart` semantics (the one real difference from macOS)

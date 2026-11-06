@@ -40,7 +40,7 @@ not canonical until the live bits repoint. Un-canonical surfaces, confirmed on e
 
 ## Per-host completion steps
 
-Run in this order on a freshly-pulled, freshly-deployed host (`git pull` + `cortex-update.sh`
+Run in this order on a freshly-pulled, freshly-deployed host (`git pull` + `fleet-update.sh`
 first — that is what puts the swept sources on the host). Orchestrators: each write below is a
 governed action; `begin_change` a cycle named for it and close it.
 

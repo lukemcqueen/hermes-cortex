@@ -21,7 +21,7 @@ For each commit:
 | fc7d64c3 | pre-commit-score | `STAGED_FILES=''` → populated from `git diff --cached` | **✅ Keep** — was dead code, this ENABLED the guard |
 | 10d1b5e5 | loop-gov-mcp.py | 1786→102 lines (gutted) | **🔴 Revert** — stripped MCP enforcement |
 | 0d56ce17 | loop-gov-mcp.py | 102→~1800 lines (rebuilt with DOGFOOD) | **✅ Keep** — restored with improvements, 20 min later |
-| 09839638 | 8 files (1630 ins) | Script renames, doc sync, cortex-update.sh updates | **🟡 Keep** — fixes doctor warnings |
+| 09839638 | 8 files (1630 ins) | Script renames, doc sync, fleet-update.sh updates | **🟡 Keep** — fixes doctor warnings |
 | d986e1e4 | AGENTS.md | 161 ins, deployed→repo sync | **✅ Keep** — doc sync |
 | 3981b388 | SOUL.md template | +14 lines, Principle 25 | **✅ Keep** — adds principle |
 

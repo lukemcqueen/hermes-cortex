@@ -3,7 +3,7 @@
 # restore-moses-stack.sh — post-migration stack bring-up (moses host)
 # Run once with:  sudo bash ~/steadfaste-fleet/ops/install/restore-moses-stack.sh
 # Idempotent. 2026-08-30. Covers the root-needing steps only;
-# the rest of the deploy (cortex-update.sh) runs as the moses user.
+# the rest of the deploy (fleet-update.sh) runs as the moses user.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -97,4 +97,4 @@ else
   warn "ollama still not responding after start — check service"
 fi
 
-log "done. Next (as moses): bash ~/.steadfaste-fleet/scripts/cortex-update.sh 2>&1 | tail -30"
+log "done. Next (as moses): bash ~/.steadfaste-fleet/scripts/fleet-update.sh 2>&1 | tail -30"

@@ -47,7 +47,7 @@ not just today's count.
 ## Reference surface (file:function:line)
 
 **Declarations:** `skills.yaml` `always:` 8→3; deployed
-`~/.steadfaste-fleet/skills.yaml` syncs via cortex-update.sh.
+`~/.steadfaste-fleet/skills.yaml` syncs via fleet-update.sh.
 
 **Enforcer (repo `plugins/governance-enforcer/` + deployed `~/.hermes/plugins/`):**
 - `__init__.py:83` `_REQUIRED_SKILLS` derive from skills.yaml

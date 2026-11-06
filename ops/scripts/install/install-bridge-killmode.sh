@@ -3,7 +3,7 @@
 # install-bridge-killmode.sh
 #
 # Keeps the bridge units' KillMode correct on every host that runs
-# cortex-update.sh.
+# fleet-update.sh.
 #
 # A cortex-bridge-*.service unit is Type=oneshot, whose systemd default
 # KillMode is control-group: when the tick's ExecStart exits, systemd
@@ -36,7 +36,7 @@
 # them. Idempotent — a host that is already correct skips the reload.
 # Nothing is swallowed: a unit the repair could not fix, or that the
 # manager still reports without KillMode=process, is named on stderr and
-# exits non-zero (the caller in cortex-update.sh surfaces that as a
+# exits non-zero (the caller in fleet-update.sh surfaces that as a
 # warning and continues the deploy).
 #
 # Exit codes:
@@ -46,7 +46,7 @@
 #   3  the self-test itself could not run
 #
 # Usage:
-#   bash install-bridge-killmode.sh             # apply (called by cortex-update.sh)
+#   bash install-bridge-killmode.sh             # apply (called by fleet-update.sh)
 #   bash install-bridge-killmode.sh --self-test # prove this file in a temp dir
 # ───────────────────────────────────────────────────────────────
 set -euo pipefail

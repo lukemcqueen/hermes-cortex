@@ -78,7 +78,7 @@ def test_the_wrapper_exists_and_is_executable():
     _check("the wrapper is executable", os.access(wrapper, os.X_OK),
            f"mode {oct(wrapper.stat().st_mode)[-3:] if wrapper.is_file() else '?'}")
     _check("the wrapper is registered for deploy",
-           WRAPPER_REL in (REPO / "ops/scripts/cortex-update.sh").read_text(errors="ignore"),
+           WRAPPER_REL in (REPO / "ops/scripts/fleet-update.sh").read_text(errors="ignore"),
            "an unregistered wrapper is missing on a deployed-only host")
 
 

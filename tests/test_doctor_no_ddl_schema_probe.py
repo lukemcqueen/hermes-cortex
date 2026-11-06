@@ -14,7 +14,7 @@ defect, measured rather than argued:
 
 So an unattended health check made a host's repo working tree authoritative for
 production DDL and bypassed the register-map contract that
-`cortex-update.sh:446` states ("the register map IS the deploy"). Measured
+`fleet-update.sh:446` states ("the register map IS the deploy"). Measured
 consequence: an UNCOMMITTED migration file reached the live `mycortex` database
 ~50 s after it was written, before it was committed, registered or deployed.
 
@@ -65,7 +65,7 @@ def test_doctor_check_does_not_call_apply_schema():
         "the doctor must REPORT the tasks schema version, never apply it: a "
         "health check that applies DDL makes a repo working tree authoritative "
         "for production schema and bypasses the register map "
-        "(cortex-update.sh:446)")
+        "(fleet-update.sh:446)")
 
 
 def test_doctor_reads_the_version_read_only():

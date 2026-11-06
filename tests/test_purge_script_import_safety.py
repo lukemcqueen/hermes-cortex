@@ -1,6 +1,6 @@
 """Importing the purge script must be INERT; running it must still purge.
 
-`purge-stale-governance-locks.py` is registered in cortex-update.sh and run as a no_agent cron,
+`purge-stale-governance-locks.py` is registered in fleet-update.sh and run as a no_agent cron,
 but it also calls `purge()` at module level, so loading it (by a test, a probe, a doctor check)
 executed the purge against the LIVE state directory — and an importer cannot protect itself,
 because repointing STATE_DIR after the import is too late. That was observed for real: a probe

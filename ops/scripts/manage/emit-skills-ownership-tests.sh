@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regenerate the skills-ownership test transcript (cycle 13491).
 #
-# CHECKOUT-ONLY — run-scoped evidence tooling, deliberately not in cortex-update.sh
+# CHECKOUT-ONLY — run-scoped evidence tooling, deliberately not in fleet-update.sh
 # register(): a host does not need it to stay healthy. The tools under test ARE registered
 # (ops/scripts/manage/migrate-skills-ownership.py, ops/scripts/manage/publish-agent-skills.py).
 #

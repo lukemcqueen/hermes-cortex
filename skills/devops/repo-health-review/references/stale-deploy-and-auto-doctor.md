@@ -2,7 +2,7 @@
 
 ## Problem
 
-When a `register()` line is removed from `cortex-update.sh`, the deployed
+When a `register()` line is removed from `fleet-update.sh`, the deployed
 copy stays on disk at `~/.steadfaste-fleet/scripts/`. Over time, these orphan
 files accumulate. Similarly, after install/update, agents don't know if
 their deployment is actually healthy.
@@ -11,7 +11,7 @@ their deployment is actually healthy.
 
 ### 1. Auto-Cleanup After Every Deploy
 
-**File:** `ops/scripts/cortex-update.sh` — `clean_stale_deploys()` function
+**File:** `ops/scripts/fleet-update.sh` — `clean_stale_deploys()` function
 
 Runs automatically at the end of every deploy. Scans
 `~/.steadfaste-fleet/scripts/` for `.py` and `.sh` files not in any
@@ -19,10 +19,10 @@ Runs automatically at the end of every deploy. Scans
 
 ```bash
 # Manual invocation
-bash ops/scripts/cortex-update.sh --clean-stale
+bash ops/scripts/fleet-update.sh --clean-stale
 
 # Dry-run (preview without deleting)
-bash ops/scripts/cortex-update.sh --dry-run cortex-update.sh
+bash ops/scripts/fleet-update.sh --dry-run fleet-update.sh
 ```
 
 ### 2. Doctor Stale Deploy Detection
@@ -43,7 +43,7 @@ python3 ops/scripts/manage/cortex-doctor.py 2>&1 | grep "Stale deploy"
 **install.sh** — runs `cortex-doctor.py --quiet` after installation completes
 (before final cleanup).
 
-**cortex-update.sh** — runs `cortex-doctor.py --quiet` after update finishes
+**fleet-update.sh** — runs `cortex-doctor.py --quiet` after update finishes
 (after service verify, stale cleanup, cron install, governance lock cleanup).
 
 Both use `|| true` so warnings never block the install/update.

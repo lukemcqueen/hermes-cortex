@@ -16,7 +16,7 @@ metadata:
 ## When to Use
 
 - A terminal command is flagged: `Command was flagged (Security scan: security issue detected ...)`
-- A **sanctioned** command (e.g. `bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh`) still prompts for user approval
+- A **sanctioned** command (e.g. `bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh`) still prompts for user approval
 - Smart-approval escalates a routine command to the user, and the approval times out → deny
 - Any command that used to run clean suddenly needs approval
 
@@ -30,7 +30,7 @@ don't understand masks the defect and leaves every other command still broken.
 Terminal commands pass TWO independent gates:
 
 1. **Governance enforcer** (Steadfaste Fleet plugin) — governance-lock check. The
-   sanctioned `cortex-update.sh` invocation passes this without a lock.
+   sanctioned `fleet-update.sh` invocation passes this without a lock.
 2. **Hermes smart approval** (`tools/approval.py`) — two sub-layers:
    - Regex `detect_dangerous_command()` — pattern matching (curl|sh, rm -rf, gateway restart, etc.)
    - **Tirith security scanner** — `tools/tirith_security.py` → external binary
@@ -55,12 +55,12 @@ approve/allowlist the command.
 ```python
 # 1. Regex layer passes?
 from tools.approval import detect_dangerous_command
-detect_dangerous_command("bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
+detect_dangerous_command("bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh")
 # → (False, None, None)  — regex layer is NOT the blocker
 
 # 2. Tirith layer blocks?
 from tools.tirith_security import check_command_security
-check_command_security("bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
+check_command_security("bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh")
 # → {"action": "block", "summary": "security issue detected (details unavailable)"}
 
 # 3. Which binary is resolved? PATH-shadowing check
@@ -84,7 +84,7 @@ exit 1 → `block` → degraded summary.
 
 **Consequence:** EVERY terminal command was being "scanned" by the crashing demo. The
 smart-approval LLM auto-approved most silently; commands with sudo/chattr/systemctl
-(like cortex-update.sh) got escalated to the user → approval timeout → deny.
+(like fleet-update.sh) got escalated to the user → approval timeout → deny.
 
 ### Detection
 
@@ -190,7 +190,7 @@ loop-governance server was unreachable without it. Match the existing entries' s
 Two mechanics this class of change always hits, because the enforcer is enforcement code:
 
 - **Edit the REPO source, then deploy.** The enforcer files are immutable and the deployed copy is
-  overwritten by the next update; `cortex-update.sh` owns unlock → copy → relock. Hand-editing
+  overwritten by the next update; `fleet-update.sh` owns unlock → copy → relock. Hand-editing
   `~/.hermes/plugins/...` looks like it worked and is erased later.
 - **Deploy ≠ loaded for a plugin.** The enforcer module is imported at GATEWAY START, so a
   classifier change is inert until the gateway restarts — and the deploy's own reload line names

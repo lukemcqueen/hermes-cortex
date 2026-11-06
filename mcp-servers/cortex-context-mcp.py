@@ -71,7 +71,7 @@ if _TOOLS_PY is None:
               if repo_resource_candidates else ["<fleet_lib.paths unavailable>"])
     print(f"[cortex-context-mcp] ERROR: {_TOOLS_REL} not found. Tried: "
           + ", ".join(_tried)
-          + " — run cortex-update.sh, or point --args at the repo copy.",
+          + " — run fleet-update.sh, or point --args at the repo copy.",
           file=sys.stderr)
     sys.exit(1)
 _spec = importlib.util.spec_from_file_location("cortex_context_tools", _TOOLS_PY)

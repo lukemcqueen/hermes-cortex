@@ -73,7 +73,7 @@ def is_valid_transition(from_state: str, to_state: str) -> bool:
 # Ensure hermes_models.py is importable. Candidates in order:
 #   1. ~/.hermes/scripts            — Hermes agent scripts dir (often a symlink
 #      to ~/.steadfaste-fleet/scripts, but NOT guaranteed — macOS hosts can lack it)
-#   2. ~/.steadfaste-fleet/scripts     — canonical deploy location; cortex-update.sh
+#   2. ~/.steadfaste-fleet/scripts     — canonical deploy location; fleet-update.sh
 #      registers hermes_models.py here on EVERY host (add 2026-08-25: the old
 #      _REPO_SCRIPTS computed ~/.steadfaste-fleet/tools/scripts which never exists)
 #   3. <script_dir>/scripts         — repo-layout fallback (mcp-servers/../scripts)
@@ -301,7 +301,7 @@ ORPHAN_REAPER_TAG = "[orphan-reaper]"
 # ── Dogfood Gate ─────────────────────────────────────────────
 # Structural enforcement: begin_change checks if the deployed governance
 # plugin matches the repo source. If not, the agent pushed code but didn't
-# run cortex-update.sh to deploy it locally. Block until they dogfood.
+# run fleet-update.sh to deploy it locally. Block until they dogfood.
 
 import hashlib as _dogfood_hashlib
 
@@ -332,7 +332,7 @@ def _require_dogfood() -> Optional[str]:
                 "    The governance plugin at ~/.hermes/plugins/governance-enforcer/ differs from\n"
                 "    the repo source (the commit you just pushed).\n\n"
                 "    Dogfooding means: deploy AND test.\n"
-                "      1. bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh\n"
+                "      1. bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh\n"
                 "         (this exact command is sanctioned to run WITHOUT a governance lock;\n"
                 "          the enforcer allows it lock-free so you can self-recover)\n"
                 "      2. Run the changed code path — verify it works with actual output\n"
@@ -2414,7 +2414,7 @@ def _complete_push_range_blobs(lock: dict, cycle: dict, cx: Optional[dict] = Non
             _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
             return CallToolResult(content=[TextContent(type="text", text=(
                 "❌ Cannot close: the per-blob review pass needs the reviewer prompt "
-                "template and it is missing or corrupt. Run cortex-update.sh, then "
+                "template and it is missing or corrupt. Run fleet-update.sh, then "
                 "retry end_change."
             ))])
         return None                      # an optional pass: the gate's own refusal covers this
@@ -4475,7 +4475,7 @@ ALWAYS_REVIEW_PATHS = [
     "ops/scripts/pre-push-pull",
     "ops/scripts/post-commit-audit",
     "ops/scripts/post-push-audit",
-    "ops/scripts/cortex-update.sh",
+    "ops/scripts/fleet-update.sh",
     "ops/scripts/quality/adversarial-verify.py",
     "ops/install/hooks/",
 ]
@@ -7259,7 +7259,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         # but NEVER unlabelled. On a host where the session's git identity does
         # not resolve, a pull/rebase puts OTHER agents' commits inside the lock
         # window; presenting them unlabelled made the reviewer attribute a peer's
-        # enforcement edits (mcp-servers/, ops/scripts/cortex-update.sh) to this
+        # enforcement edits (mcp-servers/, ops/scripts/fleet-update.sh) to this
         # worker and reject its evidence as fabrication (Titus, 2026-10-02).
         # Enforcement is unchanged: every commit is still included, and the same
         # always-review fail-safe in _complexity() still forces this review.
@@ -7279,7 +7279,7 @@ def _adversarial_review_gate(lock: dict, cycle: dict,
         _mark_close_refused(cycle.get("id", 0), "TEMPLATE_MISSING", "[]", lock)
         return CallToolResult(content=[TextContent(type="text", text=(
             "❌ Cannot close: self-adversarial reviewer prompt template is missing or "
-            "corrupt. Run cortex-update.sh, then retry end_change."
+            "corrupt. Run fleet-update.sh, then retry end_change."
         ))])
 
     # Identify WHICH session / agent / repo tree this material belongs to.

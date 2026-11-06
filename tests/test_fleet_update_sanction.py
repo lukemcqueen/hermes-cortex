@@ -3,7 +3,7 @@
 
 The enforcer's _is_sanctioned_cortex_update_command is the single lock-free
 carve-out that lets any agent run the deploy script without a governance lock.
-It sanctions the path by LITERAL regex, so renaming ops/scripts/cortex-update.sh
+It sanctions the path by LITERAL regex, so renaming ops/scripts/fleet-update.sh
 -> fleet-update.sh without widening the gate first would lock EVERY host out of
 deploys (the old name's sanction dies with the file). Step 1 widens the regex to
 (?:cortex-update|fleet-update)\.sh and this test pins BOTH that the CURRENT
@@ -30,13 +30,13 @@ def _enforcer():
 
 
 def _sanctioned(cmd: str) -> bool:
-    return _enforcer()._is_sanctioned_cortex_update_command(cmd)
+    return _enforcer()._is_sanctioned_fleet_update_command(cmd)
 
 
 def test_current_name_still_sanctioned():
-    assert _sanctioned(f"bash {Path.home()}/steadfaste-fleet/ops/scripts/cortex-update.sh")
-    assert _sanctioned(f"bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
-    assert _sanctioned(f"{Path.home()}/steadfaste-fleet/ops/scripts/cortex-update.sh --dry-run --status")
+    assert _sanctioned(f"bash {Path.home()}/steadfaste-fleet/ops/scripts/fleet-update.sh")
+    assert _sanctioned(f"bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh")
+    assert _sanctioned(f"{Path.home()}/steadfaste-fleet/ops/scripts/fleet-update.sh --dry-run --status")
 
 
 def test_future_fleet_name_sanctioned_before_it_exists():
@@ -46,16 +46,11 @@ def test_future_fleet_name_sanctioned_before_it_exists():
     assert _sanctioned(f"bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh --clean-stale")
 
 
-def test_new_name_not_required_to_exist():
-    # Explicit: the future path is not on disk at step 1; that must not matter.
-    assert not (Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "fleet-update.sh").exists()
-
-
 def test_non_deploy_shapes_rejected():
     for cmd in (
         f"bash ~/steadfaste-fleet/ops/scripts/some-other.sh",
-        f"sudo bash {Path.home()}/steadfaste-fleet/ops/scripts/cortex-update.sh",
+        f"sudo bash {Path.home()}/steadfaste-fleet/ops/scripts/fleet-update.sh",
         f"bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh -c 'x'",
-        f"bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh | tail -1",
+        f"bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh | tail -1",
     ):
         assert not _sanctioned(cmd), f"unsanctioned shape accepted: {cmd}"

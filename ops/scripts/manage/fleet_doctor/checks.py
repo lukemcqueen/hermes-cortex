@@ -79,7 +79,7 @@ def _read_config_from_bus_conf(key: str) -> str:
 
 
 def _deploy_map() -> dict:
-  """repo-relative source path -> deployed absolute path, parsed from cortex-update.sh.
+  """repo-relative source path -> deployed absolute path, parsed from fleet-update.sh.
 
   The register()/register_orch() map is the ONE definition of what a deploy
   covers; nothing derives it, so the doctor reads it from the same file the
@@ -87,7 +87,7 @@ def _deploy_map() -> dict:
   a non-orchestrator host because they do not deploy there).
   """
   out: dict = {}
-  cortex_update = CORTEX_REPO / "ops" / "scripts" / "cortex-update.sh"
+  cortex_update = CORTEX_REPO / "ops" / "scripts" / "fleet-update.sh"
   if not cortex_update.exists():
     return out
   for line in cortex_update.read_text(errors="replace").splitlines():
@@ -181,7 +181,7 @@ def check_repo(res: "Results") -> None:
         res.add("Deploy sync", "WARN",
             f"deployed revision {deployed_commit[:12]} does not resolve in this repo — "
             f"could not verify what changed since it",
-            "Run: cortex-update.sh")
+            "Run: fleet-update.sh")
       else:
         changed = run_bg(["git", "-C", str(CORTEX_REPO), "diff", "--name-only",
                           f"{deployed_commit}..HEAD"]) or ""
@@ -211,7 +211,7 @@ def check_repo(res: "Results") -> None:
           res.add("Deploy sync", "FAIL",
               f"HEAD ({head_commit[:12]}) is ahead of the last deploy ({deployed_commit[:12]}) and "
               f"{len(not_deployed)} changed deploy-map file(s) are NOT deployed: {shown}",
-              "REQUIRED: Run: cortex-update.sh ")
+              "REQUIRED: Run: fleet-update.sh ")
         else:
           res.add("Deploy sync", "PASS",
               f"content-current — every deploy-map file changed since the last deploy "
@@ -220,7 +220,7 @@ def check_repo(res: "Results") -> None:
       res.add("Deploy sync", "PASS", "deployed commit matches HEAD")
   else:
     res.add("Deploy sync", "WARN", "state/update-commit not found — deploy status unknown",
-        "Run: cortex-update.sh (creates state/update-commit)")
+        "Run: fleet-update.sh (creates state/update-commit)")
 
   # Private repo migration check
   _private = HOME / "steadfaste-fleet-private"
@@ -271,7 +271,7 @@ def check_deployed_gate_smoke(res: "Results") -> None:
       if out.returncode != 0:
         res.add("Deployed gate smoke", "FAIL",
                 f"deployed verifier exited {out.returncode}: {out.stderr[:120]}",
-                "Run: cortex-update.sh then re-run doctor")
+                "Run: fleet-update.sh then re-run doctor")
         return
       try:
         data = _json.loads(out.stdout)
@@ -318,11 +318,11 @@ def check_adversarial_review(res: "Results") -> None:
   if not t.exists():
     res.add("Self-adversarial review template", "FAIL",
             f"prompt template missing (checked {template} and {repo_template})",
-            "Run: cortex-update.sh (registers docs/templates/adversarial-reviewer-prompt.md)")
+            "Run: fleet-update.sh (registers docs/templates/adversarial-reviewer-prompt.md)")
   elif "=== REVIEWED MATERIAL ===" not in t.read_text(errors="replace"):
     res.add("Self-adversarial review template", "FAIL",
             "template is missing the === REVIEWED MATERIAL === marker",
-            "Restore docs/templates/adversarial-reviewer-prompt.md from git, then cortex-update.sh")
+            "Restore docs/templates/adversarial-reviewer-prompt.md from git, then fleet-update.sh")
   else:
     res.add("Self-adversarial review template", "PASS", "present with REVIEWED MATERIAL marker")
 
@@ -1116,8 +1116,8 @@ def _check_changed_script_execution(res):
   scheduler's last_run_at must be AFTER the script's last commit. Running
   the script manually (python3/bash) does NOT update the scheduler's
   last_status, and a source-only fix never reaches the running job until
-  cortex-update.sh deploys it — so the correct dogfood sequence is:
-    bash cortex-update.sh          # deploy
+  fleet-update.sh deploys it — so the correct dogfood sequence is:
+    bash fleet-update.sh          # deploy
     cronjob action='run' job_id=<id>   # run through the scheduler
 
   Added 2026-08-04 after the inbox_moses→inbox_orchestrator rename shipped
@@ -1201,7 +1201,7 @@ def _check_changed_script_execution(res):
   if unrun:
     res.add("Script run evidence", "WARN",
         f"{len(unrun)} changed script(s) not run through the scheduler since the change: " + "; ".join(unrun[:5]),
-        "Dogfood: bash cortex-update.sh (deploy), then cronjob action='run' job_id=<id>. "
+        "Dogfood: bash fleet-update.sh (deploy), then cronjob action='run' job_id=<id>. "
         "Manual python3/bash runs don't update the scheduler's last_status.")
   else:
     res.add("Script run evidence", "PASS",
@@ -1609,7 +1609,7 @@ def check_scripts(res):
                 "Fix the filesystem error so source matching can verify deployed scripts")
         if repo_source.is_file():
           try:
-            # Strip SOURCE header from deployed copy (cortex-update.sh adds it;
+            # Strip SOURCE header from deployed copy (fleet-update.sh adds it;
             # since 2026-08-02 the header sits BELOW the shebang)
             _raw = deployed.read_bytes()
             _text = _raw.decode("utf-8", errors="surrogateescape")
@@ -1641,11 +1641,11 @@ def check_scripts(res):
   else:
     for name, script in missing[:5]:
       res.add(f"Script ({name})", "FAIL", f"not found: {script}",
-          "Run: bash cortex-update.sh ")
+          "Run: bash fleet-update.sh ")
     for name, script, deployed_path in mismatched[:5]:
       res.add(f"Script content ({name})", "FAIL",
           f"{script} — deployed copy differs from repo source",
-          f"REQUIRED: Run: cortex-update.sh to resync")
+          f"REQUIRED: Run: fleet-update.sh to resync")
 
 
 def check_cron_runtime_scripts(res):
@@ -1660,7 +1660,7 @@ def check_cron_runtime_scripts(res):
   ~/.steadfaste-fleet/scripts). Detected 2026-08-02: watchdog ran a frozen
   Jul-31 copy with legacy brain checks after the legacy → mycortex migration.
 
-  Expected end state (cortex-update.sh): ~/.hermes/scripts is a symlink to
+  Expected end state (fleet-update.sh): ~/.hermes/scripts is a symlink to
   ~/.steadfaste-fleet/scripts, OR both resolve to the same directory.
   """
   runtime = HERMES_HOME / "scripts"
@@ -1677,12 +1677,12 @@ def check_cron_runtime_scripts(res):
   if not runtime.exists():
     res.add("Cron runtime scripts", "FAIL",
         f"{runtime} missing — scheduler will fail every no_agent cron",
-        "Run: bash cortex-update.sh (it creates the symlink)")
+        "Run: bash fleet-update.sh (it creates the symlink)")
     return
   if not deploy.exists():
     res.add("Cron runtime scripts", "WARN",
         f"{deploy} missing — deploy target absent",
-        "Run: bash cortex-update.sh")
+        "Run: bash fleet-update.sh")
     return
 
   if runtime_resolved == deploy_resolved:
@@ -1697,7 +1697,7 @@ def check_cron_runtime_scripts(res):
   # Divergent real directory — the stale-cron-copy failure mode
   res.add("Cron runtime scripts", "FAIL",
       f"{runtime} is a separate directory from {deploy} — cron scripts run STALE copies",
-      "Remove unique files from ~/.hermes/scripts (back them up first), then run: bash cortex-update.sh to symlink")
+      "Remove unique files from ~/.hermes/scripts (back them up first), then run: bash fleet-update.sh to symlink")
 
 def _check_bus_e2e(res):
   """End-to-end bus test: config → health → self round-trip → stuck msgs → EXEC path."""
@@ -1872,7 +1872,7 @@ def _check_bus_e2e(res):
     if processing_count > 0:
       res.add("Bus stuck msgs", "FAIL",
           f"{processing_count} message(s) stuck in 'processing' state for {queue}",
-          "Handler is crashing before archive — run: git pull && cortex-update.sh ")
+          "Handler is crashing before archive — run: git pull && fleet-update.sh ")
     elif pending_count > 0:
       res.add("Bus stuck msgs", "WARN",
           f"{pending_count} pending message(s) in {queue} — may be normal",
@@ -1984,7 +1984,7 @@ def _check_bus_e2e(res):
   else:
     res.add("Bus handler", "FAIL",
         "agent-message-handler.py not found at expected path",
-        f"Run: cortex-update.sh (expected at {handler_path})")
+        f"Run: fleet-update.sh (expected at {handler_path})")
 
 
 def _known_agent_names() -> list:
@@ -2213,7 +2213,7 @@ def _check_self_stale(res):
 
     # Compare content hash — tolerate small mtime drift from deploy/copy latency
     import hashlib as _hl
-    # Strip SOURCE header from deployed copy before hashing (cortex-update.sh
+    # Strip SOURCE header from deployed copy before hashing (fleet-update.sh
     # adds it; since 2026-08-02 the header sits BELOW the shebang)
     _raw = deployed.read_bytes()
     _text = _raw.decode("utf-8", errors="surrogateescape")
@@ -2232,7 +2232,7 @@ def _check_self_stale(res):
     if deployed_hash != repo_hash:
       res.add("Doctor version", "WARN",
           "Running older version — repo source differs",
-          "Run: cortex-update.sh ")
+          "Run: fleet-update.sh ")
     else:
       res.add("Doctor version", "PASS", "Deployed version matches repo")
   except Exception as e:
@@ -2250,7 +2250,7 @@ def _check_required_tools(res):
     "curl": "bus HTTP client, doctor HTTP checks, health pings",
   }
   # jq is intentionally NOT required — scripts must use python3 for JSON.
-  # bash >= 4 is checked by cortex-update.sh itself.
+  # bash >= 4 is checked by fleet-update.sh itself.
   for tool, used_by in tools.items():
     if shutil.which(tool):
       res.add(f"Tool ({tool})", "PASS", f"found — {used_by}")
@@ -2376,7 +2376,7 @@ def check_services(res):
 def check_system(res):
   """5. System resources: disk, memory, systemd service scope."""
   if IS_LINUX:
-    # Systemd scope is DESIGN-AWARE (2026-09-08). cortex-update.sh is
+    # Systemd scope is DESIGN-AWARE (2026-09-08). fleet-update.sh is
     # explicitly scope-aware: on migrated hosts Hermes services (gateway,
     # cortex-bus, dashboard, health-vector) run as SYSTEM units
     # (multi-user.target) by design. A flat WARN whenever any hermes-*.service
@@ -2671,7 +2671,7 @@ def check_nginx(res):
   if found_placeholders:
     res.add("Nginx placeholders", "FAIL",
         f"unsubstituted: {', '.join(found_placeholders)}",
-        "Run: cortex-update.sh or hermes-services-apply.py")
+        "Run: fleet-update.sh or hermes-services-apply.py")
 
   htpasswd_path = None
   for line in text.split("\n"):
@@ -2687,7 +2687,7 @@ def check_nginx(res):
     elif _path_ok(str(htpasswd_expected)):
       res.add("Nginx htpasswd", "FAIL",
           f"config points to '{htpasswd_path}' (not found) — expected '{htpasswd_expected}'",
-          f"Re-deploy: cortex-update.sh ")
+          f"Re-deploy: fleet-update.sh ")
     else:
       res.add("Nginx htpasswd", "FAIL",
           f"not found at '{htpasswd_path}' (and expected '{htpasswd_expected}' also missing)",
@@ -2711,7 +2711,7 @@ def check_nginx(res):
         agent_card_missing += 1
         res.add("Nginx agent-card", "FAIL",
             f"not found at '{card_path}'",
-            "Run: cortex-update.sh  OR generate agent card in that directory")
+            "Run: fleet-update.sh  OR generate agent card in that directory")
 
   if agent_card_found > 0 and agent_card_missing == 0:
     res.add("Nginx agent-card", "PASS", f"{agent_card_found} agent card alias(es) resolve")
@@ -2863,7 +2863,7 @@ def _check_plugin_lock_helper(res):
   if not helper_path.exists():
     res.add("Plugin lock helper", "FAIL",
         f"hermes-plugin-lock not found at {helper_path}",
-        f"Run: cortex-update.sh (deploys to {deploy_path}/)")
+        f"Run: fleet-update.sh (deploys to {deploy_path}/)")
     return
   if not os.access(str(helper_path), os.X_OK):
     res.add("Plugin lock helper", "FAIL",
@@ -2885,7 +2885,7 @@ def _check_plugin_lock_helper(res):
       res.add("Plugin lock helper", "PASS",
           f"helper OK ({result.stdout.strip()[:60]})")
     else:
-      fix = f"Deploy helper via cortex-update.sh"
+      fix = f"Deploy helper via fleet-update.sh"
       if not _is_macos:
         fix = ("Add sudoers entry: echo '$(whoami) ALL=(root) NOPASSWD: "
             f"{helper_path}' | sudo tee /etc/sudoers.d/hermes")
@@ -2895,7 +2895,7 @@ def _check_plugin_lock_helper(res):
   except (subprocess.TimeoutExpired, OSError) as e:
     res.add("Plugin lock helper", "FAIL",
         f"hermes-plugin-lock status failed: {e}",
-        "Check helper binary and deploy via cortex-update.sh")
+        "Check helper binary and deploy via fleet-update.sh")
 
 
 def _check_fix_blocked_ips_root_copy(res):
@@ -2904,7 +2904,7 @@ def _check_fix_blocked_ips_root_copy(res):
   P1-A hardening (2026-07-31): the sudoers NOPASSWD target for the blocked-IP
   generator is a root-owned immutable copy at /usr/local/sbin (Linux) or
   /usr/local/bin (macOS), NOT the user-writable repo working tree. That copy
-  is deliberately NOT owned by cortex-update.sh — it only updates via
+  is deliberately NOT owned by fleet-update.sh — it only updates via
   deploy-fix-blocked-ips.sh (sudo). If it goes stale, the nginx-threat-pipeline
   commits+pushes new blocked IPs but never applies them to nginx — silently.
 
@@ -3013,7 +3013,7 @@ def check_governance(res):
       if plugin_src.exists() and str(plugin_src) in target:
         res.add("Plugin symlink", "FAIL",
             f"symlinked to {target} — should be a copy for chattr +i safety",
-            "Run: cortex-update.sh (converts symlink→copy automatically)")
+            "Run: fleet-update.sh (converts symlink→copy automatically)")
         # Check for stale __pycache__ — source .py newer than .pyc
         pycache_dir = plugin_src / "__pycache__"
         if pycache_dir.exists():
@@ -3044,7 +3044,7 @@ def check_governance(res):
         else:
           res.add("Plugin content", "FAIL",
               "deployed copy differs from repo — stale after git update",
-              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
+              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh"
               " (sanctioned deploy path — deploys, relocks, and verifies)")
       else:
         res.add("Plugin content", "WARN",
@@ -3057,11 +3057,11 @@ def check_governance(res):
       else:
         res.add("Enforcer survey gate", "WARN",
             "missing SURVEY_MARKER constant — survey-before-cron gate not active",
-            "Pull latest steadfaste-fleet and run cortex-update.sh ")
+            "Pull latest steadfaste-fleet and run fleet-update.sh ")
     except (OSError, PermissionError) as e:
       res.add("Enforcer survey gate", "WARN",
           f"cannot read enforcer plugin to verify survey gate: {type(e).__name__}: {e}",
-          "Fix permissions on " + str(plugin_src / "__init__.py") + " or run cortex-update.sh")
+          "Fix permissions on " + str(plugin_src / "__init__.py") + " or run fleet-update.sh")
   else:
     res.add("Governance plugin", "FAIL", "not installed",
         "Install: ln -sf ~/steadfaste-fleet/plugins/governance-enforcer ~/.hermes/plugins/\n"
@@ -3095,7 +3095,7 @@ def check_governance(res):
     res.add("DeepSeek MCP tool name", "WARN",
         f"COULD NOT VERIFY: {_ds_installer} is missing",
         "Restore ops/scripts/install/install-pi-mcp.sh from the repo "
-        "(cortex-update.sh deploys it)")
+        "(fleet-update.sh deploys it)")
   else:
     # Verify the VERIFIER before believing it. An exit code is only evidence if the pair that
     # produces it behaves, so the installer's own --self-test runs FIRST (cheap: a temp dir,
@@ -3244,9 +3244,9 @@ def check_governance(res):
     res.add("MCP wiring audit", "WARN",
         f"unavailable: {type(_mw_err).__name__}: {str(_mw_err)[:120]}",
         "COULD NOT VERIFY the MCP wiring — restore ops/scripts/manage/mcp_wiring.py "
-        "(cortex-update.sh deploys it to scripts/mcp_wiring.py)")
+        "(fleet-update.sh deploys it to scripts/mcp_wiring.py)")
   for name, server_script in EXPECTED_MCP_SERVERS.items():
-    # Orchestrator-only MCP servers (register_orch in cortex-update.sh) are
+    # Orchestrator-only MCP servers (register_orch in fleet-update.sh) are
     # expected only on orchestrator hosts. On other hosts, absence is correct
     # and presence is drift worth a warning, not a failure.
     if name in ORCH_ONLY_MCP_SERVERS and not is_orch:
@@ -3296,7 +3296,7 @@ def check_governance(res):
     if not pi_check.exists():
       res.add("Pi integration", "WARN",
               f"Pi is installed but {pi_check} was not deployed — the adapter cannot be wired",
-              "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
+              "Run: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh")
     else:
       try:
         pi_proc = subprocess.run(["bash", str(pi_check), "--check"],
@@ -3328,10 +3328,10 @@ def check_governance(res):
         break
   if not declared_py:
     res.add("Fleet python", "WARN", "no CORTEX_PYTHON declared — the built-in order applies",
-            "Run cortex-update.sh: it declares the fleet venv in ~/.steadfaste-fleet/agent.env")
+            "Run fleet-update.sh: it declares the fleet venv in ~/.steadfaste-fleet/agent.env")
   elif not Path(declared_py).expanduser().exists():
     res.add("Fleet python", "FAIL", f"CORTEX_PYTHON points at nothing: {declared_py}",
-            "Fix CORTEX_PYTHON in ~/.steadfaste-fleet/agent.env, or run cortex-update.sh "
+            "Fix CORTEX_PYTHON in ~/.steadfaste-fleet/agent.env, or run fleet-update.sh "
             "(it creates and fills an absent fleet venv)")
   else:
     try:
@@ -3367,14 +3367,14 @@ def check_governance(res):
     elif "score-cycle" in content and "governance" in content:
       res.add("Pre-commit hook", "WARN",
           "missing enforcer plugin presence check",
-          "Update: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
+          "Update: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh"
           " (current hook is missing enforcer verification)")
     else:
       res.add("Pre-commit hook", "WARN", "installed but may be outdated",
-          "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh")
+          "Run: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh")
   else:
     res.add("Pre-commit hook", "FAIL", f"not found at {expected_hook_path}",
-        "Install: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh\n"
+        "Install: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh\n"
         "The sanctioned deploy path installs and locks all hooks.")
 
   # ── Pre-push hook ──
@@ -3605,7 +3605,7 @@ def check_governance(res):
     if not deployed_hook.exists():
       res.add(f"Hook: {hook_name} (deployed)", "FAIL",
           f"missing at {deployed_hook}",
-          "REQUIRED: Run: cortex-update.sh ")
+          "REQUIRED: Run: fleet-update.sh ")
       continue
     res.add(f"Hook: {hook_name} (deployed)", "PASS", f"present at {deployed_hook}")
 
@@ -3630,7 +3630,7 @@ def check_governance(res):
 
     # Check 3: deployed hook is a valid symlink (post-merge is intentionally standalone)
     if hook_name == 'post-merge':
-      pass  # intentionally standalone — registered via register() in cortex-update.sh
+      pass  # intentionally standalone — registered via register() in fleet-update.sh
     elif deployed_hook.is_symlink():
       target = os.readlink(str(deployed_hook))
       target_path = Path(target) if target.startswith('/') else deployed_hook.parent / target
@@ -3640,11 +3640,11 @@ def check_governance(res):
       else:
         res.add(f'Hook: {hook_name} (symlink)', 'FAIL',
             f'symlink target missing: {target}',
-            'REQUIRED: Run: cortex-update.sh to re-deploy hooks')
+            'REQUIRED: Run: fleet-update.sh to re-deploy hooks')
     else:
       res.add(f'Hook: {hook_name} (symlink)', 'WARN',
           'not a symlink — may drift from updated source',
-          'REQUIRED: rm and re-deploy via cortex-update.sh')
+          'REQUIRED: rm and re-deploy via fleet-update.sh')
 
     # Check 4: deployed hook content matches repo source (SHA256)
     if repo_source.exists() and deployed_hook.exists():
@@ -3655,7 +3655,7 @@ def check_governance(res):
       else:
         res.add(f"Hook: {hook_name} (content)", "FAIL",
             "deployed hook differs from repo source",
-            f"REQUIRED: Run: cortex-update.sh ")
+            f"REQUIRED: Run: fleet-update.sh ")
 
   # ── Redundant local git hooks (repos with own hooks despite core.hooksPath) ──
   # When core.hooksPath is set globally, local .git/hooks/ are NEVER consulted
@@ -3829,11 +3829,11 @@ def check_governance(res):
     else:
       res.add("Skills gate", "WARN",
           "missing SKILLS_MARKER_DIR — skills gate not active",
-          "Pull latest steadfaste-fleet and run cortex-update.sh")
+          "Pull latest steadfaste-fleet and run fleet-update.sh")
   except (OSError, PermissionError) as e:
     res.add("Skills gate", "WARN",
         f"cannot read enforcer plugin to verify skills gate: {type(e).__name__}: {e}",
-        "Fix permissions on " + str(plugin_src / "__init__.py") + " or run cortex-update.sh")
+        "Fix permissions on " + str(plugin_src / "__init__.py") + " or run fleet-update.sh")
 
 
 def check_hook_drift(res):
@@ -3905,7 +3905,7 @@ def check_hook_drift(res):
             severity = "WARN" if hook_name in OPTIONAL_HOOKS else "FAIL"
             res.add(f"Hook drift: {hook_name}", severity,
                     f"hook not found at {hook_path}",
-                    f"Run: cortex-update.sh to deploy hooks")
+                    f"Run: fleet-update.sh to deploy hooks")
             continue
 
         # Deployed: resolve symlink → compare target file
@@ -3919,7 +3919,7 @@ def check_hook_drift(res):
         if not deployed_target.exists():
             res.add(f"Hook drift: {hook_name}", "FAIL",
                     f"symlink target {deployed_target} not found",
-                    f"Run: cortex-update.sh to recreate hook")
+                    f"Run: fleet-update.sh to recreate hook")
             continue
 
         # Repo source
@@ -3944,7 +3944,7 @@ def check_hook_drift(res):
         else:
             res.add(f"Hook drift: {hook_name}", "FAIL",
                     f"deployed {deployed_target.name} ({dep_md5[:8]}) != repo {repo_name} ({src_md5[:8]})",
-                    f"Run: cortex-update.sh to redeploy hook")
+                    f"Run: fleet-update.sh to redeploy hook")
 
 
 def check_local_hooksPath_overrides(res):
@@ -4169,7 +4169,7 @@ def check_pinned_hooks_fresh(res):
     if stale:
         res.add("Pinned hooks fresh", "FAIL",
             f"{len(stale)} stale pinned hook(s): " + "; ".join(stale[:6]),
-            "Run: bash ops/scripts/cortex-update.sh --force (refreshes pinned "
+            "Run: bash ops/scripts/fleet-update.sh --force (refreshes pinned "
             "hook files from deployed source; foreign hooks preserved)")
     elif checked == 0:
         res.add("Pinned hooks fresh", "PASS",
@@ -4211,7 +4211,7 @@ def check_install(res):
 
 def check_stale_deploys(res):
   """Check ~/.steadfaste-fleet/scripts/ for orphaned or mis-deployed files."""
-  cortex_update = Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "cortex-update.sh"
+  cortex_update = Path.home() / "steadfaste-fleet" / "ops" / "scripts" / "fleet-update.sh"
   if not cortex_update.exists():
     return
 
@@ -4242,7 +4242,7 @@ def check_stale_deploys(res):
     if not repo_src.exists():
       res.add("Deploy source missing", "FAIL",
           f"{src} → {dest_str}",
-          f"Remove register line for {src} in cortex-update.sh")
+          f"Remove register line for {src} in fleet-update.sh")
 
     if dest.is_symlink():
       # Resolve the symlink target — if it's a known register() destination,
@@ -4261,13 +4261,13 @@ def check_stale_deploys(res):
       if not dest.is_file():
         res.add(f"Deploy not regular: {dest.name}", "WARN",
             "Not a regular file",
-            f"Remove and re-deploy: rm {dest} && cortex-update.sh ")
+            f"Remove and re-deploy: rm {dest} && fleet-update.sh ")
 
   scripts_dir = deploy_home / "scripts"
   if scripts_dir.exists():
     # Local-only no_agent cron scripts — NOT in repo, created per-host.
     # They are intentionally absent from register() mappings; must not be
-    # flagged as stale. Mirrors the preserve list in cortex-update.sh
+    # flagged as stale. Mirrors the preserve list in fleet-update.sh
     # clean_stale_deploys(). (2026-08-02: adding the doctor cron-runtime
     # check surfaced these as "stale" — they were already preserved by the
     # deployer, the doctor just didn't know about them.)
@@ -4279,7 +4279,7 @@ def check_stale_deploys(res):
       if f.is_file() and f.suffix in (".py", ".sh") and "__pycache__" not in str(f):
         if f in destinations or f.name in preserve:
           continue
-        # Systematic local-* rule — mirrors cortex-update.sh
+        # Systematic local-* rule — mirrors fleet-update.sh
         # clean_stale_deploys(): ANY local- prefixed script is
         # deployed-only (created per-host, not in repo). The hand-maintained
         # preserve list above can't anticipate every new local-* script, so
@@ -4424,7 +4424,7 @@ def check_stale_skills(res):
   if missing:
     res.add(f"Stale skills: missing", "INFO",
         f"{len(missing)} repo skill(s) not deployed: {', '.join(missing[:12])}",
-        f"Run: cortex-update.sh")
+        f"Run: fleet-update.sh")
   else:
     res.add("Stale skills: missing", "PASS", "all repo skills are deployed")
 
@@ -4451,7 +4451,7 @@ def check_deploy_checksums(res):
   """Check MD5 checksums of deployed files vs repo source across ALL mappings.
 
   Covers three categories:
-  1. register() entries in cortex-update.sh (scripts → ~/.steadfaste-fleet/scripts/)
+  1. register() entries in fleet-update.sh (scripts → ~/.steadfaste-fleet/scripts/)
   2. Non-register path mappings (plugins, AGENTS.md, SOUL.md, profiles)
   3. Governance plugin symlink vs copy detection
   """
@@ -4474,17 +4474,17 @@ def check_deploy_checksums(res):
   def _content_md5(path):
     """Compute MD5 hex digest of file content with SOURCE header stripped.
 
-    cortex-update.sh adds a 2-line SOURCE header + blank to deployed .sh/.py
+    fleet-update.sh adds a 2-line SOURCE header + blank to deployed .sh/.py
     files. Since 2026-08-02 the header sits BELOW the shebang (so direct
     ./script.py execution still works); legacy deployed files have the
     header at the top. Layouts stripped:
       #!/usr/bin/env python3      ← shebang (kept)
       # SOURCE: <path>            ← dropped
-      # Do NOT edit this file — edit the source above and run: bash cortex-update.sh
+      # Do NOT edit this file — edit the source above and run: bash fleet-update.sh
       (blank)                     ← dropped
     or legacy:
       # SOURCE: <path>            ← dropped
-      # Do NOT edit this file — edit the source above and run: bash cortex-update.sh
+      # Do NOT edit this file — edit the source above and run: bash fleet-update.sh
       (blank)                     ← dropped
 
     This function strips the header before computing the hash, so checksums
@@ -4513,7 +4513,7 @@ def check_deploy_checksums(res):
     """Check a single source→dest pair and report if MD5 differs.
 
     Uses _content_md5() for the deployed (dest) path to account for the
-    3-line SOURCE header that cortex-update.sh prepends. Reports both
+    3-line SOURCE header that fleet-update.sh prepends. Reports both
     the raw and stripped comparison for transparency.
     """
     src_md5 = _md5(src_path)
@@ -4530,7 +4530,7 @@ def check_deploy_checksums(res):
     if dst_md5 is None:
       res.add(f"Checksum: {label}", "WARN",
           f"deployed copy missing: {dest_path}",
-          f"Run: cortex-update.sh ")
+          f"Run: fleet-update.sh ")
       return
     if src_md5 == dst_md5:
       res.add(f"Checksum: {label}", "PASS", "content matches repo source")
@@ -4541,16 +4541,16 @@ def check_deploy_checksums(res):
       res.add(f"Checksum: {label}", "FAIL",
           f"MD5 mismatch — deployed copy differs from repo source"
           f"{' (even after stripping SOURCE header)' if dst_content_md5 is not None else ''}",
-          f"REQUIRED: Run: cortex-update.sh to resync")
+          f"REQUIRED: Run: fleet-update.sh to resync")
 
-  # ── Category 1: Parse register() entries from cortex-update.sh ──
+  # ── Category 1: Parse register() entries from fleet-update.sh ──
   # NOTE (2026-08-05): MEMORY.md/USER.md are intentionally NOT registered —
   # they are Hermes-owned user memory (~/.hermes/memories/). Deploying them
   # made every cortex-update overwrite personalized memory with the seed
   # template, and this sweep then FAILed on the healthy personalized state
-  # ("Run cortex-update.sh to resync" = the destructive action). Never
+  # ("Run fleet-update.sh to resync" = the destructive action). Never
   # re-add memory files to the register map.
-  cortex_update = repo_dir / "ops" / "scripts" / "cortex-update.sh"
+  cortex_update = repo_dir / "ops" / "scripts" / "fleet-update.sh"
   if cortex_update.exists():
     content = cortex_update.read_text()
     for line in content.splitlines():
@@ -5000,7 +5000,7 @@ def check_skill_stubs(res):
                 f"{path} — {size} bytes, truncated (Full content (truncated))",
                 "Replace with full copy from agent state/skill-contents cache: "
                 "EXEC agent-skill-stub-audit.py --send on each source agent, then "
-                "copy the returned full content over skills/ and run cortex-update.sh")
+                "copy the returned full content over skills/ and run fleet-update.sh")
         if len(stubs) > 10:
             res.add(f"Skill stubs ({len(stubs)} total)", "FAIL",
                 f"{len(stubs) - 10} more truncated skills",
@@ -5019,7 +5019,7 @@ def check_task_db(res):
     if not task_script.is_file():
         res.add("Task DB script", "FAIL",
             f"Not found at {task_script}",
-            "Run: cortex-update.sh to deploy task-db.py")
+            "Run: fleet-update.sh to deploy task-db.py")
         return
 
     # Connectivity — `pending` must return valid JSON. The repo is named
@@ -5056,7 +5056,7 @@ def check_task_db(res):
     if not add_out or "added" not in add_out.lower():
         res.add("Task DB write-probe", "FAIL",
             f"task-db.py add did not confirm: {add_out[:200] or '(no output)'}",
-            "Schema may be missing/read-only — run cortex-update.sh, check tasks.schema_version")
+            "Schema may be missing/read-only — run fleet-update.sh, check tasks.schema_version")
         return
 
     # Read the probe back — same explicit repo as the add above.
@@ -5103,7 +5103,7 @@ def check_task_lifecycle_v2(res):
     if spec is None or spec.loader is None:
         res.add("Task Lifecycle v2 schema", "FAIL",
                 "cannot load task-db.py module for probe",
-                "Check task-db.py deployment (cortex-update.sh)")
+                "Check task-db.py deployment (fleet-update.sh)")
         return
     tdb = _ilu.module_from_spec(spec)
     spec.loader.exec_module(tdb)
@@ -5126,7 +5126,7 @@ def check_task_lifecycle_v2(res):
         res.add("Task Lifecycle v2 schema", "FAIL",
                 f"tasks schema_version = {ver} (< 5) — paused/switch/"
                 "story-slice/by-correlation and task_events unavailable",
-                "Run: bash cortex-update.sh (deploys + migrates to v007)")
+                "Run: bash fleet-update.sh (deploys + migrates to v007)")
     else:
         res.add("Task Lifecycle v2 schema", "PASS",
                 f"tasks schema_version = {ver} (v2 lifecycle available)")
@@ -5146,7 +5146,7 @@ def check_task_lifecycle_v2(res):
         res.add("Task Lifecycle v2 schema sources", "WARN",
                 f"live tasks.schema_version {ver} < deployed schema dir "
                 f"{dep_ver} — this host is behind its deployed migrations",
-                "Run: bash cortex-update.sh (applies the DEPLOYED schema as "
+                "Run: bash fleet-update.sh (applies the DEPLOYED schema as "
                 "DB owner)")
 
     # ── 2. task_events RLS assertion (FAIL when forgeable) ────────
@@ -5172,7 +5172,7 @@ def check_task_lifecycle_v2(res):
         elif not rls_on:
             res.add("Task Lifecycle v2 events RLS", "FAIL",
                     "RLS not enabled on tasks.task_events",
-                    "Run: bash cortex-update.sh (applies v005 event RLS)")
+                    "Run: bash fleet-update.sh (applies v005 event RLS)")
         else:
             res.add("Task Lifecycle v2 events RLS", "FAIL",
                     f"reader has forgeable grants: {', '.join(sorted(grants))}",
@@ -5181,7 +5181,7 @@ def check_task_lifecycle_v2(res):
     except SystemExit:
         res.add("Task Lifecycle v2 events RLS", "FAIL",
                 "probe query failed (schema v<5 or table missing)",
-                "Run: bash cortex-update.sh")
+                "Run: bash fleet-update.sh")
 
     # ── 3. Telegram notify health (WARN when failures persist) ───
     try:
@@ -5189,7 +5189,7 @@ def check_task_lifecycle_v2(res):
     except ImportError:
         res.add("Task Lifecycle v2 telegram notify", "WARN",
                 "lib.telegram_notify not importable (deploy issue?)",
-                "Run: bash cortex-update.sh")
+                "Run: bash fleet-update.sh")
         return
     try:
         health = telegram_notify_health()
@@ -5227,7 +5227,7 @@ def check_task_lifecycle_v2(res):
     except SystemExit:
         res.add("Task Lifecycle v2 stale inbox", "WARN",
                 "probe failed — schema v<5?",
-                "Run: bash cortex-update.sh")
+                "Run: bash fleet-update.sh")
 
     # ── 5. .env permissions 600 (WARN — telegram token exposure) ──
     env_file = Path.home() / ".hermes" / ".env"
@@ -5296,11 +5296,11 @@ def check_skill_drift(res):
             hint = f"Deployed copy is newer than repo source ({skill_md}). Commit the repo source before cortex-update overwrites it."
         elif repo_mtime > dep_mtime + 60:
             direction = "repo-newer"
-            hint = f"Repo source has changed but deployed copy is stale ({repo_md}). Run cortex-update.sh."
+            hint = f"Repo source has changed but deployed copy is stale ({repo_md}). Run fleet-update.sh."
         else:
             # Mtimes are within tolerance — treat as equal-content different
             direction = "content-mismatch"
-            hint = f"Content differs but timestamps similar ({skill_md}). Likely needs cortex-update.sh."
+            hint = f"Content differs but timestamps similar ({skill_md}). Likely needs fleet-update.sh."
 
         drifted.append((label, direction, hint))
 
@@ -5312,7 +5312,7 @@ def check_skill_drift(res):
                 "OWN governed change, so the cycle's diff matches its task id.")
         else:
             res.add(f"Skill drift: {label}", "WARN", hint,
-                "Run: cortex-update.sh")
+                "Run: fleet-update.sh")
 
     if not drifted and in_sync > 0:
         res.add("Skill drift", "PASS", f"{in_sync} skills in sync, {skipped} Hermes defaults skipped")
@@ -5330,7 +5330,7 @@ def check_mem_plugins(res):
   """Memory/guard plugins: mycortex-mem + prompt-guard deployed copies match repo source.
 
   The plugin SOURCES live in the repo (plugins/mycortex-mem, plugins/prompt-guard);
-  cortex-update.sh deploys copies to ~/.hermes/plugins/. This check verifies the
+  fleet-update.sh deploys copies to ~/.hermes/plugins/. This check verifies the
   deployed copy is byte-identical to the repo source (deploy sync parity) and that
   the plugins are enabled in config.yaml. Deploy != load: content changes activate
   only after the gateway process is re-started by an operator.
@@ -5351,7 +5351,7 @@ def check_mem_plugins(res):
         else:
           res.add(f"{plugin} content", "FAIL",
               "deployed copy differs from repo — stale after git update",
-              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh"
+              "REQUIRED: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh"
               " (sanctioned deploy path — copies from repo plugins/ dir)")
       else:
         res.add(f"{plugin} content", "WARN",
@@ -5365,7 +5365,7 @@ def check_mem_plugins(res):
             "Add to plugins.enabled or run: hermes plugins enable " + plugin)
     else:
       res.add(f"{plugin} plugin", "WARN", "not installed",
-          "Run: bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh (deploys from repo)")
+          "Run: bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh (deploys from repo)")
 
 
 def check_mycortex_parity(res):
@@ -5614,7 +5614,7 @@ def check_restraint_registry(res: "Results") -> None:
     if not registry.exists():
         res.add("Restraint registry", "WARN",
                 "guardrail-registry.json not found — restraint presence unchecked",
-                "Run: git pull && cortex-update.sh (restore docs/guardrail-registry.json)")
+                "Run: git pull && fleet-update.sh (restore docs/guardrail-registry.json)")
         return
     try:
         data = json.loads(registry.read_text(encoding="utf-8"))
@@ -5750,7 +5750,7 @@ def check_fleet_gateway(res: "Results") -> None:
     if p.returncode != 0:
         res.add("cortex-gateway", "FAIL",
                 f"daemon does not import hermetically: {p.stderr.strip()[-200:]}",
-                "run cortex-update.sh")
+                "run fleet-update.sh")
         return
     cfg = HOME / ".steadfaste-fleet" / "gateway.yaml"
     if cfg.is_file():
@@ -5825,7 +5825,7 @@ def check_cortex_env(res: "Results") -> None:
 
     if problems:
         res.add("cortex env", "FAIL", "; ".join(problems),
-                "run cortex-update.sh (it runs consolidate-env.sh), or "
+                "run fleet-update.sh (it runs consolidate-env.sh), or "
                 "bash ~/.steadfaste-fleet/scripts/consolidate-env.sh")
     else:
         res.add("cortex env", "PASS",
@@ -6102,7 +6102,7 @@ def check_review_provenance(res) -> None:
   if script is None:
     res.add(name, "WARN",
             "COULD NOT VERIFY — review-provenance-check.py is not deployed on this host",
-            "Deploy it (cortex-update.sh registers it) so review artifacts are checked")
+            "Deploy it (fleet-update.sh registers it) so review artifacts are checked")
     return
   repo = Path(__file__).resolve().parents[4]     # ops/scripts/manage/fleet_doctor -> repo root
   try:
@@ -6133,7 +6133,7 @@ def _harness_cli():
   """The `fleet` CLI: the DEPLOYED copy first (judge what RUNS), then the repo checkout.
 
   Every harness read goes through this command rather than through a local parse, so the
-  doctor needs no PyYAML of its own — cortex-update.sh runs the doctor as a bare `python3`,
+  doctor needs no PyYAML of its own — fleet-update.sh runs the doctor as a bare `python3`,
   and the CLI already resolves an interpreter that can read the registry.
   """
   # deployed: <deploy>/scripts/fleet is the launcher FILE; repo: the launcher is

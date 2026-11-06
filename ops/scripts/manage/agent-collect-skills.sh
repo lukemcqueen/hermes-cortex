@@ -16,7 +16,7 @@
 #    CORTEX_BUS_URL      — Moses Agent Bus URL
 #    CORTEX_BUS_TOKEN    — Bearer token for bus auth
 #
-#  Deployed to agents via cortex-update.sh.
+#  Deployed to agents via fleet-update.sh.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 

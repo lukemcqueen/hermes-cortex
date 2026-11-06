@@ -109,9 +109,9 @@ canonical-ambiguity — compounds with every file.
 
 **Repo-specific pre-flight:**
 1. git vs disk — a file may exist in git but not deployed (`git show HEAD:<path>`);
-   deploy with cortex-update.sh.
+   deploy with fleet-update.sh.
 2. Governance files (hooks, enforcer, skills): fix the REPO SOURCE in
-   `~/steadfaste-fleet/` first, commit/push, then cortex-update.sh — a fix to
+   `~/steadfaste-fleet/` first, commit/push, then fleet-update.sh — a fix to
    the deployed copy is overwritten on next update.
 3. Hermes boundary: in `~/steadfaste-fleet/` → ours; in `~/.hermes/` AND repo
    skills/ → edit repo copy + deploy; in `~/.hermes/` NOT in repo → Hermes

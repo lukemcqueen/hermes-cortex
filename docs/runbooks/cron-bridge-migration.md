@@ -45,7 +45,7 @@ install / doctor context does not have.
 
 ```bash
 cd ~/steadfaste-fleet && git pull --ff-only
-bash ~/steadfaste-fleet/ops/scripts/cortex-update.sh          # deploys the bridge scripts
+bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh          # deploys the bridge scripts
 ```
 
 1. **Generate the units** from the host's own `jobs.json`:

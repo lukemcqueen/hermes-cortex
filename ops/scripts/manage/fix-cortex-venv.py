@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Repair ~/.steadfaste-fleet/venv on ANY host — one command, verified by import.
 
-WHY THIS EXISTS. `~/.steadfaste-fleet/venv` is the fleet venv (cortex-update.sh registers every
+WHY THIS EXISTS. `~/.steadfaste-fleet/venv` is the fleet venv (fleet-update.sh registers every
 MCP server against it), but nothing declared what it should CONTAIN, so a host whose venv was
 empty or partial could only be fixed by someone reading the source to work out the
 dependencies. Found the hard way on esther: the venv could not collect a test module (no
@@ -17,7 +17,7 @@ WHAT IT DOES
     gisu 2026-10-20, where mcp imported fine and rejected the 2.0 constructor handlers the
     fleet's MCP servers are built on, so "ok: imports all 6 requirements" was printed on a
     host whose governance gate was dead. Such a requirement is reported INCOMPATIBLE, and
-    counted as a gap, so --check (and cortex-update.sh, which gates its install on it) sees it;
+    counted as a gap, so --check (and fleet-update.sh, which gates its install on it) sees it;
   * installs only the missing ones, preferring `uv` and falling back to the venv's own pip
     (a uv venv has NO pip until `ensurepip` runs — handled);
   * re-checks by import afterwards and fails loudly if the venv still cannot import them.
@@ -96,7 +96,7 @@ def module_for(req):
 #: A module can import perfectly and still be unusable by the call sites that use it. The
 #: fleet's MCP servers register their handlers through the mcp 2.0 constructor API, which
 #: the 1.x SDK rejects at runtime — so `--check` said "ok" on a host whose governance CLI
-#: exited 3 on every write gate, and cortex-update.sh, which gates its repair on that same
+#: exited 3 on every write gate, and fleet-update.sh, which gates its repair on that same
 #: check, therefore never installed anything (measured: gisu, 2026-10-20). A failed probe
 #: is reported as INCOMPATIBLE, never as "missing", so the message names the real fault.
 #:

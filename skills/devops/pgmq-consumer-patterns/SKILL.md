@@ -117,5 +117,5 @@ Full worked example (timeline, SQL queries, hash-recompute snippet):
 - **A queue drained before the consumer runs is NOT proof of a dead producer.**
   Check the drainer's persistence file before blaming the push side.
 - **Deployed copies of scripts/skills are copies.** Fix the repo source, deploy
-  via `cortex-update.sh`, then verify the deployed file (SOURCE header differs
+  via `fleet-update.sh`, then verify the deployed file (SOURCE header differs
   from repo raw MD5 — hash comparison must strip the header).

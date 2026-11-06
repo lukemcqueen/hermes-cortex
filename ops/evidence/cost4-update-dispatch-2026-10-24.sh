@@ -10,7 +10,7 @@
 # --prometheus) and gisu has no such deployed script. The change is already
 # pushed (a1328aea == origin/main); the four hosts only need to pull+redeploy.
 # UPDATE_REQUEST is the fleet's own protocol for exactly that (handler:
-# ops/scripts/agent/commands.py handle_update → cortex-update.sh + doctor).
+# ops/scripts/agent/commands.py handle_update → fleet-update.sh + doctor).
 #
 # Sent with from=esther, NOT via ops/scripts/orch-bus/orch-bus-fleet-dispatch.py
 # — that script hardcodes "from": "moses", which from this host would be

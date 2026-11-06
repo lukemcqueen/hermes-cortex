@@ -138,11 +138,11 @@ See the Ollama GPU crash pitfall in SKILL.md.
 ### Shared Infra Notification Pattern
 
 When a fix is deployed to shared infrastructure (`health-server.py`,
-`health-vector.py`, `cortex-update.sh`, etc.):
+`health-vector.py`, `fleet-update.sh`, etc.):
 
 1. **Commit and push** to the shared repo
 2. **Notify ALL affected agents** via inbox, not just the one that reported the issue
-3. Include exact update commands in the notification: `git pull && bash ops/scripts/cortex-update.sh`
+3. Include exact update commands in the notification: `git pull && bash ops/scripts/fleet-update.sh`
 4. CC the user on each notification
 
 This avoids repeated rounds of "is anyone else having this problem?"

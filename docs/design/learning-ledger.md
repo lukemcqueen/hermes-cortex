@@ -131,7 +131,7 @@ known-fix-table applications and repeats are not new learnings.
   owner. Registered `register_orch` — **orchestrator-only**: the bus Postgres
   exists only on Moses/Esther. Workers write via HTTP and never need the
   schema locally.
-- Applied by cortex-update.sh after file sync (same guarded pattern as tasks).
+- Applied by fleet-update.sh after file sync (same guarded pattern as tasks).
 
 ## Deployment
 

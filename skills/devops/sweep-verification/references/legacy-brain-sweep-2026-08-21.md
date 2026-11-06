@@ -15,7 +15,7 @@ rules in the SKILL.md.
 - Live cron: `~/.hermes/cron/jobs.json` (0), `cron/scripts` (0)
 - `~/.hermes/plugins/`, `config.yaml`, `memories/`, `SOUL.md`, `AGENTS.md`
 - Tasks DB active rows (pending/in_progress): 0
-- `ops/scripts/cortex-update.sh` register map: 0
+- `ops/scripts/fleet-update.sh` register map: 0
 
 ## Removed (LIVE leftovers)
 
