@@ -6273,3 +6273,58 @@ def check_harness_registry(res) -> None:
               f"verify it: {tail}", fix)
     else:
       res.add(label, "WARN", tail, fix)
+
+
+def check_harness_doc_conflicts(res):
+  """Cross-client harness instruction files vs AGENTS.md canonical facts.
+
+  The hermes-cortex -> steadfaste-fleet rename (940-file sweep, 2026-11-04)
+  missed HOST-LEVEL harness files: ~/.claude/CLAUDE.md kept the retired
+  ~/hermes-cortex + ~/.hermes-cortex paths until fixed manually (cycle #14213).
+  This check enumerates the harness-owned instruction/config files and flags
+  any that still carry a RETIRED canonical token contradicting AGENTS.md.
+  Never auto-rewrites: these files are host/project-owned; the fix line names
+  the canonical replacement. Plan: docs/design/harness-doc-conflict-check.md.
+  """
+  name = "Harness doc conflict"
+  # The harness-owned files that carry identity / paths / canonical facts. Kept
+  # as a small explicit list ON PURPOSE: the deliberate-keep files (the four
+  # hermes-cortex* skill bodies, the enforcer's dual-URL detection, migration
+  # tools, docs/older + docs/evidence history) live elsewhere and must not be
+  # swept — see docs/rename-followups-steadfaste-fleet.md.
+  repo_files = [CORTEX_REPO / "CLAUDE.md", CORTEX_REPO / ".mcp.json"]
+  host_files = [
+    HOME / ".claude" / "CLAUDE.md",
+    HOME / ".claude" / "settings.json",
+    HOME / ".pi" / "agent" / "mcp.json",
+    HOME / ".pi" / "agent" / "settings.json",
+  ]
+  # Retired canonical facts (the inverse of what AGENTS.md now states).
+  tokens = [
+    (".hermes-cortex", "retired deployed-home path ~/.hermes-cortex"),
+    ("~/hermes-cortex", "retired repo path ~/hermes-cortex"),
+    ("Hermes Cortex", "retired product name"),
+  ]
+  def _conflicts(path):
+    try:
+      text = path.read_text(errors="replace")
+    except OSError:
+      return None
+    return next((why for tok, why in tokens if tok in text), None)
+
+  repo_hits = [(p.name, w) for p in repo_files if p.exists() and (w := _conflicts(p))]
+  host_hits = [(p.name, w) for p in host_files if p.exists() and (w := _conflicts(p))]
+
+  fix = ("Repoint to the canonical name/paths (repo ~/steadfaste-fleet, deployed "
+         "home ~/.steadfaste-fleet) per docs/runbooks/fleet-local-dir-rename.md.")
+
+  if repo_hits:
+    res.add(name, "FAIL",
+        "retired canonical facts in repo harness file(s): "
+        + "; ".join(f"{n} ({w})" for n, w in repo_hits), fix)
+  elif host_hits:
+    res.add(name, "WARN",
+        "retired canonical facts in host harness file(s): "
+        + "; ".join(f"{n} ({w})" for n, w in host_hits), fix)
+  else:
+    res.add(name, "PASS", "harness instruction files carry no retired canonical facts")
