@@ -15,9 +15,11 @@
 > **⚠️ Gap found 2026-11-06:** §1–§6 repointed the *service* surfaces but NOT the **tool-visible
 > `~/.hermes` keys** (`config.yaml` MCP-server paths, `repos.yaml`) nor the `skills` symlinks —
 > so the transition symlinks stayed load-bearing and were never removed. That step lived only
-> under the macOS section below, though it applies to **every** host. Completed on esther
-> 2026-11-06 in cycle #14203; the "Repoint agent/harness surfaces + remove symlinks" section is
-> now the ALL-hosts §8, below.
+> under the macOS section below, though it applies to **every** host. Completed on esther in
+> governance cycle #14203 (`loop-governance.db`) — verification: `grep -rl hermes-cortex ~/.hermes
+> ~/.agents` returns nothing, the doctor's `Cron runtime scripts` + `Skills manifest: always`
+> checks PASS (0 fail), and `~/.hermes-cortex` / `~/hermes-cortex` no longer exist. The "Repoint
+> agent/harness surfaces + remove symlinks" section below is the ALL-hosts §8.
 
 ## Why the leaves matter
 
