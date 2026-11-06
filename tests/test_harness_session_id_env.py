@@ -13,7 +13,7 @@ because one MCP child serves one session. The names honoured here are surveyed,
 not invented:
   CORTEX_SESSION_KEY - the fleet's documented per-session key
                        (docs/runbooks/context-integration.md; pinned per chat by
-                       ops/scripts/cortex_gateway/agents.py)
+                       ops/scripts/fleet_gateway/agents.py)
   PI_SESSION_ID      - Pi's own "Current session ID" (its packaged
                        docs/environment-variables.md)
 

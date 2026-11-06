@@ -1,4 +1,4 @@
-"""cortex_gateway.restarts — "the gateway restarted while you were away" markers.
+"""fleet_gateway.restarts — "the gateway restarted while you were away" markers.
 
 ``/restart`` replies once and then EXITS the process; systemd brings it back. So the
 human's last evidence of the restart is a message that arrived *before* it, and

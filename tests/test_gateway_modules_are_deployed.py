@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every module in cortex_gateway/ must actually be DEPLOYED, not just committed.
+"""Every module in fleet_gateway/ must actually be DEPLOYED, not just committed.
 
 The failure this exists for: `cortex-update.sh` syncs an EXPLICIT list of files, so a new
 module (agents.py, pairing.py) sat in the repo, was imported by the deployed daemon, and was
@@ -11,7 +11,7 @@ So: assert the register and the package directory agree, in BOTH directions.
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-PKG = REPO / "ops" / "scripts" / "cortex_gateway"
+PKG = REPO / "ops" / "scripts" / "fleet_gateway"
 UPDATE = REPO / "ops" / "scripts" / "cortex-update.sh"
 
 
@@ -19,9 +19,9 @@ def _registered() -> set:
     out = set()
     for line in UPDATE.read_text().splitlines():
         line = line.strip()
-        if not line.startswith("register ") or "cortex_gateway/" not in line:
+        if not line.startswith("register ") or "fleet_gateway/" not in line:
             continue
-        # register "ops/scripts/cortex_gateway/x.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/x.py"
+        # register "ops/scripts/fleet_gateway/x.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/x.py"
         src = line.split('"')[1]
         out.add(Path(src).name)
     return out
@@ -65,7 +65,7 @@ def test_that_guard_would_catch_a_wrong_destination():
 def test_every_module_is_registered_for_deploy():
     missing = sorted(_modules() - _registered())
     assert not missing, (
-        f"these cortex_gateway modules are NOT in the deploy register, so the host will get "
+        f"these fleet_gateway modules are NOT in the deploy register, so the host will get "
         f"an ImportError while the repo tests pass: {missing}. Add a register line to "
         f"ops/scripts/cortex-update.sh next to the others.")
     print(f"  all {len(_modules())} modules are registered for deploy ✓")

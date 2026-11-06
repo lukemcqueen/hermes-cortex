@@ -11,7 +11,7 @@ live channel). The Telegram leg is proven separately by the reply-path evidence.
 
 Run it ON the host, from anywhere:
 
-    python3 ~/.steadfaste-fleet/scripts/cortex_gateway/slash_parity_evidence.py \
+    python3 ~/.steadfaste-fleet/scripts/fleet_gateway/slash_parity_evidence.py \
         [--config ~/.steadfaste-fleet/gateway-esther0001.yaml] [--chat 999001] \
         [--model openrouter/deepseek/deepseek-flash-latest] [--no-llm]
 
@@ -35,10 +35,10 @@ HERE = Path(__file__).resolve().parent
 def _load_gateway(config: Path, chat, tmp: Path):
     """The deployed Gateway wired from the live config, with THROWAWAY state."""
     sys.path.insert(0, str(HERE.parent))
-    import cortex_gateway.agents as agents
-    import cortex_gateway.daemon as daemon
-    import cortex_gateway.models as models
-    import cortex_gateway.sessions as sessions
+    import fleet_gateway.agents as agents
+    import fleet_gateway.daemon as daemon
+    import fleet_gateway.models as models
+    import fleet_gateway.sessions as sessions
 
     cfg = json.loads(Path(config).expanduser().read_text())
     specs = cfg.get("backends") or []

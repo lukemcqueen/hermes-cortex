@@ -16,7 +16,7 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Label | What it runs | Notes |
 |---|---|---|---|
-| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
+| `com.hermes.cortex-gateway.plist` | `com.hermes.cortex-gateway` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency. Sources `~/steadfaste-fleet/.env`, runs the launcher guard, execs the **fleet venv**. Exits **75** for `/restart` on macOS. |
 | `com.hermes.gateway.plist` | `com.hermes.gateway` | the **Hermes** runtime gateway (`hermes_agent.gateway.run`) | The one service that legitimately uses the Hermes venv (the module lives there). Candidates for decommission as hosts migrate. |
 | `com.hermes.cortex-dashboard.plist` | `com.hermes.cortex-dashboard` | the cortex dashboard (`dashboard/server.py`) | Dedicated dashboard venv, or the fleet venv as Option B. |
 | `com.hermes.health-push.plist` | `com.hermes.health-push` | `ops/scripts/health/health-vector-push.sh` every 10 min | **Client-only agents (Titus, Gisu, Joseph) install this.** Set `AGENT_NAME` per host. |
@@ -50,7 +50,7 @@ docs audit, which both pointed at this file before it existed.
   an unexplained exec failure:
   ```bash
   . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"
-  require_fleet_venv "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py"
+  require_fleet_venv "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py"
   ```
   If the venv is missing, `cortex-update.sh` now creates and fills it on the host's next
   update. See `docs/troubleshooting.md` ("The fleet venv: a launcher dies with …").

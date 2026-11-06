@@ -567,7 +567,7 @@ def _injected_session_id(args: dict | None) -> str:
 # Order matters: the first non-empty value wins. Both names are SURVEYED from the
 # fleet, never invented — CORTEX_SESSION_KEY is the documented per-session key
 # (docs/runbooks/context-integration.md; the cortex-gateway `command` backend
-# pins it per chat in ops/scripts/cortex_gateway/agents.py), and PI_SESSION_ID is
+# pins it per chat in ops/scripts/fleet_gateway/agents.py), and PI_SESSION_ID is
 # Pi's own "Current session ID" (its packaged docs/environment-variables.md).
 # One MCP child serves ONE session, which is why an env value is a correct
 # discriminator — the same premise the process-scoped fallback below relies on.

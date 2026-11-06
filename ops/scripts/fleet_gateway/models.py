@@ -1,4 +1,4 @@
-"""cortex_gateway.models — per-chat model overrides (the `/model` command).
+"""fleet_gateway.models — per-chat model overrides (the `/model` command).
 
 The gateway owns everything the agent cannot own for itself: session identity
 (`sessions.py`) and, here, **which model answers this chat**. A CLI agent is

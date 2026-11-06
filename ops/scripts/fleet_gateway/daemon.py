@@ -1,4 +1,4 @@
-"""cortex_gateway.daemon — the standalone gateway daemon (CR3).
+"""fleet_gateway.daemon — the standalone gateway daemon (CR3).
 
 Wires the two seams into the full poll → dispatch → reply loop:
 
@@ -72,10 +72,10 @@ if TYPE_CHECKING:                      # runtime import stays lazy (pairing is o
 if __package__ in (None, ""):
     # Run as a script (python3 daemon.py / systemd ExecStart): make the
     # package importable so the relative imports below resolve. Imported as a
-    # module (python3 -m cortex_gateway.daemon / from cortex_gateway.daemon)
+    # module (python3 -m fleet_gateway.daemon / from fleet_gateway.daemon)
     # this branch is skipped.
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    __package__ = "cortex_gateway"
+    __package__ = "fleet_gateway"
 
 from .transport import (DEFAULT_POLL_SECONDS, BotConfig, PollingConflict,
                         TransportAdapter, TelegramAdapter)

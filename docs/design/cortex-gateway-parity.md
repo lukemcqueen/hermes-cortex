@@ -14,7 +14,7 @@ The design doc's original CR1 parity claim was against **`ops/scripts/msg-gatewa
 
 | | incumbent | target |
 |---|---|---|
-| code | `hermes-agent/plugins/platforms/telegram/adapter.py` (~1400 lines) | `ops/scripts/cortex_gateway/transport.py` + `daemon.py` (~700 lines after slice 1) |
+| code | `hermes-agent/plugins/platforms/telegram/adapter.py` (~1400 lines) | `ops/scripts/fleet_gateway/transport.py` + `daemon.py` (~700 lines after slice 1) |
 | shape | full platform adapter inside the agent process | transport + dispatch seam, agent out-of-process |
 
 ## Matrix
@@ -317,5 +317,5 @@ startup instead of silently serving a menu that stores an override nothing appli
   ids are personal identifiers and 10-digit unix timestamps read as phone numbers).
 - Gateway suites (executed): **111 passed** (106 pre-existing + 5 new).
 - Incumbent: `hermes-agent/plugins/platforms/telegram/adapter.py`.
-- Target: `steadfaste-fleet/ops/scripts/cortex_gateway/{transport,daemon}.py`;
+- Target: `steadfaste-fleet/ops/scripts/fleet_gateway/{transport,daemon}.py`;
   design `docs/design/cortex-gateway.md` (CR1–CR4 ✅, CR5 pi pending).

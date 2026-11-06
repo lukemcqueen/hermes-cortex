@@ -20,7 +20,7 @@ REPO = Path(__file__).resolve().parents[1]
 HELPER = REPO / "ops" / "scripts" / "manage" / "gateway-model-list.py"
 
 sys.path.insert(0, str(REPO / "ops" / "scripts"))
-import cortex_gateway.daemon as DAEMON  # noqa: E402
+import fleet_gateway.daemon as DAEMON  # noqa: E402
 
 import types  # noqa: E402
 

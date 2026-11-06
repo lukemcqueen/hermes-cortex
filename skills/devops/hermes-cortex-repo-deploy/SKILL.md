@@ -274,8 +274,8 @@ a control that fails on a wrong destination — a guard that cannot fail is
 indistinguishable from one that is not looking. Then exercise the deployed copy, not the
 repo one, before reporting the fix.
 
-**A register entry in `cortex_gateway/` must be a `.py` module.** The guards compare
-`registered` against `cortex_gateway/*.py` in BOTH directions, so registering a shell
+**A register entry in `fleet_gateway/` must be a `.py` module.** The guards compare
+`registered` against `fleet_gateway/*.py` in BOTH directions, so registering a shell
 helper beside the modules makes the reverse check fire —
 `register names files that do not exist: ['<x>.sh']` — even though the file is right
 there, because the module glob only ever yields `.py`. Shell runners and evidence

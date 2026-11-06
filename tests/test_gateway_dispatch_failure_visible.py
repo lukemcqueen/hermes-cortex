@@ -22,7 +22,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-from cortex_gateway import hermes_backend as hb          # noqa: E402
+from fleet_gateway import hermes_backend as hb          # noqa: E402
 import gateway_envelope as _env                          # noqa: E402
 
 # A REAL envelope: HermesBackend.dispatch validates before it enqueues, so a hand-made
@@ -114,7 +114,7 @@ def test_the_offset_still_advances_and_that_is_recorded_as_a_limit():
     be updated deliberately — the assertion exists so the limit is visible, not so it is
     frozen forever.
     """
-    src = (_REPO / "ops" / "scripts" / "cortex_gateway" / "daemon.py").read_text()
+    src = (_REPO / "ops" / "scripts" / "fleet_gateway" / "daemon.py").read_text()
     assert "self.offset = max(self.offset, uid + 1)" in src, \
         "the daemon's enqueue-then-ack behaviour is the known limit; update this test if it changes"
     print("  residual limit recorded: a failed dispatch still advances the offset ✓")

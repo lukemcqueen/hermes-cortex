@@ -14,8 +14,8 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-import cortex_gateway.daemon as DAEMON  # noqa: E402
-import cortex_gateway.transport as TR  # noqa: E402
+import fleet_gateway.daemon as DAEMON  # noqa: E402
+import fleet_gateway.transport as TR  # noqa: E402
 
 EXAMPLE = _REPO / "ops" / "scripts" / "gateway.yaml.example"
 ALLOWED = "1001"

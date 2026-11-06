@@ -5729,17 +5729,17 @@ def check_bus_grant_expiry(res: "Results") -> None:
                 "no indefinite grants without a named justifier")
 
 
-def check_cortex_gateway(res: "Results") -> None:
+def check_fleet_gateway(res: "Results") -> None:
     """cortex-gateway: the deployed daemon imports hermetically (no Hermes on
     the path) and its config + systemd unit carry no hermes-gateway dependency.
     Serving without the incumbent harness is the whole point of the gateway."""
     scripts = HOME / ".steadfaste-fleet" / "scripts"
-    if not (scripts / "cortex_gateway").is_dir():
+    if not (scripts / "fleet_gateway").is_dir():
         res.add("cortex-gateway", "SKIP", "package not deployed")
         return
     probe = ("import sys; sys.path.insert(0, %r); "
-             "from cortex_gateway.daemon import build_gateway; "
-             "from cortex_gateway.hermes_backend import HermesBackend"
+             "from fleet_gateway.daemon import build_gateway; "
+             "from fleet_gateway.hermes_backend import HermesBackend"
              % str(scripts))
     try:
         p = subprocess.run([sys.executable, "-I", "-c", probe],

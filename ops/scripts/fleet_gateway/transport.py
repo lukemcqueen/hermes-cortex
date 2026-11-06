@@ -1,4 +1,4 @@
-"""cortex_gateway.transport — the transport layer (CR1).
+"""fleet_gateway.transport — the transport layer (CR1).
 
 Extracted from ``ops/scripts/msg-gateway.py`` (ADR-0005) with **identical
 behavior**: TransportAdapter interface, TelegramAdapter (long-poll getUpdates,

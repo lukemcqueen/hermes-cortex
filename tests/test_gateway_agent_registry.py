@@ -22,7 +22,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 import gateway_envelope as env                                  # noqa: E402
-from cortex_gateway import agents as A                          # noqa: E402
+from fleet_gateway import agents as A                          # noqa: E402
 
 
 def _inbound(body="hello", chat=100001):
@@ -200,7 +200,7 @@ def test_every_shipped_backend_DECLARES_its_reply_mode():
         "CommandBackend must DECLARE async_replies (not rely on the daemon's default)"
     assert A.CommandBackend.async_replies is False, "a CLI agent answers inside dispatch"
 
-    from cortex_gateway.hermes_backend import HermesBackend
+    from fleet_gateway.hermes_backend import HermesBackend
     assert "async_replies" in vars(HermesBackend), \
         "HermesBackend must DECLARE async_replies (its reply arrives on the bus)"
     assert HermesBackend.async_replies is True
@@ -371,7 +371,7 @@ def test_spec_env_merges_the_parent_environment_and_is_validated():
 
 def test_bus_reply_mode_publishes_to_out_agent(monkeypatch):
     sent = {}
-    import cortex_gateway.transport as T
+    import fleet_gateway.transport as T
 
     def _fake(bus_url, headers, queue, message):
         sent["queue"], sent["message"] = queue, message

@@ -1,4 +1,4 @@
-"""cortex_gateway.hermes_backend — the reference BackendAdapter (hermes).
+"""fleet_gateway.hermes_backend — the reference BackendAdapter (hermes).
 
 The hermes backend is the existing decoupled mechanism: the agent consumes
 ``inbox_<agent>`` and replies to ``out_<agent>`` on the PGMQ bus — exactly the
@@ -23,7 +23,7 @@ import gateway_envelope as env
 from . import transport as _bus
 from .backend import BackendAdapter
 
-log = logging.getLogger("cortex_gateway.backend")
+log = logging.getLogger("fleet_gateway.backend")
 
 # The bus requires an UPPER_CASE protocol subject on every message. This is the
 # subject for "a human message arrived via the gateway" — env-overridable so a

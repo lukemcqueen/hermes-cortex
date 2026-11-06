@@ -1,4 +1,4 @@
-"""cortex_gateway.agents — the agent registry: adding an agent is CONFIG, not code.
+"""fleet_gateway.agents — the agent registry: adding an agent is CONFIG, not code.
 
 The gateway's promise (ADR-0005, docs/design/cortex-gateway-parity.md) is that swapping or
 adding an agent never changes the poll → dispatch → reply loop. This module is where that
@@ -42,7 +42,7 @@ from dataclasses import dataclass, field
 
 import gateway_envelope as env
 
-log = logging.getLogger("cortex_gateway.agents")
+log = logging.getLogger("fleet_gateway.agents")
 
 # ── kinds ────────────────────────────────────────────────────────────────
 # kind name -> builder(spec, ctx) -> BackendAdapter. Registration is one line; a new

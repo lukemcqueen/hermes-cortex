@@ -28,7 +28,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 import gateway_envelope as env                            # noqa: E402
-from cortex_gateway import hermes_backend as hb          # noqa: E402
+from fleet_gateway import hermes_backend as hb          # noqa: E402
 
 
 def _envelope():

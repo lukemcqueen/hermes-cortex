@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""CR1 — cortex_gateway transport package.
+"""CR1 — fleet_gateway transport package.
 
 Proves the extracted transport layer (TransportAdapter + TelegramAdapter +
-bus helpers) in ops/scripts/cortex_gateway/ preserves msg-gateway.py's exact
+bus helpers) in ops/scripts/fleet_gateway/ preserves msg-gateway.py's exact
 behavior, importable as a package with no daemon/agent coupling.
 
 Run: python3 -m pytest tests/test_cortex_gateway_transport.py -q
@@ -29,21 +29,21 @@ import gateway_envelope as env  # noqa: E402
 
 # ── CR1.1 package is importable, exports the transport surface ──────────────
 def test_transport_package_importable():
-    from cortex_gateway import transport  # noqa: F401
+    from fleet_gateway import transport  # noqa: F401
     assert hasattr(transport, "TransportAdapter")
     assert hasattr(transport, "TelegramAdapter")
     assert hasattr(transport, "BotConfig")
 
 
 def test_transport_bus_helpers_present():
-    from cortex_gateway import transport
+    from fleet_gateway import transport
     for name in ("bus_send", "bus_read", "bus_archive", "_bus_headers"):
         assert callable(getattr(transport, name)), f"missing {name}"
 
 
 # ── CR1.2 TransportAdapter is the same abstract interface ───────────────────
 def test_transport_adapter_interface_unimplemented():
-    from cortex_gateway.transport import TransportAdapter
+    from fleet_gateway.transport import TransportAdapter
     a = TransportAdapter()
     with pytest.raises(NotImplementedError):
         a.start()
@@ -78,7 +78,7 @@ def test_telegram_parse_parity_with_msg_gateway():
     so the legacy parity assertion is now "every legacy field is still produced with the
     same value", not "the key sets are identical".
     """
-    from cortex_gateway.transport import TelegramAdapter
+    from fleet_gateway.transport import TelegramAdapter
     new = TelegramAdapter(token="t", initial_offset=0)
     raw = _sample_update()
 
@@ -100,7 +100,7 @@ def test_telegram_parse_parity_with_msg_gateway():
 
 
 def test_telegram_parse_none_cases_parity():
-    from cortex_gateway.transport import TelegramAdapter
+    from fleet_gateway.transport import TelegramAdapter
     new = TelegramAdapter(token="t")
     legacy = GW.TelegramAdapter(token="t")
     for raw in ({}, {"message": {}}, {"message": {"chat": {"id": 1}, "text": ""}},
@@ -118,7 +118,7 @@ def test_telegram_send_contract(monkeypatch):
     chunks, so now the target does too: every call fits Telegram's limit, the pieces
     reconstruct the original exactly, and reply_to rides the FIRST chunk only.
     """
-    from cortex_gateway.transport import TelegramAdapter
+    from fleet_gateway.transport import TelegramAdapter
     a = TelegramAdapter(token="t")
     calls = []
 
@@ -142,7 +142,7 @@ def test_telegram_send_contract(monkeypatch):
 def test_telegram_init_rejects_bad_token_and_offset():
     """A4 fuzz hardening: token/initial_offset are validated (None/empty/wrong
     type fails fast instead of building a broken bot at runtime)."""
-    from cortex_gateway.transport import TelegramAdapter
+    from fleet_gateway.transport import TelegramAdapter
     import pytest as _pt
     with _pt.raises((TypeError, ValueError)):
         TelegramAdapter(token=None)
@@ -157,7 +157,7 @@ def test_telegram_init_rejects_bad_token_and_offset():
 
 
 def test_botconfig_from_dict_parity():
-    from cortex_gateway.transport import BotConfig
+    from fleet_gateway.transport import BotConfig
     d = {"token_ref": "TOK", "channel": "telegram", "initial_offset": 3,
          "routing": {"default": "esther", "overrides": {"1": "codex"}}}
     new = BotConfig.from_dict(d)

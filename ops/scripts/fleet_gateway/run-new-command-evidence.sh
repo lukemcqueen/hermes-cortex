@@ -4,7 +4,7 @@
 # The evidence is produced by RUNNING the deployed gateway against the real agent,
 # never written by hand — so it cannot drift from what the host actually does.
 #
-#   bash ops/scripts/cortex_gateway/run-new-command-evidence.sh
+#   bash ops/scripts/fleet_gateway/run-new-command-evidence.sh
 #
 # Exits non-zero when any acceptance criterion fails, so it is usable as a gate.
 set -uo pipefail
@@ -18,7 +18,7 @@ PY="${EVIDENCE_PY:-$(command -v python3)}"
 echo "interpreter: ${PY}"
 
 mkdir -p "$(dirname "${OUT}")"
-"${PY}" "${REPO}/ops/scripts/cortex_gateway/new_command_evidence.py" > "${OUT}"
+"${PY}" "${REPO}/ops/scripts/fleet_gateway/new_command_evidence.py" > "${OUT}"
 rc=$?                      # capture BEFORE anything else consumes it
 
 echo "wrote ${OUT} ($(wc -l < "${OUT}") lines)"

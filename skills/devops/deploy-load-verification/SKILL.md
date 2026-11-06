@@ -91,9 +91,9 @@ exact script path the gateway spawned at startup. An old path in the child argv
 gateway started before the config change — what config.yaml says on disk is
 irrelevant until restart.
 
-### systemd --user units (cortex_gateway, and any agent-hosted service)
+### systemd --user units (fleet_gateway, and any agent-hosted service)
 
-The gateway family is not the only long-running process on a host. `cortex_gateway`
+The gateway family is not the only long-running process on a host. `fleet_gateway`
 runs as its own `systemctl --user` unit, separate from the Hermes gateway, and a
 deploy does NOT restart it — so new code sits on disk while the unit keeps answering
 with the previous behaviour. Compare the unit's start time with the deploy:

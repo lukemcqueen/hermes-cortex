@@ -14,8 +14,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-from cortex_gateway import agents as A          # noqa: E402
-from cortex_gateway import daemon as D          # noqa: E402
+from fleet_gateway import agents as A          # noqa: E402
+from fleet_gateway import daemon as D          # noqa: E402
 
 
 class Tr:

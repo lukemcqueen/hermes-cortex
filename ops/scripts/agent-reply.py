@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
 import gateway_envelope as env                                  # noqa: E402
-from cortex_gateway.agents import publish_reply, reply_from_origin   # noqa: E402
+from fleet_gateway.agents import publish_reply, reply_from_origin   # noqa: E402
 
 
 def _agent_name(explicit: str = "") -> str:

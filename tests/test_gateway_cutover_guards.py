@@ -27,9 +27,9 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-import cortex_gateway.transport as TRANSPORT  # noqa: E402
+import fleet_gateway.transport as TRANSPORT  # noqa: E402
 
-GUARD = _REPO / "ops" / "scripts" / "cortex_gateway" / "guard_distinct_token.py"
+GUARD = _REPO / "ops" / "scripts" / "fleet_gateway" / "guard_distinct_token.py"
 LIVE = "TELEGRAM_BOT_TOKEN"
 SECOND = "ESTHER0001_BOT_TOKEN"
 
@@ -132,7 +132,7 @@ def test_the_guard_is_registered_for_deploy():
     """A guard that is not registered ships as an ImportError on the host while the
     repo tests stay green — the deploy syncs an explicit list."""
     src = (_REPO / "ops" / "scripts" / "cortex-update.sh").read_text()
-    assert "cortex_gateway/guard_distinct_token.py" in src, (
+    assert "fleet_gateway/guard_distinct_token.py" in src, (
         "guard_distinct_token.py must be in the deploy register, or the unit's "
         "ExecStartPre points at a file the host never receives")
 
@@ -198,7 +198,7 @@ def test_no_state_path_keeps_the_old_in_memory_behaviour():
 def test_daemon_persists_through_the_transport():
     """The daemon must call set_offset, not poke the attribute — otherwise the
     persistence exists but nothing ever uses it."""
-    src = (_REPO / "ops" / "scripts" / "cortex_gateway" / "daemon.py").read_text()
+    src = (_REPO / "ops" / "scripts" / "fleet_gateway" / "daemon.py").read_text()
     assert "set_offset" in src, "the daemon must persist the offset through the transport"
     assert 'f"gateway-offset-{bot.token_ref}.json"' in src, (
         "the state file must be keyed by token_ref, so two gateways on one host "

@@ -19,13 +19,13 @@
       },
       "commands": {
         "compact": {
-          "argv": ["/usr/bin/python3", "/home/<user>/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/home/<user>/.steadfaste-fleet/scripts/fleet_gateway/pi_control.py",
                    "compact", "--session-id", "{session_id}", "--model", "{model}"],
           "timeout_s": 420,
           "description": "manual context compaction (pi RPC; an LLM call over the session)"
         },
         "check_model": {
-          "argv": ["/usr/bin/python3", "/home/<user>/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/home/<user>/.steadfaste-fleet/scripts/fleet_gateway/pi_control.py",
                    "check-model", "{model}"],
           "timeout_s": 30,
           "description": "is this model one pi can resolve? (offline)"

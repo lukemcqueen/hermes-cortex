@@ -1,4 +1,4 @@
-"""cortex_gateway.pairing — DM pairing: how an unknown human gets enrolled, safely.
+"""fleet_gateway.pairing — DM pairing: how an unknown human gets enrolled, safely.
 
 The incumbent pairs unknown senders. Doing that without weakening the fail-closed allowlist
 means the enrolment is a SEPARATE, owner-approved path:

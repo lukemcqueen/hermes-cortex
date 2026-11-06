@@ -82,7 +82,7 @@ nothing else — verified with a plain prompt and with a prompt that used the ba
 
 A wrapper that only sends prompts is missing half the interface, and the missing half
 fails in ways that read as pi being broken (working adapter to copy:
-`ops/scripts/cortex_gateway/pi_control.py` in steadfaste-fleet).
+`ops/scripts/fleet_gateway/pi_control.py` in steadfaste-fleet).
 
 - **A built-in slash command sent as a prompt is a NO-OP.** `/compact`, `/model`,
   `/new`, `/restart`, `/settings` are handled only in the interactive/RPC surfaces; as a
@@ -482,7 +482,7 @@ backend. `pi` itself needs no new adapter — it is DECLARED, not coded:
   `output: raw` (pi's stdout is exactly the answer), `session: per_chat` with
   `CORTEX_SESSION_KEY={session_id}`, and a `timeout_s` that covers a real coding
   turn (300s+), not a chat reply. Slash commands (`/compact,` `/model` …) are the
-  GATEWAY's to handle via pi RPC (`cortex_gateway/pi_control.py`), never forwarded
+  GATEWAY's to handle via pi RPC (`fleet_gateway/pi_control.py`), never forwarded
   as prompts.
 - **A second Telegram bot must use a DISTINCT token var — never
   `TELEGRAM_BOT_TOKEN`.** `cortex-gateway.service` runs

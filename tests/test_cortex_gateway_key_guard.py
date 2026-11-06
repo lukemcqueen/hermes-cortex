@@ -17,8 +17,8 @@ sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 # Module-level import → cached in sys.modules (immune to sys.path resets).
 import gateway_envelope as ENV  # noqa: E402
-import cortex_gateway.daemon as DAEMON  # noqa: E402
-import cortex_gateway.hermes_backend as HB  # noqa: E402
+import fleet_gateway.daemon as DAEMON  # noqa: E402
+import fleet_gateway.hermes_backend as HB  # noqa: E402
 
 EXAMPLE = _REPO / "ops" / "scripts" / "gateway.yaml.example"
 CHAT = "12345"

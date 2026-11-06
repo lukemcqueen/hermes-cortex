@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CR3 — cortex_gateway daemon + hermes backend.
+"""CR3 — fleet_gateway daemon + hermes backend.
 
 The daemon wires the two seams into the full poll → dispatch → reply loop:
 Telegram poll → envelope → route → BackendAdapter.dispatch → reply →
@@ -17,13 +17,13 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 # Import the package at MODULE level so it is cached in sys.modules. The
-# function-level `from cortex_gateway.daemon import Gateway` calls then resolve
+# function-level `from fleet_gateway.daemon import Gateway` calls then resolve
 # from the cache and are immune to other test modules/conftest resetting
 # sys.path between tests (the full-suite isolation failure this fixes).
-import cortex_gateway.daemon  # noqa: E402,F401
-import cortex_gateway.backend  # noqa: E402,F401
-import cortex_gateway.hermes_backend  # noqa: E402,F401
-import cortex_gateway.transport  # noqa: E402,F401
+import fleet_gateway.daemon  # noqa: E402,F401
+import fleet_gateway.backend  # noqa: E402,F401
+import fleet_gateway.hermes_backend  # noqa: E402,F401
+import fleet_gateway.transport  # noqa: E402,F401
 
 BUS = "http://example.com"
 
@@ -99,7 +99,7 @@ def _update_env(text):
 
 # ── CR3.1 BackendAdapter gains a default poll_replies (async backends) ──────
 def test_backend_adapter_default_poll_replies_empty():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
 
     class B(BackendAdapter):
         def start(self):
@@ -129,8 +129,8 @@ def test_hermes_backend_dispatch_enqueues_to_inbox(monkeypatch):
     """
     import json as _json
 
-    from cortex_gateway import hermes_backend as hb
-    from cortex_gateway import transport
+    from fleet_gateway import hermes_backend as hb
+    from fleet_gateway import transport
 
     bus = FakeBus()
     monkeypatch.setattr(transport, "bus_send", bus.send)
@@ -160,7 +160,7 @@ def test_hermes_backend_dispatch_enqueues_to_inbox(monkeypatch):
 
 def test_hermes_backend_dispatch_none_and_malformed_are_silent(monkeypatch):
     """A4 fuzz hardening: dispatch(None)/non-dict returns None, never raises."""
-    from cortex_gateway import hermes_backend as hb
+    from fleet_gateway import hermes_backend as hb
 
     b = hb.HermesBackend(agent="hermes", bus_url=BUS, bus_headers={},
                          secret="s")
@@ -170,8 +170,8 @@ def test_hermes_backend_dispatch_none_and_malformed_are_silent(monkeypatch):
 
 
 def test_hermes_backend_poll_replies_drains_outbox(monkeypatch):
-    from cortex_gateway import hermes_backend as hb
-    from cortex_gateway import transport
+    from fleet_gateway import hermes_backend as hb
+    from fleet_gateway import transport
 
     bus = FakeBus()
     reply_env = _update_env("agent says hi")
@@ -190,8 +190,8 @@ def test_hermes_backend_poll_replies_drains_outbox(monkeypatch):
 
 # ── CR3.3 daemon full turn: Telegram → dispatch → reply → send ──────────────
 def test_daemon_poll_dispatch_send(monkeypatch):
-    from cortex_gateway.daemon import Gateway
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.daemon import Gateway
+    from fleet_gateway.backend import BackendAdapter
 
     transport = FakeTransport([_update("ping")])
 
@@ -222,8 +222,8 @@ def test_daemon_poll_dispatch_send(monkeypatch):
 
 
 def test_daemon_drains_async_replies(monkeypatch):
-    from cortex_gateway.daemon import Gateway
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.daemon import Gateway
+    from fleet_gateway.backend import BackendAdapter
 
     transport = FakeTransport([_update("ping")])
     async_reply = _update_env("async pong")
@@ -253,8 +253,8 @@ def test_daemon_drains_async_replies(monkeypatch):
 
 
 def test_daemon_silent_backend_sends_nothing():
-    from cortex_gateway.daemon import Gateway
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.daemon import Gateway
+    from fleet_gateway.backend import BackendAdapter
 
     transport = FakeTransport([_update("ping")])
 
@@ -280,8 +280,8 @@ def test_daemon_silent_backend_sends_nothing():
 
 
 def test_daemon_routes_by_channel_user():
-    from cortex_gateway.daemon import Gateway
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.daemon import Gateway
+    from fleet_gateway.backend import BackendAdapter
 
     transport = FakeTransport([_update("hi", chat_id=42)])
 
@@ -342,7 +342,7 @@ def test_daemon_a_silent_sync_turn_does_not_wedge_the_chat():
     message queued behind a turn that would never complete and the agent went
     permanently silent. Only an ASYNC backend may stay in flight.
     """
-    from cortex_gateway.daemon import Gateway
+    from fleet_gateway.daemon import Gateway
 
     transport = FakeTransport([_update("one"), _update("two")])
     backend = _SilentSync()
@@ -357,8 +357,8 @@ def test_daemon_a_silent_sync_turn_does_not_wedge_the_chat():
 
 def test_daemon_an_async_silent_turn_keeps_the_chat_busy_until_it_drains():
     """The fix must not free an ASYNC backend's chat early (hermes replies later)."""
-    from cortex_gateway.daemon import Gateway
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.daemon import Gateway
+    from fleet_gateway.backend import BackendAdapter
 
     transport = FakeTransport([_update("hi")])
 
@@ -394,7 +394,7 @@ def test_answers_async_survives_a_backend_attribute_that_raises():
     is read as synchronous: the safe direction, since sync frees the chat instead of
     leaving it waiting on a reply that never comes.
     """
-    from cortex_gateway.daemon import _answers_async
+    from fleet_gateway.daemon import _answers_async
 
     class Hostile:
         @property
@@ -412,7 +412,7 @@ def test_answers_async_survives_a_backend_attribute_that_raises():
 
 def test_daemon_a_queued_sync_turn_that_answers_nothing_still_frees_the_chat():
     """The same rule on the queue path — otherwise the queue stalls behind it."""
-    from cortex_gateway.daemon import Gateway
+    from fleet_gateway.daemon import Gateway
 
     gw = Gateway(transport=FakeTransport([]), backends={"pi": _SilentSync()},
                  default_agent="pi")

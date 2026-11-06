@@ -44,7 +44,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/steadfaste-fleet/.env"; set +a; . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py"; exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
+        <string>mkdir -p "$HOME/Library/Logs"; exec >>"$HOME/Library/Logs/com.hermes.cortex-gateway.log" 2>&amp;1; set -a; . "$HOME/steadfaste-fleet/.env"; set +a; . "$HOME/.steadfaste-fleet/scripts/lib/require-fleet-venv.sh"; require_fleet_venv "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py"; exec "$HOME/.steadfaste-fleet/venv/bin/python3" "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>

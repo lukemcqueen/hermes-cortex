@@ -15,7 +15,7 @@ launchd pitfalls) that is not part of the generic contract.
 
 | | |
 |---|---|
-| **Daemon** | `cortex_gateway/daemon.py` (standalone, zero Hermes import) |
+| **Daemon** | `fleet_gateway/daemon.py` (standalone, zero Hermes import) |
 | **Transport** | Telegram long-poll (`getUpdates`) |
 | **Backend** | Pi (`kind: command` — one `pi` invocation per turn) |
 | **Bot** | `@TitusPiBot` (distinct from the Hermes bot) |
@@ -95,12 +95,12 @@ The daemon reads `PI_TELEGRAM_BOT_TOKEN` because `gateway.yaml` names it in
       },
       "commands": {
         "compact": {
-          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/fleet_gateway/pi_control.py",
                    "compact", "--session-id", "{session_id}", "--model", "{model}"],
           "timeout_s": 420
         },
         "check_model": {
-          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/cortex_gateway/pi_control.py",
+          "argv": ["/usr/bin/python3", "/Users/luke/.steadfaste-fleet/scripts/fleet_gateway/pi_control.py",
                    "check-model", "{model}"],
           "timeout_s": 30
         }
@@ -155,7 +155,7 @@ Copy and edit `docs/templates/com.hermes.cortex-gateway.plist`:
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>set -a; . "$HOME/steadfaste-fleet/.env"; set +a; exec /usr/bin/python3 "$HOME/.steadfaste-fleet/scripts/cortex_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
+        <string>set -a; . "$HOME/steadfaste-fleet/.env"; set +a; exec /usr/bin/python3 "$HOME/.steadfaste-fleet/scripts/fleet_gateway/daemon.py" --config "$HOME/.steadfaste-fleet/gateway.yaml"</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -226,7 +226,7 @@ curl -s "https://api.telegram.org/bot<PI_TELEGRAM_BOT_TOKEN>/getMe"
 # Config valid? (dry-run: builds gateway, does not poll)
 cd ~/.steadfaste-fleet/scripts && \
   set -a && source ~/steadfaste-fleet/.env && set +a && \
-  python3 -c "from cortex_gateway.daemon import build_gateway; \
+  python3 -c "from fleet_gateway.daemon import build_gateway; \
               gw = build_gateway(Path('~/.steadfaste-fleet/gateway.yaml').expanduser()); \
               print('OK:', list(gw.backends.keys()))"
 

@@ -813,7 +813,7 @@ register "ops/scripts/agent-shim.py"                       "${CORTEX_DEPLOY_HOME
 # The agent-side reply primitive: the documented way an agent answers a human
 # (docs/design/gateway-reply-path.md -> agent-reply -> out_<agent>). Committed and
 # tested but never registered, so the deployed host had no agent-reply at all — the
-# same class of bug the cortex_gateway register guard exists for, one layer out at an
+# same class of bug the fleet_gateway register guard exists for, one layer out at an
 # entrypoint (the guard now covers it too).
 register "ops/scripts/agent-reply.py"                      "${CORTEX_DEPLOY_HOME}/scripts/agent-reply.py"
 register "ops/scripts/bot_locks.py"                        "${CORTEX_DEPLOY_HOME}/scripts/bot_locks.py"
@@ -878,44 +878,48 @@ register "ops/scripts/cortex_lib/paths.py"        "${CORTEX_DEPLOY_HOME}/scripts
 register "ops/scripts/cortex-bus-bridge-run.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-run.py"
 register "ops/scripts/cortex-bus-bridge-generate.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex-bus-bridge-generate.py"
 # cortex-gateway — the decoupled gateway package (CR1 transport + CR2 backend seam)
-register "ops/scripts/cortex_gateway/__init__.py"    "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/__init__.py"
-register "ops/scripts/cortex_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/transport.py"
-register "ops/scripts/cortex_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/backend.py"
-register "ops/scripts/cortex_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/hermes_backend.py"
-register "ops/scripts/cortex_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/daemon.py"
+register "ops/scripts/fleet_gateway/__init__.py"    "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/__init__.py"
+# ONE-release shim for fleet_gateway (cortex->fleet, P2): the live gateway unit
+# still ExecStarts scripts/cortex_gateway/daemon.py until the P5 unit rename, and
+# not-yet-redeployed importers keep resolving the old name. Delete with it.
+register "ops/scripts/cortex_gateway/__init__.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/__init__.py"
+register "ops/scripts/fleet_gateway/transport.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/transport.py"
+register "ops/scripts/fleet_gateway/backend.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/backend.py"
+register "ops/scripts/fleet_gateway/hermes_backend.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/hermes_backend.py"
+register "ops/scripts/fleet_gateway/daemon.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/daemon.py"
 # New modules MUST be registered here: the deploy syncs this explicit list, so a module that
 # is imported but not registered ships as an ImportError on the host (the repo tests still
 # pass, because they import the repo tree). tests/test_gateway_modules_are_deployed.py fails
 # the build when this list and the package directory disagree.
-register "ops/scripts/cortex_gateway/agents.py"      "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/agents.py"
-register "ops/scripts/cortex_gateway/pairing.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pairing.py"
+register "ops/scripts/fleet_gateway/agents.py"      "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/agents.py"
+register "ops/scripts/fleet_gateway/pairing.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/pairing.py"
 # ExecStartPre guard: refuses to start a unit whose token_ref resolves to the LIVE
 # bot's token (a second poller on one token 409s the live channel). The separation
 # used to be a comment in the unit file; a comment cannot fail.
-register "ops/scripts/cortex_gateway/guard_distinct_token.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/guard_distinct_token.py"
+register "ops/scripts/fleet_gateway/guard_distinct_token.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/guard_distinct_token.py"
 # Per-chat session generations for the gateway's /new command (archive semantics:
 # a rotation starts a fresh session and KEEPS the previous transcript).
-register "ops/scripts/cortex_gateway/sessions.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/sessions.py"
+register "ops/scripts/fleet_gateway/sessions.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/sessions.py"
 # Per-chat model overrides for the gateway's /model command (persisted, so a switch
 # survives the unit's Restart=always).
-register "ops/scripts/cortex_gateway/models.py"     "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/models.py"
+register "ops/scripts/fleet_gateway/models.py"     "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/models.py"
 # Unseen "/restart" markers: the gateway cannot tell a chat it restarted AFTER it
 # restarted, so the first reply once it is back carries the confirmation (and the
 # agent is told the same fact, or it answers "no" from a session that survived).
-register "ops/scripts/cortex_gateway/restarts.py"   "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/restarts.py"
+register "ops/scripts/fleet_gateway/restarts.py"   "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/restarts.py"
 # The PI harness adapter: pi's session operations the gateway cannot express as a
 # prompt (`/compact` lives in pi's RPC mode). Declared per host in gateway.yaml under
 # backends[].commands, and run with the stock python3 — stdlib only.
-register "ops/scripts/cortex_gateway/pi_control.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/pi_control.py"
+register "ops/scripts/fleet_gateway/pi_control.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/pi_control.py"
 # Re-runnable acceptance check for /new, deployed so it can be re-run ON the host:
-#   python3 ~/.steadfaste-fleet/scripts/cortex_gateway/new_command_evidence.py
+#   python3 ~/.steadfaste-fleet/scripts/fleet_gateway/new_command_evidence.py
 # The runner .sh beside it is repo-only (like run-cutover-evidence.sh) — a .sh cannot
-# go in the cortex_gateway register, whose entries must be the .py modules.
-register "ops/scripts/cortex_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/new_command_evidence.py"
+# go in the fleet_gateway register, whose entries must be the .py modules.
+register "ops/scripts/fleet_gateway/new_command_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/new_command_evidence.py"
 # Re-runnable acceptance check for /model, /compact, /new and /restart (/help, /status
 # too) against a LIVE agent, on the deployed tree:
-#   python3 ~/.steadfaste-fleet/scripts/cortex_gateway/slash_parity_evidence.py
-register "ops/scripts/cortex_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/cortex_gateway/slash_parity_evidence.py"
+#   python3 ~/.steadfaste-fleet/scripts/fleet_gateway/slash_parity_evidence.py
+register "ops/scripts/fleet_gateway/slash_parity_evidence.py" "${CORTEX_DEPLOY_HOME}/scripts/fleet_gateway/slash_parity_evidence.py"
 register "ops/scripts/gateway.yaml.example"          "${CORTEX_DEPLOY_HOME}/gateway.yaml.example"
 register "docs/templates/cortex-gateway.service"     "${CORTEX_DEPLOY_HOME}/templates/cortex-gateway.service"
 register "docs/templates/com.hermes.cortex-gateway.plist" "${CORTEX_DEPLOY_HOME}/templates/com.hermes.cortex-gateway.plist"

@@ -25,7 +25,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-from cortex_gateway import transport as T  # noqa: E402
+from fleet_gateway import transport as T  # noqa: E402
 
 _FIXTURES = json.loads((_REPO / "tests" / "fixtures" / "telegram-golden-updates.json").read_text())
 _CASES = _FIXTURES["cases"]

@@ -28,15 +28,15 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-import cortex_gateway.agents as AGENTS      # noqa: E402
-import cortex_gateway.daemon as DAEMON      # noqa: E402
-import cortex_gateway.models as MODELS      # noqa: E402
-import cortex_gateway.restarts as RESTARTS  # noqa: E402
-import cortex_gateway.sessions as SESSIONS  # noqa: E402
+import fleet_gateway.agents as AGENTS      # noqa: E402
+import fleet_gateway.daemon as DAEMON      # noqa: E402
+import fleet_gateway.models as MODELS      # noqa: E402
+import fleet_gateway.restarts as RESTARTS  # noqa: E402
+import fleet_gateway.sessions as SESSIONS  # noqa: E402
 
 CHAT = 12345
 DEFAULT_MODEL = "openrouter/moonshotai/kimi-k2.6"
-PI_CONTROL = _REPO / "ops" / "scripts" / "cortex_gateway" / "pi_control.py"
+PI_CONTROL = _REPO / "ops" / "scripts" / "fleet_gateway" / "pi_control.py"
 
 
 class FakeTransport:

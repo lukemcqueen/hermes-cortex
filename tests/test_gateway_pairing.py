@@ -15,8 +15,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-from cortex_gateway import daemon as D          # noqa: E402
-from cortex_gateway import pairing as P         # noqa: E402
+from fleet_gateway import daemon as D          # noqa: E402
+from fleet_gateway import pairing as P         # noqa: E402
 
 OWNER = 900001          # in the env allowlist
 GUEST = 100001          # enrolled later

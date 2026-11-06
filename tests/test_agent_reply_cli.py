@@ -17,7 +17,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 import gateway_envelope as env                                   # noqa: E402
-import cortex_gateway.transport as T                             # noqa: E402
+import fleet_gateway.transport as T                             # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("agent_reply_cli", _REPO / "ops" / "scripts" / "agent-reply.py")
 assert _spec and _spec.loader

@@ -23,9 +23,9 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
-import cortex_gateway.agents as AGENTS      # noqa: E402
-import cortex_gateway.daemon as DAEMON      # noqa: E402
-import cortex_gateway.sessions as SESSIONS  # noqa: E402
+import fleet_gateway.agents as AGENTS      # noqa: E402
+import fleet_gateway.daemon as DAEMON      # noqa: E402
+import fleet_gateway.sessions as SESSIONS  # noqa: E402
 
 UPDATE_SH = _REPO / "ops" / "scripts" / "cortex-update.sh"
 CHAT = "12345"
@@ -276,12 +276,12 @@ def test_sessions_module_is_registered_for_deploy():
     """A module that is imported but not registered ships as an ImportError on the
     host while the repo tests stay green."""
     src = UPDATE_SH.read_text()
-    assert "cortex_gateway/sessions.py" in src, (
+    assert "fleet_gateway/sessions.py" in src, (
         "sessions.py must be in the deploy register, or the gateway cannot start")
 
 
 def test_the_gateway_names_the_session_module_it_imports():
     """It imports `from . import sessions`, so the register path and the import must
     agree — a rename in one place only is the classic silent break."""
-    src = (_REPO / "ops" / "scripts" / "cortex_gateway" / "daemon.py").read_text()
+    src = (_REPO / "ops" / "scripts" / "fleet_gateway" / "daemon.py").read_text()
     assert re.search(r"from \. import sessions", src)

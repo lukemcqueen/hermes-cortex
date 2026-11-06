@@ -1,4 +1,4 @@
-"""cortex_gateway.backend — the BackendAdapter seam (CR2).
+"""fleet_gateway.backend — the BackendAdapter seam (CR2).
 
 The seam an agent backend implements so the gateway dispatches an inbound
 envelope and collects the reply. **hermes is the first adapter; pi and
@@ -46,7 +46,7 @@ class BackendAdapter(ABC):
     # a turn that can never complete. Measured on the second bot with the pi backend.
     async_replies = False
 
-    # The spec this backend was built from (cortex_gateway.agents.AgentSpec), when the
+    # The spec this backend was built from (fleet_gateway.agents.AgentSpec), when the
     # registry built it. Optional and generic: health/status reporting can show an
     # operator WHAT was declared for this agent without knowing its kind.
     spec = None

@@ -31,8 +31,8 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 import gateway_envelope as env                    # noqa: E402
-from cortex_gateway import agents as A            # noqa: E402
-from cortex_gateway import daemon as D            # noqa: E402
+from fleet_gateway import agents as A            # noqa: E402
+from fleet_gateway import daemon as D            # noqa: E402
 
 # The pi CLI writes its warning/session chatter to STDERR and only the assistant answer
 # to STDOUT — measured on the live install with a plain turn and with a tool-using turn.
@@ -229,7 +229,7 @@ def test_the_static_gate_reports_no_critical_or_high_finding():
     modules = ["backend.py", "hermes_backend.py", "daemon.py", "agents.py"]
     failures = []
     for name in modules:
-        target = _REPO / "ops" / "scripts" / "cortex_gateway" / name
+        target = _REPO / "ops" / "scripts" / "fleet_gateway" / name
         r = subprocess.run([sys.executable, str(gate), "--file", str(target),
                             "--level", "A4", "--gate"],
                            capture_output=True, text=True, timeout=300)

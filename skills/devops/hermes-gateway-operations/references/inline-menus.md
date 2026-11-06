@@ -8,8 +8,8 @@ config key names live in its own example file, not here.
 
 | Piece | Path |
 |---|---|
-| Command dispatch + menu state | `ops/scripts/cortex_gateway/daemon.py` |
-| Transport (send / edit / buttons / callbacks) | `ops/scripts/cortex_gateway/transport.py` |
+| Command dispatch + menu state | `ops/scripts/fleet_gateway/daemon.py` |
+| Transport (send / edit / buttons / callbacks) | `ops/scripts/fleet_gateway/transport.py` |
 | Config, incl. the curated list | `ops/scripts/gateway.yaml`; shape documented in `ops/scripts/gateway.yaml.example` |
 | Parity tests | `tests/test_gateway_slash_parity.py` |
 | Committed re-runnable proof | `docs/evidence/verify-model-picker.sh` |

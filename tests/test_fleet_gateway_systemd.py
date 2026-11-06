@@ -15,8 +15,8 @@ sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 # Import at module level so the package is cached in sys.modules — immune to
 # other test modules resetting sys.path between tests.
-import cortex_gateway.daemon  # noqa: E402,F401
-import cortex_gateway.hermes_backend  # noqa: E402,F401
+import fleet_gateway.daemon  # noqa: E402,F401
+import fleet_gateway.hermes_backend  # noqa: E402,F401
 
 UNIT = _REPO / "docs" / "templates" / "cortex-gateway.service"
 EXAMPLE = _REPO / "ops" / "scripts" / "gateway.yaml.example"
@@ -42,7 +42,7 @@ def test_unit_has_no_hermes_gateway_dependency():
 
 def test_unit_execstart_targets_deployed_daemon_with_config():
     body = UNIT.read_text()
-    assert "cortex_gateway/daemon.py" in body
+    assert "fleet_gateway/daemon.py" in body
     assert "--config" in body
     assert "gateway.yaml" in body
 
@@ -83,7 +83,7 @@ def test_build_gateway_wires_the_example(monkeypatch):
     monkeypatch.setenv("GATEWAY_SECRET", "dummy")
     monkeypatch.setenv("TELEGRAM_ALLOWED_USERS", "1001")
     monkeypatch.setenv("TELEGRAM_HOME_CHANNEL", "1001")
-    gw = cortex_gateway.daemon.build_gateway(EXAMPLE)
+    gw = fleet_gateway.daemon.build_gateway(EXAMPLE)
     assert gw.default_agent
     assert gw.backends
     assert type(gw.transport).__name__ == "TelegramAdapter"

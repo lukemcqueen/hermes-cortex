@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CR2 — cortex_gateway BackendAdapter seam.
+"""CR2 — fleet_gateway BackendAdapter seam.
 
 The abstract interface an agent backend implements so the gateway dispatches
 an inbound envelope and collects the reply. hermes is the first adapter;
@@ -18,13 +18,13 @@ sys.path.insert(0, str(_REPO / "ops" / "scripts"))
 
 # ── CR2.1 BackendAdapter is an abstract seam (not instantiable) ─────────────
 def test_backend_adapter_is_abstract():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
     with pytest.raises(TypeError):
         BackendAdapter()  # abstract — must not instantiate directly
 
 
 def test_backend_adapter_requires_all_methods():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
 
     class Incomplete(BackendAdapter):
         pass
@@ -67,7 +67,7 @@ class _EchoBackend:
 
 
 def test_seam_dispatch_collects_reply():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
     assert issubclass(_EchoBackend, BackendAdapter)
     b = _EchoBackend()
     reply = b.dispatch(_in())
@@ -78,7 +78,7 @@ def test_seam_dispatch_collects_reply():
 
 
 def test_seam_dispatch_may_return_none():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
 
     class Silent(BackendAdapter):
         def start(self):
@@ -115,7 +115,7 @@ def _in():
 def test_subclasshook_none_and_nonconformant_are_safe():
     """A4 fuzz hardening: __subclasshook__ never crashes on None or a
     non-conformant class — it returns falsy, not an exception."""
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
 
     class NoMethods:
         pass
@@ -128,7 +128,7 @@ def test_subclasshook_none_and_nonconformant_are_safe():
 
 # ── CR2.3 swappability: two backends, same seam, gateway code unchanged ──────
 def test_backends_are_swappable_behind_one_interface():
-    from cortex_gateway.backend import BackendAdapter
+    from fleet_gateway.backend import BackendAdapter
 
     def make(name):
         class B(BackendAdapter):

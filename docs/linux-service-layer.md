@@ -15,7 +15,7 @@ docs audit, which both pointed at this file before it existed.
 
 | Template | Unit | What it runs | Notes |
 |---|---|---|---|
-| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`cortex_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.steadfaste-fleet/gateway.yaml`; env from `%h/steadfaste-fleet/.env`. |
+| `cortex-gateway.service` | `cortex-gateway.service` | the decoupled messaging gateway daemon (`fleet_gateway/daemon.py`) | No Hermes dependency and no unit dependency on the Hermes gateway — that independence is the point. `ExecStartPre` runs `guard_distinct_token.py`, which fails CLOSED if the config's token resolves to the live bot token. Config `%h/.steadfaste-fleet/gateway.yaml`; env from `%h/steadfaste-fleet/.env`. |
 | `health-vector.service` | `health-vector.service` | `ops/scripts/health/health-vector.py --serve 8905` | INTERNAL port **8905** — nginx's `health_backend` upstream expects it. Do not change it without patching the nginx upstream too. |
 
 ## Rules

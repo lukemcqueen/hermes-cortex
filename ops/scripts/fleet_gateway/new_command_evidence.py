@@ -5,7 +5,7 @@ RUN THIS TO REGENERATE the evidence; it is not a narrative. It drives the
 DEPLOYED gateway modules (not the repo copies, so it proves what the host runs)
 against the REAL `pi` binary, and emits the report as markdown on stdout.
 
-    bash ops/scripts/cortex_gateway/run-new-command-evidence.sh
+    bash ops/scripts/fleet_gateway/run-new-command-evidence.sh
 
 A probe chat id is used throughout, never a real one: this file is committed and
 a chat id is personal data.
@@ -30,9 +30,9 @@ from pathlib import Path
 DEPLOY = Path.home() / ".steadfaste-fleet"
 sys.path.insert(0, str(DEPLOY / "scripts"))
 
-import cortex_gateway.agents as AGENTS      # noqa: E402
-import cortex_gateway.daemon as DAEMON      # noqa: E402
-import cortex_gateway.sessions as SESSIONS  # noqa: E402
+import fleet_gateway.agents as AGENTS      # noqa: E402
+import fleet_gateway.daemon as DAEMON      # noqa: E402
+import fleet_gateway.sessions as SESSIONS  # noqa: E402
 
 # A UNIQUE probe chat per run. A fixed one makes the second run resume the sessions
 # the first run left behind — which reads as "/new leaks memory" when nothing leaked.
@@ -105,7 +105,7 @@ def main() -> int:
     retained = [p for p in transcripts if before in p.name and after not in p.name]
 
     print("# Gateway `/new` — acceptance evidence (ARCHIVE semantics)\n")
-    print("Regenerate with: `bash ops/scripts/cortex_gateway/run-new-command-evidence.sh`\n")
+    print("Regenerate with: `bash ops/scripts/fleet_gateway/run-new-command-evidence.sh`\n")
     print("Drives the DEPLOYED gateway against the REAL `pi` binary. A probe chat id is")
     print("used throughout — never a real one, since this file is committed.\n")
     print("| # | Criterion | Result |")

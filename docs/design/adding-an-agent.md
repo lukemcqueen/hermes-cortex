@@ -2,7 +2,7 @@
 
 The gateway's `poll → dispatch → reply` loop is agent-agnostic. An agent is a **backend
 spec** in `gateway.yaml`; the spec names a **kind**, and a kind is one implementation of the
-`BackendAdapter` seam (`ops/scripts/cortex_gateway/backend.py`).
+`BackendAdapter` seam (`ops/scripts/fleet_gateway/backend.py`).
 
 ```
 human → Telegram → transport → envelope → [ BACKEND ] → reply envelope → transport → human
@@ -28,7 +28,7 @@ human → Telegram → transport → envelope → [ BACKEND ] → reply envelope
 ]
 ```
 
-Spec fields (`AgentSpec`, `ops/scripts/cortex_gateway/agents.py`):
+Spec fields (`AgentSpec`, `ops/scripts/fleet_gateway/agents.py`):
 
 | field | meaning |
 |---|---|
@@ -80,7 +80,7 @@ A different protocol (a hosted API, a websocket agent, an agent that answers on 
 URL) is a class with the four seam methods, plus registration:
 
 ```python
-from cortex_gateway.agents import register_kind, AgentSpec, reply_from_origin
+from fleet_gateway.agents import register_kind, AgentSpec, reply_from_origin
 import gateway_envelope as env
 
 class HttpAgent:
@@ -148,7 +148,7 @@ CONFIG change:
 | Show progress while it works | `"stream": true` (the gateway builds the sink; the backend only reports text) |
 | Only the agent's answer matters | `"output": "last_line"` |
 | The agent writes its own reply to the bus | `"reply_mode": "bus"` (needs `out_<name>` to exist and to be granted) |
-| A brand-new kind of agent (HTTP, another CLI shape) | `register_kind(name, cls)` in `cortex_gateway/agents.py` — the daemon never learns what it is talking to |
+| A brand-new kind of agent (HTTP, another CLI shape) | `register_kind(name, cls)` in `fleet_gateway/agents.py` — the daemon never learns what it is talking to |
 
 A backend that can stream advertises `supports_stream = True`; the daemon feature-detects it,
 so a backend that cannot stream is not broken by the flag. Streaming is a courtesy: if the

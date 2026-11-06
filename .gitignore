@@ -69,7 +69,7 @@ logs/
 # was never IN git — a fresh clone would have the unit's ExecStartPre pointing at a
 # file that does not exist, and the unit would refuse to start everywhere else.
 # A source file whose NAME trips the secret patterns needs an explicit negation.
-!ops/scripts/cortex_gateway/guard_distinct_token.py
+!ops/scripts/fleet_gateway/guard_distinct_token.py
 # Negate our own skills that legitimately contain "credential" or "secret"
 !**/secure-credential-handling/**
 !**/credential-leak-response/

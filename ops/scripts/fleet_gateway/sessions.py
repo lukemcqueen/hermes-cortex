@@ -1,4 +1,4 @@
-"""cortex_gateway.sessions — per-chat session generations (the `/new` command).
+"""fleet_gateway.sessions — per-chat session generations (the `/new` command).
 
 `/new` must START A NEW conversation **without destroying the old one** (Luke,
 2026-10-03: "archive"). Two facts shape this design:
