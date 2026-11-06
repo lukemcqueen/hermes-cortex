@@ -135,9 +135,13 @@ HAPI_KEY_ID="cmqkey-hermes-$(openssl rand -hex 8)"
 # Generate bcrypt hash of the secret key. A Langfuse API key MUST hold a real
 # bcrypt hash — a truncated/salt-less substitute silently breaks authentication.
 # So this FAILS loudly when bcrypt cannot be produced; no silent fallback.
+if ! env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt" 2>/dev/null; then
+  error "python3 with the bcrypt module is required (missing) — aborting so Langfuse auth cannot break silently"
+  exit 1
+fi
 BCRYPT_HASH="$(env -u PYTHONPATH -u PYTHONHOME python3 -c "import bcrypt; print(bcrypt.hashpw(b'$HAPI_KEY_SECRET'.encode(), bcrypt.gensalt()).decode())")"
 if [[ -z "$BCRYPT_HASH" ]]; then
-  error "Could not generate a bcrypt hash of the API secret (python3 + bcrypt required) — aborting so auth cannot break silently"
+  error "bcrypt hash generation failed — aborting so auth cannot break silently"
   exit 1
 fi
 
