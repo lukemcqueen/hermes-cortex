@@ -376,10 +376,10 @@ The phase that must not break the deploy chain.
    (the `(hermes-cortex|steadfaste-fleet)` dual-accept pattern), in its own commit, deployed and
    **verified by exercising both the old and the new deploy invocation**.
 2. `git mv ops/scripts/cortex-update.sh ops/scripts/fleet-update.sh`; keep a `cortex-update.sh`
-   **forwarding shim** for one release; update all **346** `register()` deployed-path targets (§9
-   item 2 — reconcile the base count first) and every caller (`cortex-dogfood.sh:23`,
-   `pre-push-pull`, `install-crons.sh`, `install-cortex-update-cron.sh`, the bridge generator, the
-   doctor's expected lists).
+   **forwarding shim** for one release; update all **388** `register`/`register_orch`
+   deployed-path targets (§9 item 2 — base settled as 388 in P0) and every caller
+   (`cortex-dogfood.sh:23`, `pre-push-pull`, `install-crons.sh`, `install-cortex-update-cron.sh`,
+   the bridge generator, the doctor's expected lists).
 3. Sweep the remaining script/module filenames from §3.1, including the mapping lines the guard
    names — `ops/install/deploy/cortex-bus.service → fleet-bus.service`, the config/plist/template
    paths, and `ops/install/deploy/hermes-cortex.env.example → fleet.env.example` (these are
