@@ -168,6 +168,15 @@ were still resolving the transition symlink after §1–§7):
 - `local-*` wrappers in `~/.steadfaste-fleet/scripts/` that `exec ~/.hermes-cortex/scripts/…` or
   pass `--repo ~/hermes-cortex` (e.g. `local-clickhouse-log-cleanup.sh`,
   `local-esther-land-nonhermes-fix-probe.sh`) — repoint the exec path AND the `--repo` argument.
+- **The mycortex brain's LOCAL source** (measured 2026-11-06 — the fix feels like a no-op until
+  the sync cron fires): `mycortex.sources.local_path` for a source registered at the OLD repo
+  path (`/home/<user>/hermes-cortex`) still points there, so the sync sees 0 pages and the
+  mass-deletion guardrail aborts: `'<name>': mass-deletion guardrail: N/N pages would archive
+  (>10%)`. Repoint via psql as `mycortex_admin` (preserves the source's federated flag — a
+  `sources add` without `--federated` would silently un-federate it):
+  `UPDATE mycortex.sources SET local_path = '/home/<user>/steadfaste-fleet' WHERE name = '<name>';`
+  Then verify: `~/.steadfaste-fleet/scripts/mycortex sync --source <name>` shows `N seen,
+  0 archived`, and `agent-mycortex-sync` (systemd bridge) records success.
 
 The running gateway's MCP servers were SPAWNED with the old paths and keep running through symlink
 removal; a later `hermes mcp reload` / gateway restart re-spawns them from the repointed
