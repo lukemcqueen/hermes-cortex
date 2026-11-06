@@ -1,0 +1,43 @@
+========================================================================
+REPO=/home/esther/steadfaste-fleet
+cmd: git ls-files | wc -l   ->  tracked files = 3511
+========================================================================
+
+## 1. Token families (tracked text files, .pyc skipped)
+family                        total   files  in-scope
+cortex- (hyphen)               6449    1017      3898
+cortex_ (underscore)           2552     579      2070
+CORTEX_ (env/const)            3366     489      3141
+Cortex (titlecase)              413     172       276
+\bcortex\b (bare)              4025     659       908
+
+## 2. In-scope carriers, top 5 by hit count
+    817  ops/scripts/cortex-update.sh
+    379  ops/scripts/manage/cortex_doctor/checks.py
+    227  ops/install/install.sh
+    173  skills/autonomous-ai-agents/hermes-cortex/SKILL.md
+     94  tests/test_skills_ownership.py
+
+## 3. Tracked paths containing 'cortex' (excluding mycortex)
+  total = 192   records(excluded) = 32   live = 160
+
+## 4. register() map — exact count in cortex-update.sh
+  cmd: grep -cE '^[[:space:]]*register[[:space:]]+"' ops/scripts/cortex-update.sh
+  leading-anchored register "<...>" calls = 346
+  all occurrences of the token 'register' = 445
+  (the plan cited the TOKEN count as if it were the MAP count — corrected)
+
+## 5. CORTEX_* env var names — distinct count + top carriers
+  distinct CORTEX_* names = 139
+  total occurrences       = 3356
+      717  CORTEX_DEPLOY_HOME
+      479  CORTEX_REPO
+      250  CORTEX_HOME
+      193  CORTEX_BUS_URL
+      132  CORTEX_SESSION_REPO
+      126  CORTEX_BUS_TOKEN
+       97  CORTEX_BASIC_AUTH
+       88  CORTEX_BUS_FALLBACK_URL
+
+## 6. mycortex post-condition (must be unchanged by the sweep)
+  files containing 'mycortex' = 427
