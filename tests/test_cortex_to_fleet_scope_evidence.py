@@ -113,8 +113,8 @@ def test_register_map_count_is_distinguished_from_token_count():
     assert res.returncode == 0
     block = res.stdout.split("## 4. register() map", 1)
     assert len(block) == 2, "register() section absent"
-    assert re.search(r"leading-anchored register .+ calls = \d+", block[1])
-    assert re.search(r"all occurrences of the token 'register' = \d+", block[1])
+    assert re.search(r"leading-anchored register .+ calls\s*=\s*\d+", block[1])
+    assert re.search(r"all occurrences of the token 'register'\s*=\s*\d+", block[1])
 
 
 def test_cortex_delta_section_reconciles_the_two_counts():

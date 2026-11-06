@@ -5,11 +5,11 @@ cmd: git ls-files | wc -l   ->  tracked files = 3517
 
 ## 1. Token families (tracked text files, .pyc skipped)
 family                        total   files    sweep
-cortex- (hyphen)               6601    1023     3676
-cortex_ (underscore)           2590     583     2056
-CORTEX_ (env/const)            3439     493     3110
-Cortex (titlecase)              422     175      211
-\bcortex\b (bare)              4073     663      792
+cortex- (hyphen)               6586    1022     3676
+cortex_ (underscore)           2588     582     2056
+CORTEX_ (env/const)            3428     492     3112
+Cortex (titlecase)              421     174      211
+\bcortex\b (bare)              4073     662      792
 
 ## 2. Sweep-scope carriers, top 5 by hit count
     817  ops/scripts/cortex-update.sh
@@ -37,14 +37,17 @@ Cortex (titlecase)              422     175      211
 
 ## 4. register() map — exact count in cortex-update.sh
   cmd: grep -cE '^[[:space:]]*register[[:space:]]+"' ops/scripts/cortex-update.sh
-  leading-anchored register "<...>" calls = 346
-  all occurrences of the token 'register' = 445
+  leading-anchored register "<...>" calls    = 346
+  leading-anchored register_orch "<...>" calls = 42
+  MAP TOTAL (register + register_orch)         = 388
+  of which ${CORTEX_DEPLOY_HOME}/ shape (test-visible) = 383
+  all occurrences of the token 'register'      = 445
   (the plan cited the TOKEN count as if it were the MAP count — corrected)
 
 ## 5. CORTEX_* env var names — distinct count + top carriers
   distinct CORTEX_* names = 138
-  total occurrences       = 3097
-      673  CORTEX_DEPLOY_HOME
+  total occurrences       = 3099
+      675  CORTEX_DEPLOY_HOME
       450  CORTEX_REPO
       224  CORTEX_HOME
       178  CORTEX_BUS_URL
@@ -54,34 +57,34 @@ Cortex (titlecase)              422     175      211
        87  CORTEX_BUS_FALLBACK_URL
 
 ## 6. mycortex post-condition (must be unchanged by the sweep)
-  files containing 'mycortex' = 431
+  files containing 'mycortex' = 430
 
 ## 7. CORTEX_ delta — family counter vs identifier-token counter
   The two counts quoted in the plan are NOT the same measurement. Both come
   from THIS run; a replacement driven by the family counter rewrites prose
   wildcards too, and a residue grep driven by the identifier counter misses them.
-  family  r'CORTEX_'            = 3110
-  ident   r'CORTEX_[A-Z0-9_]+'  = 3097
+  family  r'CORTEX_'            = 3112
+  ident   r'CORTEX_[A-Z0-9_]+'  = 3099
   delta                         = 13
   both counters EXCLUDE the files listed in §3, so the pair is stable across
   edits to this plan (it mentions CORTEX_* itself and would otherwise inflate
   its own numbers on every rewrite).
   char following each trailing occurrence (all files, incl. excluded):
-      33  '*'
-       7  ' '
+      30  '*'
        7  '`'
-       5  '['
+       5  ' '
        4  '"'
-       3  "'"
+       4  '['
+       2  "'"
        1  '|'
        1  '\\'
-  sites (file:line) — first 6 of 61:
+  sites (file:line) — first 6 of 54:
     docs/DOCS-INDEX.md:79
     docs/env-vars.md:3
     docs/evidence/cortex-to-fleet-scope-2026-11-06.py:46
     docs/evidence/cortex-to-fleet-scope-2026-11-06.py:46
     docs/evidence/cortex-to-fleet-scope-2026-11-06.py:87
-    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:120
+    docs/evidence/cortex-to-fleet-scope-2026-11-06.py:126
   NOTE: a replacement driven by the FAMILY counter rewrites prose wildcard
   mentions too; a residue grep driven by the IDENTIFIER counter will not see
   them. Use the family counter for the sweep and the identifier counter for
