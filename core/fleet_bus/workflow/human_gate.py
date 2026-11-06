@@ -1,19 +1,19 @@
 """
 Human-in-the-Loop Gate — workflow steps that need human approval.
 
-This module defines the HIL request/response API. Verified wiring
-(2026-11-06, during the cortex->fleet P2 rename):
+This module defines the HIL request/response API. Wiring verified by direct
+read at 2026-11-06 (during the cortex->fleet P2 rename):
 
-- router.py decides when a step needs a human: it marks the workflow
-  'blocked' (update_workflow_state + 'step_waiting_human'/'step_blocked'
-  audit) and returns 'blocked'.
-- server.py exposes the review surface: GET pending reviews
-  (get_pending_hil) and POST decisions (process_hil_response) wired to
-  REST endpoints.
+- router.py route_workflow() (≈lines 108-132) decides when a step needs a
+  human: it marks the workflow 'blocked' (update_workflow_state + a
+  'step_waiting_human'/'step_blocked' audit row) and returns 'blocked'.
+- server.py wires the review surface: line 51 imports get_pending_hil and
+  process_hil_response; line 852 (GET pending reviews) and line 871 (POST
+  decisions) dispatch to them.
 - create_hil_request() (inbox_luke PGMQ message + 'hil_requested' audit)
-  is currently defined but has NO caller anywhere in the repo — the
-  notification step is an unwired gap, tracked against the workflow
-  engine, not something this rename slice changed.
+  is defined here but has no caller in the repo as of 2026-11-06 — the
+  notification step is an unwired gap, recorded as governance event #272,
+  not something this rename slice changed.
 
 The 'assigned_to == luke' human-agent convention is carried in workflow
 definitions and read by router.py; nothing here enforces it.

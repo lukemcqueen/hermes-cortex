@@ -12,11 +12,11 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from fleet_bus.queue import get_queue, BusClient
+from fleet_bus.queue import get_queue
 from fleet_bus.workflow.db import (
     get_workflow, get_step, get_steps_for_workflow,
     update_workflow_state, update_step_state,
-    write_audit, create_step,
+    write_audit,
 )
 from fleet_bus.workflow.dispatcher import _dispatch_to_agent
 
@@ -116,7 +116,12 @@ def process_step_result(msg: dict) -> Optional[str]:
                     detail={"pending_deps": pending_deps, "step": next_step})
         return "blocked"
     
-    # Check if it's a human-in-the-loop step
+    # HINT-ONLY prefilter: this whether maybe-human check costs nothing when the
+    # step has no human routing hints; the AUTHORITATIVE decision is the
+    # `human_review` flag on the step definition in the snapshotted
+    # workflow_definition below. The route_if/routes generator expression is
+    # heuristic (a step_name can match a route target verbatim); changing it
+    # changes routing, so both checks are kept deliberately (2026-11-06).
     if next_step_data.get("route_if", {}).get("human_review") or next_step_data.get("step_name", "").lower() in (
         s.lower() for s in next_step_data.get("route_if", {}).get("routes", {}).values()
     ):

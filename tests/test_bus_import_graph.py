@@ -124,6 +124,28 @@ class TestImportGraphFromCoreContext:
         assert r.returncode == 0, r.stderr
         assert "exercised" in r.stdout, r.stdout
 
+    def test_sla_watchdog_schema_columns_match_ddl(self):
+        # sla_watchdog's queries reference started_at/timeout_seconds/state on
+        # bus.agent_workflow_steps and state on bus.agent_workflows. Assert the
+        # DDL carries them so the query cannot silently drift past the schema.
+        ddl = (Path(__file__).resolve().parents[1]
+               / "core" / "fleet_bus" / "schema" / "workflow.sql").read_text()
+        wf = ddl.split("CREATE TABLE IF NOT EXISTS bus.agent_workflows")[1].split(");")[0]
+        steps = ddl.split("CREATE TABLE IF NOT EXISTS bus.agent_workflow_steps")[1].split(");")[0]
+        for col in ("state",):
+            assert col in wf, col
+        for col in ("state", "started_at", "timeout_seconds"):
+            assert col in steps, col
+
+    def test_workflow_db_row_to_dict_exists(self):
+        # sla_watchdog imports _row_to_dict from fleet_bus.workflow.db inside
+        # function bodies; the symbol must exist at the tip.
+        r = self._run(
+            "import fleet_bus.workflow.db as d; "
+            "assert callable(d._row_to_dict)"
+        )
+        assert r.returncode == 0, r.stderr
+
     def test_circuit_breaker_exercises_mocked_dependency(self):
         # The reviewer's exact ask: exercise check_and_restore/is_available with
         # fleet_bus.queue.get_queue MOCKED, proving the dotted import resolves

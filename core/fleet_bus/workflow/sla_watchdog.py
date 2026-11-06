@@ -19,11 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fleet_bus.queue import get_queue, BusClient
+from fleet_bus.queue import get_queue
 from fleet_bus.workflow.db import (
-    get_workflow, get_step, get_steps_for_workflow,
+    get_workflow, get_steps_for_workflow,
     update_workflow_state, update_step_state, write_audit,
-    list_active_workflows,
 )
 
 
@@ -109,6 +108,10 @@ def run_watchdog() -> list[str]:
 def _find_timed_out_workflows(now: datetime) -> list[dict]:
     """Find active workflows past their deadline."""
     bus = get_queue()
+    # _ensure_conn/_conn/_conn.cursor: fleet_bus.queue.BusClient (queue.py:96-100);
+    # _row_to_dict: fleet_bus.workflow.db (db.py:236). Same private protocol the
+    # live gateway exercises daily via validate_token (auth.py) — pinned by
+    # tests/test_bus_import_graph.py.
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
         cur.execute(
@@ -125,6 +128,7 @@ def _find_timed_out_workflows(now: datetime) -> list[dict]:
 def _find_timed_out_steps(now: datetime) -> list[dict]:
     """Find running steps past their timeout."""
     bus = get_queue()
+    # Same BusClient private protocol as _find_timed_out_workflows (see there).
     bus._ensure_conn()
     with bus._conn.cursor() as cur:
         # A step has timed out if:
