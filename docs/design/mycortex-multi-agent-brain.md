@@ -39,7 +39,12 @@ bible, lessons, notes) keep writing to their profile subpath. No content moves.
   → owner `<profile>`); the top-level directory name `shared` is **reserved**
   as the shared namespace and its contents are ownerless (NULL) too. `shared`
   must be special-cased because first-segment derivation alone would otherwise
-  name it owner `shared`, breaking the shared-visibility contract.
+  name it owner `shared`, breaking the shared-visibility contract. `shared` is
+  therefore RESERVED: a profile identity may never equal `shared`, and the
+  migration REJECTS (or renames to `shared-legacy-<n>`) any legacy source or
+  profile literally named `shared` so its pages are never silently ownerless-
+  exposed. A migration test must cover a legacy `shared` profile and assert its
+  pages stay private (never become ownerless/public).
 - **Schema change (mycortex migration v006):** add `pages.owner` (text,
   nullable). Backfill from relpath first segment. Extend RLS so a reader sees
   a page in a non-federated source iff it holds a `source_grants` row for the
@@ -51,8 +56,9 @@ bible, lessons, notes) keep writing to their profile subpath. No content moves.
   profile is fine — visibility is narrowed to that profile's owner pages).
 
 This keeps everything that made per-profile sources safe (fail-closed RLS,
-profile resolution via `AGENT_NAME`/`HERMES_PROFILE`/`hostname` — never
-`~/.hermes/profiles/*`) while collapsing N sources into one.
+harness-agnostic profile resolution — `AGENT_PROFILE` → `AGENT_NAME` →
+`HERMES_PROFILE` → `hostname`, never `~/.hermes/profiles/*`) while collapsing
+N sources into one.
 
 ### CLI / registration changes
 - `mycortex sources add brain ~/brain --mode local` replaces per-profile adds.
@@ -71,7 +77,12 @@ profile resolution via `AGENT_NAME`/`HERMES_PROFILE`/`hostname` — never
   so first-segment backfill alone would wrongly name owner `dreams`). Old
   isolated sources archived (hard) once no reader depends on them. A migration
   test must assert migrated pages have owner equal to their old profile, not
-  `dreams`/`bible`/etc., plus a page-count no-loss compare.
+  `dreams`/`bible`/etc., plus a page-count no-loss compare, plus a NO-PUBLIC-LEAK
+  case for a legacy `shared` profile (reserved-name handling above). A small
+  committed baseline-assertion script pins the plan's starting facts so they stay
+  verifiable: per-profile reader roles exist on the host DB, the enforcer brain
+  exemption is `$HOME/brain`-anchored, and the PII federation gate is untouched
+  by an isolated source.
 
 ### Dream / note writes
 - Prompts already write `~/brain/<profile>/dreams/...` — no change needed for
@@ -115,6 +126,37 @@ profile resolution via `AGENT_NAME`/`HERMES_PROFILE`/`hostname` — never
 - Root/shared (ownerless) pages visible to all profiles on the host.
 - `mycortex doctor --json` clean; `agent-mycortex-sync` runs once per host.
 - Existing per-profile sources migrated with no page loss (count compare).
+
+## Harness accommodation (Hermes, Pi, Claude, custom) — 2026-11-06
+
+The shared-brain contract is harness-NEUTRAL: any agent harness on the host
+participates without a Harness-specific adapter.
+
+- **Identity (who a page belongs to).** A profile is identified by a
+  harness-agnostic variable, resolved in precedence order:
+  `AGENT_PROFILE` → `AGENT_NAME` → `HERMES_PROFILE` → `hostname`. Hermes sets
+  `HERMES_PROFILE`; a Pi/Titus-style harness sets `AGENT_NAME`; Claude Code and
+  custom agents set `AGENT_PROFILE` in their environment/config. Two harnesses
+  that resolve to the SAME profile share that profile's owner pages (same
+  identity); different profiles stay isolated. Never scan `~/.hermes/profiles/*`.
+- **Write contract.** The ONLY write contract is "plain markdown under
+  `~/brain/<profile>/`". Any harness's own scheduler (Hermes cron, Pi cron, a
+  Claude Code tool, a custom agent) writes text files there; the per-host sync
+  walks the whole `~/brain` tree regardless of which harness produced the file.
+- **Read contract.** Reads go through the shared mycortex CLI (`mycortex
+  search/list`) or the `cortex-context-mcp.py` MCP adapter, which is registered
+  per harness already (Pi reads `~/.pi/agent/mcp.json`; Claude Code via its MCP
+  config; custom via any MCP client or the CLI). No harness-specific coupling
+  in the index, the owner column, or RLS.
+- **RLS/ownership are harness-independent.** Owner is filesystem-derived
+  (first path segment); visibility is keyed on the per-profile `CURRENT_USER`
+  reader role. A Hermes profile, a Pi harness, and a custom harness that
+  resolve to the same `AGENT_PROFILE` see the same data; a different profile
+  sees ZERO of it.
+- **Acceptance adds a cross-harness case** to the isolation test: a dream
+  written by a Pi/custom harness is indexed and searchable, visible to its own
+  profile, and invisible to a differently-resolved profile unless granted.
+  Run this with TWO real harnesses on one host before calling the feature done.
 
 ## History
 
