@@ -197,10 +197,11 @@ Strict read-only allowlist — the FIRST token of every segment must match:
 ls|cat|head|tail|less|more|grep|find|which|whoami|id|pwd|date|stat|file|du|wc|sort|uniq|diff|comm|env|printenv|getent|nproc|lscpu|lsblk|pgrep
 ps|top|htop|df|free|uptime|uname|hostname|dmesg|journalctl|ss|netstat
 git status|log|diff|show|branch|stash list
-docker ps|images|logs|inspect|stats
+docker ps|images|logs|inspect|stats|top|port|events|version|info|diff|history
+docker compose ps|logs|config|top|images|events|port
 pip|npm list|show|search
 hermes --version|doctor|config get|config show|config path|config check|env-path
-systemctl is-active|is-enabled|status|list-units
+systemctl is-active|is-enabled|is-failed|status|show|list-units|list-timers|list-sockets|list-services|list-jobs|list-dependencies|list-unit-files|get-default|show-environment|cat
 curl -sI | curl -s <http(s):// | localhost: | 127.0.0.1:>    (GET/HEAD only)
 hermes mcp list|test                                          (lock-free diagnostics)
 ```

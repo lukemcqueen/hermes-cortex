@@ -364,7 +364,14 @@ harness: the git hook already carries one copy and two copies drift.
 - **Classify bash by COMMAND, never by shell syntax.** A metachar rule (`;` `|` `>` …)
   is a bypass: `cp`, `mv`, `rm`, `tee`, `dd`, `mkdir`, `touch` contain none of them.
   The gate uses a read-only ALLOWLIST with deny-by-default, so anything not on it —
-  and anything compound, pipes included — needs a lock.
+  needs a lock. Investigation tools (docker ps/logs/inspect/stats, journalctl,
+  ss/netstat, curl GET, systemctl status, pip/npm list) ARE on it — the gate
+  protects against CHANGES, not against investigation. Read-only COMPOUNDS
+  (`ls | grep foo`, `docker logs c | tail -20`) are lock-free too: every
+  `|`/`&&`/`;` segment must independently match (the enforcer's model). A
+  redirect, a substitution, a second write-class segment, or a mutating flag
+  inside a read primitive (find -exec, sort -o, date -s, journalctl --vacuum-*,
+  docker run/exec, systemctl start, curl -d/-o) makes the whole thing a write.
 - **Fail CLOSED on every cannot-verify path** (CLI missing, governance unreachable, no
   repo resolvable), with the cost stated in the block message and NO agent-side
   override. A gate that reads "could not check" as "carry on" fails open exactly when

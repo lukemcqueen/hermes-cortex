@@ -1881,10 +1881,12 @@ READONLY_COMMAND_PATTERNS = [
     # `--no-pager`). The subcommand itself must still be one of the read-only
     # ones below, so `git -C x push` stays write-class.
     r"^\s*(git)\s+(?:-C\s+\S+\s+|--no-pager\s+|--no-optional-locks\s+)*(status|log|diff|show|branch|stash\s+list|rev-parse|rev-list|for-each-ref|ls-files|ls-tree|cat-file|show-ref|merge-base|describe)",
-    r"^\s*(docker)\s+(ps|images|logs|inspect|stats)",
+    r"^\s*(docker)\s+(ps|images|logs|inspect|stats|top|port|events|version|info|diff|history)",
+    r"^\s*(docker\s+compose)\s+(ps|logs|config|top|images|events|port)",
     r"^\s*(pip|npm)\s+(list|show|search)",
     r"^\s*(hermes)\s+(--version|doctor|config\s+get|config\s+show|config\s+path|config\s+check|env-path)",
-    r"^\s*(systemctl)\s+(is-active|is-enabled|status|list-units)",
+    r"^\s*(systemctl)\s+(is-active|is-enabled|is-failed|status|show|list-units|list-timers|list-sockets|list-services|list-jobs|list-dependencies|get-default|show-environment|cat)",
+    r"^\s*(systemctl)\s+list-unit-files\b",
     # curl GET/HEAD health checks — read-only. POST/PUT/DELETE/-d/-o/-O/-F/-X
     # are excluded because they mutate remote or local state.
     r"^\s*curl\s+(-s\s+)?(-o\s+/dev/null\s+)?-s?I\s+",
