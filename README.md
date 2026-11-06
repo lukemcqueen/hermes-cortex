@@ -5,7 +5,9 @@
 
 **Version: 2.0.0** · [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) · [![GitHub](https://img.shields.io/github/license/lukemcqueen/steadfaste-fleet)](LICENSE) · [![Docs](https://img.shields.io/badge/Docs-Hermes%20Agent-FFD700)](https://hermes-agent.nousresearch.com)
 
-![Steadfaste Fleet](docs/assets/avatar.png)
+<div align="center">
+  <img src="docs/assets/steadfaste-logo.svg" alt="Steadfaste" width="320"/>
+</div>
 
 **Steadfaste Fleet** is a self-contained system installer and public skill set for the [Hermes Agent](https://hermes-agent.nousresearch.com) runtime — but it's grown into much more. It's a **multi-agent fleet management platform**, a **governance engine**, a **self-healing operations system**, and a **deep knowledge stack**, all running on your own hardware with zero cloud dependency.
 
@@ -19,11 +21,11 @@
 
 | Metric | Count |
 |--------|-------|
-| 🛡️ Evidence-based blocked IPs | **4,559** — one per line, drop into nginx/fail2ban/UFW |
-| 🧠 Curated offline code snippets | **545** across 59 topic areas, 30+ languages |
-| 💻 Shared skills | **386** across 50+ categories |
-| ⚙️ Operational scripts | **278** — installers, health checks, watchdogs, security |
-| 🕐 Cron jobs shipped | **73** (49 agent + 24 orchestrator) |
+| 🛡️ Evidence-based blocked IPs | **Thousands** — one per line, drop into nginx/fail2ban/UFW |
+| 🧠 Curated offline code snippets | **500+** across many topic areas and 30+ languages |
+| 💻 Shared skills | **~390** across 50+ categories |
+| ⚙️ Operational scripts | **400+** — installers, health checks, watchdogs, security |
+| 🕐 Cron jobs shipped | **~70** across the installers |
 | 🤖 Agents in the fleet | **6** — 2 orchestrators + 4 specialists |
 
 ---
@@ -97,7 +99,7 @@ Sensors detect problems (crashed services, broken configs, stale locks), write r
 
 ### 🩺 Self-Healing Operations
 
-**73 cron jobs shipped across the installers — a few hundred live across the fleet** — keep the system healthy without human intervention:
+**~70 cron jobs shipped across the installers — a few hundred live across the fleet** — keep the system healthy without human intervention:
 
 | Category | Crons | What |
 |----------|-------|------|
@@ -123,7 +125,7 @@ Agent query → web_cache (50μs) → kiwix ZIM (localhost:8080) → mycortex (R
 
 - **Web Cache** — Semantic search cache (sqlite-vec + Ollama embeddings, ~200MB LRU) — saves API costs
 - **Offline Knowledge** — Wikipedia, WikiMed, Wikivoyage, Wikibooks available locally via Docker ZIM server
-- **Offline Code Assistant** — 545 curated code snippets across 59 topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
+- **Offline Code Assistant** — 500+ curated code snippets across many topic areas and 30+ programming languages. `offline_code search` and `offline_code gen` work fully offline via Ollama. **Self-improving:** `offline_code learn` adds misses permanently.
 - **Offline Reader** — Zero-dependency web UI (`python3 ops/offline/offline-reader.py`) for Bible (55+ languages), hymns, and wiki reference
 - **mycortex** — Fleet knowledge brain: git repos as source of truth → shared Postgres index (FTS + pg_texample; pgvector semantic slice in v1.1) → thin Python CLI + 15-min cron sync. No daemon, no bun. **Inspired by an open-source Postgres-native knowledge-brain project (garrytan, MIT)** — the same Postgres-native knowledge-brain idea, re-architected with fail-closed RLS source isolation, per-host registration, and a PII federation gate. **Multi-tenant by construction:** each profile connects as its own `mycortex_reader_<profile>` role — RLS (keyed on `CURRENT_USER`) isolates tenants automatically, so a company brain scales to 100 profiles with zero policy changes. [Design doc](docs/design/mycortex-DESIGN.md) · [Multi-tenancy](docs/design/mycortex-multi-tenancy.md)
 
@@ -255,9 +257,9 @@ CORTEX_OS=windows bash ~/steadfaste-fleet/ops/install/install.sh
 | 4 | **Brain dirs** | `~/brain/{default,…}` with MECE schema + .gitignore + git init |
 | 5 | **mycortex sync** | Sources config + `agent-mycortex-sync` cron (15-min) |
 | 6 | **`/brain` plugin** | Hermes slash command for mycortex queries |
-| 7 | **Scripts** | 275+ scripts: health checks, watchdogs, sync, governance, security |
+| 7 | **Scripts** | 400+ scripts: health checks, watchdogs, sync, governance, security |
 | 8 | **Hermes memory** | Confirmed Hermes-owned — no cortex seed |
-| 9 | **Skills** | 336 shared skills installed to `~/.hermes/skills/` |
+| 9 | **Skills** | ~390 shared skills installed to `~/.hermes/skills/` |
 | 10 | **Hooks & MCP** | Scoring pre/post-commit hooks + loop-governance & task MCP servers |
 | 11 | **Web Cache** | Semantic web result cache (sqlite-vec + Ollama) |
 | 12 | **Observability** † | Langfuse (LLM traces) + Cortex Dashboard |
