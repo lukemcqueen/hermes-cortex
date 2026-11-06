@@ -238,7 +238,7 @@ Wants=ollama.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/<user>/hermes-cortex/ops/scripts/health/health-vector.py --serve <PORT>
+ExecStart=/usr/bin/python3 /home/<user>/steadfaste-fleet/ops/scripts/health/health-vector.py --serve <PORT>
 Environment=HEALTH_HOSTNAME=<agent-hostname-prefix>
 Restart=always
 RestartSec=5
@@ -660,7 +660,7 @@ See `references/nginx-proxy-patterns.md` for:
 
 Quick deploy (run with sudo):
 ```bash
-sudo cp ~<user>/.hermes-cortex/nginx/hermes-<agent>.conf /etc/nginx/sites-available/
+sudo cp ~<user>/.steadfaste-fleet/nginx/hermes-<agent>.conf /etc/nginx/sites-available/
 sudo ln -sf /etc/nginx/sites-available/hermes-<agent>.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo nginx -s reload
 ```
@@ -717,7 +717,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/home/<user>/.hermes/hermes-agent/venv/bin/python3 \\
- /home/<user>/hermes-cortex/ops/services/dashboard/server.py
+ /home/<user>/steadfaste-fleet/ops/services/dashboard/server.py
 Environment=HOME=/home/<user>
 Environment=CORTEX_DASHBOARD_PORT=8901
 Restart=on-failure
