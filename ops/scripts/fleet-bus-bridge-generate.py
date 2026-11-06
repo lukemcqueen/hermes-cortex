@@ -217,12 +217,14 @@ def unit_needs_killmode(text: str) -> bool:
     return not re.search(r"(?m)^\s*KillMode\s*=", text)
 
 
-def with_killmode(text: str) -> str:
+def with_killmode(text: str) -> str | None:
     """Return `text` with KillMode=process added when it lacks a KillMode.
 
     Inserted directly after the `Type=` line so it lands inside the [Service]
     section; if there is no Type= line, before the first ExecStart=. Idempotent:
-    a unit that already sets KillMode is returned byte-identical.
+    a unit that already sets KillMode is returned byte-identical. A unit with
+    NEITHER anchor returns None — a visible refusal, never a byte-identical
+    no-op that reads as "already correct".
     """
     if not unit_needs_killmode(text):
         return text
@@ -244,29 +246,12 @@ def with_killmode(text: str) -> str:
             break
         out2.append(line)
     else:
-        # Neither anchor present — refuse rather than write a malformed unit.
-        return text
+        # Neither anchor present — refuse visibly (None) rather than return a
+        # byte-identical no-op that repair_units() would count as "correct".
+        return None
     out2.extend(out[len(out2):])
     return "".join(out2)
 
-
-def unit_text(name: str, script: str, runner: str) -> tuple[str, str] | None:
-    """Return (service_text, timer_text). Schedule derived from job; returns
-    None if we can't translate the schedule (caller skips that job)."""
-    # schedule passed in via closure in main; this helper is schedule-free for
-    # clarity — the caller injects OnCalendar.
-    service = f"""[Unit]
-Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5
-
-[Service]
-Type=oneshot
-{_KILLMODE_LINE}
-ExecStart=/usr/bin/env python3 {runner} --name {name} --script {script}
-"""
-    # The timer text is intentionally "" — the caller injects the OnCalendar
-    # line into the timer template in main(); this helper only owns the
-    # service half. "" is by design, not a stub.
-    return service, ""
 
 
 def repair_units() -> int:
@@ -277,7 +262,7 @@ def repair_units() -> int:
 
     Never silent about a unit it could not read or write: unreadable/unwritable
     units are counted and named, and the run exits non-zero, so a partial repair
-    cannot be mistaken for a complete one (adversarial finding a prior adversarial finding (2026-10 bridge repair review)).
+    cannot be mistaken for a complete one (this behavior is pinned by tests/test_fleet_bus_bridge_generate.py).
     """
     units = sorted(_UNITS.glob(f"{_PREFIX}*.service")) if _UNITS.is_dir() else []
     repaired, ok, failed = 0, 0, []
@@ -288,6 +273,9 @@ def repair_units() -> int:
             failed.append(f"{p.name} (read: {e.strerror or e})")
             continue
         new = with_killmode(text)
+        if new is None:
+            failed.append(f"{p.name} (no Type=/ExecStart= anchor — cannot repair)")
+            continue
         if new == text:
             ok += 1
             continue

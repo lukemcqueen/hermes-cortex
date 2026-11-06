@@ -86,6 +86,22 @@ LOG_FILE = STATE_DIR / ".bus-failover-log"
 CONF_FILE = HOME / "steadfaste-fleet" / ".env"
 WATCHDOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+def _env_value(path: "Path", key: str) -> str:
+    """Read KEY= from a .env-style file, env var first (explicit wins)."""
+    val = os.environ.get(key, "").strip()
+    if val:
+        return val
+    try:
+        for line in Path(path).read_text().splitlines():
+            line = line.strip()
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip().strip("\"'")
+    except OSError:
+        pass
+    return ""
+
+
 # Esther's ACL (docs/bus-architecture.md): workers and Esther send to
 # inbox_orchestrator (shared) or their own inbox; only Moses sends
 # cross-agent. During failover Esther's LOCAL bus accepts everything (she
@@ -208,8 +224,10 @@ def _esther_reachable(urls: list[str] | None = None) -> bool:
 def swap_bus_config(active: bool) -> bool:
     """Rewrite .env primary/fallback URLs (Esther only).
 
-    active=True  → acting primary: URL=local :8903, FALLBACK=Moses :13004
-    active=False → standby restored: URL=Moses :13004, FALLBACK=Esther :14004
+    active=True  → acting primary: URL=local :8903, FALLBACK=CORTEX_BUS_URL
+                   (the other side's bus; Moses :13004 in normal operation)
+    active=False → standby restored: URL=CORTEX_BUS_URL, FALLBACK =
+                   CORTEX_BUS_FALLBACK_URL (Esther :14004 in operation)
 
     Returns True on success. Creates the file if missing.
     """
@@ -218,8 +236,11 @@ def swap_bus_config(active: bool) -> bool:
     # (renaming them here would strand every deployed .env and the bus
     # client that reads them). The file/command rename (fleet-*) landed in
     # P3 steps 2-3; the env var names follow in P4.
-    bus_url = os.environ.get("CORTEX_BUS_URL", "").strip()
-    bus_fallback = os.environ.get("CORTEX_BUS_FALLBACK_URL", "").strip()
+    # Read from the .env (CONF_FILE) with env-var override, so this process
+    # reads what it writes: the watchdog may run under cron/systemd without
+    # CORTEX_BUS_* in its process env, and the values it swaps live in .env.
+    bus_url = _env_value(CONF_FILE, "CORTEX_BUS_URL").strip()
+    bus_fallback = _env_value(CONF_FILE, "CORTEX_BUS_FALLBACK_URL").strip()
     if not bus_url or not bus_fallback:
         _log("ERROR: CORTEX_BUS_URL / CORTEX_BUS_FALLBACK_URL not set in env — cannot swap")
         return False
@@ -270,8 +291,13 @@ def notify_fleet(subject: str, body: str, queues: list[str] | None = None) -> in
     bus_send = None
     if not DRY_RUN:
         try:
-            if WATCHDOG_DIR not in sys.path:
-                sys.path.insert(0, WATCHDOG_DIR)
+            # lib/ lives BESIDE agent/ (ops/scripts/lib), so the parent dir
+            # is what must be on sys.path — inserting agent/ alone would make
+            # this import fail every time and the ImportError handler would
+            # swallow it, silently killing failover notifications.
+            _lib_root = os.path.dirname(WATCHDOG_DIR)
+            if _lib_root not in sys.path:
+                sys.path.insert(0, _lib_root)
             from lib.fleet_bus import bus_send  # type: ignore
         except ImportError as e:
             _log(f"WARN: lib.fleet_bus unavailable ({e}) — broadcast skipped")
