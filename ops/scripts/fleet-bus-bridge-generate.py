@@ -15,7 +15,7 @@ writes a user-scope systemd pair:
 
 The service unit's stdout/stderr are captured by the bridge-run wrapper and
 delivered (non-empty) to the messenger; empty = silent. This removes the
-load-bearing coupling "gateway process down → 61 no_agent jobs don't run",
+load-bearing coupling "gateway process down → 60+ no_agent jobs don't run (measured 2026-08 cron-bridge migration)",
 proving S2a on one job at a time.
 
 KillMode=process (2026-10-24)
@@ -256,13 +256,16 @@ def unit_text(name: str, script: str, runner: str) -> tuple[str, str] | None:
     # schedule passed in via closure in main; this helper is schedule-free for
     # clarity — the caller injects OnCalendar.
     service = f"""[Unit]
-Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5  # bridge infra name kept until P5
+Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5
 
 [Service]
 Type=oneshot
 {_KILLMODE_LINE}
 ExecStart=/usr/bin/env python3 {runner} --name {name} --script {script}
 """
+    # The timer text is intentionally "" — the caller injects the OnCalendar
+    # line into the timer template in main(); this helper only owns the
+    # service half. "" is by design, not a stub.
     return service, ""
 
 
@@ -359,7 +362,7 @@ def main() -> int:
         timer_path = _UNITS / f"{unit}.timer"
 
         service_text = f"""[Unit]
-Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5  # bridge infra name kept until P5
+Description=Cortex bridge — {name} (no_agent cron, standalone runner)  # kept until P5
 
 [Service]
 Type=oneshot

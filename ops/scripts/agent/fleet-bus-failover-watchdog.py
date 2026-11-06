@@ -13,10 +13,14 @@ ROLE BEHAVIOR
              → ACTIVATE: swap Esther's .env primary/fallback, write the
                .failover-active marker (MARKER_FILE.write_text in the
                activate branch), notify fleet (notify_fleet), report.
-               Provenance anchors: marker ~line 311, notify ~line 315,
-               restore/unlink ~line 338, restore notify ~line 343.
+               Provenance anchors are the function names, not line numbers:
+               marker write lives in _activate(), notify via notify_fleet(),
+               restore/unlink lives in _restore().
   RECOVERED  Moses healthy 3 consecutive checks while failover active
              → RESTORE: swap config back, remove marker, notify fleet, report.
+  CORTEX_BUS_URL and CORTEX_BUS_FALLBACK_URL are REQUIRED for orchestrator
+  activation (swap_bus_config reads both; not optional — env var NAMES are
+  P4-deferred but the values are mandatory here).
   Executes for real by default (FAILOVER_DRY_RUN=0) — that is the point of
   the automation. Run with FAILOVER_DRY_RUN=1 for a safe preview.
 
