@@ -8,9 +8,16 @@
 > (`~/hermes-cortex → ~/steadfaste-fleet`, `~/.hermes-cortex → ~/.steadfaste-fleet`) become
 > optional rather than load-bearing.
 >
-> **Status (esther host, 2026-11-04):** completed — the steps below (§1–§6) were run and the
-> verification in §7 passed (doctor 0 fail, bus `/health` 200, governance-auditor clean),
-> recorded across governance cycles 14105–14112. The sweep is pushed (`0b847729`, `89aa57b4`).
+> **Status (esther host, 2026-11-04):** the paths §1–§6 were run and the §7 verification passed
+> (doctor 0 fail, bus `/health` 200, governance-auditor clean), recorded across governance
+> cycles 14105–14112. The sweep is pushed (`0b847729`, `89aa57b4`).
+>
+> **⚠️ Gap found 2026-11-06:** §1–§6 repointed the *service* surfaces but NOT the **tool-visible
+> `~/.hermes` keys** (`config.yaml` MCP-server paths, `repos.yaml`) nor the `skills` symlinks —
+> so the transition symlinks stayed load-bearing and were never removed. That step lived only
+> under the macOS section below, though it applies to **every** host. Completed on esther
+> 2026-11-06 in cycle #14203; the "Repoint agent/harness surfaces + remove symlinks" section is
+> now the ALL-hosts §8, below.
 
 ## Why the leaves matter
 
@@ -138,6 +145,32 @@ grep -rl 'hermes-cortex' ~/.steadfaste-fleet/scripts/                    # nothi
   equivalents. Same rule: drop any launchd job still named `agent-hermes-cortex-sync`.
 
 ### macOS: repoint the Pi-harness + agent surfaces (required before removing the symlinks)
+
+> **This is an ALL-HOSTS step, not macOS-only** (proven on esther/Linux 2026-11-06): every host
+> carries the same tool-visible surfaces pointed at the transition symlink, and removing the
+> symlink before repointing them breaks the gateway's MCP servers and the harness configs.
+
+**Linux (esther) — the Hermes tool-visible keys** (complement the Pi-harness list below; both
+were still resolving the transition symlink after §1–§7):
+
+- `~/.hermes/config.yaml` — `mcp_servers.*.command` + `args` for agent-bus, tasks, executor,
+  review, loop-governance (5 servers / 10 `~/.hermes-cortex/…` refs). File-writing tools REFUSE
+  config.yaml as security-sensitive, so repoint with `hermes config set <dotted.key> <value>`
+  (list values as JSON): `hermes config set mcp_servers.review.args '["…", "--role", "review"]'`.
+- `~/.hermes/repos.yaml` — `path: ~/hermes-cortex` / `name: hermes-cortex` → `~/steadfaste-fleet`
+  / `steadfaste-fleet` (lesson-harvesting registration).
+- `~/.hermes/skills` + `~/.agents/skills` + `~/.hermes/scripts` symlinks — repoint DIRECT to
+  `~/.steadfaste-fleet/<name>` (`ln -sfn ~/.steadfaste-fleet/skills ~/.hermes/skills`), dropping
+  the `~/.hermes-cortex/` hop. A missed one left dangling by symlink removal fails the doctor's
+  `Cron runtime scripts` check (`~/.hermes/scripts missing`).
+- `local-*` wrappers in `~/.steadfaste-fleet/scripts/` that `exec ~/.hermes-cortex/scripts/…` or
+  pass `--repo ~/hermes-cortex` (e.g. `local-clickhouse-log-cleanup.sh`,
+  `local-esther-land-nonhermes-fix-probe.sh`) — repoint the exec path AND the `--repo` argument.
+
+The running gateway's MCP servers were SPAWNED with the old paths and keep running through symlink
+removal; a later `hermes mcp reload` / gateway restart re-spawns them from the repointed
+config.yaml. Repoint everything FIRST, verify `grep -rl hermes-cortex` is clean across the
+tool-visible keys, then remove the symlinks.
 
 The repo sweep and §1–§7 leave several **harness-owned, non-repo** configs still resolving
 `~/.hermes-cortex`/`~/hermes-cortex` through the transition symlinks. Verified on Titus 2026-11-04:
