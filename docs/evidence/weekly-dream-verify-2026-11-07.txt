@@ -1,0 +1,51 @@
+weekly dream verifier — 2026-11-07
+generated-by : ops/evidence/generate-weekly-dream-verify-2026-11-07.sh
+captured-at  : c532c552 (working tree at run time)
+date         : 2026-11-07T05:41:26+0900
+host         : Linux x86_64
+note         : captured-at is the revision the tree sat on when the run happened;
+               the committed copy is one commit ahead of this line by construction.
+------------------------------------------------------------
+## 1. Syntax gate
+bash -n -> rc=0
+------------------------------------------------------------
+## 2. PASS direction (unmodified artifact) — command run bare, rc is its own
+verify-weekly-dream-2026-11-07
+artifact: ~/steadfaste-fleet/docs/evidence/weekly-dream-content-2026-11-07.md
+brain   : ~/brain/esther/dreams/2026-11-07-weekly.md
+------------------------------------------------------------
+OK    artifact matches sidecar sha256 (833df05b74a528c0597d1143f6543a6968aed99631444644a106a0bc35d26d19)
+OK    artifact byte-identical to live brain copy (~/brain/esther/dreams/2026-11-07-weekly.md)
+OK    phase present: Phase 1 — Fresh pages
+OK    phase present: Phase 2 — Connections mapped
+OK    phase present: Phase 3 — Lessons synthesized
+OK    phase present: Phase 4 — Scripture connection
+OK    phase present: Phase 5 — Dream
+OK    phase present: Phase 6 — Written back
+OK    week's scripture cited: 1 Thessalonians 2:7
+OK    dream body present (the week's named law)
+OK    write-back target named in Phase 6
+OK    INDEX entry appended (weekly, 2026-11-07)
+------------------------------------------------------------
+RESULT: ALL PASS
+rc=0
+------------------------------------------------------------
+## 3. RED directions, driven against a scratch copy (REPO/BRAIN/INDEX overridden)
+    each line below is the verifier's own FAIL line from the tampered tree
+[3a] tampered artifact (digest mismatch):
+FAIL  artifact does NOT match sidecar (want 833df05b74a528c0597d1143f6543a6968aed99631444644a106a0bc35d26d19, got cf931d8ad4bccd7403322ef62785e6c5e5a3a760b2fdf58ac3cec4773bf881dc)
+RESULT: FAIL
+[3b] Phase 5 heading stripped (sidecar regenerated so only the structural check fires):
+FAIL  phase MISSING: Phase 5 — Dream
+RESULT: FAIL
+[3c] INDEX entry missing:
+FAIL  INDEX entry MISSING for the 2026-11-07 weekly dream
+RESULT: FAIL
+------------------------------------------------------------
+## 4. could-not-verify branch (artifact absent) — distinct outcome, rc=3
+verify-weekly-dream-2026-11-07
+artifact: ~/.hermes/cache/scratch/dream-verify-capture-2026-11-07/docs/evidence/weekly-dream-content-2026-11-07.md
+brain   : ~/.hermes/cache/scratch/dream-verify-capture-2026-11-07/brain/nonexistent.md
+------------------------------------------------------------
+COULD NOT VERIFY  artifact not present: ~/.hermes/cache/scratch/dream-verify-capture-2026-11-07/docs/evidence/weekly-dream-content-2026-11-07.md
+rc=3
