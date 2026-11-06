@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """P3 step-1: the deploy-script sanction must dual-accept BOTH names.
 
-The enforcer's _is_sanctioned_cortex_update_command is the single lock-free
+The enforcer's _is_sanctioned_fleet_update_command is the single lock-free
 carve-out that lets any agent run the deploy script without a governance lock.
-It sanctions the path by LITERAL regex, so renaming ops/scripts/fleet-update.sh
--> fleet-update.sh without widening the gate first would lock EVERY host out of
-deploys (the old name's sanction dies with the file). Step 1 widens the regex to
-(?:cortex-update|fleet-update)\.sh and this test pins BOTH that the CURRENT
-name still sanctions AND that the FUTURE name (which does not exist yet at
-step-1 time) is already accepted — the plan's "feed the future path string"
-verification. It drives the REAL function, so the metachar/separator rejection
-is exercised too.
+It sanctions the path by LITERAL regex — the compiled rule is
+`(?:cortex-update|fleet-update)\.sh` (verified in plugins/governance-enforcer/
+__init__.py, same family as this test) — so renaming
+ops/scripts/cortex-update.sh -> ops/scripts/fleet-update.sh without widening
+the gate first would lock EVERY host out of deploys (the old name's sanction
+dies with the file). Step 1 widened the regex to the dual-accept form above and
+this test pins BOTH that the CURRENT name still sanctions AND that the FUTURE
+name (which did not exist at step-1 time) is already accepted — the plan's
+"feed the future path string" verification. It drives the REAL function, so
+the metachar/separator rejection is exercised too.
 """
 import importlib.util
 import sys
