@@ -16,8 +16,13 @@ seed or prune the brain at all.
 
 The exemption is deliberately NARROW: the brain tree only, file-tool path
 arguments only. A terminal call is never exempted (its write target is not
-path-analysable), and every other security gate (PII, adversarial, bypass-debt)
-still applies to a brain write.
+path-analysable). Every other security gate still applies to a brain write —
+including the PII content gate, with ONE deliberate allowance (2026-11-06,
+test_enforcer_pii_gate.py): on a sanctioned brain write the already-public
+surname class (the URL-allowance digest) is permitted, because the private
+knowledge brain is not a git repo / copy vector and the unattended dream layer
+legitimately references it; every OTHER deny-listed identifier (the operator
+WAN) and the adversarial / bypass-debt gates still enforce on brain writes.
 
 Run: python3 -m pytest tests/test_enforcer_brain_write_exempt.py -q
 """

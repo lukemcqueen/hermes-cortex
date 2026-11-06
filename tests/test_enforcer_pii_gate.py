@@ -398,6 +398,62 @@ def test_real_owner_handle_allowed_in_home_only_inside_the_repo_url():
     assert not gate_home(f"clone https://github.com/{_OWNER}/steadfaste-fleet.git")
 
 
+# ── the sanctioned brain tree gets the public-surname allowance (2026-11-06) ──
+# The dream layer writes nightly into ~/brain/<profile>/dreams/<date>.md — a
+# PRIVATE tree (deliberately not a git repo / copy vector to the public repo)
+# that the lock gate already exempts. Its unattended digest legitimately
+# mentions the operator's PUBLIC surname, but the deny-list-any-path hardening
+# (2026-11-04) refused the write there. The fix scopes the exemption to the
+# already-public URL-allowance class: the surname passes on a brain write, and
+# every OTHER deny-listed identifier — the operator WAN included — still blocks
+# everywhere, brain included.
+_BRAIN_DREAM = str(Path.home() / "brain" / "esther" / "dreams" / "2026-11-06.md")
+
+
+def gate_brain(text: str) -> bool:
+    """Run the PII gate against a brain write; True = blocked."""
+    args = {"path": _BRAIN_DREAM, "content": text}
+    return enf._check_pii_content_gate("write_file", args) is not None
+
+
+def test_the_public_surname_allowed_inside_a_brain_write(synthetic_denylist):
+    assert not gate_brain(f"the digest referenced {_SYNTH_TERM} today")
+
+
+def test_the_real_owner_handle_allowed_inside_a_brain_write():
+    assert not gate_brain(f"digest noted {_OWNER} config")
+
+
+def test_the_public_surname_is_still_blocked_outside_brain():
+    """The allowance is scoped to the brain tree; the home-folder gap closure holds."""
+    assert gate_home(f"note signed {_OWNER}")
+
+
+def test_a_non_url_allowed_deny_entry_still_blocks_inside_a_brain_write(monkeypatch):
+    """Only the public-surname class is exempt on brain — the private class (WAN)
+    must still refuse a brain write, or the exemption would be a leak, not a fix."""
+    urlterm, private = "acme", "wanaddr"
+    ud = hashlib.sha256(urlterm.encode()).digest()
+    pd = hashlib.sha256(private.encode()).digest()
+    monkeypatch.setattr(enf, "_PII_SENSITIVE_DIGESTS", frozenset({ud, pd}))
+    monkeypatch.setattr(enf, "_PII_SENSITIVE_LENGTHS", (len(urlterm), len(private)))
+    monkeypatch.setattr(enf, "_PII_SENSITIVE_URL_ALLOWED", frozenset({ud}))
+    assert gate_brain(f"allow {private} here"), (
+        "a deny-listed identifier outside the public-surname class must still "
+        "block on a brain write")
+    assert not gate_brain(f"mention {urlterm}"), (
+        "the public-surname class must be allowed on a brain write")
+
+
+def test_the_brain_exemption_is_wired_into_the_pii_gate_before_the_denylist():
+    """Pin the wiring: `_check_pii_content_gate` must consult the sanctioned-brain
+    helper and branch on it inside the deny-list loop — an exemption in the lock
+    gate alone is dead code for this class."""
+    source = _ENFORCER.read_text(encoding="utf-8")
+    assert "brain = _is_sanctioned_brain_write(args)" in source
+    assert "if brain:" in source
+
+
 def test_email_and_phone_in_the_home_folder_are_still_allowed():
     """Emails/phones keep the shared-surface scope: client/private home files
     legitimately carry them, and blocking would break operational writes."""

@@ -2728,9 +2728,23 @@ def _check_pii_content_gate(tool_name: str, args: dict) -> Optional[dict]:
     # embeds the surname — that URL is the sanctioned public address, so a hit
     # inside it is skipped. Every other occurrence (any path, home included)
     # is blocked.
+    #
+    # One further, deliberate allowance (2026-11-06): on a SANCTIONED BRAIN
+    # write (file-tool path under ~/brain — the private knowledge brain, which
+    # is deliberately NOT a git repo or any copy vector to the public repo, and
+    # which the lock gate already exempts), the public-surname class is also
+    # skipped: the surname is already public by design (it is the owner of this
+    # repo's own GitHub URL), and the unattended dream layer legitimately
+    # references it. Every OTHER deny-listed identifier — the operator WAN
+    # included — still blocks everywhere, brain included, because unlike the
+    # surname it is genuinely private. `brain` only ever comes from a real
+    # file-tool path argument; a terminal call is never exempted.
+    brain = _is_sanctioned_brain_write(args)
     violations = []
     for start, end, digest in _pii_sensitive_hits(content):
         if digest in _PII_SENSITIVE_URL_ALLOWED:
+            if brain:
+                continue
             ctx_start = max(0, start - 60)
             ctx = content[ctx_start:end + 40]
             if _PII_REPO_URL_RE.search(ctx) or _PII_SENSITIVE_OK_RE.search(ctx):
