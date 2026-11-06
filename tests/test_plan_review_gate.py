@@ -158,13 +158,14 @@ def test_cycle_reviewed(tmp_path):
     assert p.cycle_reviewed(tmp_path / "nr.db", 101) is False
 
 
-# ── Gate A: prove-before-create is REQUIRED by the enforcer skills gate ─────
+# ── Gate A: the always-required set DERIVES from skills.yaml (single source) ─
 # The enforcer's write gate keys on `_session_skills_loaded[sid] >=
-# _REQUIRED_SKILLS` (set comparison). Prove the FIXED EXISTING enforcement by
-# driving the enforcer's OWN predicate with controlled per-session loaded sets
-# (never the live store) — a session missing prove-before-create must not
-# satisfy the gate; adding it must. Guards the promotion into the always-set
-# (enforcer __init__.py _REQUIRED_SKILLS / skills.yaml always / doctor list).
+# _REQUIRED_SKILLS` (set comparison). Since 2026-11-06 `_REQUIRED_SKILLS`
+# derives from the DEPLOYED `~/.steadfaste-fleet/skills.yaml` `always:` names
+# (with a documented default fallback), so the manifest, the enforcer and the
+# doctor cannot drift apart again — the direct fix for the 7-vs-8 count bug.
+# These cases drive the DERIVATION hermeticly against a TEMP manifest path,
+# never the live store or ambient manifest.
 
 
 def _load_enforcer():
@@ -178,16 +179,46 @@ def _load_enforcer():
     return mod
 
 
-def test_prove_before_create_is_required_by_the_write_gate():
+def test_always_required_set_derives_from_skills_manifest(tmp_path):
     enf = _load_enforcer()
-    assert "prove-before-create" in enf._REQUIRED_SKILLS
+    man = tmp_path / "skills.yaml"
+    # Written as YAML `- name:` entries so the dependency-free manifest reader
+    # (used where PyYAML is absent, e.g. the test venv) resolves all three.
+    man.write_text(
+        "always:\n"
+        "  - name: alpha\n"
+        "  - name: beta\n"
+        "  - name: gamma\n"
+        "on_task:\n"
+        "  debug:\n"
+        "    - x\n"
+    )
+    enf._REQUIRED_MANIFEST_PATH = man
+    enf._REQUIRED_MANIFEST_FP = -1
+    enf._REQUIRED_SKILLS = set()
+    enf._refresh_required_skills()
+    assert enf._REQUIRED_SKILLS == {"alpha", "beta", "gamma"}
 
-    others = set(enf._REQUIRED_SKILLS) - {"prove-before-create"}
-    full = set(enf._REQUIRED_SKILLS)
 
-    # The enforcer's write gate fires when the session's loaded set does NOT
-    # cover every required skill (`loaded >= _REQUIRED_SKILLS`): a session that
-    # has loaded every other always-skill but NOT prove-before-create must not
-    # cover the required set, so the gate refuses; loading it covers the set.
-    assert (others >= full) is False   # missing prove-before-create => refused
-    assert (full >= full) is True      # with it loaded             => allowed
+def test_always_required_set_falls_back_to_default_when_manifest_missing(tmp_path):
+    enf = _load_enforcer()
+    enf._REQUIRED_MANIFEST_PATH = tmp_path / "no-such-manifest.yaml"
+    enf._REQUIRED_MANIFEST_FP = -1
+    enf._REQUIRED_SKILLS = set()
+    enf._refresh_required_skills()
+    # Fail-closed: the documented default is kept, so a remote backend without
+    # the deployed manifest still gates on a non-empty required set.
+    assert enf._REQUIRED_SKILLS == enf._REQUIRED_SKILLS_DEFAULT
+    assert enf._REQUIRED_SKILLS
+
+
+def test_always_required_set_gate_predicate_is_exactly_the_required_set():
+    enf = _load_enforcer()
+    required = set(enf._REQUIRED_SKILLS)
+    assert required, "required set must not be empty"
+    first, *rest = sorted(required)
+    others = set(rest)
+    # A session missing exactly one required skill does NOT cover the set, so
+    # the write gate refuses it; the full set covers it and is allowed.
+    assert (others >= required) is False
+    assert (required >= required) is True

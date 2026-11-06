@@ -75,20 +75,59 @@ log = logging.getLogger("governance-enforcer")
 # empty file that fails content verification — blocking the bypass.
 # See SOUL.md Principle 23 for agent-side guardrail.
 #
-# Canonical 7 (consolidated 2026-08-20): session-start-discipline merged
-# into task-start, reasoning-patterns into agent-flow, cortex-preflight
-# into survey-before-action, test-driven-development promoted into the
-# base gate (TDD co-gate already required it for code writes). MUST stay
-# in sync with skills.yaml `always:` and doctor checks.py.
-_REQUIRED_SKILLS: set = {
+# SINGLE SOURCE OF TRUTH (2026-11-06): the always-section set is declared in
+# ONLY ONE place — `skills.yaml` `always:` (deployed to
+# ~/.steadfaste-fleet/skills.yaml). `_REQUIRED_SKILLS` DERIVES from that
+# manifest (see _refresh_required_skills), so the always-count can never drift
+# between the manifest and the gate again (the 7-vs-8 discrepancy — the set
+# had 8 members while the prose said 7). `_REQUIRED_SKILLS_DEFAULT` is the
+# documented fail-closed fallback for remote backends where ~/.steadfaste-fleet
+# is not mounted (README:561). doctor checks.py derives the same way.
+_REQUIRED_SKILLS_DEFAULT: set = {
     "task-start", "agent-flow",
     "reflexion-check", "change-checklist", "survey-before-action",
     "agent-contract", "test-driven-development", "prove-before-create",
     # prove-before-create (the "prove existing can't handle it" discipline) is
     # required by the write gate so extend/rebuild awareness binds as a gate.
-    # COVERED BY: tests/test_plan_review_gate.py::
-    #   test_prove_before_create_is_required_by_the_write_gate
 }
+_REQUIRED_SKILLS: set = set(_REQUIRED_SKILLS_DEFAULT)
+# Deployed manifest the set derives from; mtime fingerprinted so a refresh is
+# cheap and a deploy/new manifest takes effect without a gateway restart.
+_REQUIRED_MANIFEST_PATH = Path.home() / ".steadfaste-fleet" / "skills.yaml"
+_REQUIRED_MANIFEST_FP: int = -1
+
+
+def _refresh_required_skills() -> None:
+    """Re-derive _REQUIRED_SKILLS from the DEPLOYED manifest's `always:` names.
+
+    The manifest is the single source of truth. When it is present and parses,
+    its always-names REPLACE the set; otherwise the documented default is kept
+    (fail-closed: a remote backend without the file still gates on the default
+    set). Parsing uses _safe_load_yaml (PyYAML → ruamel → dependency-free
+    `always:` reader) so it works in every runtime the plugin ships in. mtime
+    cached so an import-time and per-call invocation is a single stat; the
+    attempt is cached even on failure so an unreadable manifest is not re-logged
+    on every tool call.
+    """
+    global _REQUIRED_SKILLS, _REQUIRED_MANIFEST_FP
+    try:
+        fp = _REQUIRED_MANIFEST_PATH.stat().st_mtime_ns
+        if fp == _REQUIRED_MANIFEST_FP:
+            return
+        _REQUIRED_MANIFEST_FP = fp  # cache the attempt; retried only on mtime change
+        with open(_REQUIRED_MANIFEST_PATH) as f:
+            data = _safe_load_yaml(f)
+        always = data.get("always", []) if isinstance(data, dict) else []
+        names = {s.get("name") if isinstance(s, dict) else s for s in always}
+        names = {n for n in names if isinstance(n, str) and n}
+        if names:
+            _REQUIRED_SKILLS = names
+    except Exception as exc:  # noqa: BLE001 — unreadable manifest is not fatal
+        _REQUIRED_SKILLS = set(_REQUIRED_SKILLS_DEFAULT)  # fail-closed to default
+        log.warning(
+            "required-skills: cannot derive from %s (%s); using the '%d' default "
+            "set — the gate still enforces it", _REQUIRED_MANIFEST_PATH, exc,
+            len(_REQUIRED_SKILLS_DEFAULT))
 
 # Per-session loaded-skill registry (2026-08-08 — cross-session bleed fix).
 # The legacy `_skills_loaded_in_session` set is PROCESS-global: any session's
@@ -3184,6 +3223,12 @@ def register(ctx):
                 return None
 
             args = args or {}
+
+            # Keep _REQUIRED_SKILLS current with the deployed manifest so a
+            # skills.yaml change (e.g. a consolidation deploy) is enforced by
+            # the running gateway without a restart. mtime-cached — a stat, not
+            # a reparse, when nothing changed.
+            _refresh_required_skills()
 
             # ── ALWAYS write PID-scoped marker ──
             # Write on EVERY tool call so the MCP server's get_session_id() can

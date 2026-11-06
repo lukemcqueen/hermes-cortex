@@ -237,14 +237,19 @@ documented behaviour. Source: `ops/scripts/quality/probe-gate-logic.py`.
 ## Skills-Loading Gate
 
 The enforcer blocks ALL write tools (including terminal write commands, cronjob
-creation, skill management) until all 7 always-section skills have been loaded
-via actual `skill_view()` calls. This prevents agents from bypassing skill
+creation, skill management) until every skill in the always-section has been
+loaded via actual `skill_view()` calls. This prevents agents from bypassing skill
 loading by touching a file.
 
-Canonical 7 (consolidated 2026-08-20): task-start (absorbed
-session-start-discipline), agent-flow (absorbed reasoning-patterns),
-reflexion-check, change-checklist, survey-before-action (absorbed
-cortex-preflight), agent-contract, test-driven-development.
+**Single source of truth (since 2026-11-06):** the required set DERIVES from
+`~/.steadfaste-fleet/skills.yaml` `always:` (see `_refresh_required_skills`), so
+the manifest, the enforcer and the doctor cannot drift apart — the direct fix for
+a measured 7-vs-8 count discrepancy. `_REQUIRED_SKILLS_DEFAULT` is the documented
+fail-closed fallback for remote backends where the manifest is not mounted. Today
+the set is: task-start (absorbed session-start-discipline), agent-flow (absorbed
+reasoning-patterns), reflexion-check, change-checklist, survey-before-action
+(absorbed cortex-preflight), agent-contract, test-driven-development,
+prove-before-create.
 
 ### How it works
 
@@ -278,12 +283,13 @@ an empty file that is rejected:
 | `session:wrong-id` | 🔒 REJECTED | Session mismatch |
 | Old global `.skills-loaded` | 🔒 IGNORED | Legacy file, superseded by per-session markers |
 
-### The 7 required skills
+### The required skills — single source of truth
 
-```
-task-start, agent-flow, reflexion-check, change-checklist,
-survey-before-action, agent-contract, test-driven-development
-```
+The exact set is not hardcoded here: it derives from the `always:` list in
+`~/.steadfaste-fleet/skills.yaml` (mirrored in that repo's `skills.yaml`), which
+is the one place the always-set is declared. Editing it there — and only there —
+changes the gate; the enforcer re-derives on each tool call. (A documented
+`_REQUIRED_SKILLS_DEFAULT` fallback covers remote backends without the file.)
 
 ### What this prevents
 

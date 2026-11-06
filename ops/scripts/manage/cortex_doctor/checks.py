@@ -962,15 +962,27 @@ def check_skills(res):
   always = data.get("always", [])
   on_task = data.get("on_task", {})
 
-  # Canonical 7 (consolidated 2026-08-20) — MUST stay in sync with
-  # skills.yaml `always:` and enforcer _REQUIRED_SKILLS.
-  # session-start-discipline → task-start, reasoning-patterns → agent-flow,
-  # cortex-preflight → survey-before-action, TDD promoted to base gate.
-  required = [
-    "task-start", "agent-flow", "reflexion-check", "change-checklist",
-    "survey-before-action", "agent-contract", "test-driven-development",
-    "prove-before-create",
-  ]
+  # SINGLE SOURCE OF TRUTH (2026-11-06): `required` DERIVES from the CANONICAL
+  # repo template's `always:` names (the same source the enforcer's
+  # _REQUIRED_SKILLS derives from). No independent hardcoded N-list, so the
+  # always-count cannot drift between the manifest, the enforcer and the doctor
+  # (the 7-vs-8 root cause).
+  template_data = None
+  if template_yaml.exists():
+    try:
+      with open(template_yaml) as f:
+        template_data = yaml.safe_load(f)
+    except (yaml.YAMLError, OSError):
+      template_data = None
+  tpl_always = ((template_data or {}).get("always", [])
+                if isinstance(template_data, dict) else [])
+  required = [s.get("name") if isinstance(s, dict) else s for s in tpl_always]
+  required = [r for r in required if isinstance(r, str) and r]
+  if not required:
+    res.add("Skills manifest: always", "FAIL",
+        "Cannot derive required set from template",
+        f"Add an always: section to {template_yaml}")
+    return
   always_names = {s.get("name") if isinstance(s, dict) else s for s in (always or [])}
   missing = [r for r in required if r not in always_names]
 
