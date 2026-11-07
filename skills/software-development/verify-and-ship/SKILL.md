@@ -108,6 +108,16 @@ delivering) / ZERO (cannot verify core claims — investigate, do not deliver).
   unpiped) into `docs/evidence/`, commit it in the SAME cycle.
 - ONE note, ONE run — every number in the close note must come from the SAME
   run as the committed artifact beside it.
+- **The 'unverified-claim' reviewer loop terminates with a COMMITTED test, not
+  more material.** When a re-review keeps returning unverified-claim against
+  your prose even after the code fix, the reviewer is judging the MATERIAL you
+  pass each round — stale or abridged material produces fresh findings on every
+  pass. Stop re-writing the material: commit a hermetic test that derives its
+  expectation from the artifact's OWN structure (an ordering test that greps
+  for definition-before-call, a parser test asserting the full-surface count),
+  run it red-and-green, and re-review citing that committed test as the proof.
+  A reviewer will accept 'asserted by test X, runnable with pytest' where it
+  will never accept 'verified: offsets were compared'.
 
 **Phase 2 — multi-OS:** hardcoded paths → portability helpers; systemctl vs
 launchctl vs brew by host.
