@@ -547,10 +547,10 @@ remove_cron() {
     return 0
   fi
   if [[ -n "$HERMES_CMD" ]]; then
-    if "$HERMES_CMD" cron remove --name "$name" 2>/dev/null; then
+    if _rm_err="$("$HERMES_CMD" cron remove --name "$name" 2>&1)"; then
       info "Removed cron: ${name}"
     else
-      warn "Could not remove cron: ${name} — it exists (cron_exists) but remove returned non-zero; check manually"
+      warn "Could not remove cron: ${name} — ${_rm_err}"
       return 1
     fi
   fi
