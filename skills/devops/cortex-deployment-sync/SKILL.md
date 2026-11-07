@@ -334,6 +334,57 @@ the instance:** if you renamed one script, grep the deploy map for sibling renam
 the same sweep (`git log --oneline --diff-filter=R -20`), because each rename leaves
 its own orphan.
 
+## Pitfall 28: A rename sweep needs TWO deploys — the post-merge hook runs the OLD updater
+
+A pull whose range is a big rename/migration sweep (e.g. the cortex→fleet sweep)
+leaves the host half-resynced after the first deploy: the post-merge hook fires the
+PRE-PULL deployed updater, which copies files using the old deploy map, so the new names
+land but the host-side sweep steps (cron manifest renames, stale systemd unit removal,
+MCP re-wiring, plugin content/checksum) never run. The doctor then FAILs exactly on that
+cluster — `Crons missing`, `Cron manifest drift (<old-name>*)`, `Systemd stale units`,
+`Plugin content`, `MCP wiring (agent-bus)`, `Checksum: Governance plugin …` — each
+carrying `REQUIRED: Run: fleet-update.sh to resync`.
+
+The doctor's own remedy is the answer: run the sanctioned
+`bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh` a SECOND time. The second run
+executes the freshly-deployed updater (new deploy map) and completes the sweep in one
+pass. Do not hand-fix the deploy-map items first — re-run and let the fresh updater clear
+cron-manifest drift, plugin content, checksum, and deploy-sync in one pass. But the
+second run does NOT fix every fail: **live host references to a renamed runner survive
+any number of deploys and must be repaired directly** (measured: after the cortex→fleet
+sweep, `Systemd stale units` + `MCP wiring (agent-bus)` were still failing after run
+two).
+
+- `Systemd stale units` — every `cortex-bridge-*.service` ExecStart'd the renamed
+  `cortex-bus-bridge-run.py`, so each bridge tick failed instantly. The bridge
+  generator (`fleet-bus-bridge-generate.py`) cannot regenerate these by design:
+  migrated bridge-owned jobs are REMOVED from jobs.json, and the generator only emits
+  units for jobs still listed there. Patch the live unit files, reload, reset-failed:
+  `sed -i 's|cortex-bus-bridge-run\.py|fleet-bus-bridge-run.py|g' ~/.config/systemd/user/cortex-bridge-*.service`
+  … then `systemctl --user daemon-reload && systemctl --user reset-failed`. Also fix
+  any `--script` arg renamed beside the runner (e.g. `cortex-bus-failover-watchdog.py`
+  → `fleet-bus-failover-watchdog.py`). Verify 0 failed units with
+  `systemctl --user list-units --state=failed`.
+- `MCP wiring (<server>)` — `~/.hermes/config.yaml` still names the old runner path
+  for each MCP server whose script was renamed. Re-register the failing one:
+  `hermes mcp remove <s> && hermes mcp add <s> --command <venv-python> --args <new-mcp-script>`.
+
+**`hermes mcp add` is INTERACTIVE — a cancelled enable prompt rolls the whole add
+back.** After tool discovery it asks `Enable all N tools? [Y/n/select]`; answered
+non-interactively it is refused and the server does NOT land in config (verified:
+absent from `hermes mcp list` after a cancelled run). Drive the prompt from a PTY
+(`terminal(background=true, pty=true)` + `process_manage(action='submit', data='Y')`),
+then confirm with `hermes mcp list`. Newly added tools appear only in a NEW session or
+after `/reload-mcp`.
+
+A deploy log whose only sour line is
+`consolidate-env.sh FAILED: … is a symlink to <old-path>/.env … refusing to touch` is a
+transition-window artifact, not a deploy bug: the check fails CLOSED to protect a
+host-owned config pointer, and the trailing `relock ran on a FAILED exit (rc=1)` is the
+fail-safe re-securing enforcement, not a second fault. The `.env` symlink still resolves
+through the transition link; leave it alone and let the doctor's `Overall:` line be the
+arbiter.
+
 ## Pitfall 12: A host BEHIND origin is silent, and the drift audit certifies it clean
 
 The opposite direction is NOT benign and nothing shouts about it. A host tens of

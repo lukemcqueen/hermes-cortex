@@ -1066,7 +1066,17 @@ print("Retention applied: deleted cycles older than 90 days")
 db.close()
 ```
 
-The weekly evaluation cron can be extended to include a retention step.
+The runnable form ships as **`scripts/loop-retention.py`** in this skill — dry-run by
+default; `--apply` archives cycles older than N days (default 90) to
+`~/.steadfaste-fleet/data/loop-cycles-archive-<date>.json`, asserts the row-count delta
+before committing, then VACUUMS. Target DB: `~/.steadfaste-fleet/data/loop-governance.db`.
+
+**It is NOT wired to any cron/timer by default** — the alert watchdog only WARNS at
+large DB sizes; nothing prunes on a schedule, so the DB grows without bound until someone
+runs the script. When asked to "clean up" the governance DB (or the autonomy digest's
+source data), the answer is this script, dry-run first: `python3 loop-retention.py`
+then `python3 loop-retention.py --apply`. Check for a retention cron/timer; if none
+exists, wire one (weekly `--apply`) or the growth resumes.
 For high-volume environments, archive the JSON events directory (`~/.steadfaste-fleet/data/loop-events/`) to cold storage before deleting.
 
 ## Test Suite
