@@ -77,3 +77,46 @@ def test_the_consolidated_workday_crons_are_two_a_day():
     assert "agent-fixer-overnight" not in installer
     assert "cortex-bus-evening" not in installer
     assert "cortex-bus-overnight" not in installer
+
+
+def _create_cron_line_count() -> int:
+    """Total `create_cron "…"` invocation lines across the installers."""
+    n = 0
+    for path in INSTALLERS:
+        n += len(re.findall(r'\s*create_cron\s+"', path.read_text()))
+    return n
+
+
+def test_every_create_cron_line_carries_its_schedule():
+    """Edge case: the installer parser is line-anchored, so a create_cron whose
+    schedule is written on the NEXT line would be silently missed (the name
+    simply never enters _installer_schedules). Guard that every invocation line
+    actually produced a (name, schedule) pair — a mismatch means a bare
+    ``create_cron "x"`` line went unparsed and the coverage is a false green."""
+    parsed = len(_installer_schedules())
+    total = _create_cron_line_count()
+    assert total == parsed, (
+        f"{total - parsed} create_cron line(s) carry no inline schedule — "
+        "the line-anchored regex missed them and the coverage over-reports"
+    )
+
+
+def test_every_installer_cron_is_declared_in_the_manifest():
+    installer = set(_installer_schedules())
+    manifest = set(_manifest_schedules())
+    missing = sorted(installer - manifest)
+    assert not missing, f"installer crons with no manifest entry (orphans): {missing}"
+
+
+def test_every_manifest_cron_has_an_installer():
+    manifest = set(_manifest_schedules())
+    installer = set(_installer_schedules())
+    missing = sorted(manifest - installer)
+    assert not missing, f"manifest crons with no installer create_cron: {missing}"
+
+
+def test_the_parsers_return_the_full_surface():
+    """Non-vacuity: a broken regex (or an emptied manifest) must read as a
+    failure, not as a green 'no drift' over an empty set."""
+    assert len(_manifest_schedules()) >= 50, "manifest parser returned a suspiciously small set"
+    assert _create_cron_line_count() >= 50, "installer parser returned a suspiciously small set"

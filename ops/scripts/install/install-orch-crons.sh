@@ -122,43 +122,6 @@ parse_args() {
 }
 parse_args "$@"
 
-# ── Uninstall ──────────────────────────────────────────────
-if $UNINSTALL; then
-  echo ""
-  printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
-  # This list is BOTH the uninstall set and the doctor's expected-orch-cron list.
-  # `orch-task-board-digest` is deliberately here with NO matching create_cron
-  # block: retired 2026-10-02 (Luke — "remove them as they are done"), and this
-  # entry is what removes it from hosts that still carry it. Doctor verified
-  # clean with the pair split (do not add a comment INSIDE the list — a
-  # backslash-continued line swallows the comment and breaks the syntax).
-  for job in \
-    "orch-bus-audit-watchdog" \
-    "orch-bus-confirmation-alert" \
-    "orch-bus-confirmation-poller" \
-    "orch-bus-forwarder-sync" \
-    "orch-bus-inbox-relay" \
-    "orch-bus-recover-timeouts" \
-    "orch-clean-health-queue" \
-    "orch-daily-regression-gate" \
-    "orch-fleet-watchdog" \
-    "orch-health-report-saturday" \
-    "orch-health-report-weekday" \
-    "orch-weekly-cost-report" \
-    "orch-skill-lifecycle" \
-    "orch-skill-evaluate" \
-    "orch-skill-report-request" \
-    "orch-task-board-digest" \
-    "orch-task-morning-pass" \
-    "orch-bus-worker" \
-    "orch-autonomy-digest" \
-    "orch-restic-backup"; do
-    remove_cron "$job" 2>/dev/null || true
-  done
-  info "Uninstall complete"
-  exit 0
-fi
-
 # ── Pre-flight ─────────────────────────────────────────────
 echo ""
 printf "${CYAN}━━━ Orchestrator-Only Hermes Cron Jobs ━━━${RESET}\n\n"
@@ -298,11 +261,12 @@ try:
         if isinstance(j, dict) and j.get("name") == target:
             sys.stdout.write(j.get("id", ""))
             sys.exit(0)
-except:
+except (OSError, ValueError) as e:
+    print(f'cron job-id lookup: cannot read/parse jobs.json: {e}', file=sys.stderr)
     sys.exit(1)
 sys.exit(1)
 PYEOF
-    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
+    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" || true)
     if [[ -n "$job_id" ]]; then
       local edit_cmd=("$HERMES_CMD" "cron" "edit" "$job_id")
       edit_cmd+=("--schedule" "$schedule")
@@ -388,7 +352,7 @@ if patched:
     with open('$db', 'w') as f:
         json.dump(data, f, indent=2, default=str)
     print('PINNED')
-" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>}" || true
+" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>}" || warn "  Could not pin model for ${name} — not found in jobs.json or write failed"
 }
 
 # ── Helper: remove a single cron ──────────────────────────
@@ -398,9 +362,55 @@ remove_cron() {
     return 0
   fi
   if [[ -n "$HERMES_CMD" ]]; then
-    "$HERMES_CMD" cron remove --name "$name" 2>/dev/null && info "Removed cron: ${name}" || true
+    if "$HERMES_CMD" cron remove --name "$name" 2>/dev/null; then
+      info "Removed cron: ${name}"
+    else
+      warn "Could not remove cron: ${name} — it exists (cron_exists) but remove returned non-zero; check manually"
+      return 1
+    fi
   fi
 }
+
+# ── Uninstall ──────────────────────────────────────────────
+if $UNINSTALL; then
+  echo ""
+  printf "${CYAN}━━━ Uninstalling Orchestrator-Only Crons ━━━${RESET}\n\n"
+  # This list is BOTH the uninstall set and the doctor's expected-orch-cron list.
+  # `orch-task-board-digest` is deliberately here with NO matching create_cron
+  # block: retired 2026-10-02 (Luke — "remove them as they are done"), and this
+  # entry is what removes it from hosts that still carry it. Doctor verified
+  # clean with the pair split (do not add a comment INSIDE the list — a
+  # backslash-continued line swallows the comment and breaks the syntax).
+  for job in \
+    "orch-bus-audit-watchdog" \
+    "orch-bus-confirmation-alert" \
+    "orch-bus-confirmation-poller" \
+    "orch-bus-forwarder-sync" \
+    "orch-bus-inbox-relay" \
+    "orch-bus-recover-timeouts" \
+    "orch-clean-health-queue" \
+    "orch-daily-regression-gate" \
+    "orch-fleet-watchdog" \
+    "orch-health-report-saturday" \
+    "orch-health-report-weekday" \
+    "orch-weekly-cost-report" \
+    "orch-skill-lifecycle" \
+    "orch-skill-evaluate" \
+    "orch-skill-report-request" \
+    "orch-task-board-digest" \
+    "orch-task-morning-pass" \
+    "orch-bus-worker" \
+    "orch-autonomy-digest" \
+    "orch-restic-backup"; do
+    remove_cron "$job" || _uninstall_failed=1
+  done
+  if [[ "${_uninstall_failed:-0}" -ne 0 ]]; then
+    warn "Uninstall incomplete — one or more crons could not be removed"
+    exit 1
+  fi
+  info "Uninstall complete"
+  exit 0
+fi
 
 # ── 0. Clean up old-format cron names (pre-orch-* rename) ──
 printf "${CYAN}  0. Cleaning up old-format cron names${RESET}\n"

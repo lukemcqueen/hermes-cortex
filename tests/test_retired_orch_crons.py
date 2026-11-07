@@ -95,9 +95,32 @@ def test_no_comment_inside_the_backslash_continued_uninstall_list():
     two commands and a syntax error.
     """
     lines = _text(_INSTALLER).splitlines()
-    start = next(i for i, l in enumerate(lines) if l.strip().startswith("for job in"))
+    start = next(i for i, l in enumerate(lines) if l.strip().startswith("for job in \\"))
     end = next(i for i in range(start, len(lines)) if lines[i].rstrip().endswith("; do"))
     for i in range(start + 1, end):
         assert not lines[i].strip().startswith("#"), (
             f"comment inside the uninstall list at line {i + 1} — this breaks the "
             "backslash continuation (put it above the `for` instead)")
+
+
+def test_uninstall_block_comes_after_its_functions_and_before_install():
+    """Regression: the $UNINSTALL block used to sit at the TOP of the script,
+    calling remove_cron/cron_exists before their definitions — a silent
+    no-op where bash hit `remove_cron: command not found`, the old `|| true`
+    swallowed it, and "Uninstall complete" printed while nothing was removed.
+
+    Asserts from the installer's own structure:
+      * remove_cron() and cron_exists() are DEFINED before `if $UNINSTALL`.
+      * the uninstall block runs BEFORE the first create_cron CALL (so
+        --uninstall exits before any install work).
+    """
+    lines = _text(_INSTALLER).splitlines()
+    def first(pred):
+        return next(i for i, l in enumerate(lines) if pred(l))
+    rm = first(lambda l: l.strip().startswith("remove_cron() {"))
+    ce = first(lambda l: l.strip().startswith("cron_exists() {"))
+    uninst = first(lambda l: l.strip() == "if $UNINSTALL; then")
+    call = first(lambda l: l.strip().startswith('create_cron "'))
+    assert rm < uninst, "remove_cron() defined AFTER the uninstall block — command-not-found"
+    assert ce < uninst, "cron_exists() defined AFTER the uninstall block — command-not-found"
+    assert uninst < call, "uninstall block AFTER the first create_cron call — install runs first"

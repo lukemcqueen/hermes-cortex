@@ -223,9 +223,10 @@ try:
         if isinstance(j, dict) and j.get('name') == '$name':
             sys.stdout.write((j.get('script', '') or '') + '\x1f' + (j.get('skill', '') or '') + '\x1f' + (j.get('prompt', '') or '') + '\n')
             sys.exit(0)
-except: pass
+except (OSError, ValueError) as e:
+    print(f'cron drift check: cannot read/parse jobs.json: {e}', file=sys.stderr)
 sys.exit(1)
-" 2>/dev/null || true) || true
+" || true) || true
         if [[ -n "$script" && "$_cur_script" != "$script" ]]; then
           _drift=true
           info "Drift detected: cron '${name}' script '${_cur_script:-<none>}' → '${script}'"
@@ -291,11 +292,12 @@ try:
         if isinstance(j, dict) and j.get("name") == target:
             sys.stdout.write(j.get("id", ""))
             sys.exit(0)
-except:
+except (OSError, ValueError) as e:
+    print(f'cron job-id lookup: cannot read/parse jobs.json: {e}', file=sys.stderr)
     sys.exit(1)
 sys.exit(1)
 PYEOF
-    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
+    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" || true)
     if [[ -n "$job_id" ]]; then
       # Build edit command — only pass non-empty fields
       local edit_cmd=("$HERMES_CMD" "cron" "edit" "$job_id")
@@ -452,7 +454,7 @@ if patched:
     with open('$db', 'w') as f:
         json.dump(data, f, indent=2, default=str)
     print('PINNED')
-" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>} re=${reasoning_effort:-<default>}" || true
+" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>} re=${reasoning_effort:-<default>}" || warn "  Could not pin model for ${name} — not found in jobs.json or write failed"
 }
 
 
@@ -545,7 +547,12 @@ remove_cron() {
     return 0
   fi
   if [[ -n "$HERMES_CMD" ]]; then
-    "$HERMES_CMD" cron remove --name "$name" 2>/dev/null && info "Removed cron: ${name}" || true
+    if "$HERMES_CMD" cron remove --name "$name" 2>/dev/null; then
+      info "Removed cron: ${name}"
+    else
+      warn "Could not remove cron: ${name} — it exists (cron_exists) but remove returned non-zero; check manually"
+      return 1
+    fi
   fi
 }
 
@@ -605,8 +612,12 @@ if $UNINSTALL; then
 
   
   
-    remove_cron "$job"
+    remove_cron "$job" || _uninstall_failed=1
   done
+  if [[ "${_uninstall_failed:-0}" -ne 0 ]]; then
+    warn "Uninstall incomplete — one or more crons could not be removed"
+    exit 1
+  fi
   info "Uninstall complete"
   exit 0
 fi
