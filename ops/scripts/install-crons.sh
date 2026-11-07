@@ -564,6 +564,7 @@ if $UNINSTALL; then
     "agent-fixer-workday" \
     "agent-governance-auditor" \
     "agent-steadfaste-fleet-sync" \
+    "agent-hermes-update" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \

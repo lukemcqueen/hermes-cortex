@@ -111,6 +111,17 @@ crons:
   no_agent: true
   model: ''
   provider: ''
+- name: agent-hermes-update
+  scope: universal
+  schedule: 23 22 * * *
+  script: agent-hermes-update.sh
+  prompt: ''
+  skill: ''
+  deliver: local
+  workdir: ''
+  no_agent: true
+  model: ''
+  provider: ''
 - name: agent-ip-submission
   scope: universal
   schedule: '*/30 * * * *'
