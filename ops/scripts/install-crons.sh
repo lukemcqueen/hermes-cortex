@@ -1,3 +1,655 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────
+#  install-crons.sh — Register essential Hermes Agent cron jobs
+#
+#  Creates Hermes Agent-level cron jobs (no_agent watchdogs and
+#  LLM-driven crons) for auto-remediation, system health, web
+#  cache, and memory synchronization.
+#
+#  ONLY add crons here that belong in the repo — infrastructure
+#  other agents could use. Local-only crons (server-specific
+#  maintenance, personal briefings, ad-hoc watchdogs) go directly
+#  via `cronjob action='create' name='local-<name>'` and use
+#  the `local-*` prefix. They do NOT belong in this installer.
+#  See the cron-job-management skill for full naming convention.
+#
+#  Skips jobs that already exist (checks ~/.hermes/cron/jobs.json
+#  by job name). Safe to re-run — only creates missing jobs.
+#
+#  Usage:
+#    bash install-crons.sh              # create missing crons
+#    bash install-crons.sh --dry-run    # show what would be created
+#    bash install-crons.sh --force      # recreate all crons (overwrite)
+#    bash install-crons.sh --uninstall  # remove all hermes crons
+# ─────────────────────────────────────────────────────────────
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
+source "${SCRIPT_DIR}/install/os-config.sh"
+
+# ── Source project .env ──────────────────────────────────
+# ~/steadfaste-fleet/.env contains LLM_CRON_MODEL, LLM_CRON_PROVIDER,
+# LOCAL_CRON_MODEL, LOCAL_CRON_PROVIDER, and other runtime vars.
+# Source it before validation so agents don't need manual exports.
+ENV_FILE="${HOME}/steadfaste-fleet/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a; source "$ENV_FILE"; set +a
+fi
+
+HERMES_HOME="${HERMES_HOME:-${HOME}/.hermes}"
+CRON_JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
+SCRIPTS_DIR="${HOME}/.steadfaste-fleet/scripts"
+HERMES_CMD=""
+
+# ── Telegram recipient (PII — never hardcoded) ────────────
+# Resolved from ~/.hermes/.env (same file agent-message-handler.py reads for
+# TELEGRAM_BOT_TOKEN). TELEGRAM_HOME_CHANNEL is the canonical Hermes env var
+# (gateway/cron scheduler resolve it per host) — already present on every
+# agent; no new var. create_cron fails loudly if a telegram-delivering cron
+# is requested without it — a cron that delivers nowhere is the silent-loss
+# class (origin=null bug, 2026-07).
+TELEGRAM_HOME_CHANNEL="$(grep -E '^TELEGRAM_HOME_CHANNEL=' "${HERMES_HOME}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+# Try to find hermes command
+for candidate in hermes "${HERMES_HOME}/hermes-agent/venv/bin/hermes"; do
+  if command -v "$candidate" &>/dev/null; then
+    HERMES_CMD="$candidate"
+    break
+  fi
+done
+
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; RESET='\033[0m'
+info()  { printf "${GREEN}✓${RESET} %s\n" "$*"; }
+warn()  { printf "${YELLOW}⚠${RESET} %s\n" "$*"; }
+error() { printf "${RED}✗${RESET} %s\n" "$*"; }
+
+DRY_RUN=false
+UNINSTALL=false
+FORCE=false
+CREATED=0
+SKIPPED=0
+FAILED=0
+WOULD_CREATE=0
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) DRY_RUN=true; shift ;;
+      --force) FORCE=true; shift ;;
+      --uninstall) UNINSTALL=true; shift ;;
+      *) warn "Unknown option: $1"; shift ;;
+    esac
+  done
+}
+parse_args "$@"
+
+# ── Pre-flight checks ──────────────────────────────────────
+if $UNINSTALL; then
+  if [[ -z "$HERMES_CMD" ]]; then
+    warn "Hermes not found — nothing to uninstall"
+    exit 0
+  fi
+  info "Uninstalling Hermes cron jobs…"
+  # Allow uninstall even without hermes by removing from jobs.json
+fi
+
+# ── Helper: check if a cron job exists ────────────────────
+cron_exists() {
+  local name="$1"
+
+  # Method 1: Check jobs.json (fast, direct)
+  if [[ -f "$CRON_JOBS_FILE" ]]; then
+    if python3 -c "
+import json, sys
+try:
+    data = json.load(open('$CRON_JOBS_FILE'))
+    if isinstance(data, dict) and 'jobs' in data:
+        data = data['jobs']
+    if isinstance(data, list):
+        for j in data:
+            if isinstance(j, dict) and j.get('name') == '$name':
+                sys.exit(0)
+    elif isinstance(data, dict):
+        for jid, j in data.items():
+            if isinstance(j, dict) and j.get('name') == '$name':
+                sys.exit(0)
+except Exception:
+    sys.exit(1)
+sys.exit(1)
+" 2>/dev/null; then
+      return 0
+    fi
+  fi
+
+  # Method 2: Fallback to hermes CLI (more robust — works even if
+  # jobs.json is temporarily locked, being rewritten, or missing)
+  if command -v "${HERMES_CMD:-hermes}" &>/dev/null; then
+    if "${HERMES_CMD:-hermes}" cron list --all 2>/dev/null | grep -q "Name:[[:space:]]*${name}$"; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+# ── Helper: verify script exists ───────────────────────────
+script_exists() {
+  local script="$1"
+  if [[ -z "$script" ]]; then
+    return 0  # No script required (skill-based cron)
+  fi
+  if [[ -f "${SCRIPTS_DIR}/${script}" ]]; then
+    return 0
+  fi
+  # Also check repo source (including subdirs like agent/, manage/, orch-bus/)
+  if [[ -f "${SCRIPT_DIR}/${script}" ]]; then
+    return 0
+  fi
+  if find "${SCRIPT_DIR}" -maxdepth 2 -name "${script}" -type f 2>/dev/null | grep -q .; then
+    return 0
+  fi
+  # Check CLI wrapper symlinks (loop-governance setup.sh)
+  if [[ -f "${HOME}/.local/bin/${script}" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# ── Helper: create a cron job via hermes or prompt ────────
+create_cron() {
+  local name="$1" schedule="$2" script="$3" prompt="$4" skill="$5" toolsets="$6" deliver="$7" workdir="$8" no_agent="$9"
+  local model="${10:-}" provider="${11:-}" reasoning_effort="${12:-}"
+
+  # ── HC cron-bridge ownership guard (S2a) ──────────────────
+  # A simple no_agent job migrated to the standalone bridge is REMOVED from
+  # Hermes so there is exactly ONE owner (running it in both places = the job
+  # fires twice). Recreating it here would resurrect a second owner, so skip
+  # anything the bridge owns. The marker is systemd's own enable symlink in
+  # timers.target.wants/ — filesystem-only, so this works from a cron/install
+  # context with no DBus session. A DISABLED unit (a job paused for a reason:
+  # bible-reading, hermes-update, …) is absent from wants/, so that job is
+  # still created here, exactly as intended.
+  if [[ -e "${HOME}/.config/systemd/user/timers.target.wants/cortex-bridge-${name}.timer" ]]; then
+    info "Skipping '${name}' — owned by the HC cron bridge (systemd timer)"
+    return 0
+  fi
+
+  # ── Fleet stagger: deterministic per-host minute for LLM-driven crons ──
+  # (Luke directive 2026-08-07) — all agents used to fire the same LLM cron
+  # at :00 simultaneously, hitting the model as a thundering herd. Give every
+  # LLM-driven cron (no_agent != true) a stable per-host minute derived from
+  # hostname:cron-name hash % 60: same hour, different minute per host, stable
+  # across re-installs (a re-run of this installer produces the same minute).
+  # no_agent scripts keep exact schedules (they make no model calls).
+  if [[ "$no_agent" != "true" ]] && [[ "$schedule" =~ ^[0-9]+([[:space:]]+[^ ]+){4}$ ]]; then
+    local _minute
+    _minute="$(printf '%s:%s' "$(hostname -s)" "$name" | cksum | awk '{print $1 % 60}')"
+    schedule="${_minute} ${schedule#* }"
+    info "Staggered LLM cron '${name}' minute → ${_minute} (schedule: ${schedule})"
+  fi
+
+  # Fail-loud guard: a telegram-delivering cron requires TELEGRAM_HOME_CHANNEL
+  # from ~/.hermes/.env — never a hardcoded literal, never deliver-nowhere.
+  if [[ "$deliver" == "telegram:${TELEGRAM_HOME_CHANNEL}" && -z "$TELEGRAM_HOME_CHANNEL" ]]; then
+    error "cron '${name}': telegram deliver target requires TELEGRAM_HOME_CHANNEL in ${HERMES_HOME}/.env (refusing to create a cron that delivers nowhere)"
+    exit 1
+  fi
+
+  # Check if cron exists
+  local exists=false
+  if cron_exists "$name"; then
+    exists=true
+  fi
+
+  if $exists; then
+    if ! $FORCE; then
+      # Drift detection: check if existing cron's script, skill, OR prompt
+      # differs from desired. Script-only checks miss skill renames on LLM
+      # crons (empty script) — e.g. the agent-inbox → cortex-bus-* rename
+      # (2026-07-27) left deployed jobs referencing non-existent skills,
+      # silently skipped by the scheduler every fire. Compare both. Prompt
+      # comparison (2026-08-06) closes the prompt-only drift gap: repo
+      # prompt fixes (e.g. the cron OUTPUT POLICY) were never propagated to
+      # live jobs because drift checked only script+skill.
+      local _drift=false
+      if { [[ -n "$script" || -n "$skill" || -n "$prompt" ]] && [[ -f "$CRON_JOBS_FILE" ]]; } && command -v python3 &>/dev/null; then
+        local _cur_script _cur_skill _cur_prompt
+        IFS=$'\x1f' read -r _cur_script _cur_skill _cur_prompt < <(python3 -c "
+import json, sys
+try:
+    with open('$CRON_JOBS_FILE') as f:
+        data = json.load(f)
+    jobs = data.get('jobs', []) if isinstance(data, dict) else data
+    for j in jobs:
+        if isinstance(j, dict) and j.get('name') == '$name':
+            sys.stdout.write((j.get('script', '') or '') + '\x1f' + (j.get('skill', '') or '') + '\x1f' + (j.get('prompt', '') or '') + '\n')
+            sys.exit(0)
+except: pass
+sys.exit(1)
+" 2>/dev/null || true) || true
+        if [[ -n "$script" && "$_cur_script" != "$script" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' script '${_cur_script:-<none>}' → '${script}'"
+        fi
+        if [[ -n "$skill" && -n "$_cur_skill" && "$_cur_skill" != "$skill" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' skill '${_cur_skill}' → '${skill}'"
+        fi
+        if [[ -n "$prompt" && "$_cur_prompt" != "$prompt" ]]; then
+          _drift=true
+          info "Drift detected: cron '${name}' prompt differs (${#_cur_prompt} → ${#prompt} chars)"
+        fi
+      fi
+      if ! $_drift; then
+        SKIPPED=$((SKIPPED + 1))
+        return 0
+      fi
+      # Fall through to the edit path below (drift detected)
+      local _do_edit=true
+    else
+      local _do_edit=false
+    fi
+  else
+    local _do_edit=false
+  fi
+
+  # Verify script exists before creating cron
+  if [[ -n "$script" ]] && ! script_exists "$script"; then
+    warn "Script not found: ${script} — skipping cron '${name}'"
+    FAILED=$((FAILED + 1))
+    return 0
+  fi
+
+  if $DRY_RUN; then
+    local action="Create"
+    if $exists && { $FORCE || ${_do_edit:-false}; }; then
+      action="Update (force)"
+    fi
+    info "[DRY-RUN] ${action} cron: ${name}"
+    printf "  schedule=%s\\n" "$schedule"
+    printf "  script=%s\\n" "${script:-<none>}"
+    printf "  skill=%s\\n" "${skill:-<none>}"
+    [[ -n "$model"    ]] && printf "  model=%s\\n" "$model"
+    [[ -n "$provider" ]] && printf "  provider=%s\\n" "$provider"
+    WOULD_CREATE=$((WOULD_CREATE + 1))
+    return 0
+  fi
+
+  # Remove existing cron if --force — actually use edit to avoid duplicates
+  if $exists && { $FORCE || ${_do_edit:-false}; } && [[ -n "$HERMES_CMD" ]]; then
+    # Find job_id by name from jobs.json directly
+    local job_id _tmp
+    _tmp="${CORTEX_DEPLOY_HOME:-${HOME}/.steadfaste-fleet}/state/_cron_find.py"
+    mkdir -p "$(dirname "$_tmp")"
+    cat > "$_tmp" << 'PYEOF'
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+    jobs = data.get("jobs", []) if isinstance(data, dict) else data
+    target = sys.argv[2]
+    for j in jobs:
+        if isinstance(j, dict) and j.get("name") == target:
+            sys.stdout.write(j.get("id", ""))
+            sys.exit(0)
+except:
+    sys.exit(1)
+sys.exit(1)
+PYEOF
+    job_id=$(python3 "$_tmp" "$CRON_JOBS_FILE" "$name" 2>/dev/null || true)
+    if [[ -n "$job_id" ]]; then
+      # Build edit command — only pass non-empty fields
+      local edit_cmd=("$HERMES_CMD" "cron" "edit" "$job_id")
+      edit_cmd+=("--schedule" "$schedule")
+      if [[ -n "$script" ]]; then
+        edit_cmd+=("--script" "$script")
+      fi
+      if [[ -n "$skill" ]]; then
+        edit_cmd+=("--skill" "$skill")
+      fi
+      if [[ -n "$deliver" ]]; then
+        edit_cmd+=("--deliver" "$deliver")
+      fi
+      if [[ -n "$workdir" ]]; then
+        edit_cmd+=("--workdir" "$workdir")
+      fi
+      if [[ "$no_agent" == "true" ]]; then
+        edit_cmd+=("--no-agent")
+      elif [[ -n "$script" ]]; then
+        edit_cmd+=("--agent")
+      fi
+      if [[ -n "$prompt" ]]; then
+        edit_cmd+=("--prompt" "$prompt")
+      fi
+      if "${edit_cmd[@]}" 2>&1; then
+        info "Updated cron: ${name} (${schedule})"
+        CREATED=$((CREATED + 1))
+        # Pin model/provider/reasoning_effort post-edit — ALWAYS call:
+        # pin_cron_model self-guards (manifest lookup decides; returns early
+        # when nothing to pin). Gating on non-empty $model caused jobs created
+        # without explicit model args to never get their manifest pin
+        # (Titus 11-cron manual pin, 2026-08-21).
+        pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
+      else
+        warn "Failed to update cron: ${name}"
+        FAILED=$((FAILED + 1))
+      fi
+      return 0
+    fi
+    # Fall through to create if we couldn't find the job_id
+  fi
+
+  if [[ -z "$HERMES_CMD" ]]; then
+    warn "Hermes not found — cannot create cron '${name}'"
+    warn "  Create manually: hermes cron create --name \"${name}\" --schedule \"${schedule}\" ..."
+    FAILED=$((FAILED + 1))
+    return 0
+  fi
+
+  # Build the hermes cron create command
+  # Note: schedule and prompt are POSITIONAL arguments (must come at END)
+  # Note: --no-agent uses hyphen, not underscore
+  # Order: hermes cron create [FLAGS] schedule [prompt]
+  # Note: --enabled-toolsets is NOT a valid CLI flag (toolsets must be set via API)
+  local cmd=("$HERMES_CMD" "cron" "create" "--name" "$name")
+  if [[ -n "$script" ]]; then
+    cmd+=("--script" "$script")
+  fi
+  if [[ -n "$skill" ]]; then
+    cmd+=("--skill" "$skill")
+  fi
+  # Skip toolsets - not supported by CLI, must be set via API
+  if [[ -n "$deliver" ]]; then
+    cmd+=("--deliver" "$deliver")
+  fi
+  if [[ -n "$workdir" ]]; then
+    cmd+=("--workdir" "$workdir")
+  fi
+  if [[ "$no_agent" == "true" ]]; then
+    cmd+=("--no-agent")
+  fi
+  # Positional arguments MUST come at the end
+  cmd+=("$schedule")
+  if [[ -n "$prompt" ]]; then
+    cmd+=("$prompt")
+  fi
+
+  if "${cmd[@]}" 2>&1; then
+    info "Created cron: ${name} (${schedule})"
+    CREATED=$((CREATED + 1))
+    # Pin model/provider/reasoning_effort post-creation (CLI doesn't support
+    # --model/--provider). ALWAYS call — self-guards via manifest lookup.
+    pin_cron_model "$name" "$model" "$provider" "$reasoning_effort"
+  else
+    warn "Failed to create cron: ${name}"
+    FAILED=$((FAILED + 1))
+  fi
+}
+
+# ── Pin Model/Provider ────────────────────────────────────
+# The hermes CLI doesn't support --model/--provider flags, so we
+# patch the jobs.json directly after creating an LLM cron.
+# Manifest-aware: cron-manifest.yaml declares per-cron model/provider
+# (thinking vs non-thinking). When a manifest entry exists for this cron,
+# its model/provider WIN over the global $LLM_CRON_MODEL fallback — so a
+# per-cron model switch in the manifest is never reverted by a re-install.
+pin_cron_model() {
+  local name="$1" model="$2" provider="$3" reasoning_effort="$4"
+  local _mf="${CORTEX_REPO:-$HOME/steadfaste-fleet}/ops/install/cron-manifest.yaml"
+  # Env chain is the single control point (2026-09-09): when LLM_CRON_MODEL/
+  # LLM_CRON_PROVIDER are set, manifest model/provider pins are IGNORED so an
+  # upstream manifest sync can never re-pin crons to a dead model again
+  # (deepseek-direct recurrence — fleet-wide, all agents).
+  if [[ -n "${LLM_CRON_MODEL:-}" && -n "${LLM_CRON_PROVIDER:-}" ]]; then
+    return 0
+  fi
+  if [[ -f "$_mf" ]]; then
+    local _mp
+    _mp="$(python3 -c "
+import sys
+try:
+    import yaml
+    doc = yaml.safe_load(open('$_mf'))
+    for c in doc.get('crons', []):
+        if c.get('name') == '$name':
+            sys.stdout.write((c.get('model') or '') + '\x1f' + (c.get('provider') or '') + '\x1f' + (c.get('reasoning_effort') or ''))
+            break
+except Exception:
+    pass
+" 2>/dev/null || true)"
+    if [[ -n "$_mp" && "$_mp" != $'\x1f' ]]; then
+      local _m_model _m_provider _m_reasoning
+      _m_model="${_mp%%$'\x1f'*}"
+      _m_rest="${_mp#*$'\x1f'}"
+      _m_provider="${_m_rest%%$'\x1f'*}"
+      _m_reasoning="${_m_rest#*$'\x1f'}"
+      [[ -n "$_m_model" ]] && model="$_m_model"
+      [[ -n "$_m_provider" ]] && provider="$_m_provider"
+      [[ -n "$_m_reasoning" ]] && reasoning_effort="$_m_reasoning"
+    fi
+  fi
+  if [[ -z "$model" && -z "$provider" && -z "$reasoning_effort" ]]; then
+    return 0
+  fi
+  local db="${HERMES_HOME}/cron/jobs.json"
+  if [[ ! -f "$db" ]]; then
+    warn "  Cannot pin model for '${name}' — jobs.json not found"
+    return 0
+  fi
+  python3 -c "
+import json, sys
+with open('$db') as f:
+    data = json.load(f)
+jobs = data.get('jobs', []) if isinstance(data, dict) else data
+patched = False
+for job in jobs:
+    if isinstance(job, dict) and job.get('name') == '$name':
+        if '$model':    job['model'] = '$model'
+        if '$provider': job['provider'] = '$provider'
+        if '$reasoning_effort': job['reasoning_effort'] = '$reasoning_effort'
+        patched = True
+        break
+if patched:
+    with open('$db', 'w') as f:
+        json.dump(data, f, indent=2, default=str)
+    print('PINNED')
+" 2>&1 | grep -q PINNED && info "  Pinned ${name} → ${model:-<default>}/${provider:-<default>} re=${reasoning_effort:-<default>}" || true
+}
+
+
+# ── Setup Local Ollama Provider ────────────────────────────
+# Adds the custom:ollama-local provider to Hermes config.yaml
+# so crons can use qwen2.5:3b locally at zero cost.
+setup_ollama_provider() {
+  local config_file="${HERMES_HOME}/config.yaml"
+  if [[ ! -f "$config_file" ]]; then
+    warn "config.yaml not found at ${config_file} — cannot set up ollama provider"
+    return 0
+  fi
+  if grep -q 'custom_providers:' "$config_file" 2>/dev/null && grep -q 'ollama-local' "$config_file" 2>/dev/null; then
+    info "Local Ollama provider custom:ollama-local already configured"
+    return 0
+  fi
+  if $DRY_RUN; then
+    info "[DRY-RUN] Would add custom:ollama-local provider to config.yaml"
+    return 0
+  fi
+  # Insert custom_providers block before fallback_providers
+  local _tmp
+  _tmp=$(mktemp)
+  cat > "$_tmp" << 'PYEOF'
+import os
+fp = os.path.expanduser("REPLACE_CONFIG_FILE")
+with open(fp) as f:
+    text = f.read()
+old_model = (
+    '  default: deepseek-v4-flash\n'
+    '  provider: opencode-zen\n'
+)
+if old_model in text:
+    custom_block = (
+        '  default: deepseek-v4-flash\n'
+        '  provider: opencode-zen\n'
+        'custom_providers:\n'
+        '  ollama-local:\n'
+        '    base_url: http://localhost:11434/v1\n'
+        '    api_key: ""\n'
+        '    api_mode: chat_completions\n'
+        '    models:\n'
+        '      qwen2.5:3b:\n'
+        '        context_length: 65536\n'
+        '        ollama_num_ctx: 65536\n'
+    )
+    text = text.replace(old_model, custom_block, 1)
+    with open(fp, 'w') as f:
+        f.write(text)
+    print("ADDED")
+else:
+    lines_t = text.split("\n")
+    for i, line in enumerate(lines_t):
+        if line.strip() == "fallback_providers:":
+            custom_block = ('custom_providers:\n'
+                '  ollama-local:\n'
+                '    base_url: http://localhost:11434/v1\n'
+                '    api_key: ""\n'
+                '    api_mode: chat_completions\n'
+                '    models:\n'
+                '      qwen2.5:3b:\n'
+                '        context_length: 65536\n'
+                '        ollama_num_ctx: 65536\n')
+            lines_t.insert(i, custom_block)
+            text = "\n".join(lines_t)
+            with open(fp, 'w') as f:
+                f.write(text)
+            print("ADDED")
+            break
+PYEOF
+  sed -i "s|REPLACE_CONFIG_FILE|$config_file|g" "$_tmp"
+  local _ollama_out
+  _ollama_out=$(python3 "$_tmp" 2>&1)
+  rm -f "$_tmp"
+  if [[ "$_ollama_out" == *"ADDED"* ]]; then
+    info "Added local Ollama provider: custom:ollama-local"
+  else
+    warn "Could not auto-add custom provider — add manually to config.yaml"
+  fi
+}
+
+# ── Remove Cron ─────────────────────────────────────────────
+remove_cron() {
+  local name="$1"
+  if ! cron_exists "$name"; then
+    return 0
+  fi
+  if $DRY_RUN; then
+    info "[DRY-RUN] Would remove cron: ${name}"
+    return 0
+  fi
+  if [[ -n "$HERMES_CMD" ]]; then
+    "$HERMES_CMD" cron remove --name "$name" 2>/dev/null && info "Removed cron: ${name}" || true
+  fi
+}
+
+if $UNINSTALL; then
+  echo ""
+  printf "${CYAN}━━━ Uninstalling Hermes Cron Jobs ━━━${RESET}\n\n"
+  for job in \
+    "agent-agents-md-prune-apply" \
+    "agent-agents-md-prune-scan" \
+    "agent-auto-save-sessions" \
+    "agent-bus-retry-sweep" \
+    "agent-cron-failure-watchdog" \
+    "agent-cron-quality-watchdog" \
+    "agent-daily-bible-reading" \
+    "agent-deploy-drift-audit" \
+    "agent-fixer-workday" \
+    "agent-governance-auditor" \
+    "agent-steadfaste-fleet-sync" \
+    "agent-ip-submission" \
+    "agent-langfuse-health-watchdog" \
+    "agent-learning-collector" \
+    "agent-llm-judge-scorer-weekday" \
+    "agent-llm-judge-scorer-weekend" \
+    "agent-mcp-health-watchdog" \
+    "agent-loop-gov-lock-watchdog" \
+    "agent-memory-pruning" \
+    "agent-memory-to-brain-sync" \
+    "agent-message-handler" \
+    "agent-model-health-watchdog" \
+    "agent-mycortex-retention" \
+    "agent-mycortex-sync" \
+    "agent-nginx-threat-pipeline" \
+    "agent-no-verify-audit" \
+    "agent-offline-code-index" \
+    "agent-pending-cycle-watchdog" \
+    "agent-push-metrics" \
+    "agent-restic-backup" \
+    "agent-remediation-sensor" \
+    "agent-review-queue-sweep" \
+    "agent-scoring-activity-watchdog" \
+    "agent-secret-leak-watchdog" \
+    "agent-security-posture-check" \
+    "agent-service-recovery" \
+    "agent-session-cache-build" \
+    "agent-session-correction-scan" \
+    "agent-session-mine" \
+    "agent-stale-ref-watchdog" \
+    "agent-swap-refresh" \
+    "agent-system-alert-watchdog" \
+    "agent-unannounced-probe" \
+    "fleet-bus-failover-watchdog" \
+    "cortex-bus-workday"; do
+  
+  
+  
+  
+
+  
+  
+    remove_cron "$job"
+  done
+  info "Uninstall complete"
+  exit 0
+fi
+
+# ── Main ────────────────────────────────────────────────────
+echo ""
+printf "${CYAN}━━━ Essential Hermes Cron Jobs ━━━${RESET}\n\n"
+
+if ! command -v python3 &>/dev/null; then
+  error "python3 is required for cron existence checks"
+  exit 1
+fi
+
+# ── Validate LLM cron model/provider env vars ──────────────
+# LLM-driven crons need a model + provider. Set in ~/steadfaste-fleet/.env.
+# The install script now sources ~/steadfaste-fleet/.env via set -a above, so
+# LLM_CRON_MODEL and LLM_CRON_PROVIDER will be picked up automatically.
+LLM_CRON_MODEL="${LLM_CRON_MODEL:-}"
+LLM_CRON_PROVIDER="${LLM_CRON_PROVIDER:-}"
+
+if [[ -z "$LLM_CRON_MODEL" || -z "$LLM_CRON_PROVIDER" ]]; then
+  echo ""
+  echo "━━━ LLM Cron Model/Provider Not Configured ━━━"
+  echo ""
+  echo "  LLM-driven cron jobs need a model and provider."
+  echo "  Set them in ~/steadfaste-fleet/.env:"
+  echo ""
+  echo "    LLM_CRON_MODEL=deepseek/deepseek-v4.1-flash"
+  echo "    LLM_CRON_PROVIDER=openrouter"
+  echo ""
+  echo "  These control which model/provider all LLM-driven crons use."
+  echo "  Local-only crons (qwen on Ollama) use LOCAL_CRON_MODEL/PROVIDER."
+  echo ""
+  exit 1
+fi
+
+# Setup local Ollama provider for qwen crons
+setup_ollama_provider
+
+# ── 1. Auto-Remediation Pipeline ────────────────────────────
+printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
+
+# LLM-driven auto-remediation (workday: 08/20 KST M-F — off-peak since 08-31)
 create_cron "agent-fixer-workday" "0 8,20 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
@@ -362,7 +1014,7 @@ create_cron "agent-cron-failure-watchdog" "*/5 * * * *" \
 
 printf "${CYAN}  8. Deployment-Specific Crons${RESET}\n"
 
-# Daily Hermes Agent self-update
+# Weekly offline code index rebuild (Sunday 05:00 — rebuilds local code search index)
 create_cron "agent-offline-code-index" "0 5 * * 0" \
   "agent-offline-code-index.sh" \
   "" \
