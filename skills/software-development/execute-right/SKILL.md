@@ -115,9 +115,15 @@ canonical-ambiguity — compounds with every file.
    the deployed copy is overwritten on next update.
 3. Hermes boundary: in `~/steadfaste-fleet/` → ours; in `~/.hermes/` AND repo
    skills/ → edit repo copy + deploy; in `~/.hermes/` NOT in repo → Hermes
-   default, don't touch; `~/.steadfaste-fleet/state/*` → live state, edit
+   default, don't touch;   `~/.steadfaste-fleet/state/*` → live state, edit
    directly. `~/.hermes/config.yaml` is security-sensitive — change it with
    `hermes config set <dotted.key> <value>`, never a raw shell write.
+   **`skill_manage` writes to the DEPLOYED skill tree, not the repo** —
+   `~/.hermes/skills/<cat>/<name>/` is a symlink into the deployed copy
+   (`~/.steadfaste-fleet/skills/...`), so a skill_manage patch leaves the repo
+   copy stale: the next fleet-update reverts it and the doctor's `Skill drift`
+   check flags the pair. After any skill_manage edit, backport repo ← deployed
+   (`cp` the deployed file over the repo path; `diff` empty), then commit.
 4. Foreign working-tree check — git status; never stash/clean a peer's work.
 5. Agent type — orchestrator (Moses/Esther): fleet/bus; server-agent: local
    maintenance; dev-agent: local reports.

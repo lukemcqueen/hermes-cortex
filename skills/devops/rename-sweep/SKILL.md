@@ -202,6 +202,7 @@ treat that as part of the deliverable, not a follow-up.
 
 ## Pitfalls
 
+- **A file rename is not done until the CONSUMER layers that reference the artifact by name are swept — doctor's harness-verify + MCP-wiring checks are the canaries.** Renaming a deployed artifact (an MCP script, a harness extension file) while its registry/verify/installer entries and the per-host MCP registration still name the old path leaves a GREEN repo grep and a RED doctor: `Harness (x)` FAILs on the missing old path, `MCP wiring (y)` FAILs because a registered script path no longer exists. Sweep EVERY layer that writes the name in the same change — `harnesses/registry.yaml`, the verify/governance-check scripts, installer `resolve_ext`/OURS tool lists, tests, docs, skills — plus the per-host `~/.hermes/config.yaml` MCP `args` path (`hermes config set mcp_servers.<name>.args.0 <new-path>`, never a raw config write; hosts converge on next install). Then read the FAIL taxonomy: a checksum FAIL on an edited file is just "not yet deployed," but a harness/`MCP wiring` FAIL is real drift that survives deploy.
 - **Renaming an MCP server registration name is a sweep with its own traps** — every name
   writer in one commit (installers, audits, watchdog maps, enforcer text, doctor wiring maps,
   tests), rename-not-add by probe binary, `hermes mcp add` is interactive (pipe `printf 'Y\n' |`),
