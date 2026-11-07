@@ -26,7 +26,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 VERIFIER = REPO / "ops" / "install" / "harnesses" / "pi" / "verify-governance-extension.mjs"
-EXTENSION = REPO / "ops" / "install" / "harnesses" / "pi" / "extensions" / "cortex-governance.ts"
+EXTENSION = REPO / "ops" / "install" / "harnesses" / "pi" / "extensions" / "fleet-governance.ts"
 
 # The pre-fix shape: it loads, it registers a `tool_call` handler — it just
 # never blocks. A grep-based guard passes this; the verifier must not.

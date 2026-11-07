@@ -191,7 +191,7 @@ The repo sweep and §1–§7 leave several **harness-owned, non-repo** configs s
   `loop-governance`, `tasks`, `executor`, `agent-bus`, `fleet-context` `args`); repoint to
   `~/.steadfaste-fleet/...`.
 - `~/.pi/agent/settings.json` — Pi harness extension scripts
-  `/Users/luke/.hermes-cortex/harnesses/pi/extensions/{fleet-context,cortex-governance}.ts` →
+  `/Users/luke/.hermes-cortex/harnesses/pi/extensions/{fleet-context,fleet-governance}.ts` →
   `~/.steadfaste-fleet/harnesses/pi/extensions/`.
 - `~/.steadfaste-fleet/agent.env` — `CORTEX_PYTHON=/Users/luke/.hermes-cortex/venv/bin/python3` →
   `~/.steadfaste-fleet/venv/bin/python3` (the doctor flags this if left).

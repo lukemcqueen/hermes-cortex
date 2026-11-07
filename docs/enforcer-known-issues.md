@@ -210,7 +210,7 @@ git repository", and the note naming both the cwd and `'steadfaste-fleet'`). Tes
 ## 10. A version skew in `mcp` killed the WRITE GATE, on a host whose governance was healthy
 
 > **FIXED 2026-10-20.** Reported by the pi agent on gisu: every write/edit/non-readonly bash
-> blocked — `cortex-governance.ts` → `loop-gov.py check_repo_lock` → rc=3 — with stderr
+> blocked — `fleet-governance.ts` → `loop-gov.py check_repo_lock` → rc=3 — with stderr
 > `Server.__init__() got an unexpected keyword argument 'on_list_tools'`.
 
 **Symptom.** `loop-gov.py: governance is unavailable: …` and exit 3 on every call, while the

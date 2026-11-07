@@ -39,7 +39,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // PI_GOV_EXT is the discrimination seam: point the guard at a deliberately
 // broken copy and it MUST fail. A guard that has never failed on the broken
 // artifact is a happy path, not a guard.
-const EXT = process.env.PI_GOV_EXT ?? path.join(HERE, "extensions", "cortex-governance.ts");
+const EXT = process.env.PI_GOV_EXT ?? path.join(HERE, "extensions", "fleet-governance.ts");
 
 const failures = [];
 const note = (ok, msg) => {

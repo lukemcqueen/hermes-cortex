@@ -28,7 +28,7 @@ capability, or one of the two becomes a phantom.
 ## Shipped artifacts
 
 - `ops/install/harnesses/pi/extensions/fleet-context.ts`
-- `ops/install/harnesses/pi/extensions/cortex-governance.ts`
+- `ops/install/harnesses/pi/extensions/fleet-governance.ts`
 
 ## Lifecycle triggers (the half MCP cannot provide)
 

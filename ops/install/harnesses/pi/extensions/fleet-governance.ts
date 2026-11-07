@@ -1,5 +1,5 @@
 /**
- * cortex-governance.ts — Pi extension: the WRITE GATE for pi's native tools.
+ * fleet-governance.ts — Pi extension: the WRITE GATE for pi's native tools.
  *
  * WHY THIS EXISTS (2026-10-14, titus)
  *
@@ -523,7 +523,7 @@ function unavailableMessage(repo: string, detail: string): string {
     "  2. bash ~/steadfaste-fleet/ops/scripts/fleet-update.sh",
     "  3. confirm: python3 ~/.steadfaste-fleet/scripts/loop-gov.py --list",
     "  4. to remove the gate entirely (operator decision, and visible): drop",
-    "     cortex-governance.ts from \"extensions\" in ~/.pi/agent/settings.json",
+    "     fleet-governance.ts from \"extensions\" in ~/.pi/agent/settings.json",
   ].join("\n");
 }
 

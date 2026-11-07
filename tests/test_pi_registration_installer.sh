@@ -57,11 +57,11 @@ mkdir -p "$HOME/.pi/agent" "$HOME/.steadfaste-fleet/harnesses/pi/extensions" "$H
 
 # A real deployed extension + a skills tree (only names matter here).
 # BOTH extensions: the installer requires fleet-context.ts AND
-# cortex-governance.ts (registering only one looks wired while leaving writes
+# fleet-governance.ts (registering only one looks wired while leaving writes
 # open, so it refuses) — a fixture with one is a broken fixture, and it made
 # this suite fail for a reason unrelated to what it tests.
 touch "$HOME/.steadfaste-fleet/harnesses/pi/extensions/fleet-context.ts" \
-      "$HOME/.steadfaste-fleet/harnesses/pi/extensions/cortex-governance.ts"
+      "$HOME/.steadfaste-fleet/harnesses/pi/extensions/fleet-governance.ts"
 for s in task-start agent-flow reflexion-check change-checklist survey-before-action agent-contract test-driven-development; do
   if [[ "$s" == "task-start" ]]; then d="$HOME/.agents/skills/workflow/$s"; else d="$HOME/.agents/skills/software-development/$s"; fi
   mkdir -p "$d"; printf -- '---\nname: %s\ndescription: test\n---\n' "$s" > "$d/SKILL.md"
@@ -158,7 +158,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert "~/my-own-ext.ts" in d.get("extensions", []), "user extension removed by --remove"
 assert "~/my-own-skill" in d.get("skills", []), "user skill removed by --remove"
-assert not any(e.endswith("fleet-context.ts") or e.endswith("cortex-governance.ts")
+assert not any(e.endswith("fleet-context.ts") or e.endswith("fleet-governance.ts")
                for e in d.get("extensions", [])), f"cortex extension left: {d['extensions']}"
 assert not any(x.endswith("cortex-skills") for x in d.get("skills", [])), \
     f"retired farm left registered: {d['skills']}"

@@ -71,7 +71,7 @@ harnesses:
       (Governance is a separate capability — see `capabilities.governance`.)
     artifact:
       - extensions/fleet-context.ts
-      - extensions/cortex-governance.ts
+      - extensions/fleet-governance.ts
     triggers:
       turn_end: checkpoint (the trigger — MCP cannot provide this)
       before_agent_start: restore + inject the checkpoint
@@ -89,8 +89,8 @@ harnesses:
           from: pi/extensions/fleet-context.ts
           to: extensions/fleet-context.ts
       - copy:
-          from: pi/extensions/cortex-governance.ts
-          to: extensions/cortex-governance.ts
+          from: pi/extensions/fleet-governance.ts
+          to: extensions/fleet-governance.ts
     # A capability is what a harness must be wired to; the layer above is only
     # its CONTEXT half. Declaring skills/governance here is the difference
     # between "registered somewhere" and "registered the same way" — each names
@@ -186,7 +186,7 @@ harnesses:
         # other — they are separate capabilities for that reason.
         adapter: extension
         register: ops/scripts/install/install-pi-integration.sh
-        from: pi/extensions/cortex-governance.ts
+        from: pi/extensions/fleet-governance.ts
         requires: 'pi whose tool_call hook can block — verified by loading the extension through pi''s own loader, never assumed from a version in a doc'
         why: |
           The extension registers ONLY a tool_call handler and adds NO governance

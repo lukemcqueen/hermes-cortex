@@ -195,7 +195,7 @@ def test_verify_named_harness_reports_each_declared_artifact():
     r = run("verify", "pi")
     assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
     assert "fleet-context.ts" in r.stdout, r.stdout
-    assert "cortex-governance.ts" in r.stdout, r.stdout
+    assert "fleet-governance.ts" in r.stdout, r.stdout
 
 
 def _registry_fixture(tmp_path: Path, *, drop: str | None = None) -> Path:
@@ -210,7 +210,7 @@ def _registry_fixture(tmp_path: Path, *, drop: str | None = None) -> Path:
     shutil.copy2(REPO / "ops/install/harnesses/registry.yaml", regdir / "registry.yaml")
     gen = regdir / "generate-harnesses.py"
     gen.write_text("import sys\nprint('generate-harnesses: OK — fixture')\n")
-    for name in ("fleet-context.ts", "cortex-governance.ts"):
+    for name in ("fleet-context.ts", "fleet-governance.ts"):
         if name == drop:
             continue
         (regdir / "pi" / "extensions" / name).write_text("// ext\n")
@@ -231,10 +231,10 @@ def test_verify_without_a_name_does_not_pass_without_checking_artifacts(tmp_path
     assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
     assert "artifact" in r.stdout.lower(), f"no artifact was judged:\n{r.stdout}"
 
-    regdir2 = _registry_fixture(tmp_path / "second", drop="cortex-governance.ts")
+    regdir2 = _registry_fixture(tmp_path / "second", drop="fleet-governance.ts")
     r2 = run("verify", env={"CORTEX_HARNESS_DIR": str(regdir2)})
     assert r2.returncode != 0, f"a missing declared artifact reported PASS:\n{r2.stdout}"
-    assert "cortex-governance.ts" in r2.stdout, r2.stdout
+    assert "fleet-governance.ts" in r2.stdout, r2.stdout
 
 
 def _yaml_less_runner(tmp_path: Path) -> Path:

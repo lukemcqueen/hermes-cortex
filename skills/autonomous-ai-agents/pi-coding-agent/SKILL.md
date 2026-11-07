@@ -247,7 +247,7 @@ bash ~/steadfaste-fleet/ops/scripts/install/install-pi-integration.sh --check   
 bash ~/steadfaste-fleet/ops/scripts/manage/audit-pi-integration.sh             # per-layer audit
 ```
 
-It writes `~/.pi/agent/settings.json` — `"extensions": [<fleet-context.ts>, <cortex-governance.ts>]`
+It writes `~/.pi/agent/settings.json` — `"extensions": [<fleet-context.ts>, <fleet-governance.ts>]`
 and `"skills": ["~/.agents/skills"]` — and RETIRES a pre-existing `~/.pi/agent/cortex-skills`
 link farm when one is found: a stale farm keeps Pi loading a curated subset beside the whole
 tree. Idempotent, and it preserves the user's other keys. It no longer reads `skills.yaml` at
@@ -338,7 +338,7 @@ rule at (3) — never only in a skill body it may never load.
 
 ### The WRITE GATE — a SECOND extension, because pi's tools are not Hermes' tools
 
-`extensions/cortex-governance.ts` (added 2026-10-14, titus). Its `tool_call` handler
+`extensions/fleet-governance.ts` (added 2026-10-14, titus). Its `tool_call` handler
 blocks a write-capable NATIVE tool call when no governance lock covers the session's
 repo. Load it with the harness: `bash install-pi-integration.sh` registers both files.
 
@@ -643,7 +643,7 @@ agent is no exception: the gateway only spawns this same pi.
   its own npm root (`~/.pi/agent/npm/node_modules/<pkg>`); a declaration with
   nothing on disk loads no extension. Check both halves — the declaration in
   `settings.json` AND the directory.
-- **A web tool needs NO governance lock.** `cortex-governance.ts` gates only
+- **A web tool needs NO governance lock.** `fleet-governance.ts` gates only
   `write`/`edit` and non-read-only `bash`; every non-native tool (extension or
   MCP) passes by design, so search/fetch work in an unlocked session.
 - **Wiring:** `ops/scripts/install/install-pi-integration.sh` declares the

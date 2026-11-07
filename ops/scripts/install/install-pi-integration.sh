@@ -100,7 +100,7 @@ fi
 #
 # TWO extensions, and they do different jobs:
 #   fleet-context.ts    — the LIFECYCLE triggers (checkpoint/restore/evidence)
-#   cortex-governance.ts — the WRITE GATE for pi's NATIVE tools. Hermes enforces
+#   fleet-governance.ts — the WRITE GATE for pi's NATIVE tools. Hermes enforces
 #                          at the tool level via its enforcer plugin; pi's
 #                          read/bash/edit/write never cross that plugin, so
 #                          without this file a pi session could edit and write
@@ -115,7 +115,7 @@ resolve_ext() {
   return 1
 }
 EXTENSION="$(resolve_ext fleet-context.ts || true)"
-GOVERNANCE_EXTENSION="$(resolve_ext cortex-governance.ts || true)"
+GOVERNANCE_EXTENSION="$(resolve_ext fleet-governance.ts || true)"
 
 # The skills manifest is the ONE source of the always-set.
 MANIFEST=""
@@ -146,7 +146,7 @@ fi
 if [[ "$MODE" != "remove" && ( -z "$EXTENSION" || -z "$GOVERNANCE_EXTENSION" ) ]]; then
   echo "install-pi-integration: a cortex extension was not found (deployed or repo)." >&2
   echo "  fleet-context.ts    : ${EXTENSION:-MISSING}" >&2
-  echo "  cortex-governance.ts : ${GOVERNANCE_EXTENSION:-MISSING}" >&2
+  echo "  fleet-governance.ts : ${GOVERNANCE_EXTENSION:-MISSING}" >&2
   echo "  Both are required — the second is what gates pi's native write tools," >&2
   echo "  and registering only one would look wired while leaving writes open." >&2
   echo "  Fix: run fleet-update.sh, then this script." >&2
@@ -247,7 +247,7 @@ def tree_count(root):
 # strip/replace path and the check all read it, so a new extension cannot be
 # added to one and forgotten in another (the pre-2026-10-14 bug: the check
 # asserted one filename, so a second extension looked wired and was not).
-OURS = ("fleet-context.ts", "cortex-governance.ts")
+OURS = ("fleet-context.ts", "fleet-governance.ts")
 
 # The pi package that gives the agent web_search/fetch_content. Matched by
 # NAME, not by the pinned spec, so bumping the pin does not leave the old
