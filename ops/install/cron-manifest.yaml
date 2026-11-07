@@ -357,7 +357,7 @@ crons:
 - name: agent-mycortex-dream-nightly
   scope: opt-in
   opt_in_marker: state/dream-layer-installed
-  schedule: 0 5 * * 1,3,5
+  schedule: 0 5 * * *
   script: ''
   prompt: 'You are the nightly mycortex dream digest — Tier 1 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write the dream back into the brain so it accumulates.
 
@@ -924,7 +924,7 @@ crons:
   reasoning_effort: none
 - name: orch-skill-lifecycle
   scope: orchestrator
-  schedule: 0 4 * * 1
+  schedule: 0 4 * * 1,3,5
   script: ''
   prompt: "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.\n\nPhase 1 — Collection:\n1. Read inbox_orchestrator PGMQ queue (the shared orchestrator inbox — where agents send reports) for ALL agent reports:\n   - \"Learning Report:\" from agent-learning-collector (skills delta, lessons, session stats — every 6h)\n2. Check git log for self-improvement patterns needing broader consolidation\n3. Scan skill inventory for stale/modified skills\n4. Cross-reference reports across agents for consolidation candidates\n\nPhase 2 — Evaluation:\nFor each item found, classify it. Deduplicate against existing skills. Cross-reference across agents — if 3 agents report the same fix, it's a consolidation candidate. If today is Monday, run the full deep evaluation pass.\n\nPhase 3 — Upgrade:\nExecute approved actions: patch skills via skill_manage, create new ones, prune stale ones, update SOUL.md with principles, upstream new skills to the repo, archive processed bus messages.\n\nPUSHBACK CONTRACT (SOUL Principle 5): before pruning/deleting a skill, rewriting SOUL.md, or upstreaming a change, challenge it — if the action is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.\n\nIf nothing changed: output exactly [SILENT]"
   skill: orch-skill-lifecycle

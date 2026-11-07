@@ -583,7 +583,7 @@ printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 # Unified daily skill lifecycle — replaces old skill-miner, skill-triage, harvest-lessons,
 # agent-weekly-loop-eval, agent-daily-soul-refinement
 # Reads inbox_orchestrator for BOTH Learning Report: and Skill Report: formats from ALL agents.
-create_cron "orch-skill-lifecycle" "0 4 * * 1" \
+create_cron "orch-skill-lifecycle" "0 4 * * 1,3,5" \
   "" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 

@@ -50,9 +50,10 @@ host has no `cronjob` authority and the installer refuses). An orchestrator runs
 | Workday LLM — fixer, cortex-bus inbox | **2×/day — 08:xx + 20:xx KST, weekdays** | ONE job each (was 3 jobs / 6 slots); the surviving job keeps `session-active-guard.py` (free skip when an interactive session is open) |
 | Backlog worker (orch) | **2×/day — 08:xx + 20:xx KST** | `deliver=local` — silent, records only |
 | Watchdogs / health (no_agent) | `*/5`–`*/30`, hourlies | cheap ($0) — keep; do NOT widen |
-| Maintenance — memory-prune, docs-prune, skill-lifecycle | **weekly — Mon 04:xx KST** | colocate Monday, not daily |
-| Dreams — nightly/weekly/monthly | nightly → **Mon/Wed/Fri 05:xx KST**; weekly Sat; monthly 1st | nightly is 3×/wk, not daily |
+| Maintenance — memory-prune, docs-prune | **weekly — Mon 04:xx KST** | colocate Monday, not daily |
+| Dreams — nightly/weekly/monthly | nightly **daily 05:xx KST**; weekly Sat; monthly 1st | keep the three tiers |
 | User briefs (local-*) | **daily 05:00–07:xx KST** | ai + sustainability stay SEPARATE (both kept) |
+| Skill lifecycle (orch, `orch-skill-lifecycle`) | **Mon/Wed/Fri 04:xx KST** | Monday is the full deep-eval pass; Wed/Fri lighter — keep MWF |
 | Weekly reports / loop eval | **Mon 09:xx KST** | |
 
 No LLM cron should need >2×/day. If a job seems to, it is usually two jobs that
@@ -122,7 +123,7 @@ should be one consolidated pass — merge before you add a third slot.
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
 | `orch-weekly-cost-report` | `0 9 * * 1` | no_agent | `orch-weekly-cost-report.py` | Telegram |
-| `orch-skill-lifecycle` | `0 4 * * 1` | LLM | (orch-skill-lifecycle skill) | origin |
+| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
 | `orch-bus-worker` | `0 8,20 * * *` | LLM | `session-active-guard.py` + (orch-bus-worker skill) | local |
@@ -166,7 +167,7 @@ should be one consolidated pass — merge before you add a third slot.
 | `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — legacy brain decommissioned; no consumer (verified). |
 | `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with mycortex binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces the legacy autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 5 * * 1,3,5` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-mycortex-dream-nightly` | `0 5 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
 | `agent-mycortex-dream-weekly` | `0 5 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-dream-monthly` | `0 5 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with mycortex; gate closed, parity is now a manual regression fixture only)* |

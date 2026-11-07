@@ -1122,7 +1122,7 @@ create_cron "agent-push-metrics" "every 5m" \
 
 # ── AGENTS.md auto-trim: daily scan + LLM apply (M-Sa) ──
 # Phase 1: deterministic scan — silent when clean, JSON report when candidates found
-create_cron "agent-agents-md-prune-scan" "0 4 * * 1-6" \
+create_cron "agent-agents-md-prune-scan" "0 4 * * 1" \
   "agent-agents-md-prune-scan.py" \
   "" \
   "" \
@@ -1132,7 +1132,7 @@ create_cron "agent-agents-md-prune-scan" "0 4 * * 1-6" \
   "true"
 
 # Phase 2: LLM review + apply — reads scan output via context_from
-create_cron "agent-agents-md-prune-apply" "30 4 * * 1-6" \
+create_cron "agent-agents-md-prune-apply" "30 4 * * 1" \
   "" \
   "Review the AGENTS.md pruning scan report injected below (via context_from=agents-md-prune-scan).
 If candidates exist and look correct, apply them by running:
