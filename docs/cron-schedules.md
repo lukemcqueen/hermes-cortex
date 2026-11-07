@@ -20,6 +20,80 @@
 | **Deliver** | Where output is sent |
 | Scope | `orch` = orchestrator-only, `agent` = all agents, `local` = this machine |
 
+## Fleet Cron Cadence & Separation Policy (2026-11-07)
+
+> **Codifies how crons are TIERED and SCHEDULED** so a normal agent installs a
+> minimal, correctly-cadenced set and the orchestrator adds only the
+> fleet-wide layer. Replaces the earlier "three-job trios" (fixer/bus
+> workday+evening+overnight) with consolidated schedules. This is the pattern
+> every agent follows; the installer `create_cron` blocks and
+> `cron-manifest.yaml` below are the machine enforcement.
+
+### Tier separation — the prefix IS the scope
+
+| Prefix | Who runs it | Purpose |
+|--------|-------------|---------|
+| `orch-*` | **orchestrator hosts only** (moses/esther — host-derived, never self-claimed) | fleet-wide: bus audit/recover, fleet watchdog, regression gate, cost report, skill lifecycle/evaluate, bus worker, task passes |
+| `agent-*` | **every agent** (universal set) | per-agent local ops: fixer, cortex-bus inbox, watchdogs, dreams, memory/brain sync, prune |
+| `local-*` | **this machine** (per-host deliverables) | user-facing briefs (ai / sustainability / finance / news), soul refinement, weekly loop eval, job scanner |
+| `no_agent` | any (script-only, $0) | cheap watchdogs/relays; silent when clean |
+
+A normal agent NEVER runs an `orch-*` cron (orchestrator-only; a non-orchestrator
+host has no `cronjob` authority and the installer refuses). An orchestrator runs
+`orch-*` **plus** the same minimal `agent-*` set as everyone else plus its own
+`local-*` briefs.
+
+### Cadence matrix — follow these frequencies
+
+| Layer | Canonical cadence | Notes |
+|-------|-------------------|-------|
+| Workday LLM — fixer, cortex-bus inbox | **2×/day — 08:xx + 20:xx KST, weekdays** | ONE job each (was 3 jobs / 6 slots); the surviving job keeps `session-active-guard.py` (free skip when an interactive session is open) |
+| Backlog worker (orch) | **2×/day — 08:xx + 20:xx KST** | `deliver=local` — silent, records only |
+| Watchdogs / health (no_agent) | `*/5`–`*/30`, hourlies | cheap ($0) — keep; do NOT widen |
+| Maintenance — memory-prune, docs-prune, skill-lifecycle | **weekly — Mon 04:xx KST** | colocate Monday, not daily |
+| Dreams — nightly/weekly/monthly | nightly → **Mon/Wed/Fri 05:xx KST**; weekly Sat; monthly 1st | nightly is 3×/wk, not daily |
+| User briefs (local-*) | **daily 05:00–07:xx KST** | ai + sustainability stay SEPARATE (both kept) |
+| Weekly reports / loop eval | **Mon 09:xx KST** | |
+
+No LLM cron should need >2×/day. If a job seems to, it is usually two jobs that
+should be one consolidated pass — merge before you add a third slot.
+
+### Minute staggering — no fleet thundering-herd
+
+- **The hour is the contract; the minute is per-host.** At install,
+  `create_cron()` rewrites the minute to `cksum(hostname:cron-name) % 60`
+  (`ops/scripts/install-crons.sh`), so two hosts firing "08:00" actually fire at
+  `08:17` and `08:41` etc. Never hand-pin a :00 minute on an LLM cron.
+- **Orchestrator crons stagger in a band apart from normal agents.** The minute
+  offset is deterministic per `(hostname, cron-name)`, so orch-layer crons and
+  per-agent crons already spread — but do not manually force two jobs onto the
+  same minute to "group" them; the stagger exists to AVOID that.
+- `no_agent` crons keep their exact minutes (they are $0 and time-sensitive —
+  watchdogs, relays).
+- Adjacent jobs on one host should NOT share a minute: if two of your crons
+  compute the same offset, nudge one by a fixed +N so the host's own load is
+  spread (the stagger is fleet-wide; same-host spread is the second rule).
+
+### macOS
+
+- **The Hermes cron scheduler is cross-platform:** cron expressions and
+  human intervals (``every 10m``, ``weekdays at 9am``) schedule and fire
+  identically on macOS. The LLM cadence matrix above is OS-independent.
+- **`no_agent` systemd crons are Linux-only.** Jobs packaged as systemd timers
+  or using `systemd-cron-bridge` do not exist on macOS; use a `launchd` plist
+  (`~/Library/LaunchAgents/` + `launchctl load`) for periodic scripts, or keep
+  them as Hermes `no_agent` crons (cross-platform). Never assume `systemctl`.
+- **MacBooks SLEEP.** A laptop cron does not fire while asleep. `launchd`
+  `StartCalendarInterval` fires a missed job on wake (coalesced); for interval
+  jobs on a laptop prefer `StartInterval` (which is tolerant of sleep) over a
+  strict wall-clock expression, and do not `caffeinate` routine jobs awake.
+- **TZ:** Hermes resolves cron expressions in host-local time (`HERMES_TIMEZONE`
+  / system local). On macOS verify the system TZ (System Settings → General →
+  Date & Time) before trusting `%Z` in any output; a Mac reporting UTC while its
+  owner is KST shifts every schedule by 9 hours.
+
+---
+
 ## Delivery Policy — LLM crons (issues only, never status)
 
 > Applies to every LLM cron that delivers to `origin` (fixer / inbox / bus families).
@@ -48,20 +122,20 @@
 | `orch-health-report-weekday` | `0 9-18 * * 1-5` | no_agent | `orch-health-report.py` | origin |
 | `orch-health-report-saturday` | `0 11,17 * * 6` | no_agent | `orch-health-report.py` | origin |
 | `orch-weekly-cost-report` | `0 9 * * 1` | no_agent | `orch-weekly-cost-report.py` | Telegram |
-| `orch-skill-lifecycle` | `0 4 * * 1,3,5` | LLM | (orch-skill-lifecycle skill) | origin |
+| `orch-skill-lifecycle` | `0 4 * * 1` | LLM | (orch-skill-lifecycle skill) | origin |
 | `orch-skill-report-request` | `0 2 * * 1` | no_agent | `orch-skill-report-request.sh` | origin |
 | `orch-skill-evaluate` | `0 9 * * 2` | LLM | (prompt) | origin |
-| `orch-bus-worker` | `0 8,14,20,22 * * *` | LLM | `session-active-guard.py` + (orch-bus-worker skill) | Telegram |
+| `orch-bus-worker` | `0 8,20 * * *` | LLM | `session-active-guard.py` + (orch-bus-worker skill) | local |
 
 ## All-agent (`agent-*` prefix)
 
 | Name | Schedule | Type | Script / Skill | Deliver |
 |------|----------|------|----------------|---------|
-| `agent-fixer-workday` | `0 8,14,20 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
-| `agent-fixer-evening` | `0 20,22 * * 1-5` | LLM | auto-remediation skill | telegram |
-| `agent-fixer-overnight` | `0 23 * * 1-5` | LLM | auto-remediation skill | telegram |
+| `agent-fixer-workday` | `0 8,20 * * 1-5` | LLM | auto-remediation skill + session-active-guard.py | telegram |
+| ~~`agent-fixer-evening`~~ | ~~`0 20,22 * * 1-5`~~ | ~~LLM~~ | ~~auto-remediation skill~~ | ~~telegram~~ | ⚠️ **REMOVED 2026-11-07** — consolidated into `agent-fixer-workday` (2×/day) |
+| ~~`agent-fixer-overnight`~~ | ~~`0 23 * * 1-5`~~ | ~~LLM~~ | ~~auto-remediation skill~~ | ~~telegram~~ | ⚠️ **REMOVED 2026-11-07** — consolidated into `agent-fixer-workday` |
 | `agent-remediation-sensor` | `*/5 * * * *` | no_agent | `agent-remediation-sensor.py` | local (runs only where IS_SERVER=true) |
-| `agent-remediate-apply` | `*/10 * * * *` | no_agent | `agent-remediate-apply.py` | origin |
+| ~~`agent-remediate-apply`~~ | ~~`*/10 * * * *`~~ | ~~no_agent~~ | ~~`agent-remediate-apply.py`~~ | ~~origin~~ | ⚠️ **REMOVED 2026-11-07** — superseded by consolidated `agent-fixer-workday` |
 | `agent-message-handler` | `*/5 * * * *` | no_agent | `agent-message-handler.py` | local |
 
 > **TL-v2 S4 (2026-08-10):** `agent-message-handler` now also (1) creates a
@@ -81,7 +155,7 @@
 | `agent-model-health-watchdog` | `0 7 * * *` | no_agent | `agent-model-health-watchdog.py` | origin |
 | `agent-secret-leak-watchdog` | `0 */4 * * *` | no_agent | `agent-secret-leak-watchdog.py` | origin |
 | `agent-ip-submission` | `*/30 * * * *` | no_agent | `agent-ip-submission.sh` | origin |
-| `agent-hermes-update` | `23 22 * * *` | no_agent | `agent-hermes-update.sh` | local |
+| ~~`agent-hermes-update`~~ | ~~`23 22 * * *`~~ | ~~no_agent~~ | ~~`agent-hermes-update.sh`~~ | ~~local~~ | ⚠️ **REMOVED 2026-11-07** — fleet migrating off Hermes; no self-update cron |
 | `agent-steadfaste-fleet-sync` | `33 22 * * *` | no_agent | `agent-steadfaste-fleet-sync.sh` | origin |
 | `agent-memory-to-brain-sync` | `0 */6 * * *` | no_agent | `agent-memory-to-brain-sync.py` | local |
 | `agent-governance-auditor` | `0 */6 * * *` | no_agent | `agent-governance-auditor.py` | origin |
@@ -92,7 +166,7 @@
 | `agent-mycortex-nightly-dream` | ~~`0 3 * * 6`~~ | ~~no_agent~~ | ~~`agent-mycortex-nightly-dream.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — legacy brain decommissioned; no consumer (verified). |
 | `agent-mycortex-update-sync` | ~~`0 2 * * 0`~~ | ~~no_agent~~ | ~~`agent-mycortex-update-sync.sh`~~ | ~~origin~~ | ⚠️ **STALE/REMOVED 2026-08-02** — obsolete with mycortex binary uninstall. |
 | `agent-mycortex-sync` | `*/15 * * * *` | no_agent | `agent-mycortex-sync.sh` | origin | *(knowledge brain sync — replaces the legacy autopilot)* |
-| `agent-mycortex-dream-nightly` | `0 5 * * *` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
+| `agent-mycortex-dream-nightly` | `0 5 * * 1,3,5` | LLM | (prompt) | origin | *(nightly serendipity digest — fresh-page connections, writes to `~/brain/<profile>/dreams/`; replaces the legacy creative-dream layer; optional via install-dream-crons.sh)* |
 | `agent-mycortex-dream-weekly` | `0 5 * * 6` | LLM | (prompt) | origin | *(weekly deep dream — lessons synthesis + scripture connection, ~200-250 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-dream-monthly` | `0 5 1 * *` | LLM | (prompt) | origin | *(monthly arc — time-lapse + knowledge-gap probe, ~300 words written to `~/brain/<profile>/dreams/`; optional)* |
 | `agent-mycortex-parity` | ~~removed 2026-08-03~~ | no_agent | — | origin | *(S-010 flip-gate watchdog — RETIRED with mycortex; gate closed, parity is now a manual regression fixture only)* |
@@ -107,11 +181,11 @@
 | `agent-auto-save-sessions` | `every 360m` | no_agent | `agent-auto-save-sessions.py` | local |
 | `agent-stale-ref-watchdog` | `0 5 * * *` | no_agent | `manage/agent-stale-ref-watchdog.sh` | origin |
 | `agent-swap-refresh` | `0 5 * * *` | no_agent | `agent-swap-refresh.py` | origin |
-| `agent-agents-md-prune-scan` | `0 4 * * 1-6` | no_agent | `agent-agents-md-prune-scan.py` | local |
-| `agent-agents-md-prune-apply` | `30 4 * * 1-6` | LLM | (prompt) | telegram |
-| `cortex-bus-workday` | `0 8,14,20 * * 1-5` | LLM | session-active-guard.py | telegram |
-| `cortex-bus-evening` | `0 20,22 * * 1-5` | LLM | (prompt) | telegram |
-| `cortex-bus-overnight` | `0 23 * * 1-5` | LLM | (prompt) | telegram |
+| `agent-agents-md-prune-scan` | `0 4 * * 1` | no_agent | `agent-agents-md-prune-scan.py` | local |
+| `agent-agents-md-prune-apply` | `30 4 * * 1` | LLM | (prompt) | telegram |
+| `cortex-bus-workday` | `0 8,20 * * 1-5` | LLM | session-active-guard.py | telegram |
+| ~~`cortex-bus-evening`~~ | ~~`0 20,22 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~telegram~~ | ⚠️ **REMOVED 2026-11-07** — consolidated into `cortex-bus-workday` (2×/day) |
+| ~~`cortex-bus-overnight`~~ | ~~`0 23 * * 1-5`~~ | ~~LLM~~ | ~~(prompt)~~ | ~~telegram~~ | ⚠️ **REMOVED 2026-11-07** — consolidated into `cortex-bus-workday` |
 | `agent-daily-bible-reading` | `0 1 * * *` | LLM | agent-daily-bible-reading skill | origin |
 | `agent-daily-soul-refinement` | ~~`0 23 * * *`~~ | ~~LLM~~ | ~~soul-refinement skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level daily soul refinement merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-daily-soul-refinement`. |
 | `agent-weekly-loop-eval` | ~~`0 9 * * 1`~~ | ~~LLM~~ | ~~loop-governance skill~~ | ~~origin~~ | ⚠️ **ABSORBED 2026-08-02** — fleet-level weekly loop eval merged into `orch-skill-lifecycle`. Per-host variant is `local-agent-weekly-loop-eval`. |

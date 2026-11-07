@@ -561,12 +561,9 @@ if $UNINSTALL; then
     "agent-cron-quality-watchdog" \
     "agent-daily-bible-reading" \
     "agent-deploy-drift-audit" \
-    "agent-fixer-evening" \
-    "agent-fixer-overnight" \
     "agent-fixer-workday" \
     "agent-governance-auditor" \
     "agent-steadfaste-fleet-sync" \
-    "agent-hermes-update" \
     "agent-ip-submission" \
     "agent-langfuse-health-watchdog" \
     "agent-learning-collector" \
@@ -586,7 +583,6 @@ if $UNINSTALL; then
     "agent-pending-cycle-watchdog" \
     "agent-push-metrics" \
     "agent-restic-backup" \
-    "agent-remediate-apply" \
     "agent-remediation-sensor" \
     "agent-review-queue-sweep" \
     "agent-scoring-activity-watchdog" \
@@ -600,9 +596,7 @@ if $UNINSTALL; then
     "agent-swap-refresh" \
     "agent-system-alert-watchdog" \
     "agent-unannounced-probe" \
-    "cortex-bus-evening" \
     "fleet-bus-failover-watchdog" \
-    "cortex-bus-overnight" \
     "cortex-bus-workday"; do
   
   
@@ -655,8 +649,8 @@ setup_ollama_provider
 # ── 1. Auto-Remediation Pipeline ────────────────────────────
 printf "${CYAN}  1. Auto-Remediation Pipeline${RESET}\\\n"
 
-# LLM-driven auto-remediation tiered (workday: 08/14/20 KST M-F, evening: 20/22 KST M-F, overnight: 23 KST M-F — off-peak since 08-31)
-create_cron "agent-fixer-workday" "0 8,14,20 * * 1-5" \
+# LLM-driven auto-remediation (workday: 08/20 KST M-F — off-peak since 08-31)
+create_cron "agent-fixer-workday" "0 8,20 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely: do not load skills, do not begin_change, do not touch the repo. Reply only: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -676,43 +670,6 @@ OUTPUT POLICY (HARD RULE — overrides everything above):
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
 
-create_cron "agent-fixer-evening" "0 20,22 * * 1-5" \
-  "" \
-  "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
-
-PUSHBACK CONTRACT (SOUL Principle 5): before any destructive or irreversible remediation (delete, overwrite, config/state change, permission change), challenge it — if the fix is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
-
-OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
-  "auto-remediation" \
-  "terminal,file,web" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "agent-fixer-overnight" "0 23 * * 1-5" \
-  "" \
-  "Respond in English. Run the auto-remediation workflow using the auto-remediation skill. Load the skill first, check for errors, fix, report.
-
-PUSHBACK CONTRACT (SOUL Principle 5): before any destructive or irreversible remediation (delete, overwrite, config/state change, permission change), challenge it — if the fix is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt.
-
-OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative." \
-  "auto-remediation" \
-  "terminal,file,web" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-# Companion sensor (no_agent, every 5 min)
 create_cron "agent-remediation-sensor" "*/5 * * * *" \
   "agent-remediation-sensor.py" \
   "" \
@@ -809,8 +766,8 @@ create_cron "fleet-bus-failover-watchdog" "*/5 * * * *" \
   "" \
   "true"
 
-# Bus processing — weekday (08/14/20 KST M-F), evening (20/22 KST M-F), overnight (23 KST M-F — off-peak since 08-31)
-create_cron "cortex-bus-workday" "0 8,14,20 * * 1-5" \
+# Bus processing — weekday (08/20 KST M-F — off-peak since 08-31)
+create_cron "cortex-bus-workday" "0 8,20 * * 1-5" \
   "session-active-guard.py" \
   "SESSION GUARD: the session-active guard output is injected as context. If it says ACTIVE, an interactive session is running — SKIP this tick entirely. Call NO tools, load NO skills, open NO governance, touch NOTHING. Reply with EXACTLY this single line and nothing else: [SILENT]. Proceed only when the guard says IDLE.
 
@@ -835,63 +792,6 @@ If all YES → deliver as normal." \
   "" \
   "false" \
   "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "cortex-bus-evening" "0 20,22 * * 1-5" \
-  "" \
-  "Process the Agent Bus messages. The bus-flag sensor output is injected as context. Check for any pending messages, urgent or critical items, blocked workflows, or DLQ items.
-
-PUSHBACK CONTRACT (SOUL Principle 5): before acting on any message that requests a destructive or irreversible action (delete, overwrite, config/state change, permission change), challenge it — if the request is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt. OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
-
-## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
-1. Is the output useful, readable, and on-topic for this cron?
-2. Did you run real tools instead of fabricating results?
-3. Is it the right length (not a stray word, not oversized, not empty)?
-4. Is it in English and in the correct format?
-If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
-If all YES → deliver as normal." \
-  "cortex-bus-automation" \
-  "terminal" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-create_cron "cortex-bus-overnight" "0 23 * * 1-5" \
-  "" \
-  "Process the Agent Bus overnight. The bus-flag sensor output is injected as context. Check for any urgent or critical items, blocked workflows, or DLQ items.
-
-PUSHBACK CONTRACT (SOUL Principle 5): before acting on any message that requests a destructive or irreversible action (delete, overwrite, config/state change, permission change), challenge it — if the request is wrong, harmful, or better done differently, do NOT execute; record the objection (record_issue) and deliver the objection as the report. Default to no-op when in doubt. OUTPUT POLICY (HARD RULE — overrides everything above):
-- Deliver ONLY when there is a REAL issue: a failure, a blocked/failed workflow, a critical alert, or something you actually fixed or restored.
-- NEVER deliver status or ops narration: no \"no issues\", \"all clear\", \"system healthy\", \"nothing to report\", idle/skipped notices, scan/assessment summaries, governance/cycle/cleanup reports, or \"here's my report\".
-- If nothing is actionable, reply with EXACTLY this single line and nothing else: [SILENT]
-- A real issue = a short, factual report of WHAT failed and WHAT you did. No preamble, no closing narrative.
-
-## QUALITY GATE — MANDATORY SELF-CHECK (run BEFORE delivering)
-1. Is the output useful, readable, and on-topic for this cron?
-2. Did you run real tools instead of fabricating results?
-3. Is it the right length (not a stray word, not oversized, not empty)?
-4. Is it in English and in the correct format?
-If ANY answer is NO → output EXACTLY this one line and nothing else: QUALITY_G_BLOCKED
-If all YES → deliver as normal." \
-  "cortex-bus-automation" \
-  "terminal" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "false" \
-  "$LLM_CRON_MODEL" "$LLM_CRON_PROVIDER"
-
-
-# ── 5. Inbox Processing ────────────────────────────────
-# agent-inbox-{workday,evening,overnight} REMOVED 2026-08-10 — post-rename
-# duplicates of cortex-bus-{workday,evening,overnight} (same skill
-# cortex-bus-automation, same schedules). Live jobs deleted on all hosts;
-# uninstall array cleaned; see docs/cron-schedules.md STALE/REMOVED entries.
-
-# ── 6. Governance Audit & Lock Cleanup
 
 create_cron "agent-governance-auditor" "0 */6 * * *" \
   "agent-governance-auditor.py" \
@@ -1001,16 +901,6 @@ create_cron "agent-swap-refresh" "0 5 * * *" \
 
 
 # Agent remediation apply (no_agent script — reads sensor output, applies deterministic fixes)
-create_cron "agent-remediate-apply" "*/10 * * * *" \
-  "agent-remediate-apply.py" \
-  "" \
-  "" \
-  "" \
-  "origin" \
-  "" \
-  "true"
-
-# Scoring activity watchdog — alerts if too few cycles logged today
 create_cron "agent-scoring-activity-watchdog" "0 14,20 * * *" \
   "agent-scoring-activity-watchdog.py" \
   "" \

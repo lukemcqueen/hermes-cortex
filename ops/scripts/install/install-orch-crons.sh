@@ -150,7 +150,6 @@ if $UNINSTALL; then
     "orch-skill-report-request" \
     "orch-task-board-digest" \
     "orch-task-morning-pass" \
-    "orch-task-evening-pass" \
     "orch-bus-worker" \
     "orch-autonomy-digest" \
     "orch-restic-backup"; do
@@ -481,22 +480,6 @@ READ-ONLY SQL, if you need it (schema VERIFIED 2026-10-14 — do NOT guess colum
 
 # Orchestrator evening pass (task model v3 T5) — verify all review slices
 # (LLM-driven, orchestrator-only verify privilege).
-create_cron "orch-task-evening-pass" "0 21 * * *" \
-  "" \
-  "Evening verification pass (orchestrator, task model v3). You are the orchestrator on this host (host-derived identity, never self-claimed).
-
-1. task-db.py list --repo ALL --board, then task-db.py list --repo ALL --status review. (--repo ALL is REQUIRED on every read — bare reads from the agent home return repo-unknown and an empty board.)
-2. For each review slice: verify evidence is real (test output, measured numbers — never trust self-reported done). approve: task-db.py verify <id> --approve --note '<checked>'. reject: task-db.py verify <id> --reject --note '<gap>' (returns to in_progress).
-3. Flag review > 24h (stale sweep should have caught it).
-4. End: 2-line summary (verified N, rejected M, X in review)." \
-  "" \
-  "terminal" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
-  "" \
-  "false"
-
-# Fleet watchdog — cross-agent health polling (no_agent, Telegram alerts)
-# Orchestrator-only: Moses primary, Esther backup
 create_cron "orch-fleet-watchdog" "*/5 * * * *" \
   "orch-fleet-watchdog.py" \
   "" \
@@ -600,7 +583,7 @@ printf "${CYAN}  3. Skill Lifecycle Pipeline${RESET}\n"
 # Unified daily skill lifecycle — replaces old skill-miner, skill-triage, harvest-lessons,
 # agent-weekly-loop-eval, agent-daily-soul-refinement
 # Reads inbox_orchestrator for BOTH Learning Report: and Skill Report: formats from ALL agents.
-create_cron "orch-skill-lifecycle" "0 4 * * 1,3,5" \
+create_cron "orch-skill-lifecycle" "0 4 * * 1" \
   "" \
   "Load the orch-skill-lifecycle skill and follow the three-phase pipeline. Run the complete skill lifecycle for today.
 
@@ -699,12 +682,12 @@ printf "${CYAN}  5. Backlog Driver${RESET}\n"
 # tasks DB, executes or dispatches them (bus EXEC), verifies with evidence,
 # closes them, reports to Telegram. LLM-driven: deciding WHAT to do with a
 # task needs reasoning (dispatch vs self-fix vs escalate vs block).
-# 4 runs/day off-peak (08/14/20/22 KST); minute is per-host hashed by create_cron (Luke 08-07, cost-cut 08-31).
+# 2 runs/day off-peak (08/20 KST); minute is per-host hashed by create_cron (Luke 08-07, cost-cut 08-31).
 # Model/provider deliberately NOT passed: an unpinned cron inherits the LLM_CRON_*
 # env chain (the fleet's single model control point), which is what
 # ops/install/cron-manifest.yaml declares (model/provider '') and what the doctor's
 # Cron-manifest-drift check enforces.
-create_cron "orch-bus-worker" "0 8,14,20,22 * * *" \
+create_cron "orch-bus-worker" "0 8,20 * * *" \
   "session-active-guard.py" \
   "Load the orch-bus-worker skill and run the backlog loop (F-023).
 
@@ -729,7 +712,7 @@ PUSHBACK CONTRACT (SOUL Principle 5): if a pending task's requested action is wr
 Never fabricate results. A completed task without verified evidence is a lie — report the blocker honestly instead." \
   "orch-bus-worker" \
   "terminal,file" \
-  "telegram:${TELEGRAM_HOME_CHANNEL}" \
+  "local" \
   "" \
   "false"
 

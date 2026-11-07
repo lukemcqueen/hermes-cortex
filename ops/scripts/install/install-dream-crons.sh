@@ -11,7 +11,7 @@
 #  BASE schedules — the create_cron() stagger below rewrites the minute to a
 #  deterministic per-host value (hostname:cron-name hash % 60) so fleet
 #  hosts don't all fire the same LLM dream at the same minute:
-#    agent-mycortex-dream-nightly  0 5 * * *    digest → dreams/YYYY-MM-DD.md
+#    agent-mycortex-dream-nightly  0 5 * * 1,3,5  digest → dreams/YYYY-MM-DD.md (Mon/Wed/Fri)
 #    agent-mycortex-dream-weekly   0 5 * * 6    lessons + scripture → -weekly.md
 #    agent-mycortex-dream-monthly  0 5 1 * *    time-lapse + gaps → YYYY-MM-monthly.md
 #
@@ -242,7 +242,7 @@ Result: 1 monthly arc written to brain and delivered.
   "false"
 
 # Tier 1 — Nightly digest (05:00) — moved from 03:00 off-peak (O3/G-4, 2026-08-25); 03:00 is DeepSeek peak (01-04 UTC)
-create_cron "agent-mycortex-dream-nightly" "0 5 * * *" \
+create_cron "agent-mycortex-dream-nightly" "0 5 * * 1,3,5" \
   "" \
   "You are the nightly mycortex dream digest — Tier 1 of the dream layer. The mycortex knowledge brain indexes markdown across the fleet. Your job: surface what the brain noticed today AND write the dream back into the brain so it accumulates.
 
